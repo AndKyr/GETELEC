@@ -22,6 +22,7 @@ x=W/(F*R)
 
 if (x<0.1d0) then
 	
+	
 
 J=KX_Freg(F,W,R)
 
@@ -82,13 +83,50 @@ function KX_thermal(F,W,R,kT) result(J)
 end function KX_thermal
 
 
-function emis_num(x,Vbar,W,kT) result(J)
-double precision, intent(in):: x(:), Vbar(:),kT,W
-double precision:: J
+pure function Gamow_num(Vbarrier,xmax) result(G)
 
-J=W*kT
+	double precision, intent(in)::xmax
+	double precision, external :: Vbarrier
+	
+	integer, parameter :: Nox=20
+	double precision, parameter :: AtolRoot=1.d-10, RtolRoot=1.d-10, 
+	double precision:: G, x=1.d-5, dx, V(2),x1(2),x2(2)
+	integer :: i,j,iflag
+	logical ::foundfirst=.false.
+	
+	dx=xmax/Nox
+	do i=1:Nox
+		V(1)=Vbarrier(x)
+		V(2)=Vbarrier(x+dx)
+		if (V(1)*V(2)<0) then
+			if (foundfirst) then
+				x2(1)=x
+				x2(2)=x+dx
+				exit
+			else
+				x1(1)=x
+				x1(2)=x+dx
+				foundfirst=.true.
+			endif
+		endif
+		x=x+dx
+	enddo
+	if (i==Nox)
+		G=0
+		return
+	endif
+	
+	call dfzero(Vbarrier,x1(1),x1(2),x1(1),1.d-10,1.d-10,iflag)
+	call dfzero((Vbarrier,x2(1),x2(2),x2(1),1.d-10,1.d-10,iflag))
+	
+	
+	
+	
+	
 
-end function emis_num
+
+
+end function Gamow_num
 
 pure function Sigma(x) result(S)
 	double precision, intent(in) :: x
