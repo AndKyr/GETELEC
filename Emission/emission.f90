@@ -1,4 +1,6 @@
 module emission
+
+use slatec, only: dfzero,qage
 implicit none
 
 integer, parameter:: Ny=200
@@ -12,19 +14,33 @@ double precision, parameter :: b=6.83089d0,a=1.541433d-6,g=10.246d0, Q=0.36
 
 contains
 
-function elec_emit(F,W,R,T,zz,Vel) result (J)
-double precision, intent(in)::F,W,R,T !F: local field, 
-!W: work function, R: Radius of curvature, kT: boltzmann*temperature 
-double precision, optional, dimension(:), intent(in):: zz,Vel
-double precision:: J,x,yf,maxbeta
+function elec_emit(F,W,R,T,zz,Vel) result (Gam)
+	double precision, intent(in)::F,W,R,T !F: local field, 
+	!W: work function, R: Radius of curvature, kT: boltzmann*temperature 
+	double precision, optional, dimension(:), intent(in):: zz,Vel
+	double precision:: Gam,x,yf,maxbeta,xmax
 
-x=W/(F*R)
+	x=W/(F*R)
+	xmax=2*W/F
+	if (x<0.1d0) then
+		Gam=Gamow_num(SphBar,RtSphBar,xmax)
+	else
+		Gam=Gam_KX(F,W,R)
+	endif
 
-if (x<0.1d0) then
-	
-	
+	contains
 
-J=KX_Freg(F,W,R)
+	pure function SphBar(x) result(V)
+		double precision, intent(in) :: x
+		double precision::V
+		V= W-F*R*x/(x+R)-Q/(x+(0.5d0*(x**2))/R)
+	end function SphBar
+
+	pure function RtSphBar(x) result(V)
+		double precision, intent(in) :: x
+		double precision::V
+		V= sqrt(W-F*R*x/(x+R)-0.36d0/(x+0.5d0*(x**2)/R))
+	end function RtSphBar
 
 end function elec_emit
 
@@ -36,32 +52,32 @@ pure function maxbeta_KX(F,W,R) result(beta)!dG/dE at Efermi
 	yf = 1.44*F/(W**2)
 	t = lininterp(tt,0.d0,1.d0,Ny,yf)
 	ps = lininterp(psi,0.d0,1.d0,Ny,yf)
-	beta=g*((F**2)/W)*((t+ps*(W/(F*R)))
-end function beta_KX
+	beta=g*((F**2)/W)*(t+ps*(W/(F*R)))
+end function maxbeta_KX
 
 pure function minbeta_KX(F,W,R) result(beta)!dG/dE at Umax
 
-	double precision, itent(in):: F,W,R
+	double precision, intent(in):: F,W,R
 	double precision :: beta
 	
-	beta = 16.093./sqrt(F**1.5/sqrt(Q)-4*F/R)
+	beta = 16.093/sqrt(F**1.5/sqrt(Q)-4*F/R)
 end function minbeta_KX
 
-pure function Gam_KX(F,W,R) result(G)
+pure function Gam_KX(F,W,R) result(Gam)
 
 	double precision, intent(in):: F,W,R
-	double precision :: yf,v,omeg,G
+	double precision :: yf,v,omeg,Gam
 
 	yf = 1.44*F/(W**2)
 	v = lininterp(vv,0.d0,1.d0,Ny,yf)
 	omeg = lininterp(ww,0.d0,1.d0,Ny,yf)
-	G = b*((W**1.5d0)/F)*(v+(W*omeg/(F*R))))
+	Gam = b*((W**1.5d0)/F)*(v+(W*omeg/(F*R)))
 end function Gam_KX
 
 pure function KX_Freg(F,W,R,kT) result(J)
 
-	double precision, intent(in):: F,W,R
-	double precision :: yf,v,t,omeg,ps,J
+	double precision, intent(in):: F,W,R,kT
+	double precision :: yf,v,t,omeg,ps,Jf,J
 	integer :: Nlow
 
 	yf=1.44*F/(W**2)
@@ -71,7 +87,7 @@ pure function KX_Freg(F,W,R,kT) result(J)
 	ps=lininterp(psi,0.d0,1.d0,Ny,yf)
 
 	Jf= a*((F**2)/W)*((t+ps*(W/(F*R)))**(-2))*exp(-b*((W**1.5d0)/F)*(v+(W*omeg/(F*R))))
-	Jt=
+	J=Jf
 end function KX_Freg
 
 function KX_thermal(F,W,R,kT) result(J)
@@ -83,19 +99,22 @@ function KX_thermal(F,W,R,kT) result(J)
 end function KX_thermal
 
 
-pure function Gamow_num(Vbarrier,xmax) result(G)
+function Gamow_num(Vbarrier,sqrtVbarrier,xmax) result(G)
 
 	double precision, intent(in)::xmax
-	double precision, external :: Vbarrier
+	double precision, external :: Vbarrier, sqrtVbarrier
 	
-	integer, parameter :: Nox=20
-	double precision, parameter :: AtolRoot=1.d-10, RtolRoot=1.d-10, 
-	double precision:: G, x=1.d-5, dx, V(2),x1(2),x2(2)
-	integer :: i,j,iflag
-	logical ::foundfirst=.false.
+	integer, parameter :: Nox=20,maxint=1000
+	double precision, parameter :: AtolRoot=1.d-10, RtolRoot=1.d-10, AtolInt=1.d-7, RtolInt=1.d-7
+	double precision:: G, x, dx, V(2),x1(2),x2(2), ABSERR
+	double precision, dimension(maxint) :: ALIST,BLIST,RLIST,ELIST
+	integer :: i,j,iflag,NEVAL,IER,IORD(maxint),LAST
+	logical ::foundfirst
 	
+	foundfirst= .false.
+	x=1.d-5
 	dx=xmax/Nox
-	do i=1:Nox
+	do i=1,Nox
 		V(1)=Vbarrier(x)
 		V(2)=Vbarrier(x+dx)
 		if (V(1)*V(2)<0) then
@@ -111,27 +130,22 @@ pure function Gamow_num(Vbarrier,xmax) result(G)
 		endif
 		x=x+dx
 	enddo
-	if (i==Nox)
+	if (i==Nox) then
 		G=0
 		return
 	endif
 	
 	call dfzero(Vbarrier,x1(1),x1(2),x1(1),1.d-10,1.d-10,iflag)
-	call dfzero((Vbarrier,x2(1),x2(2),x2(1),1.d-10,1.d-10,iflag))
+	call dfzero(Vbarrier,x2(1),x2(2),x2(1),1.d-10,1.d-10,iflag)
 	
-	
-	
-	
-	
-
-
-
+	call dqage(sqrtVbarrier,x1(2),x2(1),AtolInt,RtolInt,2,10000,G,ABSERR, &
+	NEVAL,IER,ALIST,BLIST,RLIST,ELIST,IORD,LAST)
 end function Gamow_num
 
-pure function Sigma(x) result(S)
+pure function Sigma(x) result(Sig)
 	double precision, intent(in) :: x
-	double precision, S
-	S = (1+x**2)/(1-x**2)-.3551d0*x**2-0.1059d0*x**4!Jensen's sigma
+	double precision:: Sig
+	Sig = (1+x**2)/(1-x**2)-.3551d0*x**2-0.1059d0*x**4!Jensen's sigma
 end function Sigma
 
 pure function lininterp(yi,a,b,N,x) result(y) !simple linear interpolation function
@@ -147,6 +161,8 @@ pure function lininterp(yi,a,b,N,x) result(y) !simple linear interpolation funct
 	Nlow=ceiling(x*N)
 	y=yi(Nlow)+(yi(Nlow+1)-yi(Nlow))*(N-1)*(x-real((Nlow-1))/real((N-1)))
 end function
+
+
 
 
 end module
