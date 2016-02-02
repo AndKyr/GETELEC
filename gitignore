@@ -2,3 +2,7 @@
 *.~
 *.mod
 *.exe
+*.csv
+*.dat
+*.mat
+*.out

@@ -1,14 +1,14 @@
 OBJECTS = emission.o
 MODULES = emission.mod 
-DEPS  = -llapack 
-FFLAGS = -ffree-line-length-none #-Wextra   #-Wextra -pedantic -O3
+DEPS  = -lslatec
+FFLAGS = -ffree-line-length-none #-fPIC -Wextra  -Wall -pedantic# -pedantic -O3
 .PHONY: test
 
 test: test.exe
 	./test.exe
 
-%.exe: %.o $(OBJECTS)
-	gfortran $< $(DEPS)  $(OBJECTS)  -o $@
+%.exe: %.o $(MODULES) $(OBJECTS)
+	gfortran $<  $(OBJECTS) $(DEPS) -o $@
 
 %.mod: %.f90
 	gfortran $(FFLAGS) -c $<
@@ -17,4 +17,4 @@ test: test.exe
 	gfortran $(FFLAGS) -c  $< 
 
 clean:
-	rm -f *.o *.exe *.mod *.csv *.txt
+	rm -f *.o *.exe *.mod *.csv *.txt *.out
