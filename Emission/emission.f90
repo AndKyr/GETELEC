@@ -8,54 +8,103 @@ double precision, parameter,dimension(Ny) :: & !these are the special functions 
 	tt = (/1.000000000000000e+00,1.002030781417862e+00,1.003632786824882e+00,1.005075955514299e+00,1.006417353308358e+00,1.007683957539755e+00,1.008891566532568e+00,1.010050610037040e+00,1.011168454232591e+00,1.012250589592541e+00,1.013301261227889e+00,1.014323859598625e+00,1.015321150800558e+00,1.016295389546883e+00,1.017248511247342e+00,1.018182174987559e+00,1.019097785818562e+00,1.019996584163601e+00,1.020879664647628e+00,1.021747978811433e+00,1.022602411364004e+00,1.023443726618845e+00,1.024272615800069e+00,1.025089688973000e+00,1.025895564002957e+00,1.026690735581673e+00,1.027475690358465e+00,1.028250872863402e+00,1.029016688121873e+00,1.029773532609849e+00,1.030521741770611e+00,1.031261648346635e+00,1.031993546755459e+00,1.032717751209773e+00,1.033434506233224e+00,1.034144066588887e+00,1.034846669618536e+00,1.035542537051420e+00,1.036231877908698e+00,1.036914907534409e+00,1.037591792545195e+00,1.038262712826807e+00,1.038927854335332e+00,1.039587356298646e+00,1.040241387041531e+00,1.040890087747245e+00,1.041533590044200e+00,1.042172029545119e+00,1.042805543516137e+00,1.043434242900508e+00,1.044058243348362e+00,1.044677656087644e+00,1.045292587255446e+00,1.045903138257185e+00,1.046509410981598e+00,1.047111500269847e+00,1.047709490464150e+00,1.048303466845580e+00,1.048893518817778e+00,1.049479730418012e+00,1.050062166197551e+00,1.050640917694896e+00,1.051216043057471e+00,1.051787622582175e+00,1.052355713907147e+00,1.052920395269537e+00,1.053481714557585e+00,1.054039747096986e+00,1.054594545022903e+00,1.055146162284781e+00,1.055694660205253e+00,1.056240095324423e+00,1.056782513399835e+00,1.057321965993506e+00,1.057858503006047e+00,1.058392172758164e+00,1.058923022067008e+00,1.059451098037307e+00,1.059976442316032e+00,1.060499097189592e+00,1.061019104199625e+00,1.061536503973864e+00,1.062051338074067e+00,1.062563642847344e+00,1.063073455326506e+00,1.063580811550365e+00,1.064085746605300e+00,1.064588294664522e+00,1.065088489404378e+00,1.065586370798085e+00,1.066081963100914e+00,1.066575297145695e+00,1.067066405247904e+00,1.067555322913718e+00,1.068042070814106e+00,1.068526679173990e+00,1.069009182922810e+00,1.069489599221223e+00,1.069967961869527e+00,1.070444294259226e+00,1.070918619653641e+00,1.071390969201728e+00,1.071861358501953e+00,1.072329821768765e+00,1.072796371550207e+00,1.073261040898029e+00,1.073723843463047e+00,1.074184807337213e+00,1.074643950999066e+00,1.075101294184407e+00,1.075556863526736e+00,1.076010671316672e+00,1.076462743496344e+00,1.076913097845946e+00,1.077361750009438e+00,1.077808723997548e+00,1.078254036338585e+00,1.078697702306128e+00,1.079139740968321e+00,1.079580174122345e+00,1.080019013476803e+00,1.080456276036589e+00,1.080891978476461e+00,1.081326141457119e+00,1.081758776663107e+00,1.082189899498954e+00,1.082619525426810e+00,1.083047669623051e+00,1.083474347148894e+00,1.083899575009856e+00,1.084323364713017e+00,1.084745730381644e+00,1.085166685890044e+00,1.085586244870236e+00,1.086004420718378e+00,1.086421226600978e+00,1.086836675460887e+00,1.087250780023084e+00,1.087663552800267e+00,1.088075006098254e+00,1.088485152021201e+00,1.088894002476648e+00,1.089301569180396e+00,1.089707863661225e+00,1.090112897265461e+00,1.090516681161385e+00,1.090919226343516e+00,1.091320543636742e+00,1.091720643700332e+00,1.092119537031810e+00,1.092517233970724e+00,1.092913744702279e+00,1.093309079782908e+00,1.093703250103651e+00,1.094096263974417e+00,1.094488130990864e+00,1.094878860611112e+00,1.095268462158765e+00,1.095656944825848e+00,1.096044319655648e+00,1.096430594403337e+00,1.096815777135447e+00,1.097199876540108e+00,1.097582901187470e+00,1.097964862139642e+00,1.098345765703773e+00,1.098725619561639e+00,1.099104431830844e+00,1.099482212946610e+00,1.099858969417514e+00,1.100234708029298e+00,1.100609436704620e+00,1.100983166253060e+00,1.101355900746938e+00,1.101727647595793e+00,1.102098416970978e+00,1.102468214180127e+00,1.102837045403800e+00,1.103204920390876e+00,1.103571844600817e+00,1.103937823680700e+00,1.104302867721525e+00,1.104666980816567e+00,1.105030169345461e+00,1.105392442996972e+00,1.105753804595549e+00,1.106114262768074e+00,1.106473823479837e+00,1.106832491373410e+00,1.107190276156247e+00,1.107547180034785e+00,1.107903212018282e+00,1.108258376274143e+00,1.108612679272688e+00,1.108966127420483e+00,1.109318724982190e+00,1.109670479992468e+00,1.110021395106194e+00,1.110371479424545e+00,1.110720734539592e+00 /), &
 	ww = (/8.000000000000000e-01,7.990593903557062e-01,7.981212218435605e-01,7.971850716193163e-01,7.962506895376646e-01,7.953179118471086e-01,7.943866531707875e-01,7.934567967549424e-01,7.925282750106136e-01,7.916010255446501e-01,7.906749965919331e-01,7.897501209920006e-01,7.888263277835517e-01,7.879036387000090e-01,7.869820002334283e-01,7.860613472701492e-01,7.851416836616130e-01,7.842229778028280e-01,7.833051903036342e-01,7.823883315435012e-01,7.814723156121555e-01,7.805571397772499e-01,7.796427974499822e-01,7.787293322050833e-01,7.778165990366039e-01,7.769046707144984e-01,7.759935170618699e-01,7.750831196172159e-01,7.741734788014050e-01,7.732645222209847e-01,7.723562918756240e-01,7.714487578483593e-01,7.705419490885239e-01,7.696357496513833e-01,7.687302333565893e-01,7.678253773672641e-01,7.669211679764979e-01,7.660175993620985e-01,7.651146669709347e-01,7.642122909578154e-01,7.633105511245557e-01,7.624094327879908e-01,7.615088525828341e-01,7.606088972682540e-01,7.597094886173841e-01,7.588106378635329e-01,7.579123710656784e-01,7.570146661898948e-01,7.561174624569775e-01,7.552208012417980e-01,7.543246762447402e-01,7.534290789679281e-01,7.525340036541388e-01,7.516394470233185e-01,7.507453810173614e-01,7.498517943075966e-01,7.489587146945831e-01,7.480661470849971e-01,7.471740538712757e-01,7.462824091535802e-01,7.453912867492993e-01,7.445005821810872e-01,7.436103774063627e-01,7.427206035994978e-01,7.418313187646799e-01,7.409424355359369e-01,7.400540488502052e-01,7.391660610822821e-01,7.382785145323230e-01,7.373914287447291e-01,7.365047604128426e-01,7.356184861552344e-01,7.347326478010596e-01,7.338472359139018e-01,7.329622421200244e-01,7.320776590403786e-01,7.311934802272851e-01,7.303096867745417e-01,7.294262920302131e-01,7.285432956473210e-01,7.276606941730114e-01,7.267784825772383e-01,7.258966391623030e-01,7.250151764682804e-01,7.241340936738493e-01,7.232533904789240e-01,7.223730670724802e-01,7.214931241023815e-01,7.206135592443398e-01,7.197343054481833e-01,7.188554297854226e-01,7.179769346016311e-01,7.170988015262763e-01,7.162209738905005e-01,7.153435294366657e-01,7.144664498441585e-01,7.135896626254823e-01,7.127132644162992e-01,7.118371812429732e-01,7.109614366772887e-01,7.100860513209014e-01,7.092109574472614e-01,7.083362451607804e-01,7.074618015503424e-01,7.065877407427119e-01,7.057139492352485e-01,7.048405211933729e-01,7.039673856690785e-01,7.030945743065227e-01,7.022221004806966e-01,7.013498921102026e-01,7.004780402547411e-01,6.996064704755764e-01,6.987352002768673e-01,6.978642698311666e-01,6.969936118137134e-01,6.961232464350917e-01,6.952532065889611e-01,6.943834731280344e-01,6.935139859278413e-01,6.926448122914752e-01,6.917759472301522e-01,6.909073860082978e-01,6.900390646592811e-01,6.891710377861378e-01,6.883033061043673e-01,6.874358657452273e-01,6.865687130507158e-01,6.857018421806050e-01,6.848352145252686e-01,6.839688686162471e-01,6.831028015145367e-01,6.822370104572679e-01,6.813714928513894e-01,6.805062462675940e-01,6.796412684344860e-01,6.787765572329649e-01,6.779121106908332e-01,6.770479269776047e-01,6.761840043995144e-01,6.753203413947115e-01,6.744569365286324e-01,6.735937884895586e-01,6.727308960843218e-01,6.718682582341828e-01,6.710058739708529e-01,6.701437424326648e-01,6.692818628608863e-01,6.684202345961574e-01,6.675588570750687e-01,6.666977298268534e-01,6.658368524702023e-01,6.649762145174657e-01,6.641157955198331e-01,6.632556228842422e-01,6.623956965898202e-01,6.615360166902944e-01,6.606765833114356e-01,6.598173966485905e-01,6.589584148830649e-01,6.580996621472397e-01,6.572411544304840e-01,6.563828922121562e-01,6.555248760295980e-01,6.546670475669887e-01,6.538094516821134e-01,6.529521012357424e-01,6.520949970044247e-01,6.512380822956181e-01,6.503813892668515e-01,6.495249426319587e-01,6.486687379272718e-01,6.478126959530650e-01,6.469569010900136e-01,6.461013544668252e-01,6.452459833377455e-01,6.443908361595955e-01,6.435359385573338e-01,6.426812191722087e-01,6.418267171808800e-01,6.409724665326726e-01,6.401183764547567e-01,6.392645186054525e-01,6.384109008745196e-01,6.375574330096243e-01,6.367042195871654e-01,6.358511957912952e-01,6.349983711019559e-01,6.341457940200761e-01,6.332933562857685e-01,6.324411770853480e-01,6.315891635727651e-01,6.307373714298024e-01,6.298857823014392e-01,6.290343763414623e-01,6.281832026705599e-01,6.273321823616571e-01,6.264814156974592e-01,6.256307808321395e-01,6.247804132000000e-01 /), &
 	psi = (/1.333333333333333e+00,1.333018024233115e+00,1.332701031413377e+00,1.332382777718021e+00,1.332063462481988e+00,1.331743219800990e+00,1.331422162060289e+00,1.331100359883384e+00,1.330777880951771e+00,1.330454780072042e+00,1.330131104829534e+00,1.329806888425339e+00,1.329482155570348e+00,1.329156960054474e+00,1.328831322965915e+00,1.328505256938984e+00,1.328178797347004e+00,1.327851963327141e+00,1.327524768508933e+00,1.327197243420925e+00,1.326869379644892e+00,1.326541198974261e+00,1.326212720264901e+00,1.325883980612838e+00,1.325554942466070e+00,1.325225651926277e+00,1.324896114017230e+00,1.324566337390244e+00,1.324236337281653e+00,1.323906099425770e+00,1.323575653936342e+00,1.323245001921238e+00,1.322914167210422e+00,1.322583115490618e+00,1.322251887322098e+00,1.321920484386648e+00,1.321588911526883e+00,1.321257176307364e+00,1.320925286409709e+00,1.320593218868366e+00,1.320261014491362e+00,1.319928675858194e+00,1.319596177472917e+00,1.319263562181622e+00,1.318930805941319e+00,1.318597920571705e+00,1.318264923692205e+00,1.317931813205207e+00,1.317598570995208e+00,1.317265220239226e+00,1.316931764557958e+00,1.316598206480150e+00,1.316264549464544e+00,1.315930797806357e+00,1.315596945492719e+00,1.315262993168529e+00,1.314928957364734e+00,1.314594845117375e+00,1.314260645869617e+00,1.313926353694029e+00,1.313592003542662e+00,1.313257556921115e+00,1.312923051920728e+00,1.312588464442063e+00,1.312253822540088e+00,1.311919094199020e+00,1.311584322552062e+00,1.311249471102565e+00,1.310914561069798e+00,1.310579604205516e+00,1.310244586153102e+00,1.309909500694144e+00,1.309574368563633e+00,1.309239189180093e+00,1.308903962321453e+00,1.308568688100718e+00,1.308233366943394e+00,1.307897994020324e+00,1.307562577848092e+00,1.307227121189610e+00,1.306891625453616e+00,1.306556091330614e+00,1.306220512499999e+00,1.305884896854858e+00,1.305549246667971e+00,1.305213564377872e+00,1.304877852577373e+00,1.304542114002722e+00,1.304206350100934e+00,1.303870535200850e+00,1.303534699659165e+00,1.303198846741950e+00,1.302862971001015e+00,1.302527050894820e+00,1.302191121124099e+00,1.301855176135410e+00,1.301519187617303e+00,1.301183198107724e+00,1.300847178591757e+00,1.300511140910904e+00,1.300175095640288e+00,1.299839016245855e+00,1.299502942413006e+00,1.299166828556455e+00,1.298830724405211e+00,1.298494584040807e+00,1.298158448766632e+00,1.297822290469760e+00,1.297486124129521e+00,1.297149957023230e+00,1.296813760453559e+00,1.296477574324301e+00,1.296141368885803e+00,1.295805153046724e+00,1.295468945241037e+00,1.295132718620175e+00,1.294796483164058e+00,1.294460254178512e+00,1.294124025028758e+00,1.293787771784801e+00,1.293451524188628e+00,1.293115281504094e+00,1.292779043080147e+00,1.292442783268936e+00,1.292106526392454e+00,1.291770274037186e+00,1.291434025837305e+00,1.291097781496767e+00,1.290761539780119e+00,1.290425285605418e+00,1.290089036421810e+00,1.289752792165304e+00,1.289416552829235e+00,1.289080318461995e+00,1.288744089164848e+00,1.288407865089826e+00,1.288071646437702e+00,1.287735433456070e+00,1.287399226437465e+00,1.287063025717571e+00,1.286726831673501e+00,1.286390644722119e+00,1.286054465318477e+00,1.285718293954241e+00,1.285382131156234e+00,1.285045977485010e+00,1.284709833533460e+00,1.284373699925540e+00,1.284037577314941e+00,1.283701466383906e+00,1.283365367842030e+00,1.283029282425125e+00,1.282693206586771e+00,1.282357132559316e+00,1.282021072787891e+00,1.281685028116350e+00,1.281348999409467e+00,1.281012987552014e+00,1.280676993447894e+00,1.280341000234313e+00,1.280005018911602e+00,1.279669057029062e+00,1.279333115571353e+00,1.278997195538133e+00,1.278661273046611e+00,1.278325367809626e+00,1.277989486007780e+00,1.277653628705530e+00,1.277317772671696e+00,1.276981932216333e+00,1.276646118494417e+00,1.276310330321828e+00,1.275974534925357e+00,1.275638768649462e+00,1.275303032648981e+00,1.274967296856635e+00,1.274631582411728e+00,1.274295900796550e+00,1.273960222510329e+00,1.273624564747406e+00,1.273288942483700e+00,1.272953317999347e+00,1.272617722187058e+00,1.272282158991539e+00,1.271946590898323e+00,1.271611062678912e+00,1.271275547550641e+00,1.270940050105779e+00,1.270604591406306e+00,1.270269126311487e+00,1.269933705718180e+00,1.269598290985304e+00,1.269262906179969e+00,1.268927544102622e+00,1.268592196921197e+00,1.268256885909111e+00,1.267921578286122e+00,1.267586316905675e+00,1.267251050867749e+00,1.266915967611353e+00 /)
-double precision, parameter :: b=6.83089d0,a=1.541433d-6,gg=10.246d0, Q=0.35999d0
+double precision, parameter :: b=6.83089d0,zs=1.6183d-4,gg=10.246d0, Q=0.35999d0, kBoltz=8.6173324d−5
 !tabulated special elliptic functions. Couldn't find better way to load them as module parameters
+
+abstract interface!interface to pass function pointers
+		pure function fun_temp(x) result(y)
+			double precision,intent(in)::x
+			double precision:: y
+		end function Bar
+end interface
 
 contains
 
-!function (F,W,R,T,zz,Vel) result (Gam)
-!	double precision, intent(in)::F,W,R,T !F: local field, 
-!	!W: work function, R: Radius of curvature, kT: boltzmann*temperature 
-!	double precision, optional, dimension(:), intent(in):: zz,Vel
-!	double precision:: Gam,x,yf,maxbeta,xmax
-
+function Cur_dens(F,W,R,T,zz,Vel) result (Jem)
+!Calculates current density, main module function
+	double precision, intent(in)::F,W,R,T !F: local field, 
+	!W: work function, R: Radius of curvature, kT: boltzmann*temperature 
+	double precision, optional, dimension(:), intent(in):: zz,Vel
+	!Optional values of electrostatic potential possibly passed from external
+	!electrostatic calculations at points zz. Then barrier calculated with
+	!linear interpolation at these points
+	
+	double precision:: Gam(4),x,yf,maxbeta,minbeta,xmax, kT=kBoltz*T
+	double precision, parameter:: nlimit=.7d0
+	
+	Gam=Gamow(F,W,R,zz,Vel)
+	
+	if(kT*Gam(2)<nlimit) then!field regime
+		n=1.d0/(kT*Gam(2))
+		s=Gam(1)
+		Jf=zs*(Gam(2)**(-2))*Sigma(1.d0/n)*exp(-s)
+		Jt=zs*(kT**2)*Sigma(n)*exp(-n*s)
+		J=Jf+Jt*(n**2)
+		return
+	else if (kT*Gam()<nlimit)!intermediate regime
+		J=J_num_integ(F,W,R,zz,Vel)
+		return
+	else!thermal regime
+		n=1/(kT*minbeta)
+		s=minbeta*Umax
+		Jf = zs*(minbeta**(-2))*Sig(1.d0/n)*exp(-s);
+		Jt = zs*(kT**2).*Sig(n).*exp(-n*s);
+		J = Jf/(n**2)+Jt;
+	endif
+	
+	
+end function Cur_dens 
+		
 
 function Gamow_general(F,W,R,zz,Vel) result (Gam)
-!Calculates the Gamow exponent G and dG/dW and returns a vector with the two
+!Calculates [G, dG/dW@Ef, dG/dW@Umax, Umax] where G is Gamow exponent and
+!Umax is maximum of barrier and returns a vector with the four values 
 
 	double precision, intent(in)::F,W,R !F: local field, 
 	!W: work function, R: Radius of curvature, kT: boltzmann*temperature 
-	double precision, optional, dimension(:), intent(in):: zz,Vel
-	double precision,parameter::dw=1.d-2
-	double precision:: Gam(2),x,yf,xmax,work
+	double precision, optional::zz(:),Vel(:)
+	double precision,parameter::dw=1.d-3
+	double precision:: Gam(4),x,yf,xmax,work
+	
+	procedure(fun_temp), pointer:: Bar,sqrtBar,negBar
+	
+	if (.not.present(zz))
+		Bar=>SphBar
+		sqrtBar=>RtSphBar
+		negBar=>negSphBar
+	endif
 	
 	work=W
 	x=W/(F*R)
 	yf=1.44d0*F/(W**2)
 
 	if (x>.95d0) then!barrier too long
-		Gam=1.d20
-		print *, x,Gam(1),Gam(2)
-		return
+		Gam(1:2)=1.d20
+		Gam(3)=W-F*R
+		Gam(4)=1.d20
 	else if ((sqrt(yf)-x*yf*(3.d0/8.d0))>.98d0) then !barrier too short
-		Gam=0.d0
-		print *, x,Gam
-		return
+		Gam(1:2)=0.d0
+		Gam(3:4)=-1.d0
 	else if (x>0.1d0) then !not x<<1, use numerical integration
 		if (x>0.4) then !the second root is far away
 			xmax=2*(F*R**2)/(F*R-W)
 		else!the second root is close to the standard W/F
 			xmax=2*W/F
 		endif
-		Gam(1)=Gamow_num(SphBar,RtSphBar,xmax)
+		Gam(1)=Gamow_num(Bar,sqrtBar,xmax)
 		work=work+dw
-		Gam(2)=abs((Gamow_num(SphBar,RtSphBar,xmax)-Gam(1))/dw)
+		Gam(2)=abs((Gamow_num(Bar,sqrtBar,xmax)-Gam(1))/dw)
+		Gam(4)=-local_min(1.d-5,xmax,1.d-7,1.d-7,negBar,xm)
+		work=W-Gam(4)+dW
+		Gam(3)=abs(Gamow_num(Bar,sqrtBar,xmax))/dw
 	else !large radius, KX approximation usable
 		Gam(1)=Gam_KX(F,W,R)
 		Gam(2)=maxbeta_KX(F,W,R)
+		Gam(3)=16.093d0/sqrt(F**1.5d0/sqrt(Q)-4*F/R)
+		Gam(4)=W-2.d0*sqrt(F*Q)-0.75d0*Q/R
 	endif
 	print *, x,Gam
-
+	
 	contains
 
 	pure function SphBar(x) result(V)!sphere barrier model
@@ -69,8 +118,104 @@ function Gamow_general(F,W,R,zz,Vel) result (Gam)
 		double precision::V
 		V= sqrt(work-F*R*x/(x+R)-Q/(x+0.5d0*(x**2)/R))
 	end function RtSphBar
+	
+	pure function negSphBar(x) result(V)!sphere barrier model
+		double precision, intent(in) :: x
+		double precision::V
+		V= -work+F*R*x/(x+R)+Q/(x+(0.5d0*(x**2))/R)
+	end function SphBar
 
 end function Gamow_general
+
+function J_num_integ(F,W,R,T,zz,Vel) result(Jcur)
+!numerical integration over energies to obtain total current according
+!to landauer formula
+	double precision, intent(in)::F,W,R,T !F: local field, 
+	!W: work function, R: Radius of curvature, kT: boltzmann*temperature 
+	double precision, optional::zz(:),Vel(:)
+	
+	double precision, parameter:: cutoff=1.d-4
+	integer, parameter::Nvals=1000!no of intervals between Ef and Umax
+	
+	double precision:: Gam(4),x,Umax,dE,dG,Ej,intSum,kT,fj,fmax,Jcur
+	integer::i,j
+	
+	kT=kBoltz*T
+	Gam=Gamow_general(F,W,R,zz,Vel)
+	Umax=Gamow(4)
+	dE = Umax/(Nvals-1)
+	
+	if (Gam(1)==0.d0) then
+		Jcur=1.d20
+		return
+	endif
+	
+	if (Gam(1)/=1.d20) then
+		intSum=lFD(0.d0,kT)/(1.d0+Gam(1))
+		fmax=intSum
+		do j=1,Nvals-2
+			Ej=j*dE
+			Gj=Gamow_general(F,W-Ej,R,zz,Vel)
+			fj=lFD(Ej,kT)/(1.d0+Gj(1))
+			intSum=intSum+fj
+			if (fj>fmax) then
+				fmax=fj
+			endif
+			if (abs(fj/fmax))<cutoff
+				exit
+			endif
+		enddo
+		dG=Gj(1)/dE
+	else
+		i=Nvals-1
+		Gj=0.d0
+		dG=0.d0
+		Ej=Umax
+		intSum=lFD(Umax,kT)/2.d0
+		fmax=intSum
+	endif
+	
+	if (i==(Nvals-1)) then
+		do j=1,100*Nvals
+			Gj(1)=Gj(1)-dG
+			Ej=Ej+dE
+			fj=lFD(Ej,kT)/(1.d0+Gj(1))
+			intSum=intSum+fj
+			if (abs(fj/fmax)<cutoff) then
+				exit
+			endif
+		enddo
+	endif
+	
+	do j=1,100*Nvals
+		Ej=-j*dE
+		Gj=Gamow_general(F,W+Ej,R,zz,Vel)
+		fj=lFD(Ej,kT)/(1.d0+Gj(1))
+		intSum=intSum+fj
+			if (fj>fmax) then
+				fmax=fj
+			endif
+			if (abs(fj/fmax))<cutoff
+				exit
+			endif
+	enddo
+	
+	Jcur=zs*kT*intSum*dE
+	
+		
+	contains
+	
+	pure function lFD(E,kT) result(L)
+		double precision, intent(in)::E,kT
+		double precision
+		if (E>3.d0*kT) then
+			L=exp(-E/kT)
+		else
+			L=log(1+exp(-E/kT))
+		endif
+	end function lFD
+	
+end function J_num_integ
 
 pure function maxbeta_KX(F,W,R) result(beta)!dG/dE at Efermi
 	
@@ -130,7 +275,6 @@ function KX_thermal(F,W,R,kT) result(J)
 
 end function KX_thermal
 
-
 function Gamow_num(Vbarrier,sqrtVbarrier,xmax) result(G)
 
 	double precision, intent(in)::xmax
@@ -140,7 +284,7 @@ function Gamow_num(Vbarrier,sqrtVbarrier,xmax) result(G)
 	double precision, parameter :: AtolRoot=1.d-10, RtolRoot=1.d-10, AtolInt=1.d-7, RtolInt=1.d-7
 	double precision:: G, x, dx, V(2),x1(2),x2(2), ABSERR
 	double precision, dimension(maxint) :: ALIST,BLIST,RLIST,ELIST
-	integer :: i,j,iflag,NEVAL,IER,IORD(maxint),LAST
+	integer :: i,iflag,NEVAL,IER,IORD(maxint),LAST
 	logical ::foundfirst
 	
 	foundfirst= .false.
@@ -175,6 +319,7 @@ function Gamow_num(Vbarrier,sqrtVbarrier,xmax) result(G)
 	G=gg*G
 end function Gamow_num
 
+
 pure function Sigma(x) result(Sig)
 	double precision, intent(in) :: x
 	double precision:: Sig
@@ -195,7 +340,244 @@ pure function lininterp(yi,a,b,N,x) result(y) !simple linear interpolation funct
 	y=yi(Nlow)+(yi(Nlow+1)-yi(Nlow))*(N-1)*(x-real((Nlow-1))/real((N-1)))
 end function
 
+function local_min ( a, b, eps, t, f, x )
 
+!*****************************************************************************80
+!
+!! LOCAL_MIN seeks a local minimum of a function F(X) in an interval [A,B].
+!
+!  Discussion:
+!
+!    The method used is a combination of golden section search and
+!    successive parabolic interpolation.  Convergence is never much slower
+!    than that for a Fibonacci search.  If F has a continuous second
+!    derivative which is positive at the minimum (which is not at A or
+!    B), then convergence is superlinear, and usually of the order of
+!    about 1.324....
+!
+!    The values EPS and T define a tolerance TOL = EPS * abs ( X ) + T.
+!    F is never evaluated at two points closer than TOL.  
+!
+!    If F is a unimodal function and the computed values of F are always
+!    unimodal when separated by at least SQEPS * abs ( X ) + (T/3), then
+!    LOCAL_MIN approximates the abscissa of the global minimum of F on the 
+!    interval [A,B] with an error less than 3*SQEPS*abs(LOCAL_MIN)+T.  
+!
+!    If F is not unimodal, then LOCAL_MIN may approximate a local, but 
+!    perhaps non-global, minimum to the same accuracy.
+!
+!    Thanks to Jonathan Eggleston for pointing out a correction to the 
+!    golden section step, 01 July 2013.
+!
+!  Licensing:
+!
+!    This code is distributed under the GNU LGPL license. 
+!
+!  Modified:
+!
+!    01 July 2013
+!
+!  Author:
+!
+!    Original FORTRAN77 version by Richard Brent.
+!    FORTRAN90 version by John Burkardt.
+!
+!  Reference:
+!
+!    Richard Brent,
+!    Algorithms for Minimization Without Derivatives,
+!    Dover, 2002,
+!    ISBN: 0-486-41998-3,
+!    LC: QA402.5.B74.
+!
+!  Parameters:
+!
+!    Input, real ( kind = 8 ) A, B, the endpoints of the interval.
+!
+!    Input, real ( kind = 8 ) EPS, a positive relative error tolerance.
+!    EPS should be no smaller than twice the relative machine precision,
+!    and preferably not much less than the square root of the relative
+!    machine precision.
+!
+!    Input, real ( kind = 8 ) T, a positive absolute error tolerance.
+!
+!    Input, external real ( kind = 8 ) F, the name of a user-supplied
+!    function, of the form "FUNCTION F ( X )", which evaluates the
+!    function whose local minimum is being sought.
+!
+!    Output, real ( kind = 8 ) X, the estimated value of an abscissa
+!    for which F attains a local minimum value in [A,B].
+!
+!    Output, real ( kind = 8 ) LOCAL_MIN, the value F(X).
+!
+  implicit none
+
+  real ( kind = 8 ) a
+  real ( kind = 8 ) b
+  real ( kind = 8 ) c
+  real ( kind = 8 ) d
+  real ( kind = 8 ) e
+  real ( kind = 8 ) eps
+  real ( kind = 8 ) f
+  real ( kind = 8 ) fu
+  real ( kind = 8 ) fv
+  real ( kind = 8 ) fw
+  real ( kind = 8 ) fx
+  real ( kind = 8 ) local_min
+  real ( kind = 8 ) m
+  real ( kind = 8 ) p
+  real ( kind = 8 ) q
+  real ( kind = 8 ) r
+  real ( kind = 8 ) sa
+  real ( kind = 8 ) sb
+  real ( kind = 8 ) t
+  real ( kind = 8 ) t2
+  real ( kind = 8 ) tol
+  real ( kind = 8 ) u
+  real ( kind = 8 ) v
+  real ( kind = 8 ) w
+  real ( kind = 8 ) x
+!
+!  C is the square of the inverse of the golden ratio.
+!
+  c = 0.5D+00 * ( 3.0D+00 - sqrt ( 5.0D+00 ) )
+
+  sa = a
+  sb = b
+  x = sa + c * ( b - a )
+  w = x
+  v = w
+  e = 0.0D+00
+  fx = f ( x )
+  fw = fx
+  fv = fw
+
+  do
+
+    m = 0.5D+00 * ( sa + sb ) 
+    tol = eps * abs ( x ) + t
+    t2 = 2.0D+00 * tol
+!
+!  Check the stopping criterion.
+!
+    if ( abs ( x - m ) <= t2 - 0.5D+00 * ( sb - sa ) ) then
+      exit
+    end if
+!
+!  Fit a parabola.
+!
+    r = 0.0D+00
+    q = r
+    p = q
+
+    if ( tol < abs ( e ) ) then
+
+      r = ( x - w ) * ( fx - fv )
+      q = ( x - v ) * ( fx - fw )
+      p = ( x - v ) * q - ( x - w ) * r
+      q = 2.0D+00 * ( q - r )
+
+      if ( 0.0D+00 < q ) then
+        p = - p
+      end if
+
+      q = abs ( q )
+
+      r = e
+      e = d
+
+    end if
+
+    if ( abs ( p ) < abs ( 0.5D+00 * q * r ) .and. &
+         q * ( sa - x ) < p .and. &
+         p < q * ( sb - x ) ) then
+!
+!  Take the parabolic interpolation step.
+!
+      d = p / q
+      u = x + d
+!
+!  F must not be evaluated too close to A or B.
+!
+      if ( ( u - sa ) < t2 .or. ( sb - u ) < t2 ) then
+
+        if ( x < m ) then
+          d = tol
+        else
+          d = - tol
+        end if
+
+      end if
+!
+!  A golden-section step.
+!
+    else
+
+      if ( x < m ) then
+        e = sb - x
+      else
+        e = sa - x
+      end if
+
+      d = c * e
+
+    end if
+!
+!  F must not be evaluated too close to X.
+!
+    if ( tol <= abs ( d ) ) then
+      u = x + d
+    else if ( 0.0D+00 < d ) then
+      u = x + tol
+    else
+      u = x - tol
+    end if
+
+    fu = f ( u )
+!
+!  Update A, B, V, W, and X.
+!
+    if ( fu <= fx ) then
+
+      if ( u < x ) then
+        sb = x
+      else
+        sa = x
+      end if
+
+      v = w
+      fv = fw
+      w = x
+      fw = fx
+      x = u
+      fx = fu
+
+    else
+
+      if ( u < x ) then
+        sa = u
+      else
+        sb = u
+      end if
+
+      if ( fu <= fw .or. w == x ) then
+        v = w
+        fv = fw
+        w = u
+        fw = fu
+      else if ( fu <= fv .or. v == x .or. v == w ) then
+        v = u
+        fv = fu
+      end if
+
+    end if
+
+  end do
+
+  local_min = fx
+
+  return
+end
 
 
 end module
