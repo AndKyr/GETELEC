@@ -5,7 +5,7 @@ use emission, only: Gamow_general
 implicit none
 
 
-double precision::G(2),F=0.5d0
+double precision::G(4),F=0.5d0
 integer:: i
 
 do i=1,50
