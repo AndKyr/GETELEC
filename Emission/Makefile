@@ -1,7 +1,7 @@
 OBJECTS = emission.o
 MODULES = emission.mod 
 DEPS  = -lslatec
-FFLAGS = -ffree-line-length-none #-fPIC -Wextra  -Wall -pedantic# -pedantic -O3
+FFLAGS = -ffree-line-length-none -O3 #-fPIC -Wextra  -Wall -pedantic# -pedantic -O3
 .PHONY: test
 
 test: test.exe
