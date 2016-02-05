@@ -31,7 +31,7 @@ function Cur_dens(F,W,R,T,regime,zz,Vel) result (Jem)
 	!linear interpolation at these points
 	
 	double precision:: Gam(4),x,maxbeta,minbeta,xmax,kT,Jem,Jf,Jt,n,s,Umax
-	double precision, parameter:: nlimit=.1d0
+	double precision, parameter:: nlimit=.4d0
 	character,intent(out)::regime
 	
 	kT=kBoltz*T
@@ -60,18 +60,17 @@ function Cur_dens(F,W,R,T,regime,zz,Vel) result (Jem)
 		!print *, Sigma(1.d0/n), Sigma(n) , n
 		Jem=zs*kT*exp(-Gam(1))/(maxbeta*sin(pi*maxbeta*kT))
 		regime='f'
-	else if (kT*minbeta<nlimit) then!intermediate regime
-		Jem=J_num_integ(F,W,R,T,zz,Vel)
-		regime='i'
-	else!thermal regime
+	else if (kT*minbeta>(1/nlimit)) then!thermal regime
 		n=1/(kT*minbeta)
 		s=minbeta*Umax
 		Jf = zs*(minbeta**(-2))*Sigma(1.d0/n)*exp(-s);
-		Jt = zs*(kT**2)*Sigma(n)*exp(-n*s);
-		Jem = Jf/(n**2)+Jt;
+		Jt = zs*(kT**2)*exp(-n*s)!*Sigma(n
+		Jem = Jt+Jf/(n**2)
 		regime='t'
+	else!intermediate regime
+		Jem=J_num_integ(F,W,R,T,zz,Vel)
+		regime='i'
 	endif
-	!print * , 'The regime is :     ', regime
 end function Cur_dens 
 		
 
@@ -154,7 +153,7 @@ function J_num_integ(F,W,R,T,zz,Vel) result(Jcur)
 	double precision, optional::zz(:),Vel(:)
 	
 	double precision, parameter:: cutoff=1.d-4
-	integer, parameter::Nvals=100!no of intervals between Ef and Umax
+	integer, parameter::Nvals=200!no of intervals between Ef and Umax
 	
 	double precision:: Gam(4),Gj(4),x,Umax,dE,dG,Ej,intSum,kT,fj,fmax,Jcur
 	integer::j
