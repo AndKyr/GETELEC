@@ -2,7 +2,13 @@ OBJECTS = emission.o std_mat.o
 MODULES = emission.mod std_mat.mod
 DEPS  = -lslatec
 FFLAGS = -ffree-line-length-none #-Wextra  -Wall -pedantic# -pedantic -O3
-.PHONY: test jfplot
+.PHONY: test jfplot testgam testcur
+
+testcur: testcur.exe
+	./testcur.exe
+
+testgam: testgam.exe
+	./testgam.exe
 
 jfplot: test.exe pointsplot.py
 	./test.exe

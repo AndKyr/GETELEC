@@ -37,15 +37,15 @@ function Cur_dens(F,W,R,T,regime,zz,Vel) result (Jem)
 	kT=kBoltz*T
 	Gam=Gamow_general(F,W,R,zz,Vel)
 	!print *, 'Gamow=', Gam
-	if (Gam(1)==1.d20) then
-		Jem=0.d0
-		print *,'Warning: Fermi level electrons do not tunnel'
-		return
-	elseif (Gam(1)==0.d0) then
-		Jem=1.d20
-		print *, 'Warning: Fermi level electrons see no barrier'
-		return
-	endif
+!	if (Gam(1)==1.d20) then
+		
+!		print *,'Warning: Fermi level electrons do not tunnel'
+!		return
+!	elseif (Gam(1)==0.d0) then
+!		Jem=1.d20
+!		print *, 'Warning: Fermi level electrons see no barrier'
+!		return
+!	endif
 	
 	maxbeta=Gam(2)
 	minbeta=Gam(3)
@@ -64,7 +64,7 @@ function Cur_dens(F,W,R,T,regime,zz,Vel) result (Jem)
 		n=1/(kT*minbeta)
 		s=minbeta*Umax
 		Jf = zs*(minbeta**(-2))*Sigma(1.d0/n)*exp(-s);
-		Jt = zs*(kT**2)*exp(-n*s)!*Sigma(n
+		Jt = zs*(kT**2)*exp(-n*s)*Sigma(n)
 		Jem = Jt+Jf/(n**2)
 		regime='t'
 	else!intermediate regime
@@ -81,7 +81,7 @@ function Gamow_general(F,W,R,zz,Vel) result (Gam)
 	double precision, intent(in)::F,W,R !F: local field, 
 	!W: work function, R: Radius of curvature, kT: boltzmann*temperature 
 	double precision, optional::zz(:),Vel(:)
-	double precision,parameter::dw=1.d-2
+	double precision,parameter::dw=1.d-2,xlim=0.1d0
 	double precision:: Gam(4),x,yf,xmax,work,xm,Umax
 	
 	procedure(fun_temp), pointer:: Bar,sqrtBar,negBar
@@ -96,30 +96,37 @@ function Gamow_general(F,W,R,zz,Vel) result (Gam)
 	x=W/(F*R)
 	yf=1.44d0*F/(W**2)
 
-	if (x>.95d0) then!barrier too long
-		Gam(1:2)=1.d20
-		Gam(3)=1.d20
-		Gam(4)=W-F*R
-	else if ((sqrt(yf)-x*yf*(3.d0/8.d0))>.98d0) then !barrier too short
-		Gam(1:2)=0.d0
-		Gam(3:4)=-1.d0
-	else if (x>0.1d0) then !not x<<1, use numerical integration
-		if (x>0.4) then !the second root is far away
-			xmax=2*(F*R**2)/(F*R-W)
+	if (x>xlim) then !not x<<1, use numerical integration
+		if (x>0.4d0) then !the second root is far away
+			xmax=10.d0*R
 		else!the second root is close to the standard W/F
-			xmax=2*W/F
+			xmax=2.d0*W/F
 		endif
 		Gam(1)=Gamow_num(Bar,sqrtBar,negBar,xmax,Umax)
 		Gam(4)=Umax
-		work=work+dw
-		Gam(2)=abs((Gamow_num(Bar,sqrtBar,negBar,xmax,Umax)-Gam(1))/dw)
-		work=W-Gam(4)+dw
-		Gam(3)=abs(Gamow_num(Bar,sqrtBar,negBar,xmax,Umax))/dw
+		if (abs(Umax-(W-F*R))<.2d0) then ! almost without maximum
+			Gam(3)=1.d20
+		else
+			work=W-Gam(4)+2.d0*dw
+			Gam(3)=abs(Gamow_num(Bar,sqrtBar,negBar,xmax,Umax))/(2.d0*dw)
+		endif
+		if (Umax<0.d0) then !barrier lost
+			Gam(2)=0.d0
+		elseif (Gam(1)==1.d20) then
+			Gam(2)=1.d20
+		else
+			work=W+dw
+			Gam(2)=abs((Gamow_num(Bar,sqrtBar,negBar,xmax,Umax)-Gam(1))/dw)
+		endif
 	else !large radius, KX approximation usable
-		Gam(1)=Gam_KX(F,W,R)
-		Gam(2)=maxbeta_KX(F,W,R)
-		Gam(3)=16.093d0/sqrt(F**1.5d0/sqrt(Q)-4*F/R)
 		Gam(4)=W-2.d0*sqrt(F*Q)-0.75d0*Q/R
+		Gam(3)=16.093d0/sqrt(F**1.5d0/sqrt(Q)-4*F/R)
+		if (Gam(4)<0) then
+			Gam(1:2)=0.d0
+		else
+			Gam(1)=Gam_KX(F,W,R)
+			Gam(2)=maxbeta_KX(F,W,R)
+		endif
 	endif
 	!print *, x,Gam
 	
@@ -163,13 +170,12 @@ function J_num_integ(F,W,R,T,zz,Vel) result(Jcur)
 	Umax=Gam(4)
 	dE = Umax/(Nvals-1)
 	!print *, 'entered Jnum'
-	
 	if (Gam(1)==0.d0) then
 		Jcur=1.d20
 		return
 	endif
 	
-	if (Gam(1)/=1.d20) then
+	if (Gam(3)/=1.d20) then
 		intSum=lFD(0.d0,kT)/(1.d0+exp(Gam(1)))
 		fmax=intSum
 		do j=1,Nvals-2
@@ -219,13 +225,10 @@ function J_num_integ(F,W,R,T,zz,Vel) result(Jcur)
 		if (abs(fj/fmax)<cutoff .or. isnan(fj)) then
 			exit
 		endif
-		
 	enddo
 	!print *,'Added below Ef, intsum=',intSum
-	
 	Jcur=zs*kT*intSum*dE
 	
-		
 	contains
 	
 	pure function lFD(E,kT) result(L)
@@ -237,7 +240,6 @@ function J_num_integ(F,W,R,T,zz,Vel) result(Jcur)
 			L=log(1.d0+exp(-E/kT))
 		endif
 	end function lFD
-	
 end function J_num_integ
 
 pure function maxbeta_KX(F,W,R) result(beta)!dG/dE at Efermi
@@ -255,59 +257,48 @@ pure function maxbeta_KX(F,W,R) result(beta)!dG/dE at Efermi
 	beta=gg*(sqrt(W)/F)*(t+ps*(W/(F*R)))
 end function maxbeta_KX
 
-pure function Gam_KX(F,W,R) result(Gam)
+pure function Gam_KX(F,W,R) result(Gam)!gives the KX approximation for Gamow
 
 	double precision, intent(in):: F,W,R
 	double precision :: yf,v,omeg,Gam
 
-	yf = 1.44*F/(W**2)
+	yf = 1.44d0*F/(W**2)
+		if (yf>1.d0) then
+		Gam=0.d0
+		return
+	endif
 	v = lininterp(vv,0.d0,1.d0,Ny,yf)
 	omeg = lininterp(ww,0.d0,1.d0,Ny,yf)
-	Gam = b*((W**1.5d0)/F)*(v+(W*omeg/(F*R)))
+	Gam = b*((W**1.5d0)/F)*(v+omeg*(W/(F*R)))
 end function Gam_KX
 
 
 function Gamow_num(Vbarrier,sqrtVbarrier,negBarrier,xmax,Um) result(G)
-
+!calculate Gamow by numerical integration
 	double precision, intent(in)::xmax
 	double precision, intent(out)::Um
 	double precision, external :: Vbarrier, sqrtVbarrier,negBarrier
 	
 	integer, parameter :: Nox=20,maxint=1000
-	double precision, parameter :: AtolRoot=1.d-10, RtolRoot=1.d-10, AtolInt=1.d-7, RtolInt=1.d-7
-	double precision:: G, x, dx, V(2),x1(2),x2(2), ABSERR,xm
+	double precision, parameter :: AtolRoot=1.d-10, RtolRoot=1.d-10, &
+	AtolInt=1.d-7, RtolInt=1.d-7
+	double precision:: G, x ,x1(2),x2(2), ABSERR,xm
 	double precision, dimension(maxint) :: ALIST,BLIST,RLIST,ELIST
-	integer :: i,iflag,NEVAL,IER,IORD(maxint),LAST
-	logical ::foundfirst
+	integer :: iflag,NEVAL,IER,IORD(maxint),LAST
 	
-	foundfirst= .false.
 	x=1.d-5
-	dx=xmax/Nox
-	Um=-local_min(x,xmax,1.d-7,1.d-7,negBarrier,xm)
+	Um=-local_min(x,xmax,1.d-8,1.d-8,negBarrier,xm)
+	!print *, 'Um=' , Um, 'xm = ', xm, 'xmax=', xmax
 	if (Um<0.d0) then
 		G=0.d0
 		return
 	endif
-!	do i = 1,Nox
-!		V(1)=Vbarrier(x)
-!		V(2)=Vbarrier(x+dx)
-!		if (V(1)*V(2)<0) then
-!			if (foundfirst) then
-!				x2(1)=x
-!				x2(2)=x+dx
-!				exit
-!			else
-!				x1(1)=x
-!				x1(2)=x+dx
-!				foundfirst=.true.
-!			endif
-!		endif
-!		x=x+dx
-!	enddo
-!	if (i==(Nox+1)) then
-!		G=0.d0
-!		return
-!	endif
+	
+	if (Vbarrier(xmax)>0) then
+		G=1.d20
+		return
+	endif
+
 	x1=(/0.1d0,xm/)
 	x2=(/xm,xmax/)
 	call dfzero(Vbarrier,x1(1),x1(2),x1(1),1.d-10,1.d-10,iflag)

@@ -7,7 +7,7 @@ implicit none
 
 
 double precision, parameter:: Fmin=.5d0, Fmax=10.d0, W=4.5d0, &
-R=10.d0, T=1000.d0
+R=5.d0, T=1300.d0
 integer, parameter :: Nvals=100
 double precision::J(Nvals),G(4),F(Nvals),dF,t1,t2,arrout(Nvals,3),regnum(Nvals)
 character :: regime
