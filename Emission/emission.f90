@@ -1,4 +1,5 @@
 module emission
+use std_mat, only: lininterp
 
 implicit none
 
@@ -10,7 +11,6 @@ double precision, parameter,dimension(Ny) :: & !these are the special functions 
 	psi = (/1.333333333333333e+00,1.333018024233115e+00,1.332701031413377e+00,1.332382777718021e+00,1.332063462481988e+00,1.331743219800990e+00,1.331422162060289e+00,1.331100359883384e+00,1.330777880951771e+00,1.330454780072042e+00,1.330131104829534e+00,1.329806888425339e+00,1.329482155570348e+00,1.329156960054474e+00,1.328831322965915e+00,1.328505256938984e+00,1.328178797347004e+00,1.327851963327141e+00,1.327524768508933e+00,1.327197243420925e+00,1.326869379644892e+00,1.326541198974261e+00,1.326212720264901e+00,1.325883980612838e+00,1.325554942466070e+00,1.325225651926277e+00,1.324896114017230e+00,1.324566337390244e+00,1.324236337281653e+00,1.323906099425770e+00,1.323575653936342e+00,1.323245001921238e+00,1.322914167210422e+00,1.322583115490618e+00,1.322251887322098e+00,1.321920484386648e+00,1.321588911526883e+00,1.321257176307364e+00,1.320925286409709e+00,1.320593218868366e+00,1.320261014491362e+00,1.319928675858194e+00,1.319596177472917e+00,1.319263562181622e+00,1.318930805941319e+00,1.318597920571705e+00,1.318264923692205e+00,1.317931813205207e+00,1.317598570995208e+00,1.317265220239226e+00,1.316931764557958e+00,1.316598206480150e+00,1.316264549464544e+00,1.315930797806357e+00,1.315596945492719e+00,1.315262993168529e+00,1.314928957364734e+00,1.314594845117375e+00,1.314260645869617e+00,1.313926353694029e+00,1.313592003542662e+00,1.313257556921115e+00,1.312923051920728e+00,1.312588464442063e+00,1.312253822540088e+00,1.311919094199020e+00,1.311584322552062e+00,1.311249471102565e+00,1.310914561069798e+00,1.310579604205516e+00,1.310244586153102e+00,1.309909500694144e+00,1.309574368563633e+00,1.309239189180093e+00,1.308903962321453e+00,1.308568688100718e+00,1.308233366943394e+00,1.307897994020324e+00,1.307562577848092e+00,1.307227121189610e+00,1.306891625453616e+00,1.306556091330614e+00,1.306220512499999e+00,1.305884896854858e+00,1.305549246667971e+00,1.305213564377872e+00,1.304877852577373e+00,1.304542114002722e+00,1.304206350100934e+00,1.303870535200850e+00,1.303534699659165e+00,1.303198846741950e+00,1.302862971001015e+00,1.302527050894820e+00,1.302191121124099e+00,1.301855176135410e+00,1.301519187617303e+00,1.301183198107724e+00,1.300847178591757e+00,1.300511140910904e+00,1.300175095640288e+00,1.299839016245855e+00,1.299502942413006e+00,1.299166828556455e+00,1.298830724405211e+00,1.298494584040807e+00,1.298158448766632e+00,1.297822290469760e+00,1.297486124129521e+00,1.297149957023230e+00,1.296813760453559e+00,1.296477574324301e+00,1.296141368885803e+00,1.295805153046724e+00,1.295468945241037e+00,1.295132718620175e+00,1.294796483164058e+00,1.294460254178512e+00,1.294124025028758e+00,1.293787771784801e+00,1.293451524188628e+00,1.293115281504094e+00,1.292779043080147e+00,1.292442783268936e+00,1.292106526392454e+00,1.291770274037186e+00,1.291434025837305e+00,1.291097781496767e+00,1.290761539780119e+00,1.290425285605418e+00,1.290089036421810e+00,1.289752792165304e+00,1.289416552829235e+00,1.289080318461995e+00,1.288744089164848e+00,1.288407865089826e+00,1.288071646437702e+00,1.287735433456070e+00,1.287399226437465e+00,1.287063025717571e+00,1.286726831673501e+00,1.286390644722119e+00,1.286054465318477e+00,1.285718293954241e+00,1.285382131156234e+00,1.285045977485010e+00,1.284709833533460e+00,1.284373699925540e+00,1.284037577314941e+00,1.283701466383906e+00,1.283365367842030e+00,1.283029282425125e+00,1.282693206586771e+00,1.282357132559316e+00,1.282021072787891e+00,1.281685028116350e+00,1.281348999409467e+00,1.281012987552014e+00,1.280676993447894e+00,1.280341000234313e+00,1.280005018911602e+00,1.279669057029062e+00,1.279333115571353e+00,1.278997195538133e+00,1.278661273046611e+00,1.278325367809626e+00,1.277989486007780e+00,1.277653628705530e+00,1.277317772671696e+00,1.276981932216333e+00,1.276646118494417e+00,1.276310330321828e+00,1.275974534925357e+00,1.275638768649462e+00,1.275303032648981e+00,1.274967296856635e+00,1.274631582411728e+00,1.274295900796550e+00,1.273960222510329e+00,1.273624564747406e+00,1.273288942483700e+00,1.272953317999347e+00,1.272617722187058e+00,1.272282158991539e+00,1.271946590898323e+00,1.271611062678912e+00,1.271275547550641e+00,1.270940050105779e+00,1.270604591406306e+00,1.270269126311487e+00,1.269933705718180e+00,1.269598290985304e+00,1.269262906179969e+00,1.268927544102622e+00,1.268592196921197e+00,1.268256885909111e+00,1.267921578286122e+00,1.267586316905675e+00,1.267251050867749e+00,1.266915967611353e+00 /)
 double precision, parameter :: pi=acos(-1.d0),b=6.83089d0,zs=1.6183d-4,gg=10.246d0, Q=0.35999d0, kBoltz=8.6173324d-5
 !tabulated special elliptic functions. Couldn't find better way to load them as module parameters
-logical,parameter::debug= .true.
 
 abstract interface!interface to pass function pointers
 		pure function fun_temp(x) result(y)
@@ -21,77 +21,66 @@ end interface
 
 contains
 
-function Cur_dens(F,W,R,T,regime,zz,Vel) result (Jem)
+function Cur_dens(F,W,R,T,regime,Vel,xmaxVel) result (Jem)
 !Calculates current density, main module function
 	double precision, intent(in)::F,W,R,T !F: local field, 
 	!W: work function, R: Radius of curvature, kT: boltzmann*temperature 
-	double precision, optional, dimension(:), intent(in):: zz,Vel
+	double precision, optional, intent(in):: Vel(:),xmaxVel
 	!Optional values of electrostatic potential possibly passed from external
 	!electrostatic calculations at points zz. Then barrier calculated with
 	!linear interpolation at these points
 	
 	double precision:: Gam(4),x,maxbeta,minbeta,xmax,kT,Jem,Jf,Jt,n,s,Umax
-	double precision, parameter:: nlimit=.4d0
+	double precision, parameter:: nlimit=.35d0
 	character,intent(out)::regime
 	
 	kT=kBoltz*T
-	Gam=Gamow_general(F,W,R,zz,Vel)
-	!print *, 'Gamow=', Gam
-!	if (Gam(1)==1.d20) then
-		
-!		print *,'Warning: Fermi level electrons do not tunnel'
-!		return
-!	elseif (Gam(1)==0.d0) then
-!		Jem=1.d20
-!		print *, 'Warning: Fermi level electrons see no barrier'
-!		return
-!	endif
-	
+	Gam=Gamow_general(F,W,R,Vel,xmaxVel)
 	maxbeta=Gam(2)
 	minbeta=Gam(3)
 	Umax=Gam(4)
+
+	!print *, Vel
 	
 	if(kT*maxbeta<nlimit) then!field regime
-!		n=1.d0/(kT*maxbeta)
-!		s=Gam(1)
-!		Jf=zs*(maxbeta**(-2))*Sigma(1.d0/n)*exp(-s)
-!		Jt=zs*(kT**2)*Sigma(n)*exp(-n*s)
-!		Jem=Jf+Jt*(n**2)
-		!print *, Sigma(1.d0/n), Sigma(n) , n
-		Jem=zs*kT*exp(-Gam(1))/(maxbeta*sin(pi*maxbeta*kT))
+		Jem=zs*kT*exp(-Gam(1))/(maxbeta*sin(pi*maxbeta*kT))!Murphy-Good version of FN
 		regime='f'
 	else if (kT*minbeta>(1/nlimit)) then!thermal regime
 		n=1/(kT*minbeta)
 		s=minbeta*Umax
 		Jf = zs*(minbeta**(-2))*Sigma(1.d0/n)*exp(-s);
 		Jt = zs*(kT**2)*exp(-n*s)*Sigma(n)
-		Jem = Jt+Jf/(n**2)
+		Jem = Jt+Jf!/(n**2)
 		regime='t'
 	else!intermediate regime
-		Jem=J_num_integ(F,W,R,T,zz,Vel)
+		Jem=J_num_integ(F,W,R,T,Vel,xmaxVel)
 		regime='i'
 	endif
 end function Cur_dens 
 		
 
-function Gamow_general(F,W,R,zz,Vel) result (Gam)
+function Gamow_general(F,W,R,Vel,xmaxVel) result (Gam)
 !Calculates [G, dG/dW@Ef, dG/dW@Umax, Umax] where G is Gamow exponent and
 !Umax is maximum of barrier and returns a vector with the four values 
 
 	double precision, intent(in)::F,W,R !F: local field, 
 	!W: work function, R: Radius of curvature, kT: boltzmann*temperature 
-	double precision, optional::zz(:),Vel(:)
+	double precision, optional::Vel(:),xmaxVel
 	double precision,parameter::dw=1.d-2,xlim=0.1d0
 	double precision:: Gam(4),x,yf,xmax,work,xm,Umax
 	
 	procedure(fun_temp), pointer:: Bar,sqrtBar,negBar
 	
-	if (.not. present(zz)) then
+	if (.not. present(Vel)) then
 		Bar=>SphBar
 		sqrtBar=>RtSphBar
 		negBar=>negSphBar
+	else
+		Bar=>ExtBar
+		sqrtBar=>RtExtBar
+		negBar=>negExtBar
 	endif
-	
+
 	work=W
 	x=W/(F*R)
 	yf=1.44d0*F/(W**2)
@@ -132,6 +121,24 @@ function Gamow_general(F,W,R,zz,Vel) result (Gam)
 	
 	contains
 
+	pure function ExtBar(x) result(V)!external barrier model
+		double precision, intent(in) :: x
+		double precision::V
+		V= work -lininterp(Vel,0.d0,xmaxVel,x) -Q/(x+(0.5d0*(x**2))/R)
+	end function ExtBar
+
+	pure function RtExtBar(x) result(V)!External barrier model, sqrt
+		double precision, intent(in) :: x
+		double precision::V
+		V=sqrt(work -lininterp(Vel,0.d0,xmaxVel,x) -Q/(x+(0.5d0*(x**2))/R))
+	end function RtExtBar
+	
+	pure function negExtBar(x) result(V)!-1 * external barrier model
+		double precision, intent(in) :: x
+		double precision::V
+		V= -work +lininterp(Vel,0.d0,xmaxVel,x) +Q/(x+(0.5d0*(x**2))/R)
+	end function negExtBar
+	
 	pure function SphBar(x) result(V)!sphere barrier model
 		double precision, intent(in) :: x
 		double precision::V
@@ -144,7 +151,7 @@ function Gamow_general(F,W,R,zz,Vel) result (Gam)
 		V= sqrt(work-F*R*x/(x+R)-Q/(x+0.5d0*(x**2)/R))
 	end function RtSphBar
 	
-	pure function negSphBar(x) result(V)!sphere barrier model
+	pure function negSphBar(x) result(V)! -1* sphere barrier model
 		double precision, intent(in) :: x
 		double precision::V
 		V= -work+F*R*x/(x+R)+Q/(x+(0.5d0*(x**2))/R)
@@ -152,25 +159,24 @@ function Gamow_general(F,W,R,zz,Vel) result (Gam)
 
 end function Gamow_general
 
-function J_num_integ(F,W,R,T,zz,Vel) result(Jcur)
+function J_num_integ(F,W,R,T,Vel,xmaxVel) result(Jcur)
 !numerical integration over energies to obtain total current according
 !to landauer formula
 	double precision, intent(in)::F,W,R,T !F: local field, 
 	!W: work function, R: Radius of curvature, kT: boltzmann*temperature 
-	double precision, optional::zz(:),Vel(:)
+	double precision, optional:: Vel(:), xmaxVel
 	
 	double precision, parameter:: cutoff=1.d-4
-	integer, parameter::Nvals=200!no of intervals between Ef and Umax
+	integer, parameter::Nvals=300!no of intervals between Ef and Umax
 	
 	double precision:: Gam(4),Gj(4),x,Umax,dE,dG,Ej,intSum,kT,fj,fmax,Jcur
 	integer::j
 	
 	kT=kBoltz*T
-	Gam=Gamow_general(F,W,R,zz,Vel)
+	Gam=Gamow_general(F,W,R,Vel,xmaxVel)
 	Umax=Gam(4)
 	dE = Umax/(Nvals-1)
-	!print *, 'entered Jnum'
-	if (Gam(1)==0.d0) then
+	if (Gam(1)==0.d0) then!if no barrier for fermi electrons
 		Jcur=1.d20
 		return
 	endif
@@ -180,7 +186,7 @@ function J_num_integ(F,W,R,T,zz,Vel) result(Jcur)
 		fmax=intSum
 		do j=1,Nvals-2
 			Ej=j*dE
-			Gj=Gamow_general(F,W-Ej,R,zz,Vel)
+			Gj=Gamow_general(F,W-Ej,R,Vel,xmaxVel)
 			fj=(lFD(Ej,kT))/(1.d0+exp(Gj(1)))
 			intSum=intSum+fj
 			if (fj>fmax) then
@@ -199,7 +205,7 @@ function J_num_integ(F,W,R,T,zz,Vel) result(Jcur)
 		intSum=lFD(Umax,kT)/2.d0
 		fmax=intSum
 	endif
-	!print *,'From Ef to Umax, intSum=', intSum, '.   Did ', j, 'Gamow iterations' 
+
 	if (j==(Nvals-1)) then
 		do j=1,100*Nvals
 			Gj(1)=Gj(1)-dG
@@ -211,14 +217,12 @@ function J_num_integ(F,W,R,T,zz,Vel) result(Jcur)
 			endif
 		enddo
 	endif
-	!print *, 'Added above Umax, intsum=', intSum
 	
 	do j=1,10*Nvals
 		Ej=j*dE
-		Gj=Gamow_general(F,W+Ej,R,zz,Vel)
+		Gj=Gamow_general(F,W+Ej,R,Vel,xmaxVel)
 		fj=lFD(Ej,kT)/(1.d0+exp(Gj(1)))
 		intSum=intSum+fj
-		!print *, 'Gj=',Gj(1),'fj=',fj
 		if (fj>fmax) then
 			fmax=fj
 		endif
@@ -226,7 +230,6 @@ function J_num_integ(F,W,R,T,zz,Vel) result(Jcur)
 			exit
 		endif
 	enddo
-	!print *,'Added below Ef, intsum=',intSum
 	Jcur=zs*kT*intSum*dE
 	
 	contains
@@ -242,8 +245,8 @@ function J_num_integ(F,W,R,T,zz,Vel) result(Jcur)
 	end function lFD
 end function J_num_integ
 
-pure function maxbeta_KX(F,W,R) result(beta)!dG/dE at Efermi
-	
+pure function maxbeta_KX(F,W,R) result(beta)
+!dG/dE at Efermi	
 	double precision, intent(in):: F,W,R
 	double precision :: yf,t,ps,beta
 	
@@ -252,13 +255,13 @@ pure function maxbeta_KX(F,W,R) result(beta)!dG/dE at Efermi
 		beta=0.d0
 		return
 	endif
-	t = lininterp(tt,0.d0,1.d0,Ny,yf)
-	ps = lininterp(psi,0.d0,1.d0,Ny,yf)
-	beta=gg*(sqrt(W)/F)*(t+ps*(W/(F*R)))
+	t = lininterp(tt,0.d0,1.d0,yf)
+	ps = lininterp(psi,0.d0,1.d0,yf)
+	beta = gg*(sqrt(W)/F)*(t+ps*(W/(F*R)))
 end function maxbeta_KX
 
-pure function Gam_KX(F,W,R) result(Gam)!gives the KX approximation for Gamow
-
+pure function Gam_KX(F,W,R) result(Gam)
+!gives the KX approximation for Gamow
 	double precision, intent(in):: F,W,R
 	double precision :: yf,v,omeg,Gam
 
@@ -267,8 +270,8 @@ pure function Gam_KX(F,W,R) result(Gam)!gives the KX approximation for Gamow
 		Gam=0.d0
 		return
 	endif
-	v = lininterp(vv,0.d0,1.d0,Ny,yf)
-	omeg = lininterp(ww,0.d0,1.d0,Ny,yf)
+	v = lininterp(vv,0.d0,1.d0,yf)
+	omeg = lininterp(ww,0.d0,1.d0,yf)
 	Gam = b*((W**1.5d0)/F)*(v+omeg*(W/(F*R)))
 end function Gam_KX
 
@@ -279,7 +282,7 @@ function Gamow_num(Vbarrier,sqrtVbarrier,negBarrier,xmax,Um) result(G)
 	double precision, intent(out)::Um
 	double precision, external :: Vbarrier, sqrtVbarrier,negBarrier
 	
-	integer, parameter :: Nox=20,maxint=1000
+	integer, parameter ::maxint=1000
 	double precision, parameter :: AtolRoot=1.d-10, RtolRoot=1.d-10, &
 	AtolInt=1.d-7, RtolInt=1.d-7
 	double precision:: G, x ,x1(2),x2(2), ABSERR,xm
@@ -288,7 +291,6 @@ function Gamow_num(Vbarrier,sqrtVbarrier,negBarrier,xmax,Um) result(G)
 	
 	x=1.d-5
 	Um=-local_min(x,xmax,1.d-8,1.d-8,negBarrier,xm)
-	!print *, 'Um=' , Um, 'xm = ', xm, 'xmax=', xmax
 	if (Um<0.d0) then
 		G=0.d0
 		return
@@ -301,8 +303,8 @@ function Gamow_num(Vbarrier,sqrtVbarrier,negBarrier,xmax,Um) result(G)
 
 	x1=(/0.1d0,xm/)
 	x2=(/xm,xmax/)
-	call dfzero(Vbarrier,x1(1),x1(2),x1(1),1.d-10,1.d-10,iflag)
-	call dfzero(Vbarrier,x2(1),x2(2),x2(1),1.d-10,1.d-10,iflag)
+	call dfzero(Vbarrier,x1(1),x1(2),x1(1),RtolRoot,AtolRoot,iflag)
+	call dfzero(Vbarrier,x2(1),x2(2),x2(1),RtolRoot,AtolRoot,iflag)
 	
 	call dqage(sqrtVbarrier,x1(2),x2(1),AtolInt,RtolInt,2,10000,G,ABSERR, &
 	NEVAL,IER,ALIST,BLIST,RLIST,ELIST,IORD,LAST)
@@ -319,28 +321,18 @@ pure function Sigma(x) result(Sig)
 	endif
 end function Sigma
 
-pure function lininterp(yi,a,b,N,x) result(y) !simple linear interpolation function
-	integer, intent(in) :: N !length of interpolation array
-	double precision, intent(in):: a,b,x, yi(:) ! yi interpolation array, a,b are x interval limits and x is the requested point
-	integer :: Nlow
-	double precision:: y
+!pure function VelMake(xx,Vel) result(V)
 
-	if (size(yi) /= N) then
-		y=1.d200
-		return
-	endif
-	Nlow=ceiling(x*N)
-	y=yi(Nlow)+(yi(Nlow+1)-yi(Nlow))*(N-1)*(x-real((Nlow-1))/real((N-1)))
-end function
+!	double precision, intent(in)::xx(:),Vel(:)
+!	integer, parameter
+!	double precision:: V(
+	
 
 function local_min ( a, b, eps, t, f, x )
-
 !*****************************************************************************80
-!
 !! LOCAL_MIN seeks a local minimum of a function F(X) in an interval [A,B].
 !
 !  Discussion:
-!
 !    The method used is a combination of golden section search and
 !    successive parabolic interpolation.  Convergence is never much slower
 !    than that for a Fibonacci search.  If F has a continuous second
@@ -363,20 +355,16 @@ function local_min ( a, b, eps, t, f, x )
 !    golden section step, 01 July 2013.
 !
 !  Licensing:
-!
 !    This code is distributed under the GNU LGPL license. 
 !
 !  Modified:
-!
 !    01 July 2013
 !
 !  Author:
-!
 !    Original FORTRAN77 version by Richard Brent.
 !    FORTRAN90 version by John Burkardt.
 !
 !  Reference:
-!
 !    Richard Brent,
 !    Algorithms for Minimization Without Derivatives,
 !    Dover, 2002,
@@ -384,7 +372,6 @@ function local_min ( a, b, eps, t, f, x )
 !    LC: QA402.5.B74.
 !
 !  Parameters:
-!
 !    Input, real ( kind = 8 ) A, B, the endpoints of the interval.
 !
 !    Input, real ( kind = 8 ) EPS, a positive relative error tolerance.
@@ -402,34 +389,13 @@ function local_min ( a, b, eps, t, f, x )
 !    for which F attains a local minimum value in [A,B].
 !
 !    Output, real ( kind = 8 ) LOCAL_MIN, the value F(X).
-!
+!*****************************************************************************
   implicit none
 
-  real ( kind = 8 ) a
-  real ( kind = 8 ) b
-  real ( kind = 8 ) c
-  real ( kind = 8 ) d
-  real ( kind = 8 ) e
-  real ( kind = 8 ) eps
-  real ( kind = 8 ) f
-  real ( kind = 8 ) fu
-  real ( kind = 8 ) fv
-  real ( kind = 8 ) fw
-  real ( kind = 8 ) fx
-  real ( kind = 8 ) local_min
-  real ( kind = 8 ) m
-  real ( kind = 8 ) p
-  real ( kind = 8 ) q
-  real ( kind = 8 ) r
-  real ( kind = 8 ) sa
-  real ( kind = 8 ) sb
-  real ( kind = 8 ) t
-  real ( kind = 8 ) t2
-  real ( kind = 8 ) tol
-  real ( kind = 8 ) u
-  real ( kind = 8 ) v
-  real ( kind = 8 ) w
-  real ( kind = 8 ) x
+  real(kind=8),intent(in):: a,b,eps,t
+  real(kind=8),external:: f
+  real(kind=8),intent(out)::x
+  real(kind=8):: c,d,e,fu,fv,fw,fx,local_min,m,p,q,r,sa,sb,t2,tol,u,v,w
 !
 !  C is the square of the inverse of the golden ratio.
 !
@@ -446,7 +412,6 @@ function local_min ( a, b, eps, t, f, x )
   fv = fw
 
   do
-
     m = 0.5D+00 * ( sa + sb ) 
     tol = eps * abs ( x ) + t
     t2 = 2.0D+00 * tol

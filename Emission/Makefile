@@ -1,8 +1,11 @@
 OBJECTS = emission.o std_mat.o
-MODULES = emission.mod std_mat.mod
+MODULES = std_mat.mod emission.mod 
 DEPS  = -lslatec
-FFLAGS = -ffree-line-length-none #-Wextra  -Wall -pedantic# -pedantic -O3
-.PHONY: test jfplot testgam testcur
+FFLAGS = -ffree-line-length-none #-Wextra  #-Wall -pedantic# -pedantic -O3
+.PHONY: test jfplot testgam testcur pythonic
+
+pythonic: emission.f90
+	f2py -c --fcompiler=gnu95 --f90flags=$(FFLAGS) emission.f90 -m emit 
 
 testcur: testcur.exe
 	./testcur.exe
@@ -27,4 +30,4 @@ test: test.exe
 	gfortran $(FFLAGS) -c  $< 
 
 clean:
-	rm -f *.o *.exe *.mod *.csv *.txt *.out
+	rm -f *.o *.exe *.mod *.csv *.txt *.out *.pyf
