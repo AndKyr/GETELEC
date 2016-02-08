@@ -61,8 +61,8 @@ end function logspace
 function lininterp(yi,a,b,x) result(y)
 !simple linear interpolation function
 	double precision, intent(in):: a,b,x, yi(:) ! yi interpolation array, a,b are x interval limits and x is the requested point
-	integer :: Nlow,N
-	double precision:: y,dx,dy,xlow
+	integer :: Nnear,N
+	double precision:: y,dx,dy,xnear
 !	print *, yi
 	
 	if (x<a .or. x>b) then
@@ -70,13 +70,17 @@ function lininterp(yi,a,b,x) result(y)
 		return
 	endif
 	N=size(yi)
-	Nlow=ceiling((x-a)*N/(b-a))
-	
+	Nnear=nint((x-a)*N/(b-a))
+
 	dx=(b-a)/dfloat(N-1)
-	dy=yi(Nlow+1)-yi(Nlow)
-	xlow=a+(Nlow-1)*dx
-	print*, 'Nlow=', Nlow, '|| N=', N, '|| dx=', dx, '|| dy=', dy, '|| xlow=', xlow
-	y=yi(Nlow)+(dy/dx)*(x-xlow)
+	xnear=a+(Nnear-1)*dx
+	if (x>xnear) then
+		dy=yi(Nnear+1)-yi(Nnear)
+	else
+		dy=yi(Nnear)-yi(Nnear-1)
+	endif
+	print*, 'Nnear=', Nnear, '|| N=', N, '|| dx=', dx, '|| dy=', dy, '|| xnear=', xnear, '|| x=', x
+	y=yi(Nnear)+(dy/dx)*(x-xnear)
 end function
 
 pure function interp1(xi,yi,x) result(y)

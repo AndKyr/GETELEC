@@ -19,21 +19,21 @@ beta=10.0*Vel(2)
 
 Vappl=F/beta
 Vel=Vappl*Vel
-print *, lininterp(Vel,0.d0,xmaxVel,19.999999d0)
+!print *, lininterp(Vel,0.d0,xmaxVel,19.999999d0)
 
-!x=linspace(0.d0,xmaxVel+5.d0,500)
-!do i=1,size(x)
-!	V(i)=ExtBar(x(i))
-!enddo
+x=linspace(0.d0,xmaxVel+5.d0,500)
+do i=1,size(x)
+	V(i)=ExtBar(x(i))
+enddo
 
 
-!arrout(:,1)=x
-!arrout(:,2)=V
-!arrout(:,3)=0.d0
+arrout(:,1)=x
+arrout(:,2)=V
+arrout(:,3)=0.d0
 
-!open(fidout,file="J-Fplot.csv",action="write",status="replace")
-!call csvprint(fidout,arrout)
-!close(fidout)
+open(fidout,file="J-Fplot.csv",action="write",status="replace")
+call csvprint(fidout,arrout)
+close(fidout)
 
 
 contains
