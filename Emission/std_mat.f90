@@ -58,8 +58,9 @@ pure function logspace(a,b,N) result(x)
 	x=exp(logx)
 end function logspace
 
-function lininterp(yi,a,b,x) result(y)
+pure function lininterp(yi,a,b,x) result(y)
 !simple linear interpolation function
+!appropriate for uniform linspace
 	double precision, intent(in):: a,b,x, yi(:) ! yi interpolation array, a,b are x interval limits and x is the requested point
 	integer :: Nnear,N
 	double precision:: y,dx,dy,xnear
@@ -71,7 +72,6 @@ function lininterp(yi,a,b,x) result(y)
 	endif
 	N=size(yi)
 	Nnear=nint((x-a)*N/(b-a))
-
 	dx=(b-a)/dfloat(N-1)
 	xnear=a+(Nnear-1)*dx
 	if (x>xnear) then
@@ -79,12 +79,15 @@ function lininterp(yi,a,b,x) result(y)
 	else
 		dy=yi(Nnear)-yi(Nnear-1)
 	endif
-	print*, 'Nnear=', Nnear, '|| N=', N, '|| dx=', dx, '|| dy=', dy, '|| xnear=', xnear, '|| x=', x
+!	print*, 'Nnear=', Nnear, '|| N=', N, '|| dx=', dx, '|| dy=', dy, '|| xnear=', xnear, '|| x=', x
 	y=yi(Nnear)+(dy/dx)*(x-xnear)
 end function
 
 pure function interp1(xi,yi,x) result(y)
 !simple linear interpolation function (same as interp1 of matlab)
+!appropriate for non-uniform linspace
+
+!! be careful!! this  function is not thoroughly tested yet!!!!!
 	double precision, intent(in) :: xi(:),yi(:),x
 	double precision :: y
 	integer :: i,j,Nlow

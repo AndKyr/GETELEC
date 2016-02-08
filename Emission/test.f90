@@ -7,29 +7,23 @@ implicit none
 
 
 double precision, parameter:: Fmin=2.d0, Fmax=10.d0, W=4.5d0, &
-R=3.d0, T=300.d0
-integer, parameter :: Nvals=2
-double precision::J(Nvals),G(4),F(Nvals),dF,t1,t2,arrout(Nvals,3), &
-regnum(Nvals),v(201),beta,Vappl(Nvals)
+R=5.d0, T=300.d0,xmaxVel=2.d0*R
+integer, parameter :: Nvals=100,NVel=1000
+double precision::J(Nvals),F(Nvals),t1,t2,arrout(Nvals,3),regnum(Nvals),Vel(NVel),x(NVel)
 character :: regime
-integer:: i,fidout=1987,fidin=1953
+integer:: i,fidout=1987
 
-open(fidin,file="potential.csv.in",action="read")
-call csvread(fidin,v,201,1)
-close(fidin)
 
-beta=10.0*v(2)
 
+
+x=linspace(0.d0,xmaxVel,NVel)
 
 F=1.d0/linspace(1.d0/Fmax,1.d0/Fmin, Nvals)
-Vappl=F/beta
-
-
 
 call cpu_time(t1)
 do i=1,Nvals
-	!G=Gamow_general(F,W,R)
-	J(i)=Cur_dens(F(i),W,R,T,regime,Vappl(i)*v,20.d0)
+	Vel=F(i)*R*x/(x+R)
+	J(i)=Cur_dens(F(i),W,R,T,regime)!,Vel,xmaxVel)
 	if (regime=='f') then
 		regnum(i)=-1.d0
 	elseif (regime=='t') then

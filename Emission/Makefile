@@ -1,5 +1,5 @@
-OBJECTS = std_mat.o #emission.o std_mat.o
-MODULES = std_mat.mod #emission.mod 
+OBJECTS = std_mat.o emission.o
+MODULES = std_mat.mod emission.mod 
 DEPS  = -lslatec
 FFLAGS = -ffree-line-length-none #-Wextra  #-Wall -pedantic# -pedantic -O3
 .PHONY: test jfplot testgam testcur testinterp

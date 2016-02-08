@@ -5,29 +5,22 @@ use std_mat, only: lininterp,csvprint,linspace,csvread
 implicit none
 
 
-double precision, parameter:: xmaxVel=20.d0, F=5.d0,work=4.5d0, R=5.d0
+double precision, parameter:: xmaxVel=10.d0, F=5.d0,work=4.5d0, R=5.d0
 
-integer, parameter :: NVel=201
-double precision::Vel(NVel), Vappl,beta ,x(500),V(500),arrout(500,3)
-integer:: i,fidout=1987,fidin=1953
+integer, parameter :: NVel=200
+double precision::Vel(NVel),x(Nvel), V(500),arrout(500,3),xnew(500)
+integer:: i,fidout=1987
 
-open(fidin,file="potential.csv.in",action="read")
-call csvread(fidin,Vel,201,1)
-close(fidin)
+x=linspace(0.d0,xmaxVel,NVel)
+Vel=F*R*x/(x+R)
+xnew=linspace(0.d0,2.d0*R+5.d0,500)
 
-beta=10.0*Vel(2)
-
-Vappl=F/beta
-Vel=Vappl*Vel
-!print *, lininterp(Vel,0.d0,xmaxVel,19.999999d0)
-
-x=linspace(0.d0,xmaxVel+5.d0,500)
-do i=1,size(x)
-	V(i)=ExtBar(x(i))
+do i=1,size(xnew)
+	V(i)=ExtBar(xnew(i))
 enddo
 
 
-arrout(:,1)=x
+arrout(:,1)=xnew
 arrout(:,2)=V
 arrout(:,3)=0.d0
 

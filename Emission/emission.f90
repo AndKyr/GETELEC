@@ -39,8 +39,6 @@ function Cur_dens(F,W,R,T,regime,Vel,xmaxVel) result (Jem)
 	maxbeta=Gam(2)
 	minbeta=Gam(3)
 	Umax=Gam(4)
-
-	!print *, Vel
 	
 	if(kT*maxbeta<nlimit) then!field regime
 		Jem=zs*kT*exp(-Gam(1))/(maxbeta*sin(pi*maxbeta*kT))!Murphy-Good version of FN
@@ -72,7 +70,6 @@ function Gamow_general(F,W,R,Vel,xmaxVel) result (Gam)
 	procedure(fun_temp), pointer:: Bar,sqrtBar,negBar
 	
 	if (present(Vel)) then
-		print *, Vel
 		Bar=>ExtBar
 		sqrtBar=>RtExtBar
 		negBar=>negExtBar
