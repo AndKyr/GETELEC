@@ -65,20 +65,21 @@ function Gamow_general(F,W,R,Vel,xmaxVel) result (Gam)
 
 	double precision, intent(in)::F,W,R !F: local field, 
 	!W: work function, R: Radius of curvature, kT: boltzmann*temperature 
-	double precision, optional::Vel(:),xmaxVel
+	double precision, optional, intent(in)::Vel(:),xmaxVel
 	double precision,parameter::dw=1.d-2,xlim=0.1d0
 	double precision:: Gam(4),x,yf,xmax,work,xm,Umax
 	
 	procedure(fun_temp), pointer:: Bar,sqrtBar,negBar
 	
-	if (.not. present(Vel)) then
-		Bar=>SphBar
-		sqrtBar=>RtSphBar
-		negBar=>negSphBar
-	else
+	if (present(Vel)) then
+		print *, Vel
 		Bar=>ExtBar
 		sqrtBar=>RtExtBar
 		negBar=>negExtBar
+	else
+		Bar=>SphBar
+		sqrtBar=>RtSphBar
+		negBar=>negSphBar
 	endif
 
 	work=W
@@ -123,20 +124,29 @@ function Gamow_general(F,W,R,Vel,xmaxVel) result (Gam)
 
 	pure function ExtBar(x) result(V)!external barrier model
 		double precision, intent(in) :: x
-		double precision::V
-		V= work -lininterp(Vel,0.d0,xmaxVel,x) -Q/(x+(0.5d0*(x**2))/R)
+		double precision::V,dx,dVel,Velectr
+		integer:: NVel
+		if (x<xmaxVel) then
+			Velectr=lininterp(Vel,0.d0,xmaxVel,x)
+		else
+			NVel=size(Vel)
+			dx=xmaxVel/(NVel-1)
+			dVel=Vel(NVel)-Vel(NVel-1)
+			Velectr=Vel(NVel)+(dVel/dx)*(x-xmaxVel)
+		endif
+		V= work -Velectr -Q/(x+(0.5d0*(x**2))/R)
 	end function ExtBar
 
 	pure function RtExtBar(x) result(V)!External barrier model, sqrt
 		double precision, intent(in) :: x
 		double precision::V
-		V=sqrt(work -lininterp(Vel,0.d0,xmaxVel,x) -Q/(x+(0.5d0*(x**2))/R))
+		V=sqrt(ExtBar(x))
 	end function RtExtBar
 	
 	pure function negExtBar(x) result(V)!-1 * external barrier model
 		double precision, intent(in) :: x
 		double precision::V
-		V= -work +lininterp(Vel,0.d0,xmaxVel,x) +Q/(x+(0.5d0*(x**2))/R)
+		V= -ExtBar(x)
 	end function negExtBar
 	
 	pure function SphBar(x) result(V)!sphere barrier model
@@ -164,7 +174,7 @@ function J_num_integ(F,W,R,T,Vel,xmaxVel) result(Jcur)
 !to landauer formula
 	double precision, intent(in)::F,W,R,T !F: local field, 
 	!W: work function, R: Radius of curvature, kT: boltzmann*temperature 
-	double precision, optional:: Vel(:), xmaxVel
+	double precision, optional, intent(in):: Vel(:), xmaxVel
 	
 	double precision, parameter:: cutoff=1.d-4
 	integer, parameter::Nvals=300!no of intervals between Ef and Umax

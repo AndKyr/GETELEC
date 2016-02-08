@@ -14,23 +14,22 @@ regnum(Nvals),v(201),beta,Vappl(Nvals)
 character :: regime
 integer:: i,fidout=1987,fidin=1953
 
-open(fidin,file="potential.csv",action="read")
+open(fidin,file="potential.csv.in",action="read")
 call csvread(fidin,v,201,1)
 close(fidin)
 
 beta=10.0*v(2)
 
-print *, beta
 
 F=1.d0/linspace(1.d0/Fmax,1.d0/Fmin, Nvals)
 Vappl=F/beta
 
-print *, Vappl(1)*v(201)
+
 
 call cpu_time(t1)
 do i=1,Nvals
 	!G=Gamow_general(F,W,R)
-	J(i)=Cur_dens(F(i),W,R,T,regime)!,Vappl(i)*v,20.d0)
+	J(i)=Cur_dens(F(i),W,R,T,regime,Vappl(i)*v,20.d0)
 	if (regime=='f') then
 		regnum(i)=-1.d0
 	elseif (regime=='t') then
@@ -48,5 +47,11 @@ open(fidout,file="J-Fplot.csv",action="write",status="replace")
 call csvprint(fidout,arrout)
 close(fidout)
 
-print *, 'elapsed CPU time:', t2-t1, 'sec' 
+print *, 'elapsed CPU time:', t2-t1, 'sec'
+
+
+contains
+
+
+
 end program
