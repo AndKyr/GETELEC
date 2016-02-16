@@ -1,6 +1,9 @@
 module std_mat
 !this module contains some standard mathematical - matrix routines that
 !are used quite frequently
+implicit none
+
+integer,parameter::dp=8
 
 contains
 
@@ -104,5 +107,14 @@ pure function interp1(xi,yi,x) result(y)
 		y=yi(Nlow)+((yi(Nlow+1)-yi(Nlow))/(xi(Nlow+1)-xi(Nlow)))*(x-xi(Nlow))
 	endif
 end function interp1
+
+function diff2(f,x) result(y)
+	real(dp), intent(in)::x
+	real(dp), external::f
+	real(dp)::y
+	real(dp),parameter::dx=1.d-2
+
+	y=(f(x+dx)+f(x-dx)-2.d0*f(x))/(dx**2)
+end function diff2
 end module std_mat
 
