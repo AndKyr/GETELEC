@@ -31,7 +31,7 @@ function Cur_dens(F,W,R,T,regime,Vel,xmaxVel) result (Jem)
 	!linear interpolation at these points
 	
 	double precision:: Gam(4),x,maxbeta,minbeta,xmax,kT,Jem,Jf,Jt,n,s,Um,xm
-	double precision, parameter:: nlimit=.6d0
+	double precision, parameter:: nlimit=.5d0
 	character,intent(out)::regime
 	Um=-1.d20
 	xm=-1.d20
@@ -42,14 +42,21 @@ function Cur_dens(F,W,R,T,regime,Vel,xmaxVel) result (Jem)
 !	print *, Gam
 	
 	if(kT*maxbeta<nlimit) then!field regime
-		Jem=zs*kT*exp(-Gam(1))/(maxbeta*sin(pi*maxbeta*kT))!Murphy-Good version of FN
+		Jem=zs*pi*kT*exp(-Gam(1))/(maxbeta*sin(pi*maxbeta*kT))!Murphy-Good version of FN
 		regime='f'
-	else if (kT*minbeta>(1/nlimit)) then!thermal regime
-		n=1/(kT*minbeta)
+
+!		n = 1.d0/(kT*maxbeta)
+!		s = Gam(1)
+!		Jf = zs*(maxbeta**(-2))*Sigma(1.d0/n)*exp(-s)
+!		Jt = zs*(kT**2)*Sigma(n)*exp(-n*s)
+!		Jem=Jf+Jt*(n**2)
+
+	else if (kT*minbeta>(1.d0/nlimit)) then!thermal regime
+		n=1.d0/(kT*minbeta)
 		s=minbeta*Um
 		Jf = zs*(minbeta**(-2))*Sigma(1.d0/n)*exp(-s);
 		Jt = zs*(kT**2)*exp(-n*s)*Sigma(n)
-		Jem = Jt+Jf!/(n**2)
+		Jem = Jt+Jf/(n**2)
 		regime='t'
 	else!intermediate regime
 		Jem=J_num_integ(F,W,R,T,Vel,xmaxVel)
@@ -87,7 +94,6 @@ function Gamow_general(F,W,R,Um,xm,Vel,xmaxVel) result (Gam)
 	yf=1.44d0*F/(W**2)
 	
 	if (x>xlim) then !not x<<1, use numerical integration
-		
 		if (x>0.4d0) then !the second root is far away
 			xmax=10.d0*R
 		else!the second root is close to the standard W/F
@@ -111,7 +117,9 @@ function Gamow_general(F,W,R,Um,xm,Vel,xmaxVel) result (Gam)
 	else !large radius, KX approximation usable
 		Gam(4)=W-2.d0*sqrt(F*Q)-0.75d0*Q/R
 		Gam(3)=16.093d0/sqrt(F**1.5d0/sqrt(Q)-4*F/R)
-		if (Gam(4)<0) then
+		Um=Gam(4)
+		xm=sqrt(Q/F)+Q/(F*R)
+		if (Gam(4)<0.d0) then
 			Gam(1:2)=0.d0
 		else
 			Gam(1)=Gam_KX(F,W,R)
@@ -177,9 +185,9 @@ function J_num_integ(F,W,R,T,Vel,xmaxVel) result(Jcur)
 	double precision, optional, intent(in):: Vel(:), xmaxVel
 	
 	double precision, parameter:: cutoff=1.d-4
-	integer, parameter::Nvals=300!no of intervals between Ef and Umax
+	integer, parameter::Nvals=200!no of intervals between Ef and Umax
 	
-	double precision:: Gam(4),Gj(4),x,Um,xm,dE,dG,Ej,intSum,kT,fj,fmax,Jcur
+	double precision:: Gam(4),Gj(4),x,Um,xm,dE,dG,Ej,intSum,kT,fj,fmax,Jcur,Umax
 	integer::j
 
 	Um=-1.d20
@@ -197,7 +205,8 @@ function J_num_integ(F,W,R,T,Vel,xmaxVel) result(Jcur)
 		fmax=intSum
 		do j=1,Nvals-2!integrate from Ef to Umax
 			Ej=j*dE
-			Gj=Gamow_general(F,W-Ej,R,Um,xm,Vel,xmaxVel)
+			Umax=Um-Ej
+			Gj=Gamow_general(F,W-Ej,R,Umax,xm,Vel,xmaxVel)
 			fj=(lFD(Ej,kT))/(1.d0+exp(Gj(1)))
 			intSum=intSum+fj
 			if (fj>fmax) then
@@ -220,7 +229,7 @@ function J_num_integ(F,W,R,T,Vel,xmaxVel) result(Jcur)
 
 	if (j==(Nvals-1)) then
 		do j=1,100*Nvals!integrate above Umax
-			Gj(1)=Gj(1)-dG
+			Gj(1)=Gj(1)-dG*dE
 			Ej=Ej+dE
 			fj=lFD(Ej,kT)/(1.d0+exp(Gj(1)))
 			intSum=intSum+fj
@@ -232,8 +241,9 @@ function J_num_integ(F,W,R,T,Vel,xmaxVel) result(Jcur)
 	
 	do j=1,10*Nvals!integrate below Ef
 		Ej=j*dE
-		Gj=Gamow_general(F,W+Ej,R,Um,xm,Vel,xmaxVel)
-		fj=lFD(Ej,kT)/(1.d0+exp(Gj(1)))
+		Umax=Um+Ej
+		Gj=Gamow_general(F,W+Ej,R,Umax,xm,Vel,xmaxVel)
+		fj=lFD(-Ej,kT)/(1.d0+exp(Gj(1)))
 		intSum=intSum+fj
 		if (fj>fmax) then
 			fmax=fj
@@ -242,6 +252,7 @@ function J_num_integ(F,W,R,T,Vel,xmaxVel) result(Jcur)
 			exit
 		endif
 	enddo
+!	print *, 'calculated ' , j , 'times under the barrier'
 	Jcur=zs*kT*intSum*dE
 	
 	contains

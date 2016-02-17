@@ -109,12 +109,12 @@ pure function interp1(xi,yi,x) result(y)
 end function interp1
 
 function diff2(f,x) result(y)
-	real(dp), intent(in)::x
-	real(dp), external::f
-	real(dp)::y
-	real(dp),parameter::dx=1.d-2
+	double precision, intent(in)::x
+	double precision, external::f
+	double precision::y
+	double precision,parameter::dx=1.d-2
 
-	y=(f(x+dx)+f(x-dx)-2.d0*f(x))/(dx**2)
+	y=(f(x+dx)+f(x-dx)-2.d0*f(x))/(dx*dx)
 end function diff2
 end module std_mat
 
