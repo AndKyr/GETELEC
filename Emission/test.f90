@@ -6,9 +6,9 @@ use std_mat
 implicit none
 
 
-double precision, parameter:: Fmin=0.8d0, Fmax=1.1d0, W=4.5d0, &
+double precision, parameter:: Fmin=0.5d0, Fmax=10d0, W=4.5d0, &
 R=50.d0, T=1200.d0,xmaxVel=2.d0*R
-integer, parameter :: Nvals=1,NVel=1000
+integer, parameter :: Nvals=500,NVel=1000
 double precision::J(Nvals),F(Nvals),t1,t2,arrout(Nvals,3),regnum(Nvals),Vel(NVel),x(NVel)
 character :: regime
 integer:: i,fidout=1987
@@ -19,7 +19,8 @@ integer:: i,fidout=1987
 x=linspace(0.d0,xmaxVel,NVel)
 
 F=1.d0/linspace(1.d0/Fmax,1.d0/Fmin, Nvals)
-F=.81d0
+
+!F=.81d0
 call cpu_time(t1)
 do i=1,Nvals
 	Vel=F(i)*R*x/(x+R)
