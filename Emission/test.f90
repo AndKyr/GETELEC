@@ -6,9 +6,9 @@ use std_mat
 implicit none
 
 
-double precision, parameter:: Fmin=.5d0, Fmax=10d0, W=4.5d0, &
-R=10.d0, T=1200.d0,xmaxVel=2.d0*R
-integer, parameter :: Nvals=1,NVel=1000
+double precision, parameter:: Fmin=.1d0, Fmax=3.d0, W=1.7d0, &
+R=50.d0, T=500.d0,xmaxVel=2.d0*R
+integer, parameter :: Nvals=1000,NVel=1000
 double precision::J(Nvals),F(Nvals),t1,t2,arrout(Nvals,3),regnum(Nvals),Vel(NVel),x(NVel)
 character :: regime
 integer:: i,fidout=1987
@@ -21,7 +21,7 @@ x=linspace(0.d0,xmaxVel,NVel)
 
 F=1.d0/linspace(1.d0/Fmax,1.d0/Fmin, Nvals)
 
-F=8.555279609488738d-1
+!F=0.92637240356083084d0
 call cpu_time(t1)
 do i=1,Nvals
 	Vel=F(i)*R*x/(x+R)
@@ -33,9 +33,12 @@ do i=1,Nvals
 	else
 		regnum(i)=0.d0
 	endif
+	if (isnan(J(i))) then
+		print *, 'Nan at i=', i, 'F=', F(i)
+	endif
 enddo
 call cpu_time(t2)
-arrout(:,1)=F
+arrout(:,1)=1.d0/F
 arrout(:,2)=log(J)
 arrout(:,3)=regnum
 

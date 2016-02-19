@@ -31,7 +31,7 @@ function Cur_dens(F,W,R,T,regime,Vel,xmaxVel) result (Jem)
 	!linear interpolation at these points
 	
 	double precision:: Gam(4),x,maxbeta,minbeta,xmax,kT,Jem,Jf,Jt,n,s,Um,xm
-	double precision, parameter:: nlimit=.5d0
+	double precision, parameter:: nlimf=.82d0, nlimt=2.2d0
 	character,intent(out)::regime
 	Um=-1.d20
 	xm=-1.d20
@@ -41,17 +41,10 @@ function Cur_dens(F,W,R,T,regime,Vel,xmaxVel) result (Jem)
 	minbeta=Gam(3)
 !	print *, Gam
 	
-	if(kT*maxbeta<nlimit) then!field regime
+	if(kT*maxbeta<nlimf) then!field regime
 		Jem=zs*pi*kT*exp(-Gam(1))/(maxbeta*sin(pi*maxbeta*kT))!Murphy-Good version of FN
 		regime='f'
-
-!		n = 1.d0/(kT*maxbeta)
-!		s = Gam(1)
-!		Jf = zs*(maxbeta**(-2))*Sigma(1.d0/n)*exp(-s)
-!		Jt = zs*(kT**2)*Sigma(n)*exp(-n*s)
-!		Jem=Jf+Jt*(n**2)
-
-	else if (kT*minbeta>(1.d0/nlimit)) then!thermal regime
+	else if (kT*minbeta>(nlimt)) then!thermal regime
 		n=1.d0/(kT*minbeta)
 		s=minbeta*Um
 		Jf = zs*(minbeta**(-2))*Sigma(1.d0/n)*exp(-s);
@@ -126,7 +119,7 @@ function Gamow_general(F,W,R,Um,xm,Vel,xmaxVel) result (Gam)
 			Gam(2)=maxbeta_KX(F,W,R)
 		endif
 	endif
-	print *, x,Gam
+!	print *, W,Gam
 		
 	contains
 
@@ -161,18 +154,21 @@ function Gamow_general(F,W,R,Um,xm,Vel,xmaxVel) result (Gam)
 		double precision, intent(in) :: x
 		double precision::V
 		V= work-F*R*x/(x+R)-Q/(x+(0.5d0*(x**2))/R)
+!		V=work-F*x+F*x*x/R-0.5d0*F*x*x*x/(R*R)-Q/(x+(0.5d0*(x*x))/R)
 	end function SphBar
 
 	pure function RtSphBar(x) result(V)!sphere barrier model, sqrt
 		double precision, intent(in) :: x
 		double precision::V
 		V= sqrt(work-F*R*x/(x+R)-Q/(x+0.5d0*(x**2)/R))
+!		V=sqrt(work-F*x+F*x*x/R-0.5d0*F*x*x*x/(R*R)-Q/(x+(0.5d0*(x*x))/R))
 	end function RtSphBar
 	
 	pure function negSphBar(x) result(V)! -1* sphere barrier model
 		double precision, intent(in) :: x
 		double precision::V
 		V= -work+F*R*x/(x+R)+Q/(x+(0.5d0*(x**2))/R)
+!		V=-(work-F*x+F*x*x/R-0.5d0*F*x*x*x/(R*R)-Q/(x+(0.5d0*(x*x))/R))
 	end function negSphBar
 
 end function Gamow_general
@@ -207,7 +203,9 @@ function J_num_integ(F,W,R,T,Vel,xmaxVel) result(Jcur)
 			Ej=j*dE
 			Umax=Um-Ej
 			Gj=Gamow_general(F,W-Ej,R,Umax,xm,Vel,xmaxVel)
-			fj=(lFD(Ej,kT))/(1.d0+exp(Gj(1)))
+			if ( .not. isnan(Gj(1)) ) then
+				fj=(lFD(Ej,kT))/(1.d0+exp(Gj(1)))
+			endif
 			intSum=intSum+fj
 			if (fj>fmax) then
 				fmax=fj
@@ -305,7 +303,7 @@ function Gamow_num(Vbarrier,sqrtVbarrier,negBarrier,xmax,Um,xm) result(G)
 	double precision, intent(inout)::Um,xm
 	double precision, external :: Vbarrier, sqrtVbarrier,negBarrier
 	
-	integer, parameter ::maxint=1000
+	integer, parameter ::maxint=500
 	double precision, parameter :: AtolRoot=1.d-10, RtolRoot=1.d-10, &
 	AtolInt=1.d-7, RtolInt=1.d-7
 	double precision:: G, x ,x1(2),x2(2), ABSERR,xxm
@@ -326,11 +324,10 @@ function Gamow_num(Vbarrier,sqrtVbarrier,negBarrier,xmax,Um,xm) result(G)
 		return
 	endif
 
-	x1=(/0.1d0,xm/)
+	x1=(/0.01d0,xm/)
 	x2=(/xm,xmax/)
 	call dfzero(Vbarrier,x1(1),x1(2),x1(1),RtolRoot,AtolRoot,iflag)
 	call dfzero(Vbarrier,x2(1),x2(2),x2(1),RtolRoot,AtolRoot,iflag)
-	
 	call dqage(sqrtVbarrier,x1(2),x2(1),AtolInt,RtolInt,2,10000,G,ABSERR, &
 	NEVAL,IER,ALIST,BLIST,RLIST,ELIST,IORD,LAST)
 	G=gg*G
