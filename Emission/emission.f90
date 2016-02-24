@@ -1,5 +1,5 @@
 module emission
-use std_mat, only: lininterp,diff2
+use std_mat, only: lininterp,diff2,local_min
 !use omp_lib
 
 implicit none
@@ -13,25 +13,31 @@ double precision, parameter,dimension(Ny) :: & !these are the special functions 
 double precision, parameter :: pi=acos(-1.d0),b=6.83089d0,zs=1.6183d-4,gg=10.246d0, Q=0.35999d0, kBoltz=8.6173324d-5
 !tabulated special elliptic functions. Couldn't find better way to load them as module parameters
 
+interface!interface to pass function pointers
+	pure function fun_temp(x) result(y)
+		double precision,intent(in)::x
+		double precision:: y
+	end function fun_temp
+end interface
+
 
 contains
 
 
-function Cur_dens(F,W,R,T,regime) result (Jem)
+function Cur_dens(F,W,R,gamma,T,regime) result (Jem)
 !Calculates current density, main module function
-	real(dp), intent(in)::F,W,R,T !F: local field, 
-	!W: work function, R: Radius of curvature, kT: boltzmann*temperature 
+	real(dp), intent(in)::F,W,R,T,gamma !F: local field, 
+	!W: work function, R: Radius of curvature, gamma:total enhancement kT: boltzmann*temperature 
 	
-	double precision:: Gam(4),x,maxbeta,minbeta,xmax,kT,Jem,Jf,Jt,n,s,Um,xm
+	double precision:: Gam(4),maxbeta,minbeta,kT,Jem,Jf,Jt,n,s,Um,xm
 	double precision, parameter:: nlimf=.82d0, nlimt=2.2d0
 	character,intent(out)::regime
 	Um=-1.d20
 	xm=-1.d20
 	kT=kBoltz*T
-	Gam=Gamow_general(F,W,R,Um,xm)
+	Gam=Gamow_general(F,W,R,gamma,Um,xm)
 	maxbeta=Gam(2)
 	minbeta=Gam(3)
-!	print *, Gam
 	
 	if(kT*maxbeta<nlimf) then!field regime
 		Jem=zs*pi*kT*exp(-Gam(1))/(maxbeta*sin(pi*maxbeta*kT))!Murphy-Good version of FN
@@ -44,17 +50,17 @@ function Cur_dens(F,W,R,T,regime) result (Jem)
 		Jem = Jt+Jf/(n**2)
 		regime='t'
 	else!intermediate regime
-		Jem=J_num_integ(F,W,R,T)
+		Jem=J_num_integ(F,W,R,gamma,T)
 		regime='i'
 	endif
 end function Cur_dens 
 		
 
-function Gamow_general(F,W,R,Um,xm) result (Gam)
+function Gamow_general(F,W,R,gamma,Um,xm) result (Gam)
 !Calculates [G, dG/dW@Ef, dG/dW@Umax, Umax] where G is Gamow exponent and
 !Umax is maximum of barrier and returns a vector with the four values 
 
-	real(dp), intent(in)::F,W,R !F: local field, 
+	real(dp), intent(in)::F,W,R,gamma !F: local field, 
 	!W: work function, R: Radius of curvature, kT: boltzmann*temperature
 	real(dp), intent(inout):: Um,xm
 	real(dp),parameter::dw=1.d-2,xlim=0.08d0
@@ -63,14 +69,15 @@ function Gamow_general(F,W,R,Um,xm) result (Gam)
 	work=W
 	x=W/(F*R)
 	yf=1.44d0*F/(W**2)
+
 	
 	if (x>xlim) then !not x<<1, use numerical integration
 		if (x>0.4d0) then !the second root is far away
-			xmax=10.d0*R
+			xmax=W*gamma/F
 		else!the second root is close to the standard W/F
 			xmax=2.d0*W/F
 		endif
-		Gam(1)=Gamow_num(SphBar,RtSphBar,negSphBar,xmax,Um,xm)
+		Gam(1)=Gamow_num(SphBar,xmax,Um,xm)
 		Gam(4)=Um
 		if (abs(Um-(W-F*R))<.2d0) then ! almost without maximum
 			Gam(3)=1.d20
@@ -83,7 +90,7 @@ function Gamow_general(F,W,R,Um,xm) result (Gam)
 			Gam(2)=1.d20
 		else
 			work=W+dw
-			Gam(2)=abs((Gamow_num(SphBar,RtSphBar,negSphBar,xmax,Um,xm)-Gam(1))/dw)
+			Gam(2)=abs((Gamow_num(SphBar,xmax,Um,xm)-Gam(1))/dw)
 		endif
 	else !large radius, KX approximation usable
 		Gam(4)=W-2.d0*sqrt(F*Q)-0.75d0*Q/R
@@ -101,42 +108,30 @@ function Gamow_general(F,W,R,Um,xm) result (Gam)
 	contains
 	
 	pure function SphBar(x) result(V)!sphere barrier model
-		double precision, intent(in) :: x
-		double precision::V
-		V= work-F*R*x/(x+R)-Q/(x+(0.5d0*(x**2))/R)
+		real(dp), intent(in) :: x
+		real(dp)::V
+		V= work   -(F*R*x*(gamma-1)+F*x**2) / (gamma*x+R*(gamma-1.d0)) &
+		  -Q/(x+(0.5d0*(x**2))/R)
 	end function SphBar
-
-	pure function RtSphBar(x) result(V)!sphere barrier model, sqrt
-		double precision, intent(in) :: x
-		double precision::V
-		V= sqrt(work-F*R*x/(x+R)-Q/(x+0.5d0*(x**2)/R))
-
-	end function RtSphBar
-	
-	pure function negSphBar(x) result(V)! -1* sphere barrier model
-		double precision, intent(in) :: x
-		double precision::V
-		V= -work+F*R*x/(x+R)+Q/(x+(0.5d0*(x**2))/R)
-	end function negSphBar
 
 end function Gamow_general
 
-function J_num_integ(F,W,R,T) result(Jcur)
+function J_num_integ(F,W,R,gamma,T) result(Jcur)
 !numerical integration over energies to obtain total current according
 !to landauer formula
-	real(dp), intent(in)::F,W,R,T !F: local field, 
+	real(dp), intent(in)::F,W,R,T,gamma !F: local field, 
 	!W: work function, R: Radius of curvature, kT: boltzmann*temperature 
 	
 	real(dp), parameter:: cutoff=1.d-4
 	integer, parameter::Nvals=200!no of intervals between Ef and Umax
 	
-	real(dp):: Gam(4),Gj(4),x,Um,xm,dE,dG,Ej,intSum,kT,fj,fmax,Jcur,Umax
+	real(dp):: Gam(4),Gj(4),Um,xm,dE,dG,Ej,intSum,kT,fj,fmax,Jcur,Umax
 	integer::j
 
 	Um=-1.d20
 	xm=-1.d20
 	kT=kBoltz*T
-	Gam=Gamow_general(F,W,R,Um,xm)
+	Gam=Gamow_general(F,W,R,gamma,Um,xm)
 	dE = Um/(Nvals-1)
 	if (Gam(1)==0.d0) then!if no barrier for fermi electrons
 		Jcur=1.d20
@@ -149,7 +144,7 @@ function J_num_integ(F,W,R,T) result(Jcur)
 		do j=1,Nvals-2!integrate from Ef to Umax
 			Ej=j*dE
 			Umax=Um-Ej
-			Gj=Gamow_general(F,W-Ej,R,Umax,xm)
+			Gj=Gamow_general(F,W-Ej,R,gamma,Umax,xm)
 			if ( .not. isnan(Gj(1)) ) then
 				fj=(lFD(Ej,kT))/(1.d0+exp(Gj(1)))
 			endif
@@ -186,7 +181,7 @@ function J_num_integ(F,W,R,T) result(Jcur)
 	do j=1,10*Nvals!integrate below Ef
 		Ej=j*dE
 		Umax=Um+Ej
-		Gj=Gamow_general(F,W+Ej,R,Umax,xm)
+		Gj=Gamow_general(F,W+Ej,R,gamma,Umax,xm)
 		fj=lFD(-Ej,kT)/(1.d0+exp(Gj(1)))
 		intSum=intSum+fj
 		if (fj>fmax) then
@@ -242,19 +237,20 @@ pure function Gam_KX(F,W,R) result(Gam)
 end function Gam_KX
 
 
-function Gamow_num(Vbarrier,sqrtVbarrier,negBarrier,xmax,Um,xm) result(G)
+function Gamow_num(Vbarrier,xmax,Um,xm) result(G)
 !calculate Gamow by numerical integration
 	double precision, intent(in)::xmax
 	double precision, intent(inout)::Um,xm
-	double precision, external :: Vbarrier, sqrtVbarrier,negBarrier
+	procedure(fun_temp)::Vbarrier
 	
 	integer, parameter ::maxint=500
-	double precision, parameter :: AtolRoot=1.d-10, RtolRoot=1.d-10, &
-	AtolInt=1.d-7, RtolInt=1.d-7
-	double precision:: G, x ,x1(2),x2(2), ABSERR,xxm
+	double precision, parameter :: AtolRoot=1.d-7, RtolRoot=1.d-7, &
+	AtolInt=1.d-5, RtolInt=1.d-5
+	double precision:: G, x ,x1(2),x2(2), ABSERR
 	double precision, dimension(maxint) :: ALIST,BLIST,RLIST,ELIST
 	integer :: iflag,NEVAL,IER,IORD(maxint),LAST
-	
+
+
 	x=1.d-5
 	if (Um == -1.d20) then
 		Um=-local_min(x,xmax,1.d-8,1.d-8,negBarrier,xm)
@@ -276,6 +272,21 @@ function Gamow_num(Vbarrier,sqrtVbarrier,negBarrier,xmax,Um,xm) result(G)
 	call dqage(sqrtVbarrier,x1(2),x2(1),AtolInt,RtolInt,2,10000,G,ABSERR, &
 	NEVAL,IER,ALIST,BLIST,RLIST,ELIST,IORD,LAST)
 	G=gg*G
+
+	contains
+
+	pure function negBarrier(x) result(nv)
+		real(dp), intent(in)::x
+		real(dp)::nv
+		nv=-Vbarrier(x)
+	end function negBarrier
+
+	pure function sqrtVBarrier(x) result(rv)
+		real(dp), intent(in)::x
+		real(dp)::rv
+		rv=sqrt(Vbarrier(x))
+	end function sqrtVBarrier
+	
 end function Gamow_num
 
 pure function Sigma(x) result(Sig)
@@ -287,216 +298,6 @@ pure function Sigma(x) result(Sig)
 		Sig = (1+x**2)/(1-x**2)-.3551d0*x**2-0.1059d0*x**4-0.039*x**6!Jensen's sigma
 	endif
 end function Sigma
-	
-
-function local_min ( a, b, eps, t, f, x )
-!*****************************************************************************80
-!! LOCAL_MIN seeks a local minimum of a function F(X) in an interval [A,B].
-!
-!  Discussion:
-!    The method used is a combination of golden section search and
-!    successive parabolic interpolation.  Convergence is never much slower
-!    than that for a Fibonacci search.  If F has a continuous second
-!    derivative which is positive at the minimum (which is not at A or
-!    B), then convergence is superlinear, and usually of the order of
-!    about 1.324....
-!
-!    The values EPS and T define a tolerance TOL = EPS * abs ( X ) + T.
-!    F is never evaluated at two points closer than TOL.  
-!
-!    If F is a unimodal function and the computed values of F are always
-!    unimodal when separated by at least SQEPS * abs ( X ) + (T/3), then
-!    LOCAL_MIN approximates the abscissa of the global minimum of F on the 
-!    interval [A,B] with an error less than 3*SQEPS*abs(LOCAL_MIN)+T.  
-!
-!    If F is not unimodal, then LOCAL_MIN may approximate a local, but 
-!    perhaps non-global, minimum to the same accuracy.
-!
-!    Thanks to Jonathan Eggleston for pointing out a correction to the 
-!    golden section step, 01 July 2013.
-!
-!  Licensing:
-!    This code is distributed under the GNU LGPL license. 
-!
-!  Modified:
-!    01 July 2013
-!
-!  Author:
-!    Original FORTRAN77 version by Richard Brent.
-!    FORTRAN90 version by John Burkardt.
-!
-!  Reference:
-!    Richard Brent,
-!    Algorithms for Minimization Without Derivatives,
-!    Dover, 2002,
-!    ISBN: 0-486-41998-3,
-!    LC: QA402.5.B74.
-!
-!  Parameters:
-!    Input, real ( kind = 8 ) A, B, the endpoints of the interval.
-!
-!    Input, real ( kind = 8 ) EPS, a positive relative error tolerance.
-!    EPS should be no smaller than twice the relative machine precision,
-!    and preferably not much less than the square root of the relative
-!    machine precision.
-!
-!    Input, real ( kind = 8 ) T, a positive absolute error tolerance.
-!
-!    Input, external real ( kind = 8 ) F, the name of a user-supplied
-!    function, of the form "FUNCTION F ( X )", which evaluates the
-!    function whose local minimum is being sought.
-!
-!    Output, real ( kind = 8 ) X, the estimated value of an abscissa
-!    for which F attains a local minimum value in [A,B].
-!
-!    Output, real ( kind = 8 ) LOCAL_MIN, the value F(X).
-!*****************************************************************************
-  implicit none
-
-  real(kind=8),intent(in):: a,b,eps,t
-  real(kind=8),external:: f
-  real(kind=8),intent(out)::x
-  real(kind=8):: c,d,e,fu,fv,fw,fx,local_min,m,p,q,r,sa,sb,t2,tol,u,v,w
-!
-!  C is the square of the inverse of the golden ratio.
-!
-  c = 0.5D+00 * ( 3.0D+00 - sqrt ( 5.0D+00 ) )
-
-  sa = a
-  sb = b
-  x = sa + c * ( b - a )
-  w = x
-  v = w
-  e = 0.0D+00
-  fx = f ( x )
-  fw = fx
-  fv = fw
-
-  do
-    m = 0.5D+00 * ( sa + sb ) 
-    tol = eps * abs ( x ) + t
-    t2 = 2.0D+00 * tol
-!
-!  Check the stopping criterion.
-!
-    if ( abs ( x - m ) <= t2 - 0.5D+00 * ( sb - sa ) ) then
-      exit
-    end if
-!
-!  Fit a parabola.
-!
-    r = 0.0D+00
-    q = r
-    p = q
-
-    if ( tol < abs ( e ) ) then
-
-      r = ( x - w ) * ( fx - fv )
-      q = ( x - v ) * ( fx - fw )
-      p = ( x - v ) * q - ( x - w ) * r
-      q = 2.0D+00 * ( q - r )
-
-      if ( 0.0D+00 < q ) then
-        p = - p
-      end if
-
-      q = abs ( q )
-
-      r = e
-      e = d
-
-    end if
-
-    if ( abs ( p ) < abs ( 0.5D+00 * q * r ) .and. &
-         q * ( sa - x ) < p .and. &
-         p < q * ( sb - x ) ) then
-!
-!  Take the parabolic interpolation step.
-!
-      d = p / q
-      u = x + d
-!
-!  F must not be evaluated too close to A or B.
-!
-      if ( ( u - sa ) < t2 .or. ( sb - u ) < t2 ) then
-
-        if ( x < m ) then
-          d = tol
-        else
-          d = - tol
-        end if
-
-      end if
-!
-!  A golden-section step.
-!
-    else
-
-      if ( x < m ) then
-        e = sb - x
-      else
-        e = sa - x
-      end if
-
-      d = c * e
-
-    end if
-!
-!  F must not be evaluated too close to X.
-!
-    if ( tol <= abs ( d ) ) then
-      u = x + d
-    else if ( 0.0D+00 < d ) then
-      u = x + tol
-    else
-      u = x - tol
-    end if
-
-    fu = f ( u )
-!
-!  Update A, B, V, W, and X.
-!
-    if ( fu <= fx ) then
-
-      if ( u < x ) then
-        sb = x
-      else
-        sa = x
-      end if
-
-      v = w
-      fv = fw
-      w = x
-      fw = fx
-      x = u
-      fx = fu
-
-    else
-
-      if ( u < x ) then
-        sa = u
-      else
-        sb = u
-      end if
-
-      if ( fu <= fw .or. w == x ) then
-        v = w
-        fv = fw
-        w = u
-        fw = fu
-      else if ( fu <= fv .or. v == x .or. v == w ) then
-        v = u
-        fv = fu
-      end if
-
-    end if
-
-  end do
-
-  local_min = fx
-
-  return
-end
 
 
 end module

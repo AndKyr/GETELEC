@@ -6,8 +6,8 @@ use std_mat
 implicit none
 
 
-double precision, parameter:: Fmin=.01d0, Fmax=1.d0, W=1.7d0, &
-R=50.d0, T=550.d0,xmaxVel=2.d0*R
+double precision, parameter:: Fmin=.1d0, Fmax=5.d0, W=4.5d0, &
+R=3.d0, T=550.d0,xmaxVel=2.d0*R,gamma=10.d0
 integer, parameter :: Nvals=1000,NVel=100
 double precision::J(Nvals),F(Nvals),t1,t2,arrout(Nvals,3),regnum(Nvals),Vel(NVel),x(NVel)
 character :: regime
@@ -25,7 +25,7 @@ F=1.d0/linspace(1.d0/Fmax,1.d0/Fmin, Nvals)
 call cpu_time(t1)
 do i=1,Nvals
 !	Vel=F(i)*R*x/(x+R)
-	J(i)=Cur_dens(F(i),W,R,T,regime)!,Vel,xmaxVel)
+	J(i)=Cur_dens(F(i),W,R,gamma,T,regime)
 	if (regime=='f') then
 		regnum(i)=-1.d0
 	elseif (regime=='t') then
