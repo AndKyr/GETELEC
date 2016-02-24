@@ -13,35 +13,21 @@ double precision, parameter,dimension(Ny) :: & !these are the special functions 
 double precision, parameter :: pi=acos(-1.d0),b=6.83089d0,zs=1.6183d-4,gg=10.246d0, Q=0.35999d0, kBoltz=8.6173324d-5
 !tabulated special elliptic functions. Couldn't find better way to load them as module parameters
 
-interface!interface to pass function pointers
-	pure function fun_temp(x) result(y)
-		double precision,intent(in)::x
-		double precision:: y
-	end function fun_temp
-end interface
+!interface!interface to pass function pointers
+!	pure function fun_temp(x) result(y)
+!		double precision,intent(in)::x
+!		double precision:: y
+!	end function fun_temp
+!end interface
 
 contains
 
-!function Jcur(F,W,R,T,regime,Vel,xmaxVel) result(J)
-!	real(dp), intent(in),dimension(:)::F,W,R,T
-!	real(dp), intent(in),optional:: Vel(:),xmaxVel
-!	real(dp):: J(size(F))
-!	character, intent(out):: regime(:)
-!	integer:: i,N
-!	N=size(F)
 
-!	!$omp parallel do
-!	do i=1,N
-!		J(i)=Cur_dens(F(i),W(i),R(i),T(i),regime(i),Vel,xmaxVel)
-!	enddo
-!	!$omp end parallel do
-!end function Jcur
-
-function Cur_dens(F,W,R,T,regime,Vel,xmaxVel) result (Jem)
+function Cur_dens(F,W,R,T,regime) result (Jem)
 !Calculates current density, main module function
 	double precision, intent(in)::F,W,R,T !F: local field, 
 	!W: work function, R: Radius of curvature, kT: boltzmann*temperature 
-	double precision, optional, intent(in):: Vel(:),xmaxVel
+!	double precision, optional, intent(in):: Vel(:),xmaxVel
 	!Optional values of electrostatic potential possibly passed from external
 	!electrostatic calculations at points zz. Then barrier calculated with
 	!linear interpolation at these points
@@ -52,7 +38,7 @@ function Cur_dens(F,W,R,T,regime,Vel,xmaxVel) result (Jem)
 	Um=-1.d20
 	xm=-1.d20
 	kT=kBoltz*T
-	Gam=Gamow_general(F,W,R,Um,xm,Vel,xmaxVel)
+	Gam=Gamow_general(F,W,R,Um,xm)
 	maxbeta=Gam(2)
 	minbeta=Gam(3)
 !	print *, Gam
@@ -68,36 +54,23 @@ function Cur_dens(F,W,R,T,regime,Vel,xmaxVel) result (Jem)
 		Jem = Jt+Jf/(n**2)
 		regime='t'
 	else!intermediate regime
-		Jem=J_num_integ(F,W,R,T,Vel,xmaxVel)
+		Jem=J_num_integ(F,W,R,T)
 		regime='i'
 	endif
 end function Cur_dens 
 		
 
-function Gamow_general(F,W,R,Um,xm,Vel,xmaxVel) result (Gam)
+function Gamow_general(F,W,R,Um,xm) result (Gam)
 !Calculates [G, dG/dW@Ef, dG/dW@Umax, Umax] where G is Gamow exponent and
 !Umax is maximum of barrier and returns a vector with the four values 
 
 	double precision, intent(in)::F,W,R !F: local field, 
 	!W: work function, R: Radius of curvature, kT: boltzmann*temperature
 	double precision, intent(inout):: Um,xm
-	double precision, optional, intent(in)::Vel(:),xmaxVel
 	double precision,parameter::dw=1.d-2,xlim=0.08d0
 	double precision:: Gam(4),x,yf,xmax,work
+	external:: SphBar,RtSphBar,negSphBar
 	
-	procedure(fun_temp), pointer:: Bar,sqrtBar,negBar
-	
-	if (present(Vel)) then
-		Bar=>ExtBar
-		sqrtBar=>RtExtBar
-		negBar=>negExtBar
-	else
-		Bar=>SphBar
-		sqrtBar=>RtSphBar
-		negBar=>negSphBar
-	endif
-
-
 	work=W
 	x=W/(F*R)
 	yf=1.44d0*F/(W**2)
@@ -108,12 +81,12 @@ function Gamow_general(F,W,R,Um,xm,Vel,xmaxVel) result (Gam)
 		else!the second root is close to the standard W/F
 			xmax=2.d0*W/F
 		endif
-		Gam(1)=Gamow_num(Bar,sqrtBar,negBar,xmax,Um,xm)
+		Gam(1)=Gamow_num(SphBar,RtSphBar,negSphBar,xmax,Um,xm)
 		Gam(4)=Um
 		if (abs(Um-(W-F*R))<.2d0) then ! almost without maximum
 			Gam(3)=1.d20
 		else
-			Gam(3)=22.761d0/sqrt(abs(diff2(Bar,xm)))
+			Gam(3)=22.761d0/sqrt(abs(diff2(SphBar,xm)))
 		endif
 		if (Um<0.d0) then !barrier lost
 			Gam(2)=0.d0
@@ -121,7 +94,7 @@ function Gamow_general(F,W,R,Um,xm,Vel,xmaxVel) result (Gam)
 			Gam(2)=1.d20
 		else
 			work=W+dw
-			Gam(2)=abs((Gamow_num(Bar,sqrtBar,negBar,xmax,Um,xm)-Gam(1))/dw)
+			Gam(2)=abs((Gamow_num(SphBar,RtSphBar,negSphBar,xmax,Um,xm)-Gam(1))/dw)
 		endif
 	else !large radius, KX approximation usable
 		Gam(4)=W-2.d0*sqrt(F*Q)-0.75d0*Q/R
@@ -135,66 +108,35 @@ function Gamow_general(F,W,R,Um,xm,Vel,xmaxVel) result (Gam)
 			Gam(2)=maxbeta_KX(F,W,R)
 		endif
 	endif
-!	print *, W,Gam
 		
 	contains
-
-	pure function ExtBar(x) result(V)!external barrier model
-		double precision, intent(in) :: x
-		double precision::V,dx,dVel,Velectr
-		integer:: NVel
-		if (x<xmaxVel) then
-			Velectr=lininterp(Vel,0.d0,xmaxVel,x)
-		else
-			NVel=size(Vel)
-			dx=xmaxVel/(NVel-1)
-			dVel=Vel(NVel)-Vel(NVel-1)
-			Velectr=Vel(NVel)+(dVel/dx)*(x-xmaxVel)
-		endif
-		V= work -Velectr -Q/(x+(0.5d0*(x**2))/R)
-	end function ExtBar
-
-	pure function RtExtBar(x) result(V)!External barrier model, sqrt
-		double precision, intent(in) :: x
-		double precision::V
-		V=sqrt(ExtBar(x))
-	end function RtExtBar
-	
-	pure function negExtBar(x) result(V)!-1 * external barrier model
-		double precision, intent(in) :: x
-		double precision::V
-		V= -ExtBar(x)
-	end function negExtBar
 	
 	pure function SphBar(x) result(V)!sphere barrier model
 		double precision, intent(in) :: x
 		double precision::V
 		V= work-F*R*x/(x+R)-Q/(x+(0.5d0*(x**2))/R)
-!		V=work-F*x+F*x*x/R-0.5d0*F*x*x*x/(R*R)-Q/(x+(0.5d0*(x*x))/R)
 	end function SphBar
 
 	pure function RtSphBar(x) result(V)!sphere barrier model, sqrt
 		double precision, intent(in) :: x
 		double precision::V
 		V= sqrt(work-F*R*x/(x+R)-Q/(x+0.5d0*(x**2)/R))
-!		V=sqrt(work-F*x+F*x*x/R-0.5d0*F*x*x*x/(R*R)-Q/(x+(0.5d0*(x*x))/R))
+
 	end function RtSphBar
 	
 	pure function negSphBar(x) result(V)! -1* sphere barrier model
 		double precision, intent(in) :: x
 		double precision::V
 		V= -work+F*R*x/(x+R)+Q/(x+(0.5d0*(x**2))/R)
-!		V=-(work-F*x+F*x*x/R-0.5d0*F*x*x*x/(R*R)-Q/(x+(0.5d0*(x*x))/R))
 	end function negSphBar
 
 end function Gamow_general
 
-function J_num_integ(F,W,R,T,Vel,xmaxVel) result(Jcur)
+function J_num_integ(F,W,R,T) result(Jcur)
 !numerical integration over energies to obtain total current according
 !to landauer formula
 	double precision, intent(in)::F,W,R,T !F: local field, 
 	!W: work function, R: Radius of curvature, kT: boltzmann*temperature 
-	double precision, optional, intent(in):: Vel(:), xmaxVel
 	
 	double precision, parameter:: cutoff=1.d-4
 	integer, parameter::Nvals=200!no of intervals between Ef and Umax
@@ -205,7 +147,7 @@ function J_num_integ(F,W,R,T,Vel,xmaxVel) result(Jcur)
 	Um=-1.d20
 	xm=-1.d20
 	kT=kBoltz*T
-	Gam=Gamow_general(F,W,R,Um,xm,Vel,xmaxVel)
+	Gam=Gamow_general(F,W,R,Um,xm)
 	dE = Um/(Nvals-1)
 	if (Gam(1)==0.d0) then!if no barrier for fermi electrons
 		Jcur=1.d20
@@ -218,7 +160,7 @@ function J_num_integ(F,W,R,T,Vel,xmaxVel) result(Jcur)
 		do j=1,Nvals-2!integrate from Ef to Umax
 			Ej=j*dE
 			Umax=Um-Ej
-			Gj=Gamow_general(F,W-Ej,R,Umax,xm,Vel,xmaxVel)
+			Gj=Gamow_general(F,W-Ej,R,Umax,xm)
 			if ( .not. isnan(Gj(1)) ) then
 				fj=(lFD(Ej,kT))/(1.d0+exp(Gj(1)))
 			endif
@@ -256,7 +198,7 @@ function J_num_integ(F,W,R,T,Vel,xmaxVel) result(Jcur)
 	do j=1,10*Nvals!integrate below Ef
 		Ej=j*dE
 		Umax=Um+Ej
-		Gj=Gamow_general(F,W+Ej,R,Umax,xm,Vel,xmaxVel)
+		Gj=Gamow_general(F,W+Ej,R,Umax,xm)
 		fj=lFD(-Ej,kT)/(1.d0+exp(Gj(1)))
 		intSum=intSum+fj
 		if (fj>fmax) then
@@ -358,12 +300,6 @@ pure function Sigma(x) result(Sig)
 		Sig = (1+x**2)/(1-x**2)-.3551d0*x**2-0.1059d0*x**4-0.039*x**6!Jensen's sigma
 	endif
 end function Sigma
-
-!pure function VelMake(xx,Vel) result(V)
-
-!	double precision, intent(in)::xx(:),Vel(:)
-!	integer, parameter
-!	double precision:: V(
 	
 
 function local_min ( a, b, eps, t, f, x )
