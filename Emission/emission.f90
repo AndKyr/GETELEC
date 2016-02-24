@@ -13,24 +13,14 @@ double precision, parameter,dimension(Ny) :: & !these are the special functions 
 double precision, parameter :: pi=acos(-1.d0),b=6.83089d0,zs=1.6183d-4,gg=10.246d0, Q=0.35999d0, kBoltz=8.6173324d-5
 !tabulated special elliptic functions. Couldn't find better way to load them as module parameters
 
-!interface!interface to pass function pointers
-!	pure function fun_temp(x) result(y)
-!		double precision,intent(in)::x
-!		double precision:: y
-!	end function fun_temp
-!end interface
 
 contains
 
 
 function Cur_dens(F,W,R,T,regime) result (Jem)
 !Calculates current density, main module function
-	double precision, intent(in)::F,W,R,T !F: local field, 
+	real(dp), intent(in)::F,W,R,T !F: local field, 
 	!W: work function, R: Radius of curvature, kT: boltzmann*temperature 
-!	double precision, optional, intent(in):: Vel(:),xmaxVel
-	!Optional values of electrostatic potential possibly passed from external
-	!electrostatic calculations at points zz. Then barrier calculated with
-	!linear interpolation at these points
 	
 	double precision:: Gam(4),x,maxbeta,minbeta,xmax,kT,Jem,Jf,Jt,n,s,Um,xm
 	double precision, parameter:: nlimf=.82d0, nlimt=2.2d0
@@ -64,12 +54,11 @@ function Gamow_general(F,W,R,Um,xm) result (Gam)
 !Calculates [G, dG/dW@Ef, dG/dW@Umax, Umax] where G is Gamow exponent and
 !Umax is maximum of barrier and returns a vector with the four values 
 
-	double precision, intent(in)::F,W,R !F: local field, 
+	real(dp), intent(in)::F,W,R !F: local field, 
 	!W: work function, R: Radius of curvature, kT: boltzmann*temperature
-	double precision, intent(inout):: Um,xm
-	double precision,parameter::dw=1.d-2,xlim=0.08d0
-	double precision:: Gam(4),x,yf,xmax,work
-	external:: SphBar,RtSphBar,negSphBar
+	real(dp), intent(inout):: Um,xm
+	real(dp),parameter::dw=1.d-2,xlim=0.08d0
+	real(dp):: Gam(4),x,yf,xmax,work
 	
 	work=W
 	x=W/(F*R)
@@ -135,13 +124,13 @@ end function Gamow_general
 function J_num_integ(F,W,R,T) result(Jcur)
 !numerical integration over energies to obtain total current according
 !to landauer formula
-	double precision, intent(in)::F,W,R,T !F: local field, 
+	real(dp), intent(in)::F,W,R,T !F: local field, 
 	!W: work function, R: Radius of curvature, kT: boltzmann*temperature 
 	
-	double precision, parameter:: cutoff=1.d-4
+	real(dp), parameter:: cutoff=1.d-4
 	integer, parameter::Nvals=200!no of intervals between Ef and Umax
 	
-	double precision:: Gam(4),Gj(4),x,Um,xm,dE,dG,Ej,intSum,kT,fj,fmax,Jcur,Umax
+	real(dp):: Gam(4),Gj(4),x,Um,xm,dE,dG,Ej,intSum,kT,fj,fmax,Jcur,Umax
 	integer::j
 
 	Um=-1.d20
@@ -173,7 +162,6 @@ function J_num_integ(F,W,R,T) result(Jcur)
 			endif
 		enddo
 		dG=Gam(3)
-!		print *, 'dG=',dG
 	else
 		j=Nvals-1
 		Gj=0.d0
@@ -208,14 +196,13 @@ function J_num_integ(F,W,R,T) result(Jcur)
 			exit
 		endif
 	enddo
-!	print *, 'calculated ' , j , 'times under the barrier'
 	Jcur=zs*kT*intSum*dE
 	
 	contains
 	
 	pure function lFD(E,kT) result(L)
-		double precision, intent(in)::E,kT
-		double precision :: L
+		real(dp), intent(in)::E,kT
+		real(dp) :: L
 		if (E>6.d0*kT) then
 			L=exp(-E/kT)
 		else
@@ -226,8 +213,8 @@ end function J_num_integ
 
 pure function maxbeta_KX(F,W,R) result(beta)
 !dG/dE at Efermi	
-	double precision, intent(in):: F,W,R
-	double precision :: yf,t,ps,beta
+	real(dp), intent(in):: F,W,R
+	real(dp) :: yf,t,ps,beta
 	
 	yf = 1.44d0*F/(W**2)
 	if (yf>1.d0) then
@@ -241,8 +228,8 @@ end function maxbeta_KX
 
 pure function Gam_KX(F,W,R) result(Gam)
 !gives the KX approximation for Gamow
-	double precision, intent(in):: F,W,R
-	double precision :: yf,v,omeg,Gam
+	real(dp), intent(in):: F,W,R
+	real(dp) :: yf,v,omeg,Gam
 
 	yf = 1.44d0*F/(W**2)
 		if (yf>1.d0) then
