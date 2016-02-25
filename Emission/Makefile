@@ -1,7 +1,7 @@
 OBJECTS = std_mat.o emission.o
 MODULES = std_mat.mod emission.mod 
 DEPS  = -lslatec
-FFLAGS = -O3 -ffree-line-length-none #-Wextra  #-Wall -pedantic# -pedantic -O3
+FFLAGS = -O3  -ffree-line-length-none -fopenmp#-Wextra  #-Wall -pedantic# -pedantic -O3
 .PHONY: test jfplot testgam testcur testinterp
 
 testinterp: testinterp.exe
@@ -21,7 +21,7 @@ test: test.exe
 	./test.exe
 
 %.exe: %.o $(MODULES) $(OBJECTS)
-	gfortran $<  $(OBJECTS) $(DEPS) -o $@
+	gfortran $<  $(FFLAGS) $(OBJECTS) $(DEPS) -o $@
 
 %.mod: %.f90
 	gfortran $(FFLAGS) -c $<
