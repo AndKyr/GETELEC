@@ -7,9 +7,9 @@ use omp_lib
 implicit none
 
 
-double precision, parameter:: Fmin=.1d0, Fmax=5.d0, W=4.5d0, &
-R=3.d0, T=550.d0,gamma=10.d0
-integer, parameter :: Nvals=8000
+double precision, parameter:: Fmin=2.d0, Fmax=5.d0, W=4.5d0, &
+R=100.d0, T=550.d0,gamma=10.d0
+integer, parameter :: Nvals=1
 double precision::J(Nvals),F(Nvals),t1,t2,arrout(Nvals,3),regnum(Nvals), &
 ww(Nvals),RR(Nvals),TT(Nvals),ggam(Nvals)
 character :: regime(Nvals)
@@ -26,6 +26,8 @@ ww=W
 RR=R
 TT=T
 ggam=gamma
+F=.5d0
+
 
 !print *, 'ww=', ww, 'RR=', RR, 'TT=', TT, 'ggam=',ggam
 call cpu_time(t1)
@@ -43,7 +45,7 @@ call cpu_time(t1)
 !		print *, 'Nan at i=', i, 'F=', F(i)
 !	endif
 !enddo
-J=Jcur(F,W,R,gamma,T,regime)
+!J=Jcur(F,W,R,gamma,T,regime)
 
 call cpu_time(t2)
 !print *, 'J=', J

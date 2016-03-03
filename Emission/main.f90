@@ -2,12 +2,13 @@ program main
 
 use emission, only: Jcur
 use std_mat, only: csvread,csvprint
+use omp_lib
 implicit none
 
-integer,parameter::dp=8,Nvals=200
+integer,parameter::dp=8,Nvals=8000
 real(dp):: params(4),F(Nvals),W,R,T,gamma,J(Nvals),regnum(Nvals),arrout(Nvals,3)
 character :: regime(Nvals)
-integer:: i,fidout=1987,fidin=1821
+integer:: i,fidout=1987,fidin=1821,nthreads
 
 open(fidin,file="paramin.csv",action="read")
 read(fidin,*) params(:)
@@ -18,6 +19,11 @@ W=params(1)
 R=params(2)
 T=params(3)
 gamma=params(4)
+
+!$ nthreads = omp_get_num_procs()
+!$ print * , 'threads: ', nthreads
+!$ call omp_set_dynamic(.false.)
+!$ call omp_set_num_threads(nthreads)
 
 J=Jcur(F,W,R,gamma,T,regime)
 

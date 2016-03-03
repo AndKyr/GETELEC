@@ -32,7 +32,7 @@ function Jcur(F,W,R,gamma,T,regime) result(J)
 	integer:: i,N,nthread
 	N=size(F)
 	 
-	!$omp parallel do
+	!$omp parallel do ordered
 	
 	do i=1,N
 !		!$ nthread= omp_get_thread_num()
@@ -47,7 +47,8 @@ function Cur_dens(F,W,R,gamma,T,regime) result (Jem)
 	real(dp), intent(in)::F,W,R,T,gamma !F: local field, 
 	!W: work function, R: Radius of curvature, gamma:total enhancement kT: boltzmann*temperature 
 	
-	double precision:: Gam(4),maxbeta,minbeta,kT,Jem,Jf,Jt,n,s,Um,xm
+	double precision:: Gam(4),maxbeta,minbeta,kT,Jem,Jf,Jt,n,s,Um,xm,E0,dE
+	real(dp),allocatable::G(:)
 	double precision, parameter:: nlimf=.6d0, nlimt=2.5d0
 	character,intent(out),optional::regime
 	Um=-1.d20
@@ -68,9 +69,11 @@ function Cur_dens(F,W,R,gamma,T,regime) result (Jem)
 		Jem = Jt+Jf/(n**2)
 		regime='t'
 	else!intermediate regime
-		Jem=J_num_integ(F,W,R,gamma,T)
+		Jem=J_num_integ(F,W,R,gamma,T,G,E0,dE)
 		regime='i'
+		deallocate(G)
 	endif
+	
 end function Cur_dens 
 		
 
@@ -96,6 +99,7 @@ function Gamow_general(F,W,R,gamma,Um,xm) result (Gam)
 			xmax=2.d0*W/F
 		endif
 		Gam(1)=Gamow_num(SphBar,xmax,Um,xm)
+!		Gam(1)=G_simple(SphBar,xmax,Um,xm)
 		Gam(4)=Um
 		if (abs(Um-(W-F*R))<.2d0) then ! almost without maximum
 			Gam(3)=1.d20
@@ -134,17 +138,20 @@ function Gamow_general(F,W,R,gamma,Um,xm) result (Gam)
 
 end function Gamow_general
 
-function J_num_integ(F,W,R,gamma,T) result(Jcur)
+function J_num_integ(F,W,R,gamma,T,G,E0,dE) result(Jcur)
 !numerical integration over energies to obtain total current according
 !to landauer formula
 	real(dp), intent(in)::F,W,R,T,gamma !F: local field, 
-	!W: work function, R: Radius of curvature, kT: boltzmann*temperature 
+	!W: work function, R: Radius of curvature, kT: boltzmann*temperature
+	real(dp),intent(out)::E0,dE
+	real(dp), intent(out),allocatable :: G(:)
+	real(dp),dimension(:),allocatable::Gmid,Ghigh,Glow
 	
 	real(dp), parameter:: cutoff=1.d-4
 	integer, parameter::Nvals=200!no of intervals between Ef and Umax
 	
-	real(dp):: Gam(4),Gj(4),Um,xm,dE,dG,Ej,intSum,kT,fj,fmax,Jcur,Umax
-	integer::j
+	real(dp):: Gam(4),Gj(4),Um,xm,dG,Ej,intSum,kT,fj,fmax,Jcur,Umax,Emax,Emin
+	integer::j,Nmax,Nmin,Nmid,Nlow,Nhigh
 
 	Um=-1.d20
 	xm=-1.d20
@@ -155,6 +162,7 @@ function J_num_integ(F,W,R,gamma,T) result(Jcur)
 		Jcur=1.d20
 		return
 	endif
+	allocate (Gmid(1:Nvals-2))
 	
 	if (Gam(3)/=1.d20) then
 		intSum=lFD(0.d0,kT)/(1.d0+exp(Gam(1)))
@@ -163,6 +171,7 @@ function J_num_integ(F,W,R,gamma,T) result(Jcur)
 			Ej=j*dE
 			Umax=Um-Ej
 			Gj=Gamow_general(F,W-Ej,R,gamma,Umax,xm)
+			Gmid(j)=Gj(1)
 			if ( .not. isnan(Gj(1)) ) then
 				fj=(lFD(Ej,kT))/(1.d0+exp(Gj(1)))
 			endif
@@ -183,10 +192,16 @@ function J_num_integ(F,W,R,gamma,T) result(Jcur)
 		intSum=lFD(Um,kT)/2.d0
 		fmax=intSum
 	endif
+	Nmid=j-1
+	
 
 	if (j==(Nvals-1)) then
-		do j=1,100*Nvals!integrate above Umax
+		Emax=6.d0*kT
+		Nmax=ceiling(Emax/dE)
+		allocate (Ghigh(1:Nmax))
+		do j=1,Nmax!integrate above Umax
 			Gj(1)=Gj(1)-dG*dE
+			Ghigh(j)=Gj(1)
 			Ej=Ej+dE
 			fj=lFD(Ej,kT)/(1.d0+exp(Gj(1)))
 			intSum=intSum+fj
@@ -194,12 +209,20 @@ function J_num_integ(F,W,R,gamma,T) result(Jcur)
 				exit
 			endif
 		enddo
+		Nhigh=j-1
+!		print *, 'Ghigh=', Ghigh
+	else
+		Nhigh=0
+		allocate(Ghigh(1))
 	endif
-	
-	do j=1,10*Nvals!integrate below Ef
+	Emin=-6.d0/Gam(2)
+	Nmin=ceiling(abs(Emin)/dE)
+	allocate (Glow(1:Nmin))
+	do j=1,Nmin!integrate below Ef
 		Ej=j*dE
 		Umax=Um+Ej
 		Gj=Gamow_general(F,W+Ej,R,gamma,Umax,xm)
+		Glow(j)=Gj(1)
 		fj=lFD(-Ej,kT)/(1.d0+exp(Gj(1)))
 		intSum=intSum+fj
 		if (fj>fmax) then
@@ -209,6 +232,12 @@ function J_num_integ(F,W,R,gamma,T) result(Jcur)
 			exit
 		endif
 	enddo
+	Nlow=j-1
+
+	allocate(G(Nhigh+Nlow+Nmid))
+	G=[Glow(Nlow:1:-1),Gmid(1:Nmid),Ghigh(1:Nhigh)]
+	deallocate(Glow,Gmid,Ghigh)
+	E0=-Ej
 	Jcur=zs*kT*intSum*dE
 	
 	contains
@@ -286,7 +315,7 @@ function Gamow_num(Vbarrier,xmax,Um,xm) result(G)
 	x2=(/xm,xmax/)
 	call dfzero(Vbarrier,x1(1),x1(2),x1(1),RtolRoot,AtolRoot,iflag)
 	call dfzero(Vbarrier,x2(1),x2(2),x2(1),RtolRoot,AtolRoot,iflag)
-	call dqage(sqrtVbarrier,x1(2),x2(1),AtolInt,RtolInt,2,10000,G,ABSERR, &
+	call dqage(sqrtVbarrier,x1(2),x2(1),AtolInt,RtolInt,2,1000,G,ABSERR, &
 	NEVAL,IER,ALIST,BLIST,RLIST,ELIST,IORD,LAST)
 	G=gg*G
 
@@ -306,6 +335,117 @@ function Gamow_num(Vbarrier,xmax,Um,xm) result(G)
 	
 end function Gamow_num
 
+function G_simple(Vbarrier,xmax,Um,xm) result(G)
+!calculate Gamow by simple numerical integration
+	double precision, intent(in)::xmax!max point of integration
+	double precision, intent(inout)::Um,xm
+	procedure(fun_temp)::Vbarrier
+	integer, parameter ::Nvals=500
+	double precision:: G,xj,Vj,sumbar,xmin=1.d-5,dx
+	integer:: i
+
+	if (Um == -1.d20) then
+		Um=-local_min(xmin,xmax,1.d-8,1.d-8,negBarrier,xm)
+	endif
+
+		if (Um<0.d0) then
+		G=0.d0
+		return
+	endif
+	
+	if (Vbarrier(xmax)>0) then
+		G=1.d20
+		return
+	endif
+	sumbar=.5d0*sqrt(Um)
+	dx=(xmax-xm)/(Nvals-1)
+	xj=xm+dx
+	do i=1,Nvals!integrate from Um to max root
+		Vj=Vbarrier(xj)
+		if (Vj<0) then
+			exit
+		endif
+		sumbar=sumbar+sqrt(Vj)
+		xj=xj+dx
+	enddo
+	G=gg*sumbar*dx
+
+	sumbar=.5d0*sqrt(Um)
+	dx=(xm-xmin)/(Nvals-1)
+	xj=xm-dx
+	do i=1,Nvals!integrate from Um to min root
+		Vj=Vbarrier(xj)
+		if (Vj<0) then
+			exit
+		endif
+		sumbar=sumbar+sqrt(Vj)
+		xj=xj-dx
+	enddo
+	G=G+gg*sumbar*dx
+	
+	contains
+
+	pure function negBarrier(x) result(nv)
+		real(dp), intent(in)::x
+		real(dp)::nv
+		nv=-Vbarrier(x)
+	end function negBarrier
+end function G_simple
+
+function Notting_num(F,W,R,gamma,T) result(heat)
+
+	real(dp), intent(in)::F,W,R,T,gamma !F: local field, 
+	!W: work function, R: Radius of curvature, kT: boltzmann*temperature
+	real(dp), allocatable :: G(:)
+	
+	real(dp)::outsum=0.d0,insum=0.d0,E,kT,Jcur,heat,E0,dE,integrand
+
+	integer:: i,N
+	Jcur=J_num_integ(F,W,R,gamma,T,G,E0,dE)
+	N=size(G)
+	E=E0
+	kT=kBoltz*T
+!	print *, 'E0=', E0, 'dE=', dE
+	do i=1,N
+		insum=insum+dE/(1.d0+exp(G(i)))
+		integrand=insum*E/(1+exp(E/kT))
+		outsum=outsum+integrand
+		
+!		print *,integrand
+		E=E+dE
+	enddo
+	heat=outsum*dE*zs/1.602d-19
+	deallocate(G)
+end function Notting_num
+
+function Notting_gen(F,W,R,gamma,T,regime) result (heat)
+!Calculates Noggingham effect heating-cooling
+	real(dp), intent(in)::F,W,R,T,gamma !F: local field, 
+	!W: work function, R: Radius of curvature, gamma:total enhancement kT: boltzmann*temperature 
+	
+	real(dp):: Gam(4),maxbeta,minbeta,kT,Jem,Jf,Jt,n,s,Um,xm,E0,dE,heat
+	real(dp), parameter:: nlimf=.6d0, nlimt=2.5d0
+	character,intent(out),optional::regime
+	Um=-1.d20
+	xm=-1.d20
+	kT=kBoltz*T
+	Gam=Gamow_general(F,W,R,gamma,Um,xm)
+	maxbeta=Gam(2)
+	minbeta=Gam(3)
+	
+	if(kT*maxbeta<nlimf) then!field regime
+		heat=-zs*pi*pi*kT*kT*exp(-Gam(1))*cos(pi*maxbeta*kT)/(1.605d-19*maxbeta*(sin(pi*maxbeta*kT)**2))!Murphy-Good version of FN
+		regime='f'
+	else if (kT*minbeta>(nlimt)) then!thermal regime
+		heat=Notting_num(F,W,R,gamma,T)
+		regime='t'
+	else!intermediate regime
+		heat=Notting_num(F,W,R,gamma,T)
+		regime='i'
+	endif
+	
+end function Notting_gen
+	
 pure function Sigma(x) result(Sig)
 	double precision, intent(in) :: x
 	double precision:: Sig

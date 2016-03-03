@@ -31,13 +31,13 @@ color='rgbkm'
 beta=10;
 Fmacmin=6e-3
 Fmacmax=1.8e-1
-Fmac=1/np.linspace(1/Fmacmax,1/Fmacmin,200)
+Fmac=1/np.linspace(1/Fmacmax,1/Fmacmin,8000)
 
 
-Ti=[600. , 700.]
-Wi=[1.5, 4.5]
-betai=[10.,66.5]
-R=100.0
+Ti=[600]#. , 700.]
+Wi=[4.5]#, 4.5]
+betai=[65]#.,66.5]
+R=5.0
 T=500.0
 gamma=10.0
 ij=0

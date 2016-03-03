@@ -1,9 +1,12 @@
-OBJECTS = std_mat.o emission.o
-MODULES = std_mat.mod emission.mod 
+OBJECTS = ../std_mat.o ../emission.o
+MODULES = ../std_mat.mod ../emission.mod 
 DEPS  = -lslatec
 FFLAGS = -O3  -ffree-line-length-none -fopenmp#-Wextra  #-Wall -pedantic# -pedantic -O3
-.PHONY: test jfplot testgam testcur testinterp
+.PHONY: test jfplot testgam testcur testinterp testnot
 
+testnot: testnot.exe
+	./testnot.exe
+	
 testinterp: testinterp.exe
 	./testinterp.exe
 
@@ -24,10 +27,10 @@ test: test.exe
 	gfortran $<  $(FFLAGS) $(OBJECTS) $(DEPS) -o $@
 
 %.mod: %.f90
-	gfortran $(FFLAGS) -c $<
+	gfortran $(FFLAGS) -c $< -o $@
 
 %.o : %.f90  $(MODULES) 
-	gfortran $(FFLAGS) -c  $< 
+	gfortran $(FFLAGS) -c $< -o $@
 
 clean:
 	rm -f *.o *.exe *.mod *.csv *.txt *.out *.pyf
