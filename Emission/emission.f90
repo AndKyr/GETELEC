@@ -48,7 +48,7 @@ function Cur_dens(F,W,R,gamma,T,regime) result (Jem)
 	!W: work function, R: Radius of curvature, gamma:total enhancement kT: boltzmann*temperature 
 	
 	double precision:: Gam(4),maxbeta,minbeta,kT,Jem,Jf,Jt,n,s,Um,xm
-	double precision, parameter:: nlimf=.82d0, nlimt=2.2d0
+	double precision, parameter:: nlimf=.6d0, nlimt=2.5d0
 	character,intent(out),optional::regime
 	Um=-1.d20
 	xm=-1.d20
