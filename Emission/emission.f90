@@ -24,10 +24,11 @@ end interface
 
 contains
 
-function Jcur(F,W,R,gamma,T,regime) result(J)
+function Jcur(F,W,R,gamma,T,regime,heat) result(J)
 	
 	real(dp),intent(in)::F(:),W,R,gamma,T
 	character,intent(out),optional::regime(:)
+	real(dp), intent(out):: heat(:)
 	real(dp)::J(size(F))
 	integer:: i,N,nthread
 	N=size(F)
@@ -37,19 +38,20 @@ function Jcur(F,W,R,gamma,T,regime) result(J)
 	do i=1,N
 !		!$ nthread= omp_get_thread_num()
 !		!$ print *, 'I am thread number ', nthread, 'and i=', i
-		J(i)=Cur_dens(F(i),W,R,gamma,T,regime(i))
+		J(i)=Cur_dens(F(i),W,R,gamma,T,regime(i),heat(i))
 	enddo
 	!$omp end parallel do
 end function Jcur
 
-function Cur_dens(F,W,R,gamma,T,regime) result (Jem)
+function Cur_dens(F,W,R,gamma,T,regime,heat) result (Jem)
 !Calculates current density, main module function
 	real(dp), intent(in)::F,W,R,T,gamma !F: local field, 
 	!W: work function, R: Radius of curvature, gamma:total enhancement kT: boltzmann*temperature 
 	
-	double precision:: Gam(4),maxbeta,minbeta,kT,Jem,Jf,Jt,n,s,Um,xm,E0,dE
+	double precision:: Gam(4),maxbeta,minbeta,kT,Jem,Jf,Jt,n,s,Um,xm,E0,dE,heatf,heatt
 	real(dp),allocatable::G(:)
-	double precision, parameter:: nlimf=.6d0, nlimt=2.5d0
+	real(dp), intent(out):: heat
+	double precision, parameter:: nlimf=.6d0, nlimt=3.2d0
 	character,intent(out),optional::regime
 	Um=-1.d20
 	xm=-1.d20
@@ -60,6 +62,8 @@ function Cur_dens(F,W,R,gamma,T,regime) result (Jem)
 	
 	if(kT*maxbeta<nlimf) then!field regime
 		Jem=zs*pi*kT*exp(-Gam(1))/(maxbeta*sin(pi*maxbeta*kT))!Murphy-Good version of FN
+		heat=-zs*pi*pi*kT*kT*exp(-Gam(1))*cos(pi*maxbeta*kT)  &
+		/(maxbeta*(sin(pi*maxbeta*kT)**2))
 		regime='f'
 	else if (kT*minbeta>(nlimt)) then!thermal regime
 		n=1.d0/(kT*minbeta)
@@ -67,9 +71,15 @@ function Cur_dens(F,W,R,gamma,T,regime) result (Jem)
 		Jf = zs*(minbeta**(-2))*Sigma(1.d0/n)*exp(-s);
 		Jt = zs*(kT**2)*exp(-n*s)*Sigma(n)
 		Jem = Jt+Jf/(n**2)
+		heatt=((n*s+1.d0)*Sigma(n)-DSigma(n))*exp(-n*s)
+		heatf=(n**3)*DSigma(1/n)*exp(-s)
+		heat=(heatt+heatf)*zs*(kT**3)
+		heat=zs*exp(-Um/kT)*kT*kT*(kT+Um)
+!		print *, 'Sigma(n)', Sigma(n), 'Dsigma=', Dsigma(n)
 		regime='t'
 	else!intermediate regime
 		Jem=J_num_integ(F,W,R,gamma,T,G,E0,dE)
+		heat=Notting_num(F,W,R,gamma,T,G,E0,dE)
 		regime='i'
 		deallocate(G)
 	endif
@@ -91,7 +101,6 @@ function Gamow_general(F,W,R,gamma,Um,xm) result (Gam)
 	x=W/(F*R)
 	yf=1.44d0*F/(W**2)
 
-	
 	if (x>xlim) then !not x<<1, use numerical integration
 		if (x>0.4d0) then !the second root is far away
 			xmax=W*gamma/F
@@ -196,7 +205,7 @@ function J_num_integ(F,W,R,gamma,T,G,E0,dE) result(Jcur)
 	
 
 	if (j==(Nvals-1)) then
-		Emax=6.d0*kT
+		Emax=8.d0*kT
 		Nmax=ceiling(Emax/dE)
 		allocate (Ghigh(1:Nmax))
 		do j=1,Nmax!integrate above Umax
@@ -392,69 +401,47 @@ function G_simple(Vbarrier,xmax,Um,xm) result(G)
 	end function negBarrier
 end function G_simple
 
-function Notting_num(F,W,R,gamma,T) result(heat)
+function Notting_num(F,W,R,gamma,T,G,E0,dE) result(heat)
 
-	real(dp), intent(in)::F,W,R,T,gamma !F: local field, 
+	real(dp), intent(in)::F,W,R,T,gamma,E0,dE !F: local field, 
 	!W: work function, R: Radius of curvature, kT: boltzmann*temperature
-	real(dp), allocatable :: G(:)
+	real(dp),intent(in) :: G(:)
 	
-	real(dp)::outsum=0.d0,insum=0.d0,E,kT,Jcur,heat,E0,dE,integrand
-
+	
+	real(dp)::outsum,insum,E,kT,heat,integrand
 	integer:: i,N
-	Jcur=J_num_integ(F,W,R,gamma,T,G,E0,dE)
+
+	outsum=0.d0
+	insum=0.d0
 	N=size(G)
 	E=E0
 	kT=kBoltz*T
-!	print *, 'E0=', E0, 'dE=', dE
 	do i=1,N
 		insum=insum+dE/(1.d0+exp(G(i)))
-		integrand=insum*E/(1+exp(E/kT))
+		integrand=insum*E/(1.d0+exp(E/kT))
 		outsum=outsum+integrand
-		
-!		print *,integrand
+!		print *, E, integrand
 		E=E+dE
+		
 	enddo
-	heat=outsum*dE*zs/1.602d-19
-	deallocate(G)
+	heat=outsum*dE*zs
 end function Notting_num
-
-function Notting_gen(F,W,R,gamma,T,regime) result (heat)
-!Calculates Noggingham effect heating-cooling
-	real(dp), intent(in)::F,W,R,T,gamma !F: local field, 
-	!W: work function, R: Radius of curvature, gamma:total enhancement kT: boltzmann*temperature 
-	
-	real(dp):: Gam(4),maxbeta,minbeta,kT,Jem,Jf,Jt,n,s,Um,xm,E0,dE,heat
-	real(dp), parameter:: nlimf=.6d0, nlimt=2.5d0
-	character,intent(out),optional::regime
-	Um=-1.d20
-	xm=-1.d20
-	kT=kBoltz*T
-	Gam=Gamow_general(F,W,R,gamma,Um,xm)
-	maxbeta=Gam(2)
-	minbeta=Gam(3)
-	
-	if(kT*maxbeta<nlimf) then!field regime
-		heat=-zs*pi*pi*kT*kT*exp(-Gam(1))*cos(pi*maxbeta*kT)/(1.605d-19*maxbeta*(sin(pi*maxbeta*kT)**2))!Murphy-Good version of FN
-		regime='f'
-	else if (kT*minbeta>(nlimt)) then!thermal regime
-		heat=Notting_num(F,W,R,gamma,T)
-		regime='t'
-	else!intermediate regime
-		heat=Notting_num(F,W,R,gamma,T)
-		regime='i'
-	endif
-	
-end function Notting_gen
 	
 pure function Sigma(x) result(Sig)
 	double precision, intent(in) :: x
 	double precision:: Sig
-	if (x>1.5d0) then
-		Sig=-4.687
-	else
-		Sig = (1+x**2)/(1-x**2)-.3551d0*x**2-0.1059d0*x**4-0.039*x**6!Jensen's sigma
-	endif
+!	if (x>1.5d0) then
+!		Sig=-4.687
+!	else
+		Sig = (1.d0+x**2)/(1.d0-x**2)-.3551d0*x**2-0.1059d0*x**4-0.039*x**6!Jensen's sigma
+!	endif
 end function Sigma
+
+pure function DSigma(x) result(ds)
+	real(dp), intent(in):: x
+	real(dp):: ds
+	ds=(-1.d0+4.d0*x**2+x**4)/(1.d0-x**2)-.3551d0*x**2-.3178d0*x**4-0.027066*x**6!Jensen's sigma
+end function DSigma
 
 
 end module
