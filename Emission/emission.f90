@@ -51,8 +51,9 @@ function Cur_dens(F,W,R,gamma,T,regime,heat) result (Jem)
 	double precision:: Gam(4),maxbeta,minbeta,kT,Jem,Jf,Jt,n,s,Um,xm,E0,dE,heatf,heatt
 	real(dp),allocatable::G(:)
 	real(dp), intent(out):: heat
-	double precision, parameter:: nlimf=.6d0, nlimt=3.2d0
+	double precision, parameter:: nlimf=.7d0, nlimt=3.2d0
 	character,intent(out),optional::regime
+	character:: mode
 	Um=-1.d20
 	xm=-1.d20
 	kT=kBoltz*T
@@ -71,15 +72,18 @@ function Cur_dens(F,W,R,gamma,T,regime,heat) result (Jem)
 		Jf = zs*(minbeta**(-2))*Sigma(1.d0/n)*exp(-s);
 		Jt = zs*(kT**2)*exp(-n*s)*Sigma(n)
 		Jem = Jt+Jf/(n**2)
-		heatt=((n*s+1.d0)*Sigma(n)-DSigma(n))*exp(-n*s)
-		heatf=(n**3)*DSigma(1/n)*exp(-s)
-		heat=(heatt+heatf)*zs*(kT**3)
-		heat=zs*exp(-Um/kT)*kT*kT*(kT+Um)
-!		print *, 'Sigma(n)', Sigma(n), 'Dsigma=', Dsigma(n)
+!		heatt=(n*s+2.d0)*Sigma(n)*exp(-n*s)
+!		heatf=(n**3)*DSigma(1/n)*exp(-s)
+		heat=zs*(kT**2)*(Um+2.d0*kT)*Sigma(n)*exp(-n*s)
+!		print *, 'Sigma(n)', Sigma(n), 'Dsigma=', Dsigma(n), 'ns=', n*s, 'heatf=', heatf
 		regime='t'
 	else!intermediate regime
-		Jem=J_num_integ(F,W,R,gamma,T,G,E0,dE)
-		heat=Notting_num(F,W,R,gamma,T,G,E0,dE)
+		if (kT*minbeta>(1.d0)) then
+			mode='t'
+		else
+			mode='f'
+		endif
+		Jem=J_num_integ(F,W,R,gamma,T,heat)
 		regime='i'
 		deallocate(G)
 	endif
@@ -147,110 +151,122 @@ function Gamow_general(F,W,R,gamma,Um,xm) result (Gam)
 
 end function Gamow_general
 
-function J_num_integ(F,W,R,gamma,T,G,E0,dE) result(Jcur)
+function J_num_integ(F,W,R,gamma,T,heat) result(Jcur)
 !numerical integration over energies to obtain total current according
 !to landauer formula
-	real(dp), intent(in)::F,W,R,T,gamma !F: local field, 
+	real(dp), intent(in)::F,W,R,T,gamma !F: local field,
 	!W: work function, R: Radius of curvature, kT: boltzmann*temperature
-	real(dp),intent(out)::E0,dE
-	real(dp), intent(out),allocatable :: G(:)
-	real(dp),dimension(:),allocatable::Gmid,Ghigh,Glow
+	real(dp), intent(out) :: heat
+	real(dp), parameter:: cutoff=1.d-4 !cutoff of the exponentially decreasing
+	integer, parameter::Nvals=250!no of intervals for integration
 	
-	real(dp), parameter:: cutoff=1.d-4
-	integer, parameter::Nvals=200!no of intervals between Ef and Umax
-	
-	real(dp):: Gam(4),Gj(4),Um,xm,dG,Ej,intSum,kT,fj,fmax,Jcur,Umax,Emax,Emin
-	integer::j,Nmax,Nmin,Nmid,Nlow,Nhigh
+	real(dp):: kT,Gam(4),Gj(4),Um,xm,G(2*Nvals),dG,Ej,dE,Ea,Eb,insum,heatsum, &
+	Jsum,Jcur,Umax,Emax,Emin,E0,Gup(Nvals),Gdown(Nvals),fj,fmax
+	integer::j,i,fidout=1987
+
+	open(fidout,file="out.csv",action="write",status="replace")
+
 
 	Um=-1.d20
 	xm=-1.d20
 	kT=kBoltz*T
 	Gam=Gamow_general(F,W,R,gamma,Um,xm)
-	dE = Um/(Nvals-1)
+	dG=Gam(3)
+	
 	if (Gam(1)==0.d0) then!if no barrier for fermi electrons
 		Jcur=1.d20
 		return
 	endif
-	allocate (Gmid(1:Nvals-2))
-	
-	if (Gam(3)/=1.d20) then
-		intSum=lFD(0.d0,kT)/(1.d0+exp(Gam(1)))
-		fmax=intSum
-		do j=1,Nvals-2!integrate from Ef to Umax
-			Ej=j*dE
+
+	if(kT*Gam(2)<1.d0) then!field regime, max is close to Ef
+		Emax=abs(log(cutoff))/(1.d0/kT-.7*Gam(2))
+		Emin=-abs(log(cutoff))/Gam(2)
+		E0=0.d0
+		print *, 'field and Emax=',Emax, 'Emin=', Emin 
+	else if (kT*Gam(3)>.95d0) then!thermal regime, max is close to Um
+		Emax=Um+abs(log(cutoff))*kT
+		Emin=Um-abs(log(cutoff))/(Gam(3)-0.7/kT)
+		E0=Um
+		print *, 'thermal and and Emax=',Emax, 'Emin=', Emin 
+	else! integmediate regime, max is in between ,find it
+		Ea=0.d0
+		Eb=Um
+		do j=1,100!bisection to find where n=1
+			Ej=(Eb+Ea)*.5d0
 			Umax=Um-Ej
 			Gj=Gamow_general(F,W-Ej,R,gamma,Umax,xm)
-			Gmid(j)=Gj(1)
-			if ( .not. isnan(Gj(1)) ) then
-				fj=(lFD(Ej,kT))/(1.d0+exp(Gj(1)))
-			endif
-			intSum=intSum+fj
-			if (fj>fmax) then
-				fmax=fj
-			endif
-			if (abs(fj/fmax)<cutoff) then
+			if ((kT*Gj(2))<0.95d0) then
+				Eb=Ej
+			else if (Gj(2)*kT>1.05d0) then
+				Ea=Ej
+			else
 				exit
 			endif
 		enddo
-		dG=Gam(3)
-	else
-		j=Nvals-1
-		Gj=0.d0
-		dG=0.d0
-		Ej=Um
-		intSum=lFD(Um,kT)/2.d0
-		fmax=intSum
+		Emax=Um
+		Emin=0.d0
+		print *, 'intermediate and Emaximum is ', Ej, 'and 1/kT=', 1.d0/kT
 	endif
-	Nmid=j-1
+	print *, 'Gam=', Gam
 	
+	dE=(Emax-Emin)/(Nvals-1)
 
-	if (j==(Nvals-1)) then
-		Emax=8.d0*kT
-		Nmax=ceiling(Emax/dE)
-		allocate (Ghigh(1:Nmax))
-		do j=1,Nmax!integrate above Umax
-			Gj(1)=Gj(1)-dG*dE
-			Ghigh(j)=Gj(1)
-			Ej=Ej+dE
-			fj=lFD(Ej,kT)/(1.d0+exp(Gj(1)))
-			intSum=intSum+fj
-			if (abs(fj/fmax)<cutoff) then
-				exit
-			endif
-		enddo
-		Nhigh=j-1
-!		print *, 'Ghigh=', Ghigh
-	else
-		Nhigh=0
-		allocate(Ghigh(1))
-	endif
-	Emin=-6.d0/Gam(2)
-	Nmin=ceiling(abs(Emin)/dE)
-	allocate (Glow(1:Nmin))
-	do j=1,Nmin!integrate below Ef
-		Ej=j*dE
-		Umax=Um+Ej
-		Gj=Gamow_general(F,W+Ej,R,gamma,Umax,xm)
-		Glow(j)=Gj(1)
-		fj=lFD(-Ej,kT)/(1.d0+exp(Gj(1)))
-		intSum=intSum+fj
+	Jsum=0.d0
+	insum=0.d0
+	heatsum=0.d0
+
+	
+	do j=1,2*Nvals!integrate over high energies
+		Ej=E0+(j-1)*dE
+		Umax=Um-Ej
+		if (Umax>0.d0) then
+			Gj=Gamow_general(F,W-Ej,R,gamma,Umax,xm)
+		else
+			Gj(1)=Gam(3)*Umax
+		endif
+		if ( .not. isnan(Gam(1)) ) then
+			Gup(j)=Gj(1)
+		endif
+		fj=lFD(Ej,kT)/(1.d0+exp(Gup(j)))
 		if (fj>fmax) then
 			fmax=fj
 		endif
-		if (abs(fj/fmax)<cutoff)  then !.or. isnan(fj))
+		if (abs(fj/fmax)<cutoff)  then
 			exit
 		endif
+		Jsum=Jsum+fj
+		write(fidout,*) Ej,',',fj
 	enddo
-	Nlow=j-1
+!	insum=insum+dE/(1.d0+exp(G))
+!	heatsum=heatsum+insum*Ej/(1.d0+exp(Ej/kT))
+	do i=1,2*Nvals
+		Ej=E0-(i-1)*dE
+		Umax=Um-Ej
+		if (Umax>0.d0) then
+			Gj=Gamow_general(F,W-Ej,R,gamma,Umax,xm)
+		else
+			Gj(1)=Gam(3)*Umax
+		endif
+		if ( .not. isnan(Gam(1)) ) then
+			Gdown(i)=Gj(1)
+		endif
+		fj=lFD(Ej,kT)/(1.d0+exp(Gdown(i)))
+		if (fj>fmax) then
+			fmax=fj
+		endif
+		if (abs(fj/fmax)<cutoff)  then
+			exit
+		endif
+		Jsum=Jsum+fj
+		write(fidout,*) Ej,',',fj
+	enddo
+!	heat=heatsum*zs*dE
+	Jcur=Jsum*zs*dE
+	
 
-	allocate(G(Nhigh+Nlow+Nmid))
-	G=[Glow(Nlow:1:-1),Gmid(1:Nmid),Ghigh(1:Nhigh)]
-	deallocate(Glow,Gmid,Ghigh)
-	E0=-Ej
-	Jcur=zs*kT*intSum*dE
-	
+	close(fidout)
+
 	contains
-	
 	pure function lFD(E,kT) result(L)
 		real(dp), intent(in)::E,kT
 		real(dp) :: L
@@ -401,31 +417,7 @@ function G_simple(Vbarrier,xmax,Um,xm) result(G)
 	end function negBarrier
 end function G_simple
 
-function Notting_num(F,W,R,gamma,T,G,E0,dE) result(heat)
 
-	real(dp), intent(in)::F,W,R,T,gamma,E0,dE !F: local field, 
-	!W: work function, R: Radius of curvature, kT: boltzmann*temperature
-	real(dp),intent(in) :: G(:)
-	
-	
-	real(dp)::outsum,insum,E,kT,heat,integrand
-	integer:: i,N
-
-	outsum=0.d0
-	insum=0.d0
-	N=size(G)
-	E=E0
-	kT=kBoltz*T
-	do i=1,N
-		insum=insum+dE/(1.d0+exp(G(i)))
-		integrand=insum*E/(1.d0+exp(E/kT))
-		outsum=outsum+integrand
-!		print *, E, integrand
-		E=E+dE
-		
-	enddo
-	heat=outsum*dE*zs
-end function Notting_num
 	
 pure function Sigma(x) result(Sig)
 	double precision, intent(in) :: x

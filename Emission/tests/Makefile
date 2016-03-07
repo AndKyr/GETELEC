@@ -6,6 +6,7 @@ FFLAGS = -O3  -ffree-line-length-none#-Wextra  #-Wall -pedantic# -pedantic -O3
 
 testnot: testnot.exe
 	./testnot.exe
+	python testplot.py
 	
 testinterp: testinterp.exe
 	./testinterp.exe
