@@ -105,7 +105,62 @@
 		endif
 	end function lFD
 
+function G_simple(Vbarrier,xmax,Um,xm) result(G)
+!calculate Gamow by simple numerical integration
+	double precision, intent(in)::xmax!max point of integration
+	double precision, intent(inout)::Um,xm
+	procedure(fun_temp)::Vbarrier
+	integer, parameter ::Nvals=500
+	double precision:: G,xj,Vj,sumbar,xmin=1.d-5,dx
+	integer:: i
 
+	if (Um == -1.d20) then
+		Um=-local_min(xmin,xmax,1.d-8,1.d-8,negBarrier,xm)
+	endif
+
+		if (Um<0.d0) then
+		G=0.d0
+		return
+	endif
+	
+	if (Vbarrier(xmax)>0) then
+		G=1.d20
+		return
+	endif
+	sumbar=.5d0*sqrt(Um)
+	dx=(xmax-xm)/(Nvals-1)
+	xj=xm+dx
+	do i=1,Nvals!integrate from Um to max root
+		Vj=Vbarrier(xj)
+		if (Vj<0) then
+			exit
+		endif
+		sumbar=sumbar+sqrt(Vj)
+		xj=xj+dx
+	enddo
+	G=gg*sumbar*dx
+
+	sumbar=.5d0*sqrt(Um)
+	dx=(xm-xmin)/(Nvals-1)
+	xj=xm-dx
+	do i=1,Nvals!integrate from Um to min root
+		Vj=Vbarrier(xj)
+		if (Vj<0) then
+			exit
+		endif
+		sumbar=sumbar+sqrt(Vj)
+		xj=xj-dx
+	enddo
+	G=G+gg*sumbar*dx
+	
+	contains
+
+	pure function negBarrier(x) result(nv)
+		real(dp), intent(in)::x
+		real(dp)::nv
+		nv=-Vbarrier(x)
+	end function negBarrier
+end function G_simple
 
 function Notting_num(F,W,R,gamma,T,G,E0,dE) result(heat)
 

@@ -10,5 +10,5 @@ x,y= np.loadtxt("out.csv",delimiter=',',unpack='True')
 plt.figure(1)
 plt.plot(x,y,'b',label="ft")  # connect points with a blue line
 plt.figure(2)
-plt.semilogy(x,y,'b',label="ft") 
+plt.semilogy(x,abs(y),'b',label="ft") 
 plt.show()
