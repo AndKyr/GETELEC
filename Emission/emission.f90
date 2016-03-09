@@ -2,7 +2,6 @@ module emission
 
 use std_mat, only: lininterp,diff2,local_min
 
-use omp_lib
 implicit none
 
 integer, parameter:: Ny=200,dp=8
@@ -16,8 +15,8 @@ real(dp), parameter :: pi=acos(-1.d0),b=6.83089d0,zs=1.6183d-4,gg=10.246d0, Q=0.
 
 interface!interface to pass function pointers
 	pure function fun_temp(x) result(y)
-		real(dp), intent(in)::x
-		real(dp):: y
+		real(8), intent(in)::x
+		real(8):: y
 	end function fun_temp
 end interface
 
@@ -32,11 +31,9 @@ function Jcur(F,W,R,gamma,T,regime,heat) result(J)
 	integer:: i,N,nthread
 	N=size(F)
 
-	!$omp parallel do ordered
 	do i=1,N
 		J(i)=Cur_dens(F(i),W,R,gamma,T,regime(i),heat(i))
 	enddo
-	!$omp end parallel do
 end function Jcur
 
 function Cur_dens(F,W,R,gamma,T,regime,heat) result (Jem)

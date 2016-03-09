@@ -5,8 +5,8 @@ use std_mat, only: csvread,csvprint
 use omp_lib
 implicit none
 
-integer,parameter::dp=8,Nvals=8000
-real(dp):: params(4),F(Nvals),W,R,T,gamma,J(Nvals),regnum(Nvals),arrout(Nvals,3)
+integer,parameter::dp=8,Nvals=500
+real(dp):: params(4),F(Nvals),W,R,T,gamma,J(Nvals),regnum(Nvals),arrout(Nvals,3),heat(Nvals)
 character :: regime(Nvals)
 integer:: i,fidout=1987,fidin=1821,nthreads
 
@@ -25,7 +25,7 @@ gamma=params(4)
 !$ call omp_set_dynamic(.false.)
 !$ call omp_set_num_threads(nthreads)
 
-J=Jcur(F,W,R,gamma,T,regime)
+J=Jcur(F,W,R,gamma,T,regime,heat)
 
 where (regime=='f') regnum=-1.d0
 where (regime=='t') regnum=1.d0

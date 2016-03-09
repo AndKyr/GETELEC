@@ -8,8 +8,8 @@ implicit none
 
 
 double precision, parameter:: Fmin=0.1d0, Fmax=5.d0, W=3.2d0, &
-R=10.d0, T=600.d0,gamma=50.d0
-integer, parameter :: Nvals=2000
+R=5.d0, T=600.d0,gamma=50.d0
+integer, parameter :: Nvals=16000
 double precision::J(Nvals),F(Nvals),t1,t2,arrout(Nvals,4),regnum(Nvals), &
 ww(Nvals),RR(Nvals),TT(Nvals),ggam(Nvals),heat(Nvals)
 character :: regime(Nvals)

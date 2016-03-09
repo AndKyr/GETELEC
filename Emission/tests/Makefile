@@ -1,7 +1,7 @@
 OBJECTS = ../std_mat.o ../emission.o
 MODULES = ../std_mat.mod ../emission.mod 
 DEPS  = -lslatec
-FFLAGS = -O3  -ffree-line-length-none #-Wextra #-Wall -pedantic# -pedantic -O3
+FFLAGS = -O3  -ffree-line-length-none -fopenmp#-Wextra #-Wall -pedantic# -pedantic -O3
 .PHONY: test jfplot testgam testcur testinterp testnot
 
 testnot: testnot.exe

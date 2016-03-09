@@ -24,19 +24,19 @@ def writeparams(F,W,R,T,gamma):
 	f.close()
 
 def readJ():
-	x,y,reg= np.loadtxt("J-Fplot.csv",delimiter=',',unpack='True')
+	x,y,reg = np.loadtxt("J-Fplot.csv",delimiter=',',unpack='True')
 	return y
 
 color='rgbkm'
 beta=10;
 Fmacmin=6e-3
 Fmacmax=1.8e-1
-Fmac=1/np.linspace(1/Fmacmax,1/Fmacmin,8000)
+Fmac=1/np.linspace(1/Fmacmax,1/Fmacmin,500)
 
 
-Ti=[600]#. , 700.]
-Wi=[4.5]#, 4.5]
-betai=[65]#.,66.5]
+Ti=[600. , 700.]
+Wi=[4.5, 1.5]
+betai=[66.5,10.]
 R=5.0
 T=500.0
 gamma=10.0

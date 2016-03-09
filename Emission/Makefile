@@ -8,7 +8,7 @@ main: main.exe
 	./main.exe
 
 %.exe: %.o $(MODULES) $(OBJECTS)
-	gfortran $<  $(FFLAGS) $(OBJECTS) -o $@ #$(DEPS) 
+	gfortran $<  $(FFLAGS) $(OBJECTS) $(DEPS) -o $@  
 
 %.mod: %.f90
 	gfortran $(FFLAGS) -c $<
