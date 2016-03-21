@@ -27,32 +27,41 @@ def readJ():
 	x,y,reg = np.loadtxt("J-Fplot.csv",delimiter=',',unpack='True')
 	return y
 
-color='rgbkm'
-beta=10;
-Fmacmin=6e-3
-Fmacmax=1.8e-1
-Fmac=1/np.linspace(1/Fmacmax,1/Fmacmin,500)
+font=40
+beta=1.;
+Fmacmin=2.
+Fmacmax=8.
+Fmac=1./np.linspace(1./Fmacmax,1./Fmacmin,500)
 
 
-Ti=[600. , 700.]
-Wi=[4.5, 1.5]
-betai=[66.5,10.]
-R=5.0
-T=500.0
+Ti=[300. , 500.]
+Wi=[4.5, 4, 3.5]
+#betai=[66.5,10.]
+R=200.0
+T=00.0
 gamma=10.0
 ij=0
 plt.figure(1)
 for j in range(len(Wi)):
 	W=Wi[j]
-	beta=betai[j]
+	#beta=betai[j]
 	F=Fmac*beta
+	if j:
+		Ti=[300.]
 	for i in range(len(Ti)):
 		T=Ti[i]
 		writeparams(F,W,R,T,gamma)
 		os.system("make main")
 		logJ=readJ()
-		plt.semilogy(1/Fmac,np.exp(logJ),color[ij])
+		leglab='$\phi=' + str(W)+'eV$, $T='+ str(int(T)) + 'K$'
+		plt.semilogy(1/Fmac,np.exp(logJ),label=leglab,linewidth=2)
 		ij+=1
+
+plt.xlabel(r'$1/F (m/GV)$',fontsize=font)
+plt.ylabel(r'$J (A/nm^2)$',fontsize=font)
+plt.xticks(fontsize=font)
+plt.yticks(fontsize=font)
+plt.legend(fontsize=font,loc=3)
 
 plt.show()#plot results
 

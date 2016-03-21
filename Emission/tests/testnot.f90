@@ -5,7 +5,7 @@ use std_mat
 implicit none
 
 
-double precision, parameter:: F=1.5136485821375840d0, W=1.5d0, R=2.d0, T=600.d0,gamma=10.d0
+double precision, parameter:: F=.d0, W=4.5d0, R=2.d0, T=600.d0,gamma=10.d0
 double precision::heat, Jcur
 character:: regime
 
