@@ -135,12 +135,12 @@ function J_num_integ(F,W,R,gamma,T,heat) result(Jcur)
 	!W: work function, R: Radius of curvature, kT: boltzmann*temperature
 	real(dp), intent(out) :: heat
 	real(dp), parameter:: cutoff=1.d-4 !cutoff of the exponentially decreasing
-	integer, parameter::Nvals=550!no of intervals for integration
+	integer, parameter::Nvals=512, fidout=1953!no of intervals for integration
 	real(dp):: kT,Gam(4),Gj(4),Um,xm,G(4*Nvals),Ej,dE,Ea,Eb,insum, &
 	Jsum,Jcur,Umax,Emax,Emin,E0,Gup(2*Nvals),Gdown(2*Nvals),fj,fmax,integrand,outsum
-	integer::j,i,k,fidout=1987
+	integer::j,i,k
 
-	if (spectroscopy) then 
+	if (spectroscopy) then
 		open(fidout,file='spectra.csv')
 	endif
 	Um=-1.d20
@@ -185,6 +185,7 @@ function J_num_integ(F,W,R,gamma,T,heat) result(Jcur)
 	Jsum=0.d0
 	insum=0.d0
 	outsum=0.d0
+	fmax=0.d0
 	
 	do j=1,2*Nvals!integrate over high energies
 		Ej=E0+(j-1)*dE
@@ -234,10 +235,12 @@ function J_num_integ(F,W,R,gamma,T,heat) result(Jcur)
 		insum=insum+dE/(1.d0+exp(G(k)))
 		outsum=outsum+integrand
 		if (spectroscopy) then
+			print *, fidout
 			write(fidout,*) Ej,',',integrand,',',integrand/Ej
 		endif
 		Ej=Ej+dE
 	enddo
+
 	heat=zs*outsum*dE
 	
 	if (spectroscopy) then

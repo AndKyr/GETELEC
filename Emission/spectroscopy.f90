@@ -4,7 +4,7 @@ use emission, only: J_num_integ, spectroscopy
 use std_mat, only: csvread,csvprint
 implicit none
 
-integer,parameter::dp=8,fidin=1987
+integer,parameter::dp=8,fidin=1625
 real(dp):: params(5),F,W,R,T,gamma,J,heat
 
 spectroscopy=.true.

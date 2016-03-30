@@ -94,7 +94,7 @@ pure function interp1(xi,yi,x) result(y)
 	double precision, intent(in) :: xi(:),yi(:),x
 	double precision :: y
 	integer :: i,j,Nlow
-	
+	Nlow=0
 	do j=1,size(xi)
 		if (xi(j)>x) then
 			Nlow=j-1

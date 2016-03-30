@@ -20,11 +20,6 @@ R=params(2)
 T=params(3)
 gamma=params(4)
 
-!$ nthreads = omp_get_num_procs()
-!$ print * , 'threads: ', nthreads
-!$ call omp_set_dynamic(.false.)
-!$ call omp_set_num_threads(nthreads)
-
 J=Jcur(F,W,R,gamma,T,regime,heat)
 
 where (regime=='f') regnum=-1.d0
