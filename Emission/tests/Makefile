@@ -1,8 +1,12 @@
-OBJECTS = ../std_mat.o ../emission.o
-MODULES = ../std_mat.mod ../emission.mod 
+OBJECTS = ../std_mat.o ../emission.o ../levenberg_marquardt.o
+MODULES = ../std_mat.mod ../emission.mod ../levenberg_marquardt.mod
 DEPS  = -lslatec
-FFLAGS = -O3  -ffree-line-length-none -fopenmp#-Wextra #-Wall -pedantic# -pedantic -O3
-.PHONY: test jfplot testgam testcur testinterp testnot
+FFLAGS = -ffree-line-length-none #-fopenmp#-Wextra #-Wall -pedantic# -pedantic -O3
+
+.PHONY: test jfplot testgam testcur testinterp testnot testlavmar
+
+testlavmar: testlavmar.exe
+	./testlavmar.exe
 
 testnot: testnot.exe
 	./testnot.exe

@@ -7,6 +7,34 @@ integer,parameter::dp=8
 
 contains
 
+subroutine plot1(xdata,ydata)
+	real(dp), intent(in):: xdata(:),ydata(:)
+
+	integer, parameter:: fidx=2365689,fidy=24685945
+
+	open(fidx,file='xdata.csv')
+	open(fidy,file='ydata.csv')
+	write(fidx,"(es22.15)") xdata
+	write(fidy,"(es22.15)") ydata
+	call system('python plot.py')
+	close(fidx)
+	close(fidy)
+end subroutine
+
+subroutine plot(xdata,ydata)
+	real(dp), intent(in):: xdata(:,:),ydata(:,:)
+
+	integer, parameter:: fidx=2365689,fidy=24685945
+
+	open(fidx,file='xdata.csv')
+	open(fidy,file='ydata.csv')
+	call csvprint(fidx,xdata)
+	call csvprint(fidy,ydata)
+	call system('python ../plot.py')
+	close(fidx)
+	close(fidy)
+end subroutine
+
 subroutine csvprint(fileunit,dataarr)
 	! write real numbers to a CSV file
 	integer, intent(in):: fileunit
@@ -108,7 +136,7 @@ pure function interp1(xi,yi,x) result(y)
 	endif
 end function interp1
 
-function diff2(f,x) result(y)
+function diff2(f,x) result(y)!second derivative of a function f at point x
 	double precision, intent(in)::x
 	double precision, external::f
 	double precision::y
@@ -326,5 +354,4 @@ function local_min ( a, b, eps, t, f, x )
   return
 end
 
-  
 end module std_mat

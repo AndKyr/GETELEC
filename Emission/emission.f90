@@ -1,5 +1,5 @@
 module emission
-use std_mat, only: lininterp,diff2,local_min
+use std_mat, only: lininterp,diff2,local_min,plot
 implicit none
 
 integer, parameter:: Ny=200,dp=8
@@ -21,6 +21,19 @@ end interface
 
 contains
 
+function J_from_Vx(x,V,heat) result(J)
+	real(dp),intent(in)::V(:),x(:)
+	real(dp), intent(out):: heat(:)
+	real(dp)::J(size(F))
+	integer:: i,N,nthread
+	N=size(F)
+
+	do i=1,N
+		J(i)=Cur_dens(F(i),W,R,gamma,T,regime(i),heat(i))
+	enddo
+!	call plot(1.d0/F,log(J))
+
+
 function Jcur(F,W,R,gamma,T,regime,heat) result(J)
 !calculates current and Nottingham for many input values
 	real(dp),intent(in)::F(:),W,R,gamma,T
@@ -33,6 +46,8 @@ function Jcur(F,W,R,gamma,T,regime,heat) result(J)
 	do i=1,N
 		J(i)=Cur_dens(F(i),W,R,gamma,T,regime(i),heat(i))
 	enddo
+!	call plot(1.d0/F,log(J))
+	
 end function Jcur
 
 function Cur_dens(F,W,R,gamma,T,regime,heat) result (Jem)
@@ -291,15 +306,15 @@ end function Gam_KX
 
 function Gamow_num(Vbarrier,xmax,Um,xm) result(G)
 !calculate Gamow by numerical integration
-	double precision, intent(in)::xmax
-	double precision, intent(inout)::Um,xm
+	real(dp), intent(in)::xmax
+	real(dp), intent(inout)::Um,xm
 	procedure(fun_temp)::Vbarrier
 	
 	integer, parameter ::maxint=500
-	double precision, parameter :: AtolRoot=1.d-7, RtolRoot=1.d-7, &
+	real(dp), parameter :: AtolRoot=1.d-7, RtolRoot=1.d-7, &
 	AtolInt=1.d-5, RtolInt=1.d-5
-	double precision:: G, x ,x1(2),x2(2), ABSERR
-	double precision, dimension(maxint) :: ALIST,BLIST,RLIST,ELIST
+	real(dp):: G, x ,x1(2),x2(2), ABSERR
+	real(dp), dimension(maxint) :: ALIST,BLIST,RLIST,ELIST
 	integer :: iflag,NEVAL,IER,IORD(maxint),LAST
 
 	x=1.d-5
@@ -338,6 +353,34 @@ function Gamow_num(Vbarrier,xmax,Um,xm) result(G)
 	end function sqrtVBarrier
 end function Gamow_num
 
+subroutine fitpot(x,V,F,R,gamma)
+	use Levenberg_Marquardt, only: nlinfit
+	
+	real(dp), intent(in)	::x(:),V(:)
+	real(dp), intent(out)	::F,R,gamma
+	real(dp)				::p(3),F2,Fend,var
+
+	p(1) = (V(2)-V(1))/(x(2)-x(1))
+	F2 = (V(3)-V(2))/(x(3)-x(2))
+	Fend = (V(size(V))-V(size(V)-1))/(x(size(x))-x(size(x)-1))
+	p(2) = abs(2.d0/((F2-p(1))/(x(2)-x(1))))
+	p(3) = p(1)/Fend
+	var=nlinfit(fun,x,V,p)
+	F=p(1)
+	R=p(2)
+	gamma=p(3)
+
+	contains
+
+	pure function fun(x,p) result(y)
+		real(dp), intent(in) :: x
+		real(dp), intent(in) :: p(:)
+		real(dp)			 :: y
+		y=(p(1)*p(2)*x*(p(3)-1.d0)+p(1)*x**2) / (p(3)*x+p(2)*(p(3)-1.d0))
+	end function fun
+end subroutine fitpot
+	
+	
 pure function Sigma(x) result(Sig)
 	double precision, intent(in) :: x
 	double precision:: Sig
