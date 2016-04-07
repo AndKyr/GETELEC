@@ -1,5 +1,5 @@
-OBJECTS = ../std_mat.o ../emission.o ../levenberg_marquardt.o
-MODULES = ../std_mat.mod ../emission.mod ../levenberg_marquardt.mod
+OBJECTS = ../std_mat.o ../levenberg_marquardt.o ../emission.o
+MODULES = ../std_mat.mod ../levenberg_marquardt.mod ../emission.mod 
 DEPS  = -lslatec
 FFLAGS = -ffree-line-length-none #-fopenmp#-Wextra #-Wall -pedantic# -pedantic -O3
 

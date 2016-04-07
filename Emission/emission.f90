@@ -21,17 +21,18 @@ end interface
 
 contains
 
-function J_from_Vx(x,V,heat) result(J)
-	real(dp),intent(in)::V(:),x(:)
-	real(dp), intent(out):: heat(:)
-	real(dp)::J(size(F))
-	integer:: i,N,nthread
-	N=size(F)
+function J_from_Vx(x,V,W,T,heat) result(J)
+	real(dp),intent(in)		:: V(:),x(:),T,W
+	real(dp), intent(out)	:: heat
+	real(dp)				:: J,F,R,gamma
+	integer					:: i,N,nthread
+	character				:: regime
 
-	do i=1,N
-		J(i)=Cur_dens(F(i),W,R,gamma,T,regime(i),heat(i))
-	enddo
-!	call plot(1.d0/F,log(J))
+	
+	call fitpot(x,V,F,R,gamma) ! fit V(x) to extract F,R,gamma
+	J=Cur_dens(F,W,R,gamma,T,regime,heat) !calculate current
+
+end function J_from_Vx
 
 
 function Jcur(F,W,R,gamma,T,regime,heat) result(J)
@@ -354,6 +355,8 @@ function Gamow_num(Vbarrier,xmax,Um,xm) result(G)
 end function Gamow_num
 
 subroutine fitpot(x,V,F,R,gamma)
+	!Fits V(x) data to F,R,gamma standard potential using L-V
+	!minimization module
 	use Levenberg_Marquardt, only: nlinfit
 	
 	real(dp), intent(in)	::x(:),V(:)
