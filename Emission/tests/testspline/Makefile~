@@ -2,10 +2,7 @@ OBJECTS = std_mat.o pyplot_mod.o bspline.o
 MODULES = std_mat.mod pyplot_mod.mod bspline.mod 
 FFLAGS = -ffree-line-length-none #-Wextra -Wall -pedantic# -pedantic -O3
 
-.PHONY: splinetest spline3d
-
-spline3d: spline3d.exe
-	./spline3d.exe
+.PHONY: splinetest
 
 splinetest: splinetest.exe
 	./splinetest.exe

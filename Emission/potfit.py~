@@ -20,4 +20,4 @@ print pcov
 plt.plot(xdata,ydata,'*')
 plt.plot(xdata,y)
 plt.plot(xdata,func(xdata,popt[0],popt[1],popt[2]))
-plt.show()ged
+plt.show()
