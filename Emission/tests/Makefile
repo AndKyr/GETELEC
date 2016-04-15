@@ -1,40 +1,23 @@
-OBJECTS = ../std_mat.o ../levenberg_marquardt.o ../emission.o
-MODULES = ../std_mat.mod ../levenberg_marquardt.mod ../emission.mod 
-DEPS  = -lslatec
-FFLAGS = -ffree-line-length-none #-fopenmp#-Wextra #-Wall -pedantic# -pedantic -O3
+OBJECTS = std_mat.o pyplot_mod.o bspline.o
+MODULES = std_mat.mod pyplot_mod.mod bspline.mod 
+FFLAGS = -ffree-line-length-none #-fcheck=bounds#-Wextra -Wall -pedantic# -pedantic -O3
 
-.PHONY: test jfplot testgam testcur testinterp testnot testlavmar
+.PHONY: splinetest spline3d
 
-testlavmar: testlavmar.exe
-	./testlavmar.exe
+spline3d: spline3d.exe
+	./spline3d.exe
 
-testnot: testnot.exe
-	./testnot.exe
-	
-testinterp: testinterp.exe
-	./testinterp.exe
+splinetest: splinetest.exe
+	./splinetest.exe
 
-testcur: testcur.exe
-	./testcur.exe
-
-testgam: testgam.exe
-	./testgam.exe
-
-jfplot: test.exe pointsplot.py
-	./test.exe
-	python pointsplot.py
-
-test: test.exe
-	./test.exe
-
-%.exe: %.o $(MODULES) $(OBJECTS)
-	gfortran $<  $(FFLAGS) $(OBJECTS) $(DEPS) -o $@
+%.exe: %.o $(OBJECTS)
+	gfortran $<  $(FFLAGS) $(OBJECTS) -o $@
 
 %.mod: %.f90
-	gfortran $(FFLAGS) -c $< -o $@
+	gfortran $(FFLAGS) -c $<
 
 %.o : %.f90  $(MODULES) 
 	gfortran $(FFLAGS) -c $< -o $@
 
 clean:
-	rm -f *.o *.exe *.mod *.csv *.txt *.out *.pyf
+	rm -f *.o *.exe *.mod *.txt *.out *.pyf *~
