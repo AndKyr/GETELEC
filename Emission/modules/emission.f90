@@ -1,5 +1,5 @@
 module emission
-use std_mat, only: lininterp,diff2,local_min,plot
+use std_mat, only: lininterp,diff2,local_min,plot, linspace
 implicit none
 
 integer, parameter:: Ny=200,dp=8
@@ -24,17 +24,23 @@ end interface
 
 
 
-function J_from_Vx(x,V,W,T,heat) result(J)
-    real(dp),intent(in)     :: V(:),x(:),T,W
+function J_from_phi(phi,grid_spacing,Nstart,W,T,heat) result(J)
+
+    real(dp),intent(in)     :: phi(:,:,:),grid_spacing(3),T,W
     real(dp), intent(out)   :: heat
-    real(dp)                :: J,F,R,gamma
-    integer                 :: i,N,nthread
+    integer, intent(in)     :: Nstart(3)
+    
+    integer, parameter      :: nline=64
+    
+    real(dp)                :: J,F,R,gamma, Vline(nline), rline(nline)
     character               :: regime
     
-    call fitpot(x,V,F,R,gamma) ! fit V(x) to extract F,R,gamma
+    rline=linspace(0.d0,3.d0,nline)
+    Vline=pot_interp(phi,grid_spacing,Nstart,rline)
+    call fitpot(rline,Vline,F,R,gamma) ! fit V(x) to extract F,R,gamma
     J=Cur_dens(F,W,R,gamma,T,regime,heat) !calculate current
 
-end function J_from_Vx
+end function J_from_phi
 
 
 function Jcur(F,W,R,gamma,T,regime,heat) result(J)
@@ -364,7 +370,7 @@ function pot_interp(phi,grid_spacing,Nstart,r) result(V)
     integer, intent(in)     :: Nstart(3)
     !everything comes in in nm
     
-    integer, parameter      :: kx=3, ky=3, kz=3, iknot=0
+    integer, parameter      :: kx=2, ky=2, kz=2, iknot=0
     integer                 :: inbvx=1,inbvy=1,inbvz=1,iloy=1,iloz=1
     integer                 :: idx=0, idy=0, idz=0, iflag
     real(dp), allocatable   :: fcn(:,:,:), tx(:), ty(:), tz(:), x(:), y(:), z(:)
@@ -389,19 +395,23 @@ function pot_interp(phi,grid_spacing,Nstart,r) result(V)
     istart=Nstart(1)
     jstart=Nstart(2)
     kstart=Nstart(3)
+    
     !find direction of the line (same as Efield direction)
-    Efstart=([phi(istart+1,jstart,kstart), phi(istart,jstart+1,kstart), &
-        phi(istart,jstart,kstart+1)]-phi(istart,jstart,kstart))/grid_spacing
+    Efstart=([phi(istart+1,jstart,kstart), &
+             phi(istart,jstart+1,kstart), &
+             phi(istart,jstart,kstart+1)]-phi(istart,jstart,kstart))/grid_spacing
     direc=Efstart/norm2(Efstart)
     
     !set the line of interpolation and interpolate
     xline=x(istart)+r*direc(1)
     yline=y(jstart)+r*direc(2)
-    zline=z(kstart)+r*direc(3)
+    zline=z(kstart-1)+r*direc(3)
     do i=1,nline
         call db3val(xline(i),yline(i),zline(i),idx,idy,idz,tx,ty,tz,nx,ny,nz, &
                     kx,ky,kz,fcn,V(i),iflag,inbvx,inbvy,inbvz,iloy,iloz)
     enddo
+    
+    deallocate(x,y,z,fcn,tx,ty,tz)
     
 end function pot_interp
 
@@ -413,11 +423,13 @@ subroutine fitpot(x,V,F,R,gamma)
     real(dp), intent(in)    ::x(:),V(:)
     real(dp), intent(out)   ::F,R,gamma
     real(dp)                ::p(3),F2,Fend,var
+    
+    integer                 :: Nstart=4
 
-    p(1) = (V(2)-V(1))/(x(2)-x(1))
-    F2 = (V(3)-V(2))/(x(3)-x(2))
+    p(1) = (V(Nstart)-V(Nstart-1))/(x(Nstart)-x(Nstart-1))
+    F2 = (V(Nstart+1)-V(Nstart))/(x(Nstart+1)-x(Nstart))
     Fend = (V(size(V))-V(size(V)-1))/(x(size(x))-x(size(x)-1))
-    p(2) = abs(2.d0/((F2-p(1))/(x(2)-x(1))))
+    p(2) = abs(2.d0/((F2-p(1))/(x(Nstart)-x(Nstart-1))))
     p(3) = p(1)/Fend
     var=nlinfit(fun,x,V,p)
     F=p(1)

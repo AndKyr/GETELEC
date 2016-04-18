@@ -4,7 +4,10 @@ MODOBJ = modules/obj/std_mat.o modules/obj/bspline.o \
 DEPS  = -lslatec
 FFLAGS = -ffree-line-length-none -fbounds-check -Imod #-Wall -pedantic# -pedantic -O3
 
-.PHONY: main spectroscopy spline3d
+.PHONY: main spectroscopy spline3d splinemission
+
+splinemission: bin/splinemission.exe
+	./bin/splinemission.exe
 
 spline3d: bin/spline3d.exe
 	./bin/spline3d.exe

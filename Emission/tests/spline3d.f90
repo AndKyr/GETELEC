@@ -54,6 +54,7 @@ do j=-2,2
         if (phi(istart,jstart,kstart)>1.d-8) exit
     enddo
     
+    print *, 'Nstart=',istart,jstart,kstart
     rstart=[x(istart),y(jstart),z(kstart-1)]
     Efstart=([phi(istart+1,jstart,kstart), &
              phi(istart,jstart+1,kstart), &
@@ -61,7 +62,7 @@ do j=-2,2
     
     direc=Efstart/norm2(Efstart)
 
-
+    print *, 'Direction=', direc
     !***************************************
     ! preparation of the data to interpolate
     call db3ink(x,nx,y,ny,z,nz,phi,kx,ky,kz,iknot,tx,ty,tz,fcn,iflag)
