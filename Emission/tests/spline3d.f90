@@ -87,7 +87,7 @@ enddo
 deallocate(x,y,z,fcn,tx,ty,tz)
     
         
-call plt%savefig('splinetest.png', pyfile='splinetest.py')
+call plt%savefig('png/splinetest.png', pyfile='python/splinetest.py')
 
 
     !********************************
@@ -106,7 +106,7 @@ subroutine read_phi(phi,grid_spacing)
     Ny=size(phi,2)
     Nz=size(phi,3)
     
-    open(fid,file='phi_grid.dat',action='read')
+    open(fid,file='data/phi_grid.dat',action='read')
     
     read(fid,*) sizes
     read(fid,*) grid_spacing

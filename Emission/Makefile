@@ -1,23 +1,28 @@
-OBJECTS = std_mat.o emission.o
-MODULES = std_mat.mod emission.mod 
+MODOBJ = modules/obj/std_mat.o modules/obj/bspline.o \
+  modules/obj/levenberg_marquardt.o modules/obj/emission.o \
+  modules/obj/pyplot_mod.o
 DEPS  = -lslatec
-FFLAGS = -ffree-line-length-none #-Wextra -fbounds-check #-Wall -pedantic# -pedantic -O3
-.PHONY: main spectroscopy
+FFLAGS = -ffree-line-length-none -fbounds-check -Imod #-Wall -pedantic# -pedantic -O3
 
-spectroscopy: spectroscopy.exe
-	./spectroscopy.exe
+.PHONY: main spectroscopy spline3d
 
-main: main.exe
-	./main.exe
+spline3d: bin/spline3d.exe
+	./bin/spline3d.exe
 
-%.exe: %.o $(MODULES) $(OBJECTS)
-	gfortran $<  $(FFLAGS) $(OBJECTS) $(DEPS) -o $@  
+spectroscopy: bin/spectroscopy.exe
+	./bin/spectroscopy.exe
 
-%.mod: %.f90
-	gfortran $(FFLAGS) -c $<
+main: bin/main.exe
+	./bin/main.exe
 
-%.o : %.f90  $(MODULES) 
-	gfortran $(FFLAGS) -c  $< 
+bin/%.exe: obj/%.o $(MODOBJ)
+	gfortran $(FFLAGS) $^ $(DEPS) -o $@
+
+obj/%.o : tests/%.f90
+	gfortran $(FFLAGS) -c  $< -o $@
+
+modules/obj/%.o : modules/%.f90
+	gfortran $(FFLAGS) -Jmod -c $< -o $@ 
 
 clean:
-	rm -f *.o *.exe *.mod *.csv *.txt *.out *.pyf
+	rm -rf *~ *.o *.exe *.mod *.csv *.txt *.out *.pyf

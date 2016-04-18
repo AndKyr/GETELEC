@@ -44,6 +44,6 @@ ax.plot(x,y,"m-",linewidth=2,markersize=3,label=r"$ Gamaw Sas $")
 
 ax.legend(loc="best")
 
-plt.savefig("splinetest.png")
+plt.savefig("png/splinetest.png")
 plt.show()
 
