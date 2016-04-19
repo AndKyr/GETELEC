@@ -362,6 +362,41 @@ function Gamow_num(Vbarrier,xmax,Um,xm) result(G)
     end function sqrtVBarrier
 end function Gamow_num
 
+function surf_points(phi) result(inds)
+
+real(dp), intent(in)        :: phi(:,:,:)
+integer , allocatable       :: inds(:,:)
+
+integer                     :: i,j,k,Nx,Ny,Nz,N,icount
+
+sz=shape(phi)
+Nx=sz(1)
+Ny=sz(2)
+Nz=sz(3)
+N=Nx*Ny*Nz
+allocate(inds(3,N))
+
+icount=1
+do k=2,Nz-1
+    do j=2,Ny-1
+        do i=2,Nx-1
+            if (phi(i,j,k)<1.d-8 .and. ( &
+                    phi(i+1,j,k)>1.d-8 .or. phi(i-1,j,k)>1.d-8 .or. &
+                    phi(i,j+1,k)>1.d-8 .or. phi(i,j-1,k)>1.d-8 .or. &
+                    phi(i,j,k+1)>1.d-8 .or. phi(i,j,k-1)>1.d-8)) &
+                    then
+                inds(:,icount)=[i,j,k]
+                
+                icount=icount+1
+            endif
+        enddo
+    enddo
+enddo
+
+deallocate(inds(:,icount:N))
+
+end function surf_points
+
 function pot_interp(phi,grid_spacing,Nstart,r) result(V)
 
     use bspline, only: db3ink,db3val
