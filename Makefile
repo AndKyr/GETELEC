@@ -4,7 +4,10 @@ MODOBJ = modules/obj/std_mat.o modules/obj/bspline.o \
 DEPS  = -lslatec
 FFLAGS = -ffree-line-length-none -fbounds-check -Imod #-Wall -pedantic# -pedantic -O3
 
-.PHONY: main spectroscopy spline3d splinemission
+.PHONY: main spectroscopy spline3d splinemission surfacepoints
+
+surfacepoints: bin/surfacepoints.exe
+	./bin/surfacepoints.exe
 
 splinemission: bin/splinemission.exe
 	./bin/splinemission.exe
@@ -21,8 +24,8 @@ main: bin/main.exe
 bin/%.exe: obj/%.o $(MODOBJ)
 	gfortran $(FFLAGS) $^ $(DEPS) -o $@
 
-obj/%.o : tests/%.f90
-	gfortran $(FFLAGS) -c  $< -o $@
+obj/%.o : $(MODOBJ) tests/%.f90
+	gfortran $(FFLAGS) -c $(lastword $^) -o $@
 
 modules/obj/%.o : modules/%.f90
 	gfortran $(FFLAGS) -Jmod -c $< -o $@ 

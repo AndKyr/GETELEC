@@ -1,67 +1,50 @@
 program surfacepoints
 
+use emission, only: surf_points
+
 implicit none
 
 integer, parameter      :: dp=8, fidout=8646, font=35, nline=50
 
-real(dp), allocatable   :: phi(:,:,:), x(:), y(:), z(:), Ef(:,:)
-integer                 :: sz(3), Nx, Ny, Nz, i, j, k, icount, N, jcount
-integer, allocatable    :: ijk(:,:)
-real(dp), dimension(3)  :: grid_spacing
-
-real(dp)                ::F,R,gamma,W=4.5d0,T=1.d3,heat,Jcur
-character               ::regime
-
+real(dp), allocatable   :: phi(:,:,:)
+integer                 :: N, icount, jcount, indsize(2),i,j,k
+integer, allocatable    :: inds(:,:)
+real(dp), dimension(3)  :: grid_spacing,Ef
 
 call read_phi(phi,grid_spacing)
 grid_spacing=grid_spacing*0.1d0
 
-sz=shape(phi)
-Nx=sz(1)
-Ny=sz(2)
-Nz=sz(3)
-N=Nx*Ny*Nz
-allocate(x(N), y(N), z(N), Ef(3,N), ijk(3,N))
+inds=surf_points(phi)
+indsize=shape(inds)
+N=indsize(2)
 
-icount=1
-jcount=0
-do k=2,Nz-1
-    do j=2,Ny-1
-        do i=2,Nx-1
-            if (phi(i,j,k)<1.d-8 .and. ( &
-                    phi(i+1,j,k)>1.d-8 .or. phi(i-1,j,k)>1.d-8 .or. &
-                    phi(i,j+1,k)>1.d-8 .or. phi(i,j-1,k)>1.d-8 .or. &
-                    phi(i,j,k+1)>1.d-8 .or. phi(i,j,k-1)>1.d-8)) &
-                    then
-                x(icount)=i*grid_spacing(1)
-                y(icount)=j*grid_spacing(2)
-                z(icount)=k*grid_spacing(3)
-                Ef(:,icount)=([phi(i+1,j,k), phi(i,j+1,k), phi(i,j,k+1)] &
-                            -[phi(i-1,j,k), phi(i,j-1,k), phi(i,j,k-1)])/grid_spacing
-                
-                if (norm2(Ef(:,icount))>1.d0) then 
-                    jcount=jcount+1
-                endif
-                
-                icount=icount+1
-            endif
-        enddo
-    enddo
-enddo
-print *, 'jcount', jcount
 
 open(fidout,file='data/boundary_grid.xyz',action='write',status='replace')
-    
-write(fidout,*) icount-1
+write(fidout,*) N
 write(fidout,*) 'eimaste treloi'
+
+do icount=1,N
+    i=inds(1,icount)
+    j=inds(2,icount)
+    k=inds(3,icount)
     
-do i=1,icount-1
-    write(fidout,*) 0,' ',x(i),' ',y(i),' ',z(i),' ',norm2(Ef(:,i))
+    Ef(:)=([phi(i+1,j,k), phi(i,j+1,k), phi(i,j,k+1)] &
+                    -[phi(i-1,j,k), phi(i,j-1,k), phi(i,j,k-1)])/grid_spacing
+                
+    if (norm2(Ef)>1.d0) then 
+        jcount=jcount+1
+    endif
+    
+    write(fidout,*) 0, i*grid_spacing(1), j*grid_spacing(2), &
+             k*grid_spacing(3), norm2(Ef)
+    
 enddo
-    
+
+print *, 'jcount', jcount
+
 close(fidout)
 
-deallocate(phi,x,y,z,Ef,ijk)
+deallocate(phi,inds)
     
 
  contains

@@ -362,12 +362,12 @@ function Gamow_num(Vbarrier,xmax,Um,xm) result(G)
     end function sqrtVBarrier
 end function Gamow_num
 
-function surf_points(phi) result(inds)
+function surf_points(phi) result(inds2)
 
 real(dp), intent(in)        :: phi(:,:,:)
-integer , allocatable       :: inds(:,:)
+integer , allocatable       :: inds2(:,:), inds(:,:)
 
-integer                     :: i,j,k,Nx,Ny,Nz,N,icount
+integer                     :: i,j,k,Nx,Ny,Nz,N,icount, sz(3)
 
 sz=shape(phi)
 Nx=sz(1)
@@ -393,7 +393,9 @@ do k=2,Nz-1
     enddo
 enddo
 
-deallocate(inds(:,icount:N))
+allocate(inds2(3,icount-1))
+inds2=inds(:,1:icount-1)
+deallocate(inds)
 
 end function surf_points
 
