@@ -2,12 +2,13 @@ MODOBJ = modules/obj/std_mat.o modules/obj/bspline.o \
   modules/obj/levenberg_marquardt.o modules/obj/emission.o \
   modules/obj/pyplot_mod.o
 DEPS  = -lslatec
-FFLAGS = -ffree-line-length-none -fbounds-check -Imod #-Wall -pedantic# -pedantic -O3
+FFLAGS = -ffree-line-length-none -fbounds-check -Imod -O3 #-Wall -pedantic# -pedantic -O3
 
 .PHONY: main spectroscopy spline3d splinemission surfacepoints
 
 surfacepoints: bin/surfacepoints.exe
 	./bin/surfacepoints.exe
+	ovito data/boundary_grid.xyz
 
 splinemission: bin/splinemission.exe
 	./bin/splinemission.exe

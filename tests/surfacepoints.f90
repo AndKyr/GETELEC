@@ -1,6 +1,6 @@
 program surfacepoints
 
-use emission, only: surf_points
+use emission, only: surf_points, J_from_phi
 
 implicit none
 
@@ -10,6 +10,7 @@ real(dp), allocatable   :: phi(:,:,:)
 integer                 :: N, icount, jcount, indsize(2),i,j,k
 integer, allocatable    :: inds(:,:)
 real(dp), dimension(3)  :: grid_spacing,Ef
+real(dp)                :: Jcur,heat
 
 call read_phi(phi,grid_spacing)
 grid_spacing=grid_spacing*0.1d0
@@ -22,7 +23,7 @@ N=indsize(2)
 open(fidout,file='data/boundary_grid.xyz',action='write',status='replace')
 write(fidout,*) N
 write(fidout,*) 'eimaste treloi'
-
+jcount=0
 do icount=1,N
     i=inds(1,icount)
     j=inds(2,icount)
@@ -33,7 +34,11 @@ do icount=1,N
                 
     if (norm2(Ef)>1.d0) then 
         jcount=jcount+1
+        Jcur=J_from_phi(phi,grid_spacing,[i,j,k],4.5d0,700.d0,heat)
+    else
+        Jcur=1.d-200
     endif
+    
     
     write(fidout,*) 0, i*grid_spacing(1), j*grid_spacing(2), &
              k*grid_spacing(3), norm2(Ef)

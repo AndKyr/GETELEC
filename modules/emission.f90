@@ -38,6 +38,7 @@ function J_from_phi(phi,grid_spacing,Nstart,W,T,heat) result(J)
     rline=linspace(0.d0,3.d0,nline)
     Vline=pot_interp(phi,grid_spacing,Nstart,rline)
     call fitpot(rline,Vline,F,R,gamma) ! fit V(x) to extract F,R,gamma
+!     print *, F,R,gamma
     J=Cur_dens(F,W,R,gamma,T,regime,heat) !calculate current
 
 end function J_from_phi
@@ -436,13 +437,15 @@ function pot_interp(phi,grid_spacing,Nstart,r) result(V)
     !find direction of the line (same as Efield direction)
     Efstart=([phi(istart+1,jstart,kstart), &
              phi(istart,jstart+1,kstart), &
-             phi(istart,jstart,kstart+1)]-phi(istart,jstart,kstart))/grid_spacing
+             phi(istart,jstart,kstart+1)]-[phi(istart-1,jstart,kstart), &
+             phi(istart,jstart-1,kstart), &
+             phi(istart,jstart,kstart-1)])/grid_spacing
     direc=Efstart/norm2(Efstart)
-    
+!     print *, 'direc=' , direc
     !set the line of interpolation and interpolate
     xline=x(istart)+r*direc(1)
     yline=y(jstart)+r*direc(2)
-    zline=z(kstart-1)+r*direc(3)
+    zline=z(kstart)+r*direc(3)
     do i=1,nline
         call db3val(xline(i),yline(i),zline(i),idx,idy,idz,tx,ty,tz,nx,ny,nz, &
                     kx,ky,kz,fcn,V(i),iflag,inbvx,inbvy,inbvz,iloy,iloz)
@@ -463,11 +466,13 @@ subroutine fitpot(x,V,F,R,gamma)
     
     integer                 :: Nstart=4
 
+    
     p(1) = (V(Nstart)-V(Nstart-1))/(x(Nstart)-x(Nstart-1))
     F2 = (V(Nstart+1)-V(Nstart))/(x(Nstart+1)-x(Nstart))
     Fend = (V(size(V))-V(size(V)-1))/(x(size(x))-x(size(x)-1))
     p(2) = abs(2.d0/((F2-p(1))/(x(Nstart)-x(Nstart-1))))
     p(3) = p(1)/Fend
+!     print *, 'F,R,gamma first guess =', p
     var=nlinfit(fun,x,V,p)
     F=p(1)
     R=p(2)
