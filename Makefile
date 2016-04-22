@@ -5,10 +5,11 @@ DEPS  = -lslatec
 FFLAGS = -ffree-line-length-none -fbounds-check -Imod -O3 #-Wall -pedantic# -pedantic -O3
 
 .PHONY: main spectroscopy spline3d splinemission surfacepoints
+.SECONDARY: %.o
 
 surfacepoints: bin/surfacepoints.exe
 	./bin/surfacepoints.exe
-	ovito data/boundary_grid.xyz
+# 	ovito data/boundary_grid.xyz
 
 splinemission: bin/splinemission.exe
 	./bin/splinemission.exe
@@ -32,4 +33,4 @@ modules/obj/%.o : modules/%.f90
 	gfortran $(FFLAGS) -Jmod -c $< -o $@ 
 
 clean:
-	rm -rf *~ *.o *.exe *.mod *.csv *.txt *.out *.pyf
+	rm -rf bin/* obj/* modules/obj/*
