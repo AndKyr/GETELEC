@@ -45,9 +45,11 @@ function Cur_dens(F,W,R,gamma,T,regime,heat) result (Jem)
     !W: work function, R: Radius of curvature, gamma:total enhancement kT: boltzmann*temperature 
     real(dp):: Gam(4),maxbeta,minbeta,kT,Jem,Jf,Jt,n,s,Um,xm,E0,dE,heatf,heatt
     real(dp), intent(out):: heat
-    real(dp), parameter:: nlimf=.7d0, nlimt=2.5d0
+    real(dp), parameter:: nlimf=.7d0, nlimt=2.d0
     character,intent(out),optional::regime
+    real(dp) :: t1,t2
 
+    call cpu_time(t1)
     Um=-1.d20
     xm=-1.d20
     kT=kBoltz*T
@@ -74,6 +76,9 @@ function Cur_dens(F,W,R,gamma,T,regime,heat) result (Jem)
         Jem=J_num_integ(F,W,R,gamma,T,heat)
         regime='i'
     endif
+    call cpu_time(t2)
+    print *, 'regime:', regime, '      time:', t2-t1
+    
 end function Cur_dens 
 
 function Gamow_general(F,W,R,gamma,Um,xm) result (Gam)
@@ -454,6 +459,7 @@ function J_from_phi(phi,grid_spacing,Nstart,W,T,heat,times) result(Jcur)
             tfit=tfit+t2-t1
             
             call cpu_time(t1)
+!             print *, 'F,R,gamma=', F,R,gamma
             if (F>0.d0) then
                 Jcur(j)=Cur_dens(F,W,R,gamma,T,regime,heat(j)) !calculate current
             else

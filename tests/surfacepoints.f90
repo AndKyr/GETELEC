@@ -10,13 +10,16 @@ real(dp), allocatable   :: phi(:,:,:), Jcur(:), heat(:)
 integer                 :: icount, jcount, indsize(2),i
 integer, allocatable    :: inds(:,:)
 real(dp), dimension(3)  :: grid_spacing,Ef
-real(dp)    times(4)
+real(dp)    t1,t2, times(4)
 
 call read_phi(phi,grid_spacing)
 grid_spacing=grid_spacing*0.1d0
 
-inds=surf_points(phi)
 
+call cpu_time(t1)
+inds=surf_points(phi)
+call cpu_time(t2)
+print *, 'Surface points:' , t2-t1
 
 allocate(Jcur(size(inds,2)),heat(size(inds,2)))
 
@@ -26,18 +29,12 @@ write(fidout,*) size(inds,2)
 write(fidout,*) 'eimaste treloi'
 
 
-Jcur=J_from_phi(phi,grid_spacing,inds,4.5d0,700.d0,heat,times)
+Jcur=J_from_phi(phi,grid_spacing,inds,4.5d0,100.d0,heat,times)
 
 do i=1,size(inds,2)
     write(fidout,*) i, inds(:,i)*grid_spacing, Jcur(i)
 enddo 
 
-    print *, 'Interpolation set:', times(1)
-    print *, 'Interpolation eval', times(2)
-!     print *, 'Fitting:', times(3)
-!     print *, 'Current calculation:', times(4)
-! 
-! print *, 'jcount', jcount
 
 close(fidout)
 
