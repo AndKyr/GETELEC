@@ -1,12 +1,12 @@
 module emission
 
-use std_mat, only: diff2,local_min,plot, linspace
+use std_mat, only: diff2, local_min, linspace
 implicit none
 
-integer, parameter                  :: Ny=200,dp=8
+integer, parameter                  :: Ny=200, dp=8
 real(dp), parameter                 :: pi=acos(-1.d0), b=6.83089d0, zs=1.6183d-4, &
                                        gg=10.246d0, Q=0.35999d0, kBoltz=8.6173324d-5
-!tabulated special elliptic functions. 
+logical, save                       :: spectroscopy= .false.
 
 type, public    :: EmissionData
 
@@ -16,30 +16,40 @@ type, public    :: EmissionData
         !Materical Characteristics: Work funciton,Temperature
     real(dp)    :: Jem=1.d-200, heat=1.d-200, Gam=1.d10 
         !Calculated results: Current density and Nott. heat
-    
     real(dp)    :: xm=-1.d20, Um=-1.d20, maxbeta=0.d0, minbeta=0.d0
-        !Barrier characteristics: 
-        !xm=x point where barrier is max, Um=maximum barrier value, dGUm=dG/dW at E=Um
-        !dGEf=dG/dW at Fermi level, x1= first barrier root, x2= second barrier root
-    character   :: regime ='f'
+        !Barrier characteristics: xm=x point where barrier is max,
+        ! Um=maximum barrier value, dGUm=dG/dW at E=Um, dGEf=dG/dW at Fermi,
+    character   :: regime ='F', sharpness = 'B'
         !'f' for field, 'i' for intermediate, 't' for thermal regimes
+        !'s' for sharp tip (numerical integration) and 'b' for blunt (KX approx)
 end type EmissionData
-      
 
-logical, save:: spectroscopy= .false.
-
-
-interface!interface to pass function pointers
-    pure function fun_temp(x) result(y)
-        real(8), intent(in)::x
-        real(8):: y
-    end function fun_temp
-end interface
 
  contains
  
-
+subroutine print_data(this, filenum)
+    !print the state of the object nicely
+    type(EmissionData), intent(in)      :: this
+    integer, intent(in), optional       :: filenum
+    integer                             :: fid
     
+    if (.not. present(filenum)) then
+        fid = 6
+    else
+        fid=filenum
+    endif
+    
+    write (fid,'(A10,ES12.4,/A10,ES12.4,/A10,ES12.4)') &
+            'F = ', this%F, 'R = ', this%R, 'gamma = ', this%gamma
+    write (fid,'(A10,ES12.4,/A10,ES12.4)') 'W = ', this%W, 'kT = ', this%kT
+    write (fid,'(A10,ES12.4,/A10,ES12.4,/A10,ES12.4)') &
+            'Jem = ', this%Jem, 'heat = ', this%heat, 'Gamow = ', this%Gam
+    write (fid,'(A10,ES12.4,/A10,ES12.4,/A10,ES12.4,/A10,ES12.4)') &
+            'xm = ', this%xm, 'Um = ', this%Um, &
+            'maxbeta = ', this%maxbeta, 'minbeta = ', this%minbeta
+    write (fid,'(A10,A12,/A10,A12)') 'Regime:  ', this%regime, &
+                                     'Sharpness:', this%sharpness
+end subroutine print_data
 
 subroutine cur_dens(this)
 !Calculates current density, main module function
@@ -49,29 +59,31 @@ subroutine cur_dens(this)
     real(dp):: Jf,Jt,n,s,E0,dE,heatf,heatt
     real(dp), parameter:: nlimf=.7d0, nlimt=2.d0
 
-    call gamow_general(this)
+    call gamow_general(this,.true.)
     
     if (this%kT * this%maxbeta < nlimf) then!field regime
-        this%Jem = zs*pi* this%kT * exp(-Gam(1))/(maxbeta*sin(pi*maxbeta*kT))
+        this%Jem = zs*pi* this%kT * exp(-this%Gam) &
+                    / (this%maxbeta * sin(pi * this%maxbeta * this%kT))
         !Murphy-Good version of FN
         
-        this%heat = -zs*(pi**2) * (this%kT**2) * exp(-this%Gam)*cos(pi* this%maxbeta * this%kT)  &
-        / (this%maxbeta * (sin(pi * this%maxbeta * this%kT )**2))
-        this%regime = 'f'
+        this%heat = -zs*(pi**2) * (this%kT**2) * &
+                    exp(-this%Gam)*cos(pi* this%maxbeta * this%kT)  &
+                    / (this%maxbeta * (sin(pi * this%maxbeta * this%kT )**2))
+        this%regime = 'F'
         
     else if (this%kT * this%minbeta > nlimt) then !thermal regime
         n = 1.d0/(this%kT * this%minbeta)
         s = this%minbeta * this%Um
         Jf = zs * ( this%minbeta **(-2)) * Sigma(1.d0/n) * exp(-s);
         Jt = zs * (this%kT**2) * exp(-n*s) * Sigma(n)
-        Jem = Jt+Jf/(n**2)
+        this%Jem = Jt+Jf/(n**2)
         heatt = (n*s+1.d0)*Sigma(n)*exp(-n*s)
         heatf = (n**3)*DSigma(1/n)*exp(-s)
         this%heat = zs*(heatt+heatf)*(this%kT**3)
-        this%regime = 't'
-        
+        this%regime = 'T'
     else  !intermediate regime
         call J_num_integ(this) !Numerical integration over energies
+        this%regime = 'I'
     endif
     
     contains
@@ -90,15 +102,16 @@ subroutine cur_dens(this)
 
 end subroutine cur_dens 
 
-subroutine gamow_general(this)
+subroutine gamow_general(this,full)
 !Calculates Gamow exponent and
 
-    type(EmissionData), intent(inout)      :: this
+    type(EmissionData), intent(inout)       :: this
+    type(EmissionData)                      :: new
+    logical, intent(in)                     :: full
 
-    real(dp),parameter::dw=1.d-2,xlim=0.08d0
-    real(dp):: x,xmax,work
+    real(dp), parameter                     :: dw = 1.d-2, xlim = 0.08d0
+    real(dp)                                :: x, xmax
     
-    work = this%W
     x = this%W / (this%F * this%R)
 
     if (x>xlim) then !not x<<1, use numerical integration
@@ -107,22 +120,21 @@ subroutine gamow_general(this)
         else  !the second root is close to the standard W/F
             xmax = 2.d0 * this%W / this%F
         endif
-        call gamow_num(this)
-        if (abs(Um-(W-F*R))<.2d0) then ! almost without maximum
-            Gam(3)=1.d20
+        call gamow_num(this,xmax)
+        this%sharpness='S'
+        if (this%Um < 0.d0 .or. (.not. full)) then !barrier lost
+            this%maxbeta = 0.d0
+        elseif (this%Gam == 1.d20) then
+            this%maxbeta = 1.d20
         else
-            Gam(3)=22.761d0/sqrt(abs(diff2(SphBar,xm)))
-        endif
-        if (Um<0.d0) then !barrier lost
-            Gam(2)=0.d0
-        elseif (Gam(1)==1.d20) then
-            Gam(2)=1.d20
-        else
-            work=W+dw
-            Gam(2)=abs((Gamow_num(SphBar,xmax,Um,xm)-Gam(1))/dw)
+            new = this
+            new%W = this%W + dw
+            call gamow_num(new,xmax)
+            this%maxbeta = abs(new%Gam - this%Gam) / dw
         endif
     else !large radius, KX approximation usable
         call gamow_KX(this)
+        this%sharpness='B'
     endif
         
 end subroutine gamow_general
@@ -149,143 +161,198 @@ subroutine gamow_KX(this)
     v = lininterp(vv,0.d0,1.d0,yf)
     omeg = lininterp(ww,0.d0,1.d0,yf)
     
-    this%maxbeta = gg*(sqrt(W)/F)*(t+ps*(W/(F*R)))
+    this%maxbeta = gg*(sqrt(this%W) / this%F)*(t+ps*(this%W / (this%F * this%R)))
     this%Gam = (2*gg/3)*((this%W **1.5d0) / this%F) * (v+omeg*(this%W / (this%F * this%R)))
     this%Um = this%W - 2.d0*sqrt(this%F * Q)-0.75d0 * Q / this%R
     this%minbeta = 16.093d0/sqrt(this%F **1.5d0 / sqrt(Q) - 4* this%F / this%R)
     
 end subroutine gamow_KX
 
-subroutine gamow_num(this)
+subroutine gamow_num(this,xmax)
 
     type(EmissionData), intent(inout)   :: this
-    real(dp), intent(in)::xmax
+    real(dp), intent(in)                :: xmax
     
-    integer, parameter ::maxint=500
-    real(dp), parameter :: AtolRoot=1.d-7, RtolRoot=1.d-7, &
-    AtolInt=1.d-5, RtolInt=1.d-5
+    integer, parameter                  :: maxint = 256
+    real(dp), parameter                 :: AtolRoot=1.d-6, RtolRoot=1.d-6, &
+                                           AtolInt=1.d-5, RtolInt=1.d-5
     
-    real(dp):: G, x , x1(2), x2(2), ABSERR
-    real(dp), dimension(maxint) :: ALIST,BLIST,RLIST,ELIST
-    integer :: iflag,NEVAL,IER,IORD(maxint),LAST
-
+    real(dp), dimension(maxint)         :: ALIST, BLIST, RLIST, ELIST
+    real(dp)                            :: ABSERR
+    integer                             :: IFLAG, NEVAL, IER, IORD(maxint), LAST
+    real(dp)                            :: G, x = 1.d-5 , x1(2), x2(2)
+    
+    if (this%Um == -1.d20) then ! Um is not initialized
+        this%Um = -local_min(x, xmax, 1.d-8, 1.d-8, neg_bar, this%xm)
+    endif
+    if (this%Um<0.d0) then
+        this%Gam=0.d0
+        return
+    endif
+    if (abs(this%Um - (this%W - this%F * this%R))<.2d0) then ! almost without maximum
+        this%minbeta = 1.d20
+    else
+        this%minbeta = 22.761d0 / sqrt(abs(diff2(bar,this%xm)))
+    endif
+    
+    x1 = [0.01d0,this%xm]
+    x2 = [this%xm,xmax]
+    call dfzero(bar,x1(1),x1(2),x1(1),RtolRoot,AtolRoot,IFLAG)
+    call dfzero(bar,x2(1),x2(2),x2(1),RtolRoot,AtolRoot,IFLAG)
+    call dqage(sqrt_bar,x1(2),x2(1),AtolInt,RtolInt,2,1000,G,ABSERR, &
+    NEVAL,IER,ALIST,BLIST,RLIST,ELIST,IORD,LAST)
+    this%Gam = gg * G
+    
+    contains
+    pure function bar(x) result(V)!sphere barrier model
+        real(dp), intent(in)    :: x
+        real(dp)                ::V
+        V = this%W - (this%F * this%R * x*(this%gamma - 1.d0) + this%F * x**2) &
+            / (this%gamma * x + this%R * (this%gamma - 1.d0)) &
+            - Q / (x + ( 0.5d0 * (x**2)) / this%R)
+    end function bar
+    pure function neg_bar(x) result(nv)
+        real(dp), intent(in)    ::x
+        real(dp)                ::nv
+        nv = - bar(x)
+    end function neg_bar
+    pure function sqrt_bar(x) result(rv)
+        real(dp), intent(in)    ::x
+        real(dp)                ::rv
+        rv=sqrt(bar(x))
+    end function sqrt_bar
+    
 end subroutine gamow_num
 
 
-function J_num_integ(F,W,R,gamma,T,heat) result(Jcur)
+subroutine J_num_integ(this)
 !numerical integration over energies to obtain total current according
 !to landauer formula
-    real(dp), intent(in)::F,W,R,T,gamma !F: local field,
-    !W: work function, R: Radius of curvature, kT: boltzmann*temperature
-    real(dp), intent(out) :: heat
-    real(dp), parameter:: cutoff=1.d-4 !cutoff of the exponentially decreasing
-    integer, parameter::Nvals=512, fidout=1953!no of intervals for integration
-    real(dp):: kT,Gam(4),Gj(4),Um,xm,G(4*Nvals),Ej,dE,Ea,Eb,insum, &
-    Jsum,Jcur,Umax,Emax,Emin,E0,Gup(2*Nvals),Gdown(2*Nvals),fj,fmax,integrand,outsum
-    integer::j,i,k
+    type(EmissionData), intent(inout)   :: this
+    type(EmissionData)                  :: new
+    
+    real(dp), parameter                 :: cutoff=1.d-4 
+            !cutoff of the exponentially decreasing
+    integer, parameter                  ::Nvals=256, fidout=1953
+            !no of intervals for integration and fidout for spectroscopy
+            
+    real(dp)                            :: Gj, G(4*Nvals), Ej, dE, Ea, Eb
+    real(dp)                            :: insum, Jsum,Jcur,Umax,Emax,Emin,E0
+    real(dp)                            :: Gup(2*Nvals),Gdown(2*Nvals),fj,fmax
+    real(dp)                            :: integrand,outsum
+    integer                             :: j, i, k
 
     if (spectroscopy) then
         open(fidout,file='spectra.csv')
     endif
-    Um=-1.d20
-    xm=-1.d20
-    kT=kBoltz*T
-    Gam=Gamow_general(F,W,R,gamma,Um,xm)
+    this%Um = -1.d20
+    this%xm = -1.d20
     
-    if (Gam(1)==0.d0) then!if no barrier for fermi electrons
-        Jcur=1.d20
+    call gamow_general(this,.true.)
+    
+    if (this%Gam == 0.d0) then!if no barrier for fermi electrons
+        this%Jem = 1.d20
         return
     endif
 
-    if(kT*Gam(2)<1.05d0) then!field regime, max is close to Ef
-        Emax=abs(log(cutoff))/(1.d0/kT-.7*Gam(2))
-        Emin=-abs(log(cutoff))/Gam(2)
-        E0=0.d0
-    else if (kT*Gam(3)>.95d0) then!thermal regime, max is close to Um
-        Emax=Um+abs(log(cutoff))*kT
-        Emin=Um-abs(log(cutoff))/(Gam(3)-0.7/kT)
-        E0=Um
+    if (this%kT * this%maxbeta < 1.05d0) then!field regime, max is close to Ef
+        Emax = abs(log(cutoff)) / (1.d0 / this%kT - .7 * this%maxbeta)
+        Emin = -abs(log(cutoff)) / this%maxbeta
+        E0 = 0.d0
+    else if (this%kT * this%minbeta > .95d0) then!thermal regime, max is close to Um
+        Emax = this%Um + abs(log(cutoff)) * this%kT
+        Emin = this%Um - abs(log(cutoff)) / (this%minbeta - 0.7 / this%kT)
+        E0 = this%Um
     else! integmediate regime, max is in between ,find it
-        Ea=0.d0
-        Eb=Um
+        Ea = 0.d0
+        Eb = this%Um
         do j=1,100!bisection to find where n=1
             Ej=(Eb+Ea)*.5d0
-            Umax=Um-Ej
-            Gj=Gamow_general(F,W-Ej,R,gamma,Umax,xm)
-            if ((kT*Gj(2))<0.98d0) then
-                Eb=Ej
-            else if (Gj(2)*kT>1.02d0) then
-                Ea=Ej
+            Umax = this%Um - Ej
+            new = this
+            new%W = this%W - Ej
+            call gamow_general(new,.true.)
+            if (this%kT * new%maxbeta < 0.98d0) then
+                Eb = Ej
+            else if (this%kT * new%maxbeta > 1.02d0) then
+                Ea = Ej
             else
                 exit
             endif
         enddo
-        Emax=Um
-        Emin=0.d0
-        E0=Ej
+        Emax = this%Um
+        Emin = 0.d0
+        E0 = Ej
     endif
     
-    dE=(Emax-Emin)/(Nvals-1)
-    Jsum=0.d0
-    insum=0.d0
-    outsum=0.d0
-    fmax=0.d0
+    dE = (Emax-Emin) / (Nvals-1)
+    Jsum = 0.d0
+    insum = 0.d0
+    outsum = 0.d0
+    fmax = 0.d0
     
-    do j=1,2*Nvals!integrate over high energies
-        Ej=E0+(j-1)*dE
-        Umax=Um-Ej
-        if (Umax>0.d0) then
-            Gj=Gamow_general(F,W-Ej,R,gamma,Umax,xm)
+    do j = 1, 2*Nvals !integrate over high energies
+        Ej = E0 + (j-1) * dE
+        Umax = this%Um - Ej
+        if (Umax > 0.d0) then
+            new = this
+            new%W = this%W - Ej
+            call gamow_general(new,.false.)
+            Gj = new%Gam
         else
-            Gj(1)=Gam(3)*Umax
+            Gj = this%minbeta * Umax
         endif
-        if ( .not. isnan(Gam(1)) ) then
-            Gup(j)=Gj(1)
+        if ( .not. isnan(this%Gam) ) then
+            Gup(j)=Gj
         endif
-        fj=lFD(Ej,kT)/(1.d0+exp(Gup(j)))
+        fj=lFD(Ej,this%kT)/(1.d0+exp(Gup(j)))
         if (fj>fmax) then
             fmax=fj
         endif
         if (abs(fj/fmax)<cutoff)  then
             exit
         endif
-        Jsum=Jsum+fj
+        Jsum = Jsum + fj
     enddo
+    
     do i=1,2*Nvals!integrate over low energies
-        Ej=E0-i*dE
-        Umax=Um-Ej
+        Ej = E0 - i * dE
+        Umax = this%Um - Ej
         if (Umax>0.d0) then
-            Gj=Gamow_general(F,W-Ej,R,gamma,Umax,xm)
+            new = this
+            new%W = this%W - Ej
+            call gamow_general(new,.false.)
+            Gj = new%Gam
         else
-            Gj(1)=Gam(3)*Umax
+            Gj = this%minbeta * Umax
         endif
-        if ( .not. isnan(Gam(1)) ) then
-            Gdown(i)=Gj(1)
+        if ( .not. isnan(this%Gam) ) then
+            Gdown(i)=Gj
         endif
-        fj=lFD(Ej,kT)/(1.d0+exp(Gdown(i)))
+        fj=lFD(Ej,this%kT)/(1.d0+exp(Gdown(i)))
         if (fj>fmax) then
             fmax=fj
         endif
         if (abs(fj/fmax)<cutoff)  then
             exit
         endif
-        Jsum=Jsum+fj
+        Jsum = Jsum + fj
     enddo
-    Jcur=Jsum*zs*kT*dE
+    this%Jem = Jsum * zs * this%kT * dE
     
-    G(1:i+j)=[Gdown(i:1:-1),Gup(1:j)]!bring G vectors together and in correct order
+    G(1:i+j) = [Gdown(i:1:-1),Gup(1:j)]!bring G vectors together and in correct order
     do k=1,i+j!integrate for nottingham effect
-        integrand=Ej*(insum+.5d0*dE/(1.d0+exp(G(k))))/(1.d0+exp(Ej/kT))
-        insum=insum+dE/(1.d0+exp(G(k)))
-        outsum=outsum+integrand
+        integrand = Ej * (insum + .5d0*dE / (1.d0 + exp(G(k)))) &
+                    / (1.d0 + exp(Ej/this%kT))
+        insum = insum + dE / (1.d0 + exp(G(k)))
+        outsum = outsum + integrand
         if (spectroscopy) then
-            print *, fidout
             write(fidout,*) Ej,',',integrand,',',integrand/Ej
         endif
-        Ej=Ej+dE
+        Ej = Ej + dE
     enddo
 
-    heat=zs*outsum*dE
+    this%heat = zs * outsum * dE
     
     if (spectroscopy) then
         close(fidout)
@@ -301,6 +368,6 @@ function J_num_integ(F,W,R,gamma,T,heat) result(Jcur)
             L=log(1.d0+exp(-E/kT))
         endif
     end function lFD
-end function J_num_integ
+end subroutine J_num_integ
 
 end module emission

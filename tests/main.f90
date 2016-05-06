@@ -1,36 +1,45 @@
 program main
 
-use emission, only: Jcur
-use std_mat, only: csvread,csvprint
-use omp_lib
+use emission, only: gamow_general, EmissionData, print_data, J_num_integ, cur_dens, kBoltz
+use pyplot_mod, only: pyplot
+use std_mat, only: linspace
+
 implicit none
 
-integer,parameter::dp=8,Nvals=500
-real(dp):: params(4),F(Nvals),W,R,T,gamma,J(Nvals),regnum(Nvals),arrout(Nvals,3),heat(Nvals)
-character :: regime(Nvals)
-integer:: i,fidout=1987,fidin=1821,nthreads
+integer,parameter   :: dp=8, Nf=2048, font=35
+real(dp), parameter :: Fmin=0.05d0, Fmax=7.d0
 
-open(fidin,file="paramin.csv",action="read")
-read(fidin,*) params(:)
-read(fidin,*) F(:)
-close(fidin)
+real(dp)            :: T=700.d0, Fi(Nf), Ji(Nf), heati(Nf), t1,t2
+integer             :: i
 
-W=params(1)
-R=params(2)
-T=params(3)
-gamma=params(4)
+type(EmissionData)      :: old,new
+type(pyplot)            :: plt 
 
-J=Jcur(F,W,R,gamma,T,regime,heat)
+call plt%initialize(grid=.true.,xlabel='$1/F [nm/V]$',ylabel='$J (A/nm^2)$', &
+            figsize=[20,15], font_size=font, title='FN-plot test', &
+            legend=.true.,axis_equal=.false., legend_fontsize=font, &
+            xtick_labelsize=font,ytick_labelsize=font,axes_labelsize=font)
 
-where (regime=='f') regnum=-1.d0
-where (regime=='t') regnum=1.d0
-where (regime=='i') regnum=0.d0
-arrout(:,1)=1.d0/F
-arrout(:,2)=log(J)
-arrout(:,3)=regnum
+old%kT=kBoltz*T
+Fi=linspace(Fmin,Fmax,Nf)
 
-open(fidout,file="J-Fplot.csv",action="write",status="replace")
-call csvprint(fidout,arrout)
-close(fidout)
+call cpu_time(t1)
+do i=1,Nf
+    new=old
+    new%F=Fi(i)
+    
+    call cur_dens(new)
+    Ji(i) = new%Jem
+    heati(i) = new%heat
+enddo
+call cpu_time(t2)
+call plt%add_plot(1/Fi,log10(Ji),label='$current$', &
+                    linestyle='b-',linewidth=2)
+                    
+call plt%add_plot(1/Fi,log10(abs(heati)),label='$heat$', &
+                    linestyle='r-',linewidth=2)
+                    
+call plt%savefig('FNplot.png', pyfile='FNplot.py')
 
+print *, 'Elapsed time:', t2-t1
 end program
