@@ -58,8 +58,11 @@ subroutine cur_dens(this)
     
     real(dp):: Jf,Jt,n,s,E0,dE,heatf,heatt
     real(dp), parameter:: nlimf=.7d0, nlimt=2.d0
-
+    
+    this%Um = -1.d20
+    this%xm = -1.d20
     call gamow_general(this,.true.)
+
     
     if (this%kT * this%maxbeta < nlimf) then!field regime
         this%Jem = zs*pi* this%kT * exp(-this%Gam) &
