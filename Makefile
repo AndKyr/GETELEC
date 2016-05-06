@@ -23,6 +23,9 @@ spectroscopy: bin/spectroscopy.exe
 main: bin/main.exe
 	./bin/main.exe
 
+test: bin/test.exe
+	./bin/test.exe
+
 bin/%.exe: obj/%.o $(MODOBJ)
 	gfortran $(FFLAGS) $^ $(DEPS) -o $@
 
