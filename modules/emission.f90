@@ -26,30 +26,6 @@ end type EmissionData
 
 
  contains
- 
-subroutine print_data(this, filenum)
-    !print the state of the object nicely
-    type(EmissionData), intent(in)      :: this
-    integer, intent(in), optional       :: filenum
-    integer                             :: fid
-    
-    if (.not. present(filenum)) then
-        fid = 6
-    else
-        fid=filenum
-    endif
-    
-    write (fid,'(A10,ES12.4,/A10,ES12.4,/A10,ES12.4)') &
-            'F = ', this%F, 'R = ', this%R, 'gamma = ', this%gamma
-    write (fid,'(A10,ES12.4,/A10,ES12.4)') 'W = ', this%W, 'kT = ', this%kT
-    write (fid,'(A10,ES12.4,/A10,ES12.4,/A10,ES12.4)') &
-            'Jem = ', this%Jem, 'heat = ', this%heat, 'Gamow = ', this%Gam
-    write (fid,'(A10,ES12.4,/A10,ES12.4,/A10,ES12.4,/A10,ES12.4)') &
-            'xm = ', this%xm, 'Um = ', this%Um, &
-            'maxbeta = ', this%maxbeta, 'minbeta = ', this%minbeta
-    write (fid,'(A10,A12,/A10,A12)') 'Regime:  ', this%regime, &
-                                     'Sharpness:', this%sharpness
-end subroutine print_data
 
 subroutine cur_dens(this)
 !Calculates current density, main module function
@@ -106,7 +82,7 @@ subroutine cur_dens(this)
 end subroutine cur_dens 
 
 subroutine gamow_general(this,full)
-!Calculates Gamow exponent and
+!Calculates Gamow exponent in the general case: Choose appropriate approximation
 
     type(EmissionData), intent(inout)       :: this
     type(EmissionData)                      :: new
@@ -165,7 +141,7 @@ subroutine gamow_KX(this)
     omeg = lininterp(ww,0.d0,1.d0,yf)
     
     this%maxbeta = gg*(sqrt(this%W) / this%F)*(t+ps*(this%W / (this%F * this%R)))
-    this%Gam = (2*gg/3)*((this%W **1.5d0) / this%F) * (v+omeg*(this%W / (this%F * this%R)))
+    this%Gam = (2*gg/3)*((this%W **1.5d0) / this%F) *(v+omeg*(this%W / (this%F * this%R)))
     this%Um = this%W - 2.d0*sqrt(this%F * Q)-0.75d0 * Q / this%R
     this%minbeta = 16.093d0/sqrt(this%F **1.5d0 / sqrt(Q) - 4* this%F / this%R)
     
@@ -372,5 +348,29 @@ subroutine J_num_integ(this)
         endif
     end function lFD
 end subroutine J_num_integ
+
+subroutine print_data(this, filenum)
+    !print the state of the object nicely
+    type(EmissionData), intent(in)      :: this
+    integer, intent(in), optional       :: filenum
+    integer                             :: fid
+    
+    if (.not. present(filenum)) then
+        fid = 6
+    else
+        fid=filenum
+    endif
+    
+    write (fid,'(A10,ES12.4,/A10,ES12.4,/A10,ES12.4)') &
+            'F = ', this%F, 'R = ', this%R, 'gamma = ', this%gamma
+    write (fid,'(A10,ES12.4,/A10,ES12.4)') 'W = ', this%W, 'kT = ', this%kT
+    write (fid,'(A10,ES12.4,/A10,ES12.4,/A10,ES12.4)') &
+            'Jem = ', this%Jem, 'heat = ', this%heat, 'Gamow = ', this%Gam
+    write (fid,'(A10,ES12.4,/A10,ES12.4,/A10,ES12.4,/A10,ES12.4)') &
+            'xm = ', this%xm, 'Um = ', this%Um, &
+            'maxbeta = ', this%maxbeta, 'minbeta = ', this%minbeta
+    write (fid,'(A10,A12,/A10,A12)') 'Regime:  ', this%regime, &
+                                     'Sharpness:', this%sharpness
+end subroutine print_data
 
 end module emission

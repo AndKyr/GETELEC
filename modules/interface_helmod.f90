@@ -1,3 +1,9 @@
+module interface_helmod
+
+implicit none
+
+ contains
+
 function surf_points(phi) result(inds2)
 
 real(dp), intent(in)        :: phi(:,:,:)
