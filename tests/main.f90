@@ -6,7 +6,7 @@ use std_mat, only: linspace
 
 implicit none
 
-integer,parameter   :: dp=8, Nf=256, font=35
+integer,parameter   :: dp=8, Nf=1024, font=35
 real(dp), parameter :: Fmin=0.05d0, Fmax=7.d0
 
 real(dp)            :: T=700.d0, Fi(Nf), Ji(Nf), heati(Nf), t1,t2
@@ -18,7 +18,7 @@ type(pyplot)            :: plt
 
 
 old%kT=kBoltz*T
-old%R = 10.d0
+old%R = 3.d0
 Fi=linspace(Fmin,Fmax,Nf)
 new=old
 call cpu_time(t1)
@@ -29,7 +29,7 @@ do i=1,Nf
     call cur_dens(new)
     Ji(i) = new%Jem
     heati(i) = new%heat
-    print *, Ji(i), heati(i), new%regime, new%sharpness
+!     print *, Ji(i), heati(i), new%regime, new%sharpness
 enddo
 call cpu_time(t2)
 print *, 'Elapsed time:', t2-t1

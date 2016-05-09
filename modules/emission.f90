@@ -39,17 +39,14 @@ subroutine cur_dens(this)
     this%xm = -1.d20
     call gamow_general(this,.true.)
 
-    
     if (this%kT * this%maxbeta < nlimf) then!field regime
         this%Jem = zs*pi* this%kT * exp(-this%Gam) &
                     / (this%maxbeta * sin(pi * this%maxbeta * this%kT))
         !Murphy-Good version of FN
-        
         this%heat = -zs*(pi**2) * (this%kT**2) * &
                     exp(-this%Gam)*cos(pi* this%maxbeta * this%kT)  &
                     / (this%maxbeta * (sin(pi * this%maxbeta * this%kT )**2))
         this%regime = 'F'
-        
     else if (this%kT * this%minbeta > nlimt) then !thermal regime
         n = 1.d0/(this%kT * this%minbeta)
         s = this%minbeta * this%Um
@@ -72,7 +69,7 @@ subroutine cur_dens(this)
         double precision:: Sig
         Sig = (1.d0+x**2)/(1.d0-x**2)-.3551d0*x**2-0.1059d0*x**4-0.039*x**6!Jensen's sigma
     end function Sigma
-
+    
     pure function DSigma(x) result(ds)
         real(dp), intent(in):: x
         real(dp):: ds

@@ -2,20 +2,8 @@ module interface_helmod
 
 implicit none
 
-integer, parameter  :: dp=8, Nr=32
-
-type, private       :: InterData
-
-    real(dp)        :: F(:), R(:), gamma(:) !list of parametera defining barrier
-    real(dp)        :: W, T ! General external parameters
-    integer         :: Nstart(:,:) !indices of starting surface surf_points
-    real(dp)        :: rline(Nr), grid(3) !length of V lines and grid spacing
-    real(dp)        :: TimeCur, TimeInSet, TimeFit, TimeInt !timing variables
-end type InterData
-    
-
  contains
- 
+
 function surf_points(phi) result(inds2)
 
 real(dp), intent(in)        :: phi(:,:,:)
@@ -53,15 +41,15 @@ deallocate(inds)
 
 end function surf_points
 
-subroutine J_from_phi(phi,this)
+function J_from_phi(phi,grid_spacing,Nstart,W,T,heat,times) result(Jcur)
     use bspline, only: db3ink,db3val
-    use std_mat, only: linspace
-    use emission, only: EmissionData, cur_dens
     
-    type(InterData), intent(in) :: this
-    real(dp),intent(in)         :: phi(:,:,:)
+    real(dp),intent(in)     :: phi(:,:,:),grid_spacing(3),T,W
+    real(dp), intent(out)   :: heat(:),times(4)
+    integer, intent(in)     :: Nstart(:,:)
     
-    integer, parameter      :: kx=2, ky=2, kz=2, iknot=0
+    integer, parameter      :: kx=2, ky=2, kz=2, iknot=0, nline=64
+    
     integer                 :: inbvx=1,inbvy=1,inbvz=1,iloy=1,iloz=1
     integer                 :: idx=0, idy=0, idz=0, iflag
     real(dp), allocatable   :: fcn(:,:,:), tx(:), ty(:), tz(:), x(:), y(:), z(:)
@@ -69,35 +57,36 @@ subroutine J_from_phi(phi,this)
     
     integer                 :: nx, ny, nz, sz(3), i,j, istart, jstart, kstart, Npoints
     real(dp), dimension(3)  :: direc, Efstart
-    real(dp), dimension(Nr) :: xline, yline, zline, Vline
+    real(dp), dimension(nline):: xline, yline, zline, V
     
-    type(EmissionData)      :: emit
+    real(dp)                :: Jcur(size(Nstart,2)),ti(5)
+    real(dp)                :: F,R,gamma, Vline(nline), rline(nline)
+    real(dp)                :: tinterp=0.d0, tfit=0.d0, tcur=0.d0, t2,t1
     
-    real(dp)                :: t1,t2
-
+    character               :: regime
     
     call cpu_time(t1)
-    this%rline = linspace(0.d0,3.d0,nline)
+    rline=linspace(0.d0,3.d0,nline)
     
-    sz = shape(phi)
-    nx = sz(1)
-    ny = sz(2)
-    nz = sz(3)
-    Npoints = size(Nstart,2)
+    sz=shape(phi)
+    nx=sz(1)
+    ny=sz(2)
+    nz=sz(3)
+    Npoints=size(Nstart,2)
     
 
     allocate(x(nx),y(ny),z(nz),fcn(nx,ny,nz),tx(nx+kx),ty(ny+ky),tz(nz+kz))
-    x = [(grid_spacing(1)*(i-1), i=1,nx)]
-    y = [(grid_spacing(2)*(i-1), i=1,ny)]
-    z = [(grid_spacing(3)*(i-1), i=1,nz)]
+    x=[(grid_spacing(1)*(i-1), i=1,nx)]
+    y=[(grid_spacing(2)*(i-1), i=1,ny)]
+    z=[(grid_spacing(3)*(i-1), i=1,nz)]
     call db3ink(x,nx,y,ny,z,nz,phi,kx,ky,kz,iknot,tx,ty,tz,fcn,iflag)
     call cpu_time(t2)
-    this%TimeInSet = t2 - t1
-    
+    print *, 'Interpolation set:', t2-t1
     do j=1,Npoints
-        istart = this%Nstart(1,j)
-        jstart = this%Nstart(2,j)
-        kstart = this%Nstart(3,j)
+    
+        istart=Nstart(1,j)
+        jstart=Nstart(2,j)
+        kstart=Nstart(3,j)
     
     !find direction of the line (same as Efield direction)
         Efstart=([phi(istart+1,jstart,kstart), &
@@ -109,25 +98,26 @@ subroutine J_from_phi(phi,this)
         if (norm2(Efstart)>1.d0) then
             direc=Efstart/norm2(Efstart)
             !set the line of interpolation and interpolate
-            xline=x(istart)+this%rline*direc(1)
-            yline=y(jstart)+this%rline*direc(2)
-            zline=z(kstart)+this%rline*direc(3)
+            xline=x(istart)+rline*direc(1)
+            yline=y(jstart)+rline*direc(2)
+            zline=z(kstart)+rline*direc(3)
             
             call cpu_time(t1)
-            do i=1,Nr
+            do i=1,nline
                 call db3val(xline(i),yline(i),zline(i),idx,idy,idz,tx,ty,tz,nx,ny,nz, &
                         kx,ky,kz,fcn,Vline(i),iflag,inbvx,inbvy,inbvz,iloy,iloz)
             enddo
             call cpu_time(t2)
-            this%TimeInt = this%TimeInt + t2 - t1
+            tinterp=tinterp+t2-t1
             
             call cpu_time(t1)
-            call fitpot(this%rline,Vline,this%F(j),this%R(j),this%gamma(j))
+            call fitpot(rline,Vline,F,R,gamma)
             call cpu_time(t2)
-            this%TimeFit = this%TimeFit + t2 - t1
+            tfit=tfit+t2-t1
             
             call cpu_time(t1)
-            if (this%F(j) > 1.d0) then
+!             print *, 'F,R,gamma=', F,R,gamma
+            if (F>0.d0) then
                 Jcur(j)=Cur_dens(F,W,R,gamma,T,regime,heat(j)) !calculate current
             else
                 Jcur(j)=1.d-200
