@@ -6,10 +6,10 @@ use std_mat, only: linspace
 
 implicit none
 
-integer,parameter   :: dp=8, Nf=1024, font=35
-real(dp), parameter :: Fmin=0.05d0, Fmax=7.d0
+integer,parameter   :: dp=8, Nf=256, font=35
+real(dp), parameter :: Fmin=0.5d0, Fmax=7.d0
 
-real(dp)            :: T=700.d0, Fi(Nf), Ji(Nf), heati(Nf), t1,t2
+real(dp)            :: T=700.d0, Fi(Nf), Ji(Nf), heati(Nf), t1,t2, Japp(Nf), heatapp(Nf)
 integer             :: i
 
 type(EmissionData)      :: old,new
@@ -26,10 +26,16 @@ do i=1,Nf
     
     new%F=Fi(i)
     
+    new%full = .true.
     call cur_dens(new)
     Ji(i) = new%Jem
     heati(i) = new%heat
-!     print *, Ji(i), heati(i), new%regime, new%sharpness
+
+    new%full = .false.
+    call cur_dens(new)
+    Japp(i) = new%Jem
+    heatapp(i) = new%heat
+    
 enddo
 call cpu_time(t2)
 print *, 'Elapsed time:', t2-t1
@@ -44,6 +50,12 @@ call plt%add_plot(1/Fi,log10(Ji),label='$current$', &
                     
 call plt%add_plot(1/Fi,log10(abs(heati)),label='$heat$', &
                     linestyle='r-',linewidth=2)
+                    
+call plt%add_plot(1/Fi,log10(Japp),label='$current-approx$', &
+                    linestyle='b--',linewidth=2)
+                    
+call plt%add_plot(1/Fi,log10(abs(heatapp)),label='$heat-approx$', &
+                    linestyle='r--',linewidth=2)
                     
 call plt%savefig('FNplot.png', pyfile='FNplot.py')
 

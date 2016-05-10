@@ -1,57 +1,24 @@
 program test
 
 
-use emission, only: Cur_dens
-use std_mat
-use omp_lib
+use emission
 implicit none
 
+type(EmissionData)      :: this
 
-double precision, parameter:: Fmin=0.2d0, Fmax=5.d0, W=3.2d0, &
-R=5.d0, T=600.d0,gamma=50.d0
-integer, parameter :: Nvals=16000
-double precision::J(Nvals),F(Nvals),t1,t2,arrout(Nvals,4),regnum(Nvals), &
-ww(Nvals),RR(Nvals),TT(Nvals),ggam(Nvals),heat(Nvals)
-character :: regime(Nvals)
-integer:: nthreads=1,i,fidout=1987
+this%kT=0.07d0
+this%full = .false.
+this%F = 2.d0
 
-!$ nthreads = omp_get_num_procs()
-!$ print * , 'threads: ', nthreads
-!$ call omp_set_num_threads(nthreads)
+call cur_dens(this)
 
+call print_data(this)
 
-F=1.d0/linspace(1.d0/Fmax,1.d0/Fmin, Nvals)
-ww=W
-RR=R
-TT=T
-ggam=gamma
+this%full = .true.
 
+call cur_dens(this)
 
-call cpu_time(t1)
-
-do i=1,Nvals
-	J(i)=Cur_dens(F(i),W,R,gamma,T,regime(i),heat(i))
-enddo
-
-call cpu_time(t2)
-
-where (regime=='f') regnum=-1.d0
-where (regime=='t') regnum=1.d0
-where (regime=='i') regnum=0.d0
-
-arrout(:,1)=1.d0/F
-arrout(:,2)=log10(J)
-arrout(:,3)=regnum
-arrout(:,4)=heat
-
-open(fidout,file="J-Fplot.csv",action="write",status="replace")
-call csvprint(fidout,arrout)
-close(fidout)
-
-print *, 'elapsed CPU time:', t2-t1, 'sec'
-
-
-contains
+call print_data(this) 
 
 
 

@@ -6,11 +6,15 @@ integer, parameter  :: dp=8, Nr=32
 
 type, private       :: InterData
 
-    real(dp)        :: F(:), R(:), gamma(:) !list of parametera defining barrier
-    real(dp)        :: W, T ! General external parameters
-    integer         :: Nstart(:,:) !indices of starting surface surf_points
-    real(dp)        :: rline(Nr), grid(3) !length of V lines and grid spacing
-    real(dp)        :: TimeCur, TimeInSet, TimeFit, TimeInt !timing variables
+    real(dp), allocatable   :: F(:), R(:), gamma(:), Jem(:), heat(:)
+                            !list of parametera defining barrier
+    real(dp)                :: W, T ! General external parameters
+    integer, allocatable    :: Nstart(:,:) 
+                            !indices of starting surface surf_points
+    real(dp)                :: rline(Nr), grid(3) 
+                            !length of V lines and grid spacing
+    real(dp)                :: TimeCur, TimeInSet, TimeFit, TimeInt 
+                            !timing variables
 end type InterData
     
 
@@ -56,7 +60,7 @@ end function surf_points
 subroutine J_from_phi(phi,this)
     use bspline, only: db3ink,db3val
     use std_mat, only: linspace
-    use emission, only: EmissionData, cur_dens
+    
     
     type(InterData), intent(in) :: this
     real(dp),intent(in)         :: phi(:,:,:)
@@ -106,45 +110,63 @@ subroutine J_from_phi(phi,this)
                  phi(istart,jstart-1,kstart), &
                  phi(istart,jstart,kstart-1)])/grid_spacing
                  
-        if (norm2(Efstart)>1.d0) then
-            direc=Efstart/norm2(Efstart)
+        direc=Efstart/norm2(Efstart)
             !set the line of interpolation and interpolate
-            xline=x(istart)+this%rline*direc(1)
-            yline=y(jstart)+this%rline*direc(2)
-            zline=z(kstart)+this%rline*direc(3)
+        xline=x(istart)+this%rline*direc(1)
+        yline=y(jstart)+this%rline*direc(2)
+        zline=z(kstart)+this%rline*direc(3)
             
-            call cpu_time(t1)
-            do i=1,Nr
-                call db3val(xline(i),yline(i),zline(i),idx,idy,idz,tx,ty,tz,nx,ny,nz, &
-                        kx,ky,kz,fcn,Vline(i),iflag,inbvx,inbvy,inbvz,iloy,iloz)
-            enddo
-            call cpu_time(t2)
-            this%TimeInt = this%TimeInt + t2 - t1
+        call cpu_time(t1)
+        do i=1,Nr
+            call db3val(xline(i),yline(i),zline(i),idx,idy,idz,tx,ty,tz,nx,ny,nz, &
+                    kx,ky,kz,fcn,Vline(i),iflag,inbvx,inbvy,inbvz,iloy,iloz)
+        enddo
+        call cpu_time(t2)
+        this%TimeInt = this%TimeInt + t2 - t1
             
-            call cpu_time(t1)
-            call fitpot(this%rline,Vline,this%F(j),this%R(j),this%gamma(j))
-            call cpu_time(t2)
-            this%TimeFit = this%TimeFit + t2 - t1
+        call cpu_time(t1)
+        call fitpot(this%rline,Vline,this%F(j),this%R(j),this%gamma(j))
+        call cpu_time(t2)
+        this%TimeFit = this%TimeFit + t2 - t1
             
-            call cpu_time(t1)
-            if (this%F(j) > 1.d0) then
-                Jcur(j)=Cur_dens(F,W,R,gamma,T,regime,heat(j)) !calculate current
-            else
-                Jcur(j)=1.d-200
-            endif
-            call cpu_time(t2)
-            tcur=tcur+t2-t1
-        else
-            Jcur(j)=1.d-200
-        endif
-        
+        call cpu_time(t1)
+        call current(this,j)
+        call cpu_time(t2)
+        this%TimeCur = tcur+t2-t1
     enddo
+end subroutine J_from_phi
 
-    print *, 'Interpolation: ', tinterp, 'sec'
-    print *, 'Fitting:', tfit, 'sec'
-    print *, 'Current:', tcur,'sec'
-
-end function J_from_phi
+subroutine current(this,i)
+!calls emission module and calculates emission for the ith 
+    use emission, only: EmissionData, cur_dens
+    
+    type(InterData), intent(inout)  :: this
+    integer, intent(in)             :: i
+    
+    type(EmissinData)               :: emit
+    
+    emit%F = this%F(i)
+    emit%W = this%W
+    emit%R = this%R(i)
+    emit%gamma = this%gamma(i)
+    emit%kT = this%kT
+    
+    emit%full = .false.
+    
+    call cur_dens(emit)
+    
+    if (emit%Jem > Jlim) then
+        emit%full = .true.
+        call cur_dens(emit)
+    endif
+    
+    this%Jem(i) = emit%Jem
+    this%heat(i) = emit%heat
+    
+end subroutine current
+    
+    
+    
 
 function pot_interp(phi,grid_spacing,Nstart,r,timings) result(V)
 

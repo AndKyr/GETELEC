@@ -3,7 +3,7 @@ module emission
 use std_mat, only: diff2, local_min, linspace
 implicit none
 
-integer, parameter                  :: Ny=200, dp=8
+integer, parameter                  :: Ny=200, dp=8, sp=4
 real(dp), parameter                 :: pi=acos(-1.d0), b=6.83089d0, zs=1.6183d-4, &
                                        gg=10.246d0, Q=0.35999d0, kBoltz=8.6173324d-5
 logical, save                       :: spectroscopy= .false.
@@ -22,6 +22,7 @@ type, public    :: EmissionData
     character   :: regime ='F', sharpness = 'B'
         !'f' for field, 'i' for intermediate, 't' for thermal regimes
         !'s' for sharp tip (numerical integration) and 'b' for blunt (KX approx)
+    logical     :: full !full calculation if true, else GTF approximation
 end type EmissionData
 
 
@@ -32,8 +33,16 @@ subroutine cur_dens(this)
 
     type(EmissionData), intent(inout)      :: this
     
-    real(dp):: Jf,Jt,n,s,E0,dE,heatf,heatt
-    real(dp), parameter:: nlimf=.7d0, nlimt=2.d0
+    real(dp)        :: Jf,Jt,n,s,E0,dE,heatf,heatt
+    real(dp)        :: nlimf=.7d0, nlimt=2.d0
+    
+    if (this%full) then
+        nlimf = 0.7d0
+        nlimt = 2.d0
+    else
+        nlimf = 1.d0
+        nlimt = 1.d0
+    endif
     
     this%Um = -1.d20
     this%xm = -1.d20
@@ -54,11 +63,15 @@ subroutine cur_dens(this)
         Jt = zs * (this%kT**2) * exp(-n*s) * Sigma(n)
         this%Jem = Jt+Jf/(n**2)
         heatt = (n*s+1.d0)*Sigma(n)*exp(-n*s)
-        heatf = (n**3)*DSigma(1/n)*exp(-s)
-        this%heat = zs*(heatt+heatf)*(this%kT**3)
+        heatf = (n**3)*DSigma(1.d0/n)*exp(-s)
+        this%heat = zs*(heatt-heatf)*(this%kT**3)
         this%regime = 'T'
     else  !intermediate regime
-        call J_num_integ(this) !Numerical integration over energies
+        if (this%full) then
+            call J_num_integ(this) !Numerical integration over energies
+        else
+            call GTFinter(this)
+        endif
         this%regime = 'I'
     endif
     
@@ -77,6 +90,7 @@ subroutine cur_dens(this)
     end function DSigma
 
 end subroutine cur_dens 
+
 
 subroutine gamow_general(this,full)
 !Calculates Gamow exponent in the general case: Choose appropriate approximation
@@ -199,6 +213,41 @@ subroutine gamow_num(this,xmax)
     end function sqrt_bar
     
 end subroutine gamow_num
+
+subroutine GTFinter(this)
+!calculates estimation of current according to GTF theory for intermediate regime
+    type(EmissionData), intent(inout)   :: this
+    
+    real(sp)            :: C_FN, Bq, B_FN, UmaxokT, polybeta(3), work(8)
+    complex(sp)         :: rt(2)
+    integer             :: ierr
+    real(dp)            :: zmax, Em, Gm, s, heatt, heatf
+    
+
+    C_FN = real(this%maxbeta * this%Um, sp)
+    Bq = real(this%minbeta * this%Um, sp)
+    B_FN = real(this%Gam, sp)
+    UmaxokT = real(this%Um / this%kT, sp)
+    
+    polybeta = [3.*(C_FN+Bq-2.*B_FN), 2.*(3.*B_FN-Bq-2.*C_FN), C_FN-UmaxokT]
+    
+    call RPQR79(2,polybeta,rt,ierr,work)
+    zmax=minval(real(rt,dp));
+    if (zmax<0) then
+        zmax=maxval(real(rt,dp))
+    endif
+    Em = this%Um * zmax
+    Gm = -(C_FN+Bq-2.*B_FN) * zmax**3 - (3.*B_FN-Bq-2.*C_FN) * zmax**2 &
+            -C_FN * zmax + B_FN
+    s = Em / this%kT + Gm
+    
+    heatt = (s+1.d0)*exp(-s)
+    heatf = exp(-s)
+    
+    this%heat = zs*(heatt+heatf)*(this%kT**3)
+    this%Jem = zs * (this%kT**2) * exp(-s) * (s + 1.d0)
+
+end subroutine GTFinter
 
 
 subroutine J_num_integ(this)

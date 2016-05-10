@@ -2,10 +2,13 @@ MODOBJ = modules/obj/std_mat.o modules/obj/bspline.o \
   modules/obj/levenberg_marquardt.o modules/obj/emission.o \
   modules/obj/pyplot_mod.o
 DEPS  = -lslatec
-FFLAGS = -ffree-line-length-none -fbounds-check -Imod -O3 #-Wall -pedantic# -pedantic -O3
+FFLAGS = -ffree-line-length-none -fbounds-check -Imod #-O3 #-Wall -pedantic# -pedantic -O3
 
 .PHONY: main spectroscopy spline3d splinemission surfacepoints
 .SECONDARY: %.o
+
+test: bin/test.exe
+	./bin/test.exe
 
 main: bin/main.exe
 	./bin/main.exe
@@ -22,9 +25,6 @@ spline3d: bin/spline3d.exe
 
 spectroscopy: bin/spectroscopy.exe
 	./bin/spectroscopy.exe
-
-main: bin/main.exe
-	./bin/main.exe
 
 bin/%.exe: obj/%.o $(MODOBJ)
 	gfortran $(FFLAGS) $^ $(DEPS) -o $@
