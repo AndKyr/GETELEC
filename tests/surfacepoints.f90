@@ -1,44 +1,56 @@
 program surfacepoints
 
-use emission, only: surf_points, J_from_phi
+use interface_helmod, only: InterData, J_from_phi
+use pyplot_mod , only: pyplot
 
 implicit none
 
 integer, parameter      :: dp=8, fidout=8646, font=35, nline=50
 
-real(dp), allocatable   :: phi(:,:,:), Jcur(:), heat(:)
+real(dp), allocatable   :: phi(:,:,:)
+type(InterData)         :: this
 integer                 :: icount, jcount, indsize(2),i
-integer, allocatable    :: inds(:,:)
-real(dp), dimension(3)  :: grid_spacing,Ef
-real(dp)    t1,t2, times(4)
 
-call read_phi(phi,grid_spacing)
-grid_spacing=grid_spacing*0.1d0
+type(pyplot)            :: plt   !! pytplot handler
 
 
-call cpu_time(t1)
-inds=surf_points(phi)
-call cpu_time(t2)
-print *, 'Surface points:' , t2-t1
+call read_phi(phi,this%grid_spacing)
+this%grid_spacing = this%grid_spacing * 0.1d0
 
-allocate(Jcur(size(inds,2)),heat(size(inds,2)))
 
+call J_from_phi(phi,this)
 
 open(fidout,file='data/boundary_grid.xyz',action='write',status='replace')
-write(fidout,*) size(inds,2)
+write(fidout,*) size(this%Nstart,2)
 write(fidout,*) 'eimaste treloi'
 
-
-Jcur=J_from_phi(phi,grid_spacing,inds,4.5d0,100.d0,heat,times)
-
-do i=1,size(inds,2)
-    write(fidout,*) i, inds(:,i)*grid_spacing, Jcur(i)
+do i=1,size(this%Nstart,2)
+    write(fidout,*) i, this%Nstart(:,i)*this%grid_spacing, this%Jem(i)
 enddo 
 
 
 close(fidout)
 
-deallocate(phi,inds,Jcur,heat)
+call plt%initialize(grid=.true.,xlabel='$1/F [nm/V]$',ylabel='$J (A/nm^2)$', &
+            figsize=[20,15], font_size=font, title='FN-plot test', &
+            legend=.true.,axis_equal=.false., legend_fontsize=font, &
+            xtick_labelsize=font,ytick_labelsize=font,axes_labelsize=font)
+            
+call plt%add_plot(1.d0/this%F,log10(this%Jem),label='$current$', &
+                    linestyle='b*',linewidth=2)
+                    
+call plt%add_plot(1.d0/this%F,log10(abs(this%heat)),label='$heat$', &
+                    linestyle='r*',linewidth=2)
+
+
+
+deallocate(this%Nstart, this%F, this%R,this%gamma, this%Jem, this%heat)
+
+print * , 'Timing:'
+print *, 'Cuurent:', this%TimeCur
+print *, 'Set:', this%TimeInSet
+print *, 'Fit', this%TimeFit
+print *, 'Interpolate:', this%TimeInt 
     
 
  contains

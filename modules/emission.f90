@@ -36,6 +36,10 @@ subroutine cur_dens(this)
     real(dp)        :: Jf,Jt,n,s,E0,dE,heatf,heatt
     real(dp)        :: nlimf=.7d0, nlimt=2.d0
     
+    if (this%R < 0.d0) then
+        this%R = 1.d4
+    endif
+    
     if (this%full) then
         nlimf = 0.7d0
         nlimt = 2.d0
@@ -146,7 +150,10 @@ subroutine gamow_KX(this)
         print *, 'Error: yf out of interpolation bounds'
         return
     endif
+    
+    print *, yf
     t = lininterp(tt,0.d0,1.d0,yf)
+    print *, t
     ps = lininterp(psi,0.d0,1.d0,yf)
     v = lininterp(vv,0.d0,1.d0,yf)
     omeg = lininterp(ww,0.d0,1.d0,yf)

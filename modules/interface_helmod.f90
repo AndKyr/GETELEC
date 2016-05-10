@@ -3,12 +3,13 @@ module interface_helmod
 implicit none
 
 integer, parameter  :: dp=8, Nr=32
+real(dp), parameter :: Jlim=1.d-22
 
-type, private       :: InterData
+type, public       :: InterData
 
     real(dp), allocatable   :: F(:), R(:), gamma(:), Jem(:), heat(:)
                             !list of parametera defining barrier
-    real(dp)                :: W, T ! General external parameters
+    real(dp)                :: W=4.5d0, kT=0.05d0, grid_spacing(3) ! General external parameters
     integer, allocatable    :: Nstart(:,:) 
                             !indices of starting surface surf_points
     real(dp)                :: rline(Nr), grid(3) 
@@ -61,9 +62,8 @@ subroutine J_from_phi(phi,this)
     use bspline, only: db3ink,db3val
     use std_mat, only: linspace
     
-    
-    type(InterData), intent(in) :: this
-    real(dp),intent(in)         :: phi(:,:,:)
+    type(InterData), intent(inout)  :: this
+    real(dp), intent(in)            :: phi(:,:,:)
     
     integer, parameter      :: kx=2, ky=2, kz=2, iknot=0
     integer                 :: inbvx=1,inbvy=1,inbvz=1,iloy=1,iloz=1
@@ -71,33 +71,35 @@ subroutine J_from_phi(phi,this)
     real(dp), allocatable   :: fcn(:,:,:), tx(:), ty(:), tz(:), x(:), y(:), z(:)
     !the above are spline-related parameters
     
-    integer                 :: nx, ny, nz, sz(3), i,j, istart, jstart, kstart, Npoints
+    integer                 :: nx,ny,nz, i, j, istart,jstart,kstart, Npoints
     real(dp), dimension(3)  :: direc, Efstart
     real(dp), dimension(Nr) :: xline, yline, zline, Vline
     
-    type(EmissionData)      :: emit
-    
-    real(dp)                :: t1,t2
+    real(dp)                :: t1, t2
 
     
     call cpu_time(t1)
-    this%rline = linspace(0.d0,3.d0,nline)
+    this%rline = linspace(0.d0,3.d0,Nr)
     
-    sz = shape(phi)
-    nx = sz(1)
-    ny = sz(2)
-    nz = sz(3)
-    Npoints = size(Nstart,2)
+    nx = size(phi,1)
+    ny = size(phi,2)
+    nz = size(phi,3)
+    
+    this%Nstart = surf_points(phi)
+    Npoints = size(this%Nstart,2)
+    allocate(this%F(Npoints),this%R(Npoints),this%gamma(Npoints), &
+            this%Jem(Npoints), this%heat(Npoints))
     
 
     allocate(x(nx),y(ny),z(nz),fcn(nx,ny,nz),tx(nx+kx),ty(ny+ky),tz(nz+kz))
-    x = [(grid_spacing(1)*(i-1), i=1,nx)]
-    y = [(grid_spacing(2)*(i-1), i=1,ny)]
-    z = [(grid_spacing(3)*(i-1), i=1,nz)]
+    x = [(this%grid_spacing(1)*(i-1), i=1,nx)]
+    y = [(this%grid_spacing(2)*(i-1), i=1,ny)]
+    z = [(this%grid_spacing(3)*(i-1), i=1,nz)]
     call db3ink(x,nx,y,ny,z,nz,phi,kx,ky,kz,iknot,tx,ty,tz,fcn,iflag)
     call cpu_time(t2)
     this%TimeInSet = t2 - t1
-    
+    print *, 'Npoints = ', Npoints
+    call sleep(1)
     do j=1,Npoints
         istart = this%Nstart(1,j)
         jstart = this%Nstart(2,j)
@@ -108,7 +110,7 @@ subroutine J_from_phi(phi,this)
                  phi(istart,jstart+1,kstart), &
                  phi(istart,jstart,kstart+1)]-[phi(istart-1,jstart,kstart), &
                  phi(istart,jstart-1,kstart), &
-                 phi(istart,jstart,kstart-1)])/grid_spacing
+                 phi(istart,jstart,kstart-1)])/this%grid_spacing
                  
         direc=Efstart/norm2(Efstart)
             !set the line of interpolation and interpolate
@@ -132,106 +134,45 @@ subroutine J_from_phi(phi,this)
         call cpu_time(t1)
         call current(this,j)
         call cpu_time(t2)
-        this%TimeCur = tcur+t2-t1
+        this%TimeCur = this%TimeCur + t2 - t1
     enddo
 end subroutine J_from_phi
 
 subroutine current(this,i)
 !calls emission module and calculates emission for the ith 
-    use emission, only: EmissionData, cur_dens
+    use emission, only: EmissionData, cur_dens, print_data
     
     type(InterData), intent(inout)  :: this
     integer, intent(in)             :: i
     
-    type(EmissinData)               :: emit
+    type(EmissionData)               :: emit
     
+    print *, 'i=', i
+
     emit%F = this%F(i)
     emit%W = this%W
-    emit%R = this%R(i)
+    emit%R = abs(this%R(i))
     emit%gamma = this%gamma(i)
     emit%kT = this%kT
-    
     emit%full = .false.
     
+    !call print_data(emit)
     call cur_dens(emit)
     
+    !call print_data(emit)
     if (emit%Jem > Jlim) then
         emit%full = .true.
         call cur_dens(emit)
     endif
     
+    !if (mod(i,10)==0) then
+   
+        
+    !endif
     this%Jem(i) = emit%Jem
     this%heat(i) = emit%heat
     
 end subroutine current
-    
-    
-    
-
-function pot_interp(phi,grid_spacing,Nstart,r,timings) result(V)
-
-    use bspline, only: db3ink,db3val
-    
-    real(dp), intent(in)    :: phi(:,:,:), grid_spacing(3), r(:)
-    integer, intent(in)     :: Nstart(:)
-    real(dp), intent(out)   :: timings(2)
-    !everything comes in in nm
-    
-    integer, parameter      :: kx=2, ky=2, kz=2, iknot=0
-    integer                 :: inbvx=1,inbvy=1,inbvz=1,iloy=1,iloz=1
-    integer                 :: idx=0, idy=0, idz=0, iflag
-    real(dp), allocatable   :: fcn(:,:,:), tx(:), ty(:), tz(:), x(:), y(:), z(:)
-    !the above are spline-related parameters
-    
-    integer                 :: nx, ny, nz, sz(3), i, nline, istart, jstart, kstart
-    real(dp), dimension(3)  :: direc, Efstart
-    real(dp), dimension(size(r))  :: xline, yline, zline, V
-    
-    real(dp)                :: t1,t2,t3
-    
-    call cpu_time(t1)
-    !setup parameters and allocate memory for interpolating
-    sz=shape(phi)
-    nx=sz(1)
-    ny=sz(2)
-    nz=sz(3)
-    nline=size(r)
-    allocate(x(nx),y(ny),z(nz),fcn(nx,ny,nz),tx(nx+kx),ty(ny+ky),tz(nz+kz))
-    x=[(grid_spacing(1)*(i-1), i=1,nx)]
-    y=[(grid_spacing(2)*(i-1), i=1,ny)]
-    z=[(grid_spacing(3)*(i-1), i=1,nz)]
-    call db3ink(x,nx,y,ny,z,nz,phi,kx,ky,kz,iknot,tx,ty,tz,fcn,iflag)
-    
-    call cpu_time(t2)
-    istart=Nstart(1)
-    jstart=Nstart(2)
-    kstart=Nstart(3)
-    
-    !find direction of the line (same as Efield direction)
-    Efstart=([phi(istart+1,jstart,kstart), &
-             phi(istart,jstart+1,kstart), &
-             phi(istart,jstart,kstart+1)]-[phi(istart-1,jstart,kstart), &
-             phi(istart,jstart-1,kstart), &
-             phi(istart,jstart,kstart-1)])/grid_spacing
-    direc=Efstart/norm2(Efstart)
-!     print *, 'direc=' , direc
-    !set the line of interpolation and interpolate
-    xline=x(istart)+r*direc(1)
-    yline=y(jstart)+r*direc(2)
-    zline=z(kstart)+r*direc(3)
-    
-    do i=1,nline
-        call db3val(xline(i),yline(i),zline(i),idx,idy,idz,tx,ty,tz,nx,ny,nz, &
-                    kx,ky,kz,fcn,V(i),iflag,inbvx,inbvy,inbvz,iloy,iloz)
-    enddo
-    
-    call cpu_time(t3)
-    
-    timings=[t2-t1,t3-t2]
-    
-    deallocate(x,y,z,fcn,tx,ty,tz)
-    
-end function pot_interp
 
 subroutine fitpot(x,V,F,R,gamma)
     !Fits V(x) data to F,R,gamma standard potential using L-V
@@ -265,3 +206,5 @@ subroutine fitpot(x,V,F,R,gamma)
         y=(p(1)*p(2)*x*(p(3)-1.d0)+p(1)*x**2) / (p(3)*x+p(2)*(p(3)-1.d0))
     end function fun
 end subroutine fitpot
+
+end module interface_helmod

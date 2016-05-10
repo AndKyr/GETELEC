@@ -352,6 +352,6 @@ function local_min ( a, b, eps, t, f, x )
   local_min = fx
 
   return
-end
+end function local_min
 
 end module std_mat
