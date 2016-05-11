@@ -7,8 +7,7 @@ real(dp), parameter, dimension(200)  :: & !these are the special functions (see 
 
 real(dp)                            :: t , yf
 
-    yf = 1.7387670869765577d-3
-
+    yf = 0.55678941d0
 
     t = lininterp(tt,0.d0,1.d0,yf)
     print *, yf, t
@@ -27,7 +26,7 @@ function lininterp(yi,a,b,x) result(y)
 		return
 	endif
 	N=size(yi)
-	Nnear=nint((x-a)*N/(b-a))
+	Nnear=nint((x-a)*(N-1)/(b-a))+1
     print *, Nnear
 	dx=(b-a)/dfloat(N-1)
 	xnear=a+(Nnear-1)*dx

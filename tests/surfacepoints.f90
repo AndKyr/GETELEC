@@ -25,7 +25,7 @@ write(fidout,*) size(this%Nstart,2)
 write(fidout,*) 'eimaste treloi'
 
 do i=1,size(this%Nstart,2)
-    write(fidout,*) i, this%Nstart(:,i)*this%grid_spacing, this%Jem(i)
+    write(fidout,*) i, this%Nstart(:,i)*this%grid_spacing, log10(this%Jem(i))
 enddo 
 
 
@@ -37,21 +37,20 @@ call plt%initialize(grid=.true.,xlabel='$1/F [nm/V]$',ylabel='$J (A/nm^2)$', &
             xtick_labelsize=font,ytick_labelsize=font,axes_labelsize=font)
             
 call plt%add_plot(1.d0/this%F,log10(this%Jem),label='$current$', &
-                    linestyle='b*',linewidth=2)
+                    linestyle='b.',linewidth=2)
                     
 call plt%add_plot(1.d0/this%F,log10(abs(this%heat)),label='$heat$', &
-                    linestyle='r*',linewidth=2)
-
-
+                    linestyle='r.',linewidth=2)
+                    
+call plt%savefig('png/surfacepoints.png', pyfile='python/surfacepoints.py')
 
 deallocate(this%Nstart, this%F, this%R,this%gamma, this%Jem, this%heat)
 
 print * , 'Timing:'
-print *, 'Cuurent:', this%TimeCur
 print *, 'Set:', this%TimeInSet
-print *, 'Fit', this%TimeFit
 print *, 'Interpolate:', this%TimeInt 
-    
+print *, 'Fit', this%TimeFit
+print *, 'Current:', this%TimeCur
 
  contains
 

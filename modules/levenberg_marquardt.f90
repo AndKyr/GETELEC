@@ -19,52 +19,52 @@ MODULE Levenberg_Marquardt
 ! amiller @ bigpond.net.au
 
 IMPLICIT NONE
-INTEGER, PARAMETER :: dp = SELECTED_REAL_KIND(12, 60)
+INTEGER, PARAMETER :: dp = SELECTED_REAL_KIND(12, 60), Nmaxval = 200
 
 PRIVATE
 PUBLIC :: dp, lmdif1, lmdif, lmder1, lmder, enorm, nlinfit
 
-CONTAINS
+ CONTAINS
 
 function nlinfit(fun,xdata,ydata,p0) result(var)
 !Added to module By Andreas Kyritsakis 31.03.2016
 !Simple function to data to non linear function
 
-	real(dp), intent(in)		:: xdata(:) !input x data
-	real(dp), intent(in)		:: ydata(:) !input y data
-	real(dp), intent(inout)		:: p0(:)	!in: initial guess, out:result
-	interface								!user provided function to be fit
-		pure function fun(x,p) result(y)
-			implicit none
-			integer,parameter :: dp = selected_real_kind(12,60)
-			real(dp), intent(in) :: x
-			real(dp), intent(in) :: p(:)
-			real(dp)			 :: y
-		end function fun
-	end interface
+    real(dp), intent(in)        :: xdata(:) !input x data
+    real(dp), intent(in)        :: ydata(:) !input y data
+    real(dp), intent(inout)     :: p0(:)    !in: initial guess, out:result
+    interface                               !user provided function to be fit
+        pure function fun(x,p) result(y)
+            implicit none
+            integer,parameter :: dp = selected_real_kind(12,60)
+            real(dp), intent(in) :: x
+            real(dp), intent(in) :: p(:)
+            real(dp)             :: y
+        end function fun
+    end interface
 
-	real(dp)					:: var,fvec(size(xdata))
-	real(dp),parameter			:: tol=1.d-20 !change tolerance if needed
-	integer 					:: i,m,n,info,iwa(size(p0))
-	
-	m=size(xdata)
-	n=size(p0)
+    real(dp)                    :: var,fvec(size(xdata))
+    real(dp),parameter          :: tol=1.d-10 !change tolerance if needed
+    integer                     :: i,m,n,info,iwa(size(p0))
+    
+    m=size(xdata)
+    n=size(p0)
 
-	call lmdif1(fcn,m,n,p0,fvec,tol,info,iwa)
-	var=sum(sqrt(fvec)/abs(ydata))/m
-	
-	contains
+    call lmdif1(fcn,m,n,p0,fvec,tol,info,iwa)
+    var=sum(sqrt(fvec)/abs(ydata))/m
+    
+    contains
 
-	subroutine fcn(m, n, p, fvec, iflag)
-		integer, intent(in)		:: m, n
-		real(dp), intent(in) 	:: p(:)
-		real(dp), intent(inout)	:: fvec(:)
-		integer, intent(inout)	:: iflag
+    subroutine fcn(m, n, p, fvec, iflag)
+        integer, intent(in)     :: m, n
+        real(dp), intent(in)    :: p(:)
+        real(dp), intent(inout) :: fvec(:)
+        integer, intent(inout)  :: iflag
 
-		do i=1,m
-			fvec(i)=(fun(xdata(i),p)-ydata(i))**2
-		enddo
-	end subroutine	
+        do i=1,m
+            fvec(i)=(fun(xdata(i),p)-ydata(i))**2
+        enddo
+    end subroutine  
 end function nlinfit
 
 SUBROUTINE lmdif1(fcn, m, n, x, fvec, tol, info, iwa)
@@ -200,7 +200,7 @@ IF (n <= 0 .OR. m < n .OR. tol < zero) GO TO 10
 
 !     call lmdif.
 
-maxfev = 200*(n + 1)
+maxfev = Nmaxval*(n + 1)
 ftol = tol
 xtol = tol
 gtol = zero

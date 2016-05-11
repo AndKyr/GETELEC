@@ -3,7 +3,7 @@ module interface_helmod
 implicit none
 
 integer, parameter  :: dp=8, Nr=32
-real(dp), parameter :: Jlim=1.d-22
+real(dp), parameter :: Jlim=1.d-22, Fmin = 0.5d0
 
 type, public       :: InterData
 
@@ -14,7 +14,7 @@ type, public       :: InterData
                             !indices of starting surface surf_points
     real(dp)                :: rline(Nr), grid(3) 
                             !length of V lines and grid spacing
-    real(dp)                :: TimeCur, TimeInSet, TimeFit, TimeInt 
+    real(dp)                :: TimeCur=0.d0, TimeInSet=0.d0, TimeFit=0.d0, TimeInt=0.d0 
                             !timing variables
 end type InterData
     
@@ -75,11 +75,13 @@ subroutine J_from_phi(phi,this)
     real(dp), dimension(3)  :: direc, Efstart
     real(dp), dimension(Nr) :: xline, yline, zline, Vline
     
+    logical                 :: plot = .false.
+    
     real(dp)                :: t1, t2
 
     
     call cpu_time(t1)
-    this%rline = linspace(0.d0,3.d0,Nr)
+    this%rline = linspace(0.d0,2.d0,Nr)
     
     nx = size(phi,1)
     ny = size(phi,2)
@@ -98,8 +100,7 @@ subroutine J_from_phi(phi,this)
     call db3ink(x,nx,y,ny,z,nz,phi,kx,ky,kz,iknot,tx,ty,tz,fcn,iflag)
     call cpu_time(t2)
     this%TimeInSet = t2 - t1
-    print *, 'Npoints = ', Npoints
-    call sleep(1)
+    
     do j=1,Npoints
         istart = this%Nstart(1,j)
         jstart = this%Nstart(2,j)
@@ -112,29 +113,44 @@ subroutine J_from_phi(phi,this)
                  phi(istart,jstart-1,kstart), &
                  phi(istart,jstart,kstart-1)])/this%grid_spacing
                  
-        direc=Efstart/norm2(Efstart)
-            !set the line of interpolation and interpolate
-        xline=x(istart)+this%rline*direc(1)
-        yline=y(jstart)+this%rline*direc(2)
-        zline=z(kstart)+this%rline*direc(3)
+        if (norm2(Efstart)> Fmin) then
+                 
+            direc=Efstart/norm2(Efstart)
+                !set the line of interpolation and interpolate
+            xline=x(istart)+this%rline*direc(1)
+            yline=y(jstart)+this%rline*direc(2)
+            zline=z(kstart)+this%rline*direc(3)
+                
+            call cpu_time(t1)
+            do i=1,Nr
+                call db3val(xline(i),yline(i),zline(i),idx,idy,idz,tx,ty,tz,nx,ny,nz, &
+                        kx,ky,kz,fcn,Vline(i),iflag,inbvx,inbvy,inbvz,iloy,iloz)
+            enddo
+            call cpu_time(t2)
+            this%TimeInt = this%TimeInt + t2 - t1
             
-        call cpu_time(t1)
-        do i=1,Nr
-            call db3val(xline(i),yline(i),zline(i),idx,idy,idz,tx,ty,tz,nx,ny,nz, &
-                    kx,ky,kz,fcn,Vline(i),iflag,inbvx,inbvy,inbvz,iloy,iloz)
-        enddo
-        call cpu_time(t2)
-        this%TimeInt = this%TimeInt + t2 - t1
-            
-        call cpu_time(t1)
-        call fitpot(this%rline,Vline,this%F(j),this%R(j),this%gamma(j))
-        call cpu_time(t2)
-        this%TimeFit = this%TimeFit + t2 - t1
+            if (j==4196) then
+                plot = .true.
+            else
+                plot = .false.
+            endif
+                
+            call cpu_time(t1)
+            call fitpot(this%rline,Vline,this%F(j),this%R(j),this%gamma(j),plot)
+            call cpu_time(t2)
+            this%TimeFit = this%TimeFit + t2 - t1
+        else
+            this%F(j) = norm2(Efstart)
+            this%R(j) = 1.d4
+            this%gamma(j) = 1.d0
+        endif
             
         call cpu_time(t1)
         call current(this,j)
         call cpu_time(t2)
         this%TimeCur = this%TimeCur + t2 - t1
+        
+
     enddo
 end subroutine J_from_phi
 
@@ -146,8 +162,6 @@ subroutine current(this,i)
     integer, intent(in)             :: i
     
     type(EmissionData)               :: emit
-    
-    print *, 'i=', i
 
     emit%F = this%F(i)
     emit%W = this%W
@@ -156,35 +170,37 @@ subroutine current(this,i)
     emit%kT = this%kT
     emit%full = .false.
     
-    !call print_data(emit)
     call cur_dens(emit)
     
-    !call print_data(emit)
     if (emit%Jem > Jlim) then
         emit%full = .true.
         call cur_dens(emit)
     endif
     
-    !if (mod(i,10)==0) then
-   
-        
-    !endif
+    if (isnan(emit%Jem) .or. emit%Jem > 1.d201) then
+        call print_data(emit)
+    endif
+    
     this%Jem(i) = emit%Jem
     this%heat(i) = emit%heat
     
 end subroutine current
 
-subroutine fitpot(x,V,F,R,gamma)
+subroutine fitpot(x,V,F,R,gamma,plot)
     !Fits V(x) data to F,R,gamma standard potential using L-V
     !minimization module
     use Levenberg_Marquardt, only: nlinfit
+    use pyplot_mod, only: pyplot
     
     real(dp), intent(in)    ::x(:),V(:)
+    logical, intent(in), optional   :: plot
     real(dp), intent(out)   ::F,R,gamma
     real(dp)                ::p(3),F2,Fend,var
     
-    integer                 :: Nstart=4
-
+    integer                 :: Nstart=3,i
+    
+    type(pyplot)            :: plt
+  
     
     p(1) = (V(Nstart)-V(Nstart-1))/(x(Nstart)-x(Nstart-1))
     F2 = (V(Nstart+1)-V(Nstart))/(x(Nstart+1)-x(Nstart))
@@ -196,6 +212,24 @@ subroutine fitpot(x,V,F,R,gamma)
     F=p(1)
     R=p(2)
     gamma=p(3)
+    
+    if (present(plot)) then
+        if (plot) then
+            call plt%initialize(grid=.true.,xlabel='$x [nm]$',ylabel='$V (V)$', &
+                            figsize=[20,15], font_size=20, title='Fitting', &
+                            legend=.true.,axis_equal=.false., legend_fontsize=20, &
+                            xtick_labelsize=20,ytick_labelsize=20,axes_labelsize=20)
+            
+            call plt%add_plot(x,V,label='$data$', &
+                    linestyle='bo',linewidth=2)
+                    
+            call plt%add_plot(x,[(fun(x(i),p),i=1,size(x))],label='$fitting$', &
+                                linestyle='r-',linewidth=2)
+            call plt%savefig('png/fitting.png', pyfile='python/fitting.py')
+            
+            print *, p
+        endif
+    endif
 
     contains
 

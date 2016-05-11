@@ -40,6 +40,10 @@ subroutine cur_dens(this)
         this%R = 1.d4
     endif
     
+    if (this%gamma < 0.d0) then
+        this%gamma = 1.d0
+    endif
+    
     if (this%full) then
         nlimf = 0.7d0
         nlimt = 2.d0
@@ -151,9 +155,7 @@ subroutine gamow_KX(this)
         return
     endif
     
-    print *, yf
     t = lininterp(tt,0.d0,1.d0,yf)
-    print *, t
     ps = lininterp(psi,0.d0,1.d0,yf)
     v = lininterp(vv,0.d0,1.d0,yf)
     omeg = lininterp(ww,0.d0,1.d0,yf)
