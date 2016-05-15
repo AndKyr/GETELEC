@@ -10,7 +10,7 @@ logical, save                       :: spectroscopy= .false.
 
 type, public    :: EmissionData
 
-    real(dp)    :: F=5.d0, R=5.d0, gamma=1.d1 
+    real(dp)    :: F=5.d0, R=100.d0, gamma=1.d0
         !Electrostatics: Field, Radius, enhancement factor
     real(dp)    :: W=4.5d0, kT=2.5d-2
         !Materical Characteristics: Work funciton,Temperature
