@@ -21,7 +21,7 @@ this%grid_spacing = this%grid_spacing * 0.1d0
 call J_from_phi(phi,this)
 
 open(fidout,file='data/boundary_grid.xyz',action='write',status='replace')
-write(fidout,*) size(this%Nstart,2)
+write(fidout,*) size(log10(this%Jem))
 write(fidout,*) 'eimaste treloi'
 
 do i=1,size(this%Nstart,2)
