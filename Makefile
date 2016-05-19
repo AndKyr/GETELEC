@@ -1,13 +1,19 @@
 
 FC = gfortran-5
 MODOBJ = modules/obj/std_mat.o modules/obj/bspline.o \
-  modules/obj/fitting.o modules/obj/emission.o \
+  modules/obj/levenberg_marquardt.o modules/obj/emission.o \
   modules/obj/interface_helmod.o modules/obj/pyplot_mod.o
+  
 DEPS  = -lslatec
+
 FFLAGS = -ffree-line-length-none -fbounds-check -Imod -O3 #-Wall -pedantic# -pedantic -O3
 
 .PHONY: main spectroscopy spline3d splinemission surfacepoints current
-.SECONDARY: MODOBJ
+.SECONDARY: $(MODOBJ)
+
+current: bin/current.exe
+	./bin/current.exe 5. 4.5 700. 1 5. 10.
+	./bin/current.exe 5. 4.5 700. 0 5. 10.
 
 test: bin/test.exe
 	./bin/test.exe
@@ -22,8 +28,8 @@ surfacepoints: bin/surfacepoints.exe
 splinemission: bin/splinemission.exe
 	./bin/splinemission.exe
 
-spline3d: bin/spline3d.exe
-	./bin/spline3d.exe
+spline1d: bin/spline1d.exe
+	./bin/spline1d.exe
 
 spectroscopy: bin/spectroscopy.exe
 	./bin/spectroscopy.exe

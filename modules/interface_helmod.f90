@@ -106,7 +106,7 @@ subroutine J_from_phi(phi,this)
         jstart = this%Nstart(2,j)
         kstart = this%Nstart(3,j)
     
-    !find direction of the line (same as Efield direction)
+        !find direction of the line (same as Efield direction)
         Efstart=([phi(istart+1,jstart,kstart), &
                  phi(istart,jstart+1,kstart), &
                  phi(istart,jstart,kstart+1)]-[phi(istart-1,jstart,kstart), &
@@ -129,11 +129,11 @@ subroutine J_from_phi(phi,this)
             call cpu_time(t2)
             this%TimeInt = this%TimeInt + t2 - t1
             
-            if (j==4196) then
-                plot = .true.
-            else
-                plot = .false.
-            endif
+!            if (j==4196) then
+!                plot = .true.
+!            else
+!                plot = .false.
+!            endif
                 
             call cpu_time(t1)
             call fitpot(this%rline,Vline,this%F(j),this%R(j),this%gamma(j),plot)
@@ -150,7 +150,6 @@ subroutine J_from_phi(phi,this)
         call cpu_time(t2)
         this%TimeCur = this%TimeCur + t2 - t1
         
-
     enddo
 end subroutine J_from_phi
 
@@ -177,7 +176,7 @@ subroutine current(this,i)
         call cur_dens(emit)
     endif
     
-    if (isnan(emit%Jem) .or. emit%Jem > 1.d201) then
+    if (isnan(emit%Jem) .or. abs(emit%Jem) > 1.d201) then
         call print_data(emit)
     endif
     
@@ -186,103 +185,36 @@ subroutine current(this,i)
     
 end subroutine current
 
-subroutine fitpot(x,V,F,R,gamma,plot) 
-!Fits V(x) data to F,R,gamma standard potential using nr fitting module
-    use pyplot_mod, only: pyplot
-    use fitting, only: mrqmin
-
-    integer, parameter      :: Nstart = 3, Np = 3
-    real(dp), intent(in)    :: x(:), V(:)
-    logical, intent(in), optional   :: plot
-    real(dp), intent(out)   :: F,R,gamma
-    
-    
-    real(dp)                :: sig(size(x)), Vfitted(size(x)), dfit(size(x),3)
-    real(dp)                :: a(Np), F2, Fend, chisq, alamda = -0.1d0
-    real(dp)                :: covar(Np,Np), alpha(Np,Np)
-    logical                 :: mask(Np) = [.true., .true., .true.]
-    
-    type(pyplot)            :: plt
-  
-    sig(1:) = 1.d-1
-    
-    
-    a(1) = (V(Nstart)-V(Nstart-1))/(x(Nstart)-x(Nstart-1))
-    F2 = (V(Nstart+1)-V(Nstart))/(x(Nstart+1)-x(Nstart))
-    Fend = (V(size(V))-V(size(V)-1))/(x(size(x))-x(size(x)-1))
-    a(2) = abs(2./((F2-a(1))/(x(Nstart)-x(Nstart-1))))
-    a(3) = a(1)/Fend
-    
-    call mrqmin(x,V,sig,a,mask,covar,alpha,chisq,funcs,alamda)
-
-    call funcs(x,a,Vfitted,dfit)
-    
-    if (present(plot)) then
-        if (plot) then
-            call plt%initialize(grid=.true.,xlabel='$x [nm]$',ylabel='$V (V)$', &
-                            figsize=[20,15], font_size=20, title='Fitting', &
-                            legend=.true.,axis_equal=.false., legend_fontsize=20, &
-                            xtick_labelsize=20,ytick_labelsize=20,axes_labelsize=20)
-            
-            call plt%add_plot(x,V,label='$data$', &
-                    linestyle='bo',linewidth=2)
-                    
-            call plt%add_plot(x,Vfitted,label='$fitting$', &
-                                linestyle='r-',linewidth=2)
-            call plt%savefig('png/fitting.png', pyfile='python/fitting.py')
-            print *, a
-        endif
-    endif
-    
-    F=a(1)
-    R=a(2)
-    gamma=a(3)
-    
-
-    contains
-
-    subroutine funcs(x,p,yfit,dydp)
-        real(dp), intent(in)    :: x(:), p(:)
-        real(dp), intent(out)   :: yfit(:)
-        real(dp), intent(out)   :: dydp(:,:)
-        
-        yfit = (p(1)*p(2)*x*(p(3)-1.d0)+p(1)*x**2) / (p(3)*x+p(2)*(p(3)-1.d0))
-        dydp(:,1) = (p(2) * (p(3)-1.d0)*x + x**2) / &
-                    (p(2) * (p(3)-1.d0) + p(3)*x)
-        dydp(:,2) = (p(1) * (x**2) * (p(3)-1.d0)**2) / &
-                    (p(2) * (p(3)-1.d0) + p(3) * x)**2
-        dydp(:,3) = -(p(1) * x**3) / (p(2) * (p(3)-1.d0) + p(3) * x)**2
-
-    end subroutine funcs
-    
-end subroutine fitpot
-
-!subroutine fitpot(x,V,F,R,gamma,plot)
-!    !Fits V(x) data to F,R,gamma standard potential using L-V
-!    !minimization module
-!    use Levenberg_Marquardt, only: nlinfit
+!subroutine fitpot(x,V,F,R,gamma,plot) 
+!!Fits V(x) data to F,R,gamma standard potential using nr fitting module
 !    use pyplot_mod, only: pyplot
-    
-!    real(dp), intent(in)    ::x(:),V(:)
+!    use fitting, only: mrqmin
+
+!    integer, parameter      :: Nstart = 3, Np = 3
+!    real(dp), intent(in)    :: x(:), V(:)
 !    logical, intent(in), optional   :: plot
-!    real(dp), intent(out)   ::F,R,gamma
-!    real(dp)                ::p(3),F2,Fend,var
+!    real(dp), intent(out)   :: F,R,gamma
     
-!    integer                 :: Nstart=3,i
+    
+!    real(dp)                :: sig(size(x)), Vfitted(size(x)), dfit(size(x),3)
+!    real(dp)                :: a(Np), F2, Fend, chisq, alamda = -0.1d0
+!    real(dp)                :: covar(Np,Np), alpha(Np,Np)
+!    logical                 :: mask(Np) = [.true., .true., .true.]
     
 !    type(pyplot)            :: plt
   
+!    sig(1:) = 1.d-1
     
-!    p(1) = (V(Nstart)-V(Nstart-1))/(x(Nstart)-x(Nstart-1))
+    
+!    a(1) = (V(Nstart)-V(Nstart-1))/(x(Nstart)-x(Nstart-1))
 !    F2 = (V(Nstart+1)-V(Nstart))/(x(Nstart+1)-x(Nstart))
 !    Fend = (V(size(V))-V(size(V)-1))/(x(size(x))-x(size(x)-1))
-!    p(2) = abs(2.d0/((F2-p(1))/(x(Nstart)-x(Nstart-1))))
-!    p(3) = p(1)/Fend
-!!     print *, 'F,R,gamma first guess =', p
-!    var=nlinfit(fun,x,V,p)
-!    F=p(1)
-!    R=p(2)
-!    gamma=p(3)
+!    a(2) = abs(2./((F2-a(1))/(x(Nstart)-x(Nstart-1))))
+!    a(3) = a(1)/Fend
+    
+!    call mrqmin(x,V,sig,a,mask,covar,alpha,chisq,funcs,alamda)
+
+!    call funcs(x,a,Vfitted,dfit)
     
 !    if (present(plot)) then
 !        if (plot) then
@@ -294,22 +226,89 @@ end subroutine fitpot
 !            call plt%add_plot(x,V,label='$data$', &
 !                    linestyle='bo',linewidth=2)
                     
-!            call plt%add_plot(x,[(fun(x(i),p),i=1,size(x))],label='$fitting$', &
+!            call plt%add_plot(x,Vfitted,label='$fitting$', &
 !                                linestyle='r-',linewidth=2)
 !            call plt%savefig('png/fitting.png', pyfile='python/fitting.py')
-            
-!            print *, p
+!            print *, a
 !        endif
 !    endif
+    
+!    F=a(1)
+!    R=a(2)
+!    gamma=a(3)
+    
 
 !    contains
 
-!    pure function fun(x,p) result(y)
-!        real(dp), intent(in) :: x
-!        real(dp), intent(in) :: p(:)
-!        real(dp)             :: y
-!        y=(p(1)*p(2)*x*(p(3)-1.d0)+p(1)*x**2) / (p(3)*x+p(2)*(p(3)-1.d0))
-!    end function fun
+!    subroutine funcs(x,p,yfit,dydp)
+!        real(dp), intent(in)    :: x(:), p(:)
+!        real(dp), intent(out)   :: yfit(:)
+!        real(dp), intent(out)   :: dydp(:,:)
+        
+!        yfit = (p(1)*p(2)*x*(p(3)-1.d0)+p(1)*x**2) / (p(3)*x+p(2)*(p(3)-1.d0))
+!        dydp(:,1) = (p(2) * (p(3)-1.d0)*x + x**2) / &
+!                    (p(2) * (p(3)-1.d0) + p(3)*x)
+!        dydp(:,2) = (p(1) * (x**2) * (p(3)-1.d0)**2) / &
+!                    (p(2) * (p(3)-1.d0) + p(3) * x)**2
+!        dydp(:,3) = -(p(1) * x**3) / (p(2) * (p(3)-1.d0) + p(3) * x)**2
+
+!    end subroutine funcs
+    
 !end subroutine fitpot
+
+subroutine fitpot(x,V,F,R,gamma,plot)
+    !Fits V(x) data to F,R,gamma standard potential using L-V
+    !minimization module
+    use Levenberg_Marquardt, only: nlinfit
+    use pyplot_mod, only: pyplot
+    
+    real(dp), intent(in)    ::x(:),V(:)
+    logical, intent(in), optional   :: plot
+    real(dp), intent(out)   ::F,R,gamma
+    real(dp)                ::p(3),F2,Fend,var
+    
+    integer                 :: Nstart=3,i
+    
+    type(pyplot)            :: plt
+  
+    
+    p(1) = (V(Nstart)-V(Nstart-1))/(x(Nstart)-x(Nstart-1))
+    F2 = (V(Nstart+1)-V(Nstart))/(x(Nstart+1)-x(Nstart))
+    Fend = (V(size(V))-V(size(V)-1))/(x(size(x))-x(size(x)-1))
+    p(2) = abs(2.d0/((F2-p(1))/(x(Nstart)-x(Nstart-1))))
+    p(3) = p(1)/Fend
+!     print *, 'F,R,gamma first guess =', p
+    var=nlinfit(fun,x,V,p)
+    F=p(1)
+    R=p(2)
+    gamma=p(3)
+    
+    if (present(plot)) then
+        if (plot) then
+            call plt%initialize(grid=.true.,xlabel='$x [nm]$',ylabel='$V (V)$', &
+                            figsize=[20,15], font_size=20, title='Fitting', &
+                            legend=.true.,axis_equal=.false., legend_fontsize=20, &
+                            xtick_labelsize=20,ytick_labelsize=20,axes_labelsize=20)
+            
+            call plt%add_plot(x,V,label='$data$', &
+                    linestyle='bo',linewidth=2)
+                    
+            call plt%add_plot(x,[(fun(x(i),p),i=1,size(x))],label='$fitting$', &
+                                linestyle='r-',linewidth=2)
+            call plt%savefig('png/fitting.png', pyfile='python/fitting.py')
+            
+            print *, p
+        endif
+    endif
+
+    contains
+
+    pure function fun(x,p) result(y)
+        real(dp), intent(in) :: x
+        real(dp), intent(in) :: p(:)
+        real(dp)             :: y
+        y=(p(1)*p(2)*x*(p(3)-1.d0)+p(1)*x**2) / (p(3)*x+p(2)*(p(3)-1.d0))
+    end function fun
+end subroutine fitpot
 
 end module interface_helmod

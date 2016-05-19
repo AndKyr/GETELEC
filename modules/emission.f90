@@ -3,9 +3,12 @@ module emission
 use std_mat, only: diff2, local_min, linspace
 implicit none
 
-integer, parameter                  :: Ny=200, dp=8, sp=4
+integer, parameter                  :: Ny=200, dp=8, sp=4 
+                                       !Ny: length of special functions array
 real(dp), parameter                 :: pi=acos(-1.d0), b=6.83089d0, zs=1.6183d-4, &
                                        gg=10.246d0, Q=0.35999d0, kBoltz=8.6173324d-5
+integer, parameter                  :: knotx = 6, iknot = 0, idx = 1
+                                       !No of bspline knots
 logical, save                       :: spectroscopy= .false.
 
 type, public    :: EmissionData
@@ -18,11 +21,22 @@ type, public    :: EmissionData
         !Calculated results: Current density and Nott. heat
     real(dp)    :: xm=-1.d20, Um=-1.d20, maxbeta=0.d0, minbeta=0.d0
         !Barrier characteristics: xm=x point where barrier is max,
-        ! Um=maximum barrier value, dGUm=dG/dW at E=Um, dGEf=dG/dW at Fermi,
+        ! Um=maximum barrier value, dGUm=dG/dreal(dp), allocatable    :: V(:), xr(:)
     character   :: regime ='F', sharpness = 'B'
         !'f' for field, 'i' for intermediate, 't' for thermal regimes
         !'s' for sharp tip (numerical integration) and 'b' for blunt (KX approx)
-    logical     :: full !full calculation if true, else GTF approximation
+    logical     :: full = .true. !full calculation if true, else GTF approximation
+    
+    real(dp), allocatable   :: xr(:), Vr(:)     !xr(nx), Vr(nx)
+        !electrostatic potential externally defined as Vr(xr)
+        
+    real(dp), allocatable   :: tx(:), bcoef(:)!tx(nx + kx), bcoef(nx)
+           !bspline related parameters
+    
+    integer                 :: mode = 0
+        !Mode of calculation. 0: barrier model (F,R,gamma)
+        !-1: fitting external data to (F,R,gamma)
+        !1: interpolation of Vr(xr), 2: interpolation but db1ink has been set up
 end type EmissionData
 
 
@@ -33,15 +47,32 @@ subroutine cur_dens(this)
 
     type(EmissionData), intent(inout)      :: this
     
-    real(dp)        :: Jf,Jt,n,s,E0,dE,heatf,heatt
-    real(dp)        :: nlimf=.7d0, nlimt=2.d0
+    real(dp)        :: Jf, Jt, n, s, E0, dE, heatf, heatt, F2, Fend
+    real(dp)        :: nlimf=.7d0, nlimt=2.d0   !limits for n to distinguish regimes
     
     if (this%R < 0.d0) then
         this%R = 1.d4
+        print *, 'Error: negative R inputed'
     endif
     
-    if (this%gamma < 0.d0) then
+    if (this%gamma < 1.d0) then
         this%gamma = 1.d0
+        print *, 'Error: negative gamma inputed'
+    endif
+    
+!    print *, 'xr = ', this%xr
+!    print *, 'Vr = ', this%Vr
+    
+    if (this%mode == -1) then
+        call fitpot(this%xr, this%Vr, this%F, this%R, this%gamma)
+        print *, 'fitted'
+    elseif (this%mode == 1)  then
+        this%F = ( this%Vr(2) - this%Vr(1) ) / ( this%xr(2) - this%xr(1) )
+        F2 = ( this%Vr(3) - this%Vr(2) ) / ( this%xr(3) - this%xr(2) )
+        Fend = ( this%Vr(size(this%Vr)) - this%Vr(size(this%Vr)-1) ) / &
+                ( this%xr(size(this%xr)) - this%xr(size(this%xr)-1) )
+        this%R= abs(this%F/((F2-this%F)/(this%xr(3)-this%xr(1))))
+        this%gamma = this%F / Fend
     endif
     
     if (this%full) then
@@ -102,13 +133,14 @@ end subroutine cur_dens
 
 subroutine gamow_general(this,full)
 !Calculates Gamow exponent in the general case: Choose appropriate approximation
-
+    use bspline, only: db1ink
     type(EmissionData), intent(inout)       :: this
     type(EmissionData)                      :: new
-    logical, intent(in)                     :: full
+    logical, intent(in)                     :: full !determine if maxbeta, minbeta
 
     real(dp), parameter                     :: dw = 1.d-2, xlim = 0.08d0
     real(dp)                                :: x, xmax
+    integer                                 :: iflag
     
     x = this%W / (this%F * this%R)
 
@@ -118,6 +150,15 @@ subroutine gamow_general(this,full)
         else  !the second root is close to the standard W/F
             xmax = 2.d0 * this%W / this%F
         endif
+        
+        if (this%mode == 1) then    !setup spline interpolation
+            allocate(this%tx(size(this%Vr) + knotx), this%bcoef(size(this%Vr)))
+            call db1ink(this%xr, size(this%xr), this%Vr, knotx, iknot, &
+                        this%tx, this%bcoef, iflag)
+            if (iflag/=0) print *, 'error in spline setup in gamow_general'
+            this%mode = 2 !change mode so no need to call db1ink again
+        endif
+            
         call gamow_num(this,xmax)
         this%sharpness='S'
         if (this%Um < 0.d0 .or. (.not. full)) then !barrier lost
@@ -168,17 +209,21 @@ subroutine gamow_KX(this)
 end subroutine gamow_KX
 
 subroutine gamow_num(this,xmax)
+    use bspline, only: db1val
 
     type(EmissionData), intent(inout)   :: this
     real(dp), intent(in)                :: xmax
     
+    !integration and root finding tolerance parameters
     integer, parameter                  :: maxint = 256
     real(dp), parameter                 :: AtolRoot=1.d-6, RtolRoot=1.d-6, &
                                            AtolInt=1.d-5, RtolInt=1.d-5
-    
+
+    ! integration and root finding working variables
     real(dp), dimension(maxint)         :: ALIST, BLIST, RLIST, ELIST
     real(dp)                            :: ABSERR
     integer                             :: IFLAG, NEVAL, IER, IORD(maxint), LAST
+        
     real(dp)                            :: G, x = 1.d-5 , x1(2), x2(2)
     
     if (this%Um == -1.d20) then ! Um is not initialized
@@ -193,7 +238,7 @@ subroutine gamow_num(this,xmax)
     else
         this%minbeta = 22.761d0 / sqrt(abs(diff2(bar,this%xm)))
     endif
-    
+        
     x1 = [0.01d0,this%xm]
     x2 = [this%xm,xmax]
     call dfzero(bar,x1(1),x1(2),x1(1),RtolRoot,AtolRoot,IFLAG)
@@ -203,18 +248,31 @@ subroutine gamow_num(this,xmax)
     this%Gam = gg * G
     
     contains
+    
     pure function bar(x) result(V)!sphere barrier model
         real(dp), intent(in)    :: x
-        real(dp)                ::V
-        V = this%W - (this%F * this%R * x*(this%gamma - 1.d0) + this%F * x**2) &
-            / (this%gamma * x + this%R * (this%gamma - 1.d0)) &
-            - Q / (x + ( 0.5d0 * (x**2)) / this%R)
+        real(dp)                :: V, Vinterp
+        integer                 :: iflag, inbvx
+        inbvx = 1
+        
+        if (this%mode > 0) then
+            call db1val(x, idx, this%tx, size(this%Vr), knotx, &
+                        this%bcoef, Vinterp, iflag, inbvx)
+!            if (iflag/=0) stop 'something went wrong with interpolation'
+            V = this%W - Vinterp - Q / (x + ( 0.5d0 * (x**2)) / this%R)
+        else
+            V = this%W - (this%F * this%R * x*(this%gamma - 1.d0) + this%F * x**2) &
+                / (this%gamma * x + this%R * (this%gamma - 1.d0)) &
+                - Q / (x + ( 0.5d0 * (x**2)) / this%R)
+        endif
     end function bar
+    
     pure function neg_bar(x) result(nv)
         real(dp), intent(in)    ::x
         real(dp)                ::nv
         nv = - bar(x)
     end function neg_bar
+    
     pure function sqrt_bar(x) result(rv)
         real(dp), intent(in)    ::x
         real(dp)                ::rv
@@ -424,8 +482,43 @@ subroutine print_data(this, filenum)
     write (fid,'(A10,ES12.4,/A10,ES12.4,/A10,ES12.4,/A10,ES12.4)') &
             'xm = ', this%xm, 'Um = ', this%Um, &
             'maxbeta = ', this%maxbeta, 'minbeta = ', this%minbeta
-    write (fid,'(A10,A12,/A10,A12)') 'Regime:  ', this%regime, &
-                                     'Sharpness:', this%sharpness
+    write (fid,'(A10,A12,/A10,A12,/A10,I10,/A10,L10)') 'Regime:  ', this%regime, &
+                                     'Sharpness:', this%sharpness,  &
+                                     'Mode:', this%mode, &
+                                     'Full', this%full
+    
 end subroutine print_data
+
+
+subroutine fitpot(x,V,F,R,gamma)
+    !Fits V(x) data to F,R,gamma standard potential using L-V
+    !minimization module
+    use Levenberg_Marquardt, only: nlinfit
+    
+    real(dp), intent(in)    ::x(:),V(:)
+    real(dp), intent(out)   ::F,R,gamma
+    real(dp)                ::p(3),F2,Fend,var
+    
+    integer                 :: Nstart=3,i
+    
+    p(1) = (V(Nstart)-V(Nstart-1))/(x(Nstart)-x(Nstart-1))
+    F2 = (V(Nstart+1)-V(Nstart))/(x(Nstart+1)-x(Nstart))
+    Fend = (V(size(V))-V(size(V)-1))/(x(size(x))-x(size(x)-1))
+    p(2) = abs(2.d0/((F2-p(1))/(x(Nstart)-x(Nstart-1))))
+    p(3) = p(1)/Fend
+    var=nlinfit(fun,x,V,p)
+    F=p(1)
+    R=p(2)
+    gamma=p(3)
+
+    contains
+
+    pure function fun(x,p) result(y)
+        real(dp), intent(in) :: x
+        real(dp), intent(in) :: p(:)
+        real(dp)             :: y
+        y=(p(1)*p(2)*x*(p(3)-1.d0)+p(1)*x**2) / (p(3)*x+p(2)*(p(3)-1.d0))
+    end function fun
+end subroutine fitpot
 
 end module emission
