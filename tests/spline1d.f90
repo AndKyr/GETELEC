@@ -8,7 +8,7 @@ implicit none
 
 integer, parameter 		:: dp=8
 integer, parameter		:: nx=100,nxplot = 324, font = 32
-real(dp), parameter		:: xmin=0.d0, xmax=6.d0
+real(dp), parameter		:: xmin=0.d0, xmax=6.d0, F=5.d0, R=5.d0, gamma = 10.d0
 integer, parameter		:: kx=4, iknot=0
 
 real(dp) 				:: tx(nx+kx), x(nx), y(nx), bcoef(nx), xplot(nxplot), yplot(nxplot)
@@ -27,7 +27,8 @@ idx =   	0
 !***************************************
 ! preparation of the data to interpolate
 x=linspace(xmin,xmax,nx)
-y =  5.d0*x**2+9.d0*x*10.d0
+y = (F * R * x*(gamma - 1.d0) + F * x**2) &
+                / (gamma * x + R * (gamma - 1.d0))
 
 call db1ink(x,nx,y,kx,iknot,tx,bcoef,iflag)
 if (iflag==0) print *, 'succesfully set parameters'

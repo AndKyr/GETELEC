@@ -1,13 +1,14 @@
 module emission
 
 use std_mat, only: diff2, local_min, linspace
+use pyplot_mod, only: pyplot
 implicit none
 
 integer, parameter                  :: Ny=200, dp=8, sp=4 
                                        !Ny: length of special functions array
 real(dp), parameter                 :: pi=acos(-1.d0), b=6.83089d0, zs=1.6183d-4, &
                                        gg=10.246d0, Q=0.35999d0, kBoltz=8.6173324d-5
-integer, parameter                  :: knotx = 6, iknot = 0, idx = 1
+integer, parameter                  :: knotx = 4, iknot = 0, idx = 0
                                        !No of bspline knots
 logical, save                       :: spectroscopy= .false.
 
@@ -114,6 +115,8 @@ subroutine cur_dens(this)
         this%regime = 'I'
     endif
     
+    if (this%mode > 0) deallocate(this%bcoef, this%tx)
+    
     contains
 
     pure function Sigma(x) result(Sig)
@@ -127,6 +130,7 @@ subroutine cur_dens(this)
         real(dp):: ds
         ds=(-1.d0+4.d0*x**2+x**4)/(1.d0-x**2)-.3551d0*x**2-.3178d0*x**4-0.027066*x**6!Jensen's sigma'
     end function DSigma
+
 
 end subroutine cur_dens 
 
@@ -222,10 +226,10 @@ subroutine gamow_num(this,xmax)
     ! integration and root finding working variables
     real(dp), dimension(maxint)         :: ALIST, BLIST, RLIST, ELIST
     real(dp)                            :: ABSERR
-    integer                             :: IFLAG, NEVAL, IER, IORD(maxint), LAST
+    integer                             :: IFLAG, NEVAL, IER, IORD(maxint), LAST, i
         
     real(dp)                            :: G, x = 1.d-5 , x1(2), x2(2)
-    
+
     if (this%Um == -1.d20) then ! Um is not initialized
         this%Um = -local_min(x, xmax, 1.d-8, 1.d-8, neg_bar, this%xm)
     endif
@@ -258,7 +262,6 @@ subroutine gamow_num(this,xmax)
         if (this%mode > 0) then
             call db1val(x, idx, this%tx, size(this%Vr), knotx, &
                         this%bcoef, Vinterp, iflag, inbvx)
-!            if (iflag/=0) stop 'something went wrong with interpolation'
             V = this%W - Vinterp - Q / (x + ( 0.5d0 * (x**2)) / this%R)
         else
             V = this%W - (this%F * this%R * x*(this%gamma - 1.d0) + this%F * x**2) &
