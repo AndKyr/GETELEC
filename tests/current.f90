@@ -48,7 +48,7 @@ endif
 
 if (this%mode /= 0) then
     allocate(this%xr(Nx), this%Vr(Nx))
-    this%xr = linspace(0.d0,3.d0,Nx)
+    this%xr = linspace(0.d0,5.d0,Nx)
     this%Vr = (this%F * this%R * this%xr*(this%gamma - 1.d0) + this%F * this%xr**2) &
                 / (this%gamma * this%xr + this%R * (this%gamma - 1.d0))
 endif

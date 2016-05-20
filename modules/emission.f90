@@ -8,7 +8,7 @@ integer, parameter                  :: Ny=200, dp=8, sp=4
                                        !Ny: length of special functions array
 real(dp), parameter                 :: pi=acos(-1.d0), b=6.83089d0, zs=1.6183d-4, &
                                        gg=10.246d0, Q=0.35999d0, kBoltz=8.6173324d-5
-integer, parameter                  :: knotx = 4, iknot = 0, idx = 0
+integer, parameter                  :: knotx = 6, iknot = 0, idx = 0
                                        !No of bspline knots
 logical, save                       :: spectroscopy= .false.
 
@@ -119,16 +119,16 @@ subroutine cur_dens(this)
     
     contains
 
-    pure function Sigma(x) result(Sig)
+    pure function Sigma(x) result(Sig)!Jensen's sigma
         double precision, intent(in) :: x
         double precision:: Sig
-        Sig = (1.d0+x**2)/(1.d0-x**2)-.3551d0*x**2-0.1059d0*x**4-0.039*x**6!Jensen's sigma
+        Sig = (1.d0+x**2)/(1.d0-x**2)-.3551d0*x**2-0.1059d0*x**4-0.039*x**6
     end function Sigma
     
-    pure function DSigma(x) result(ds)
+    pure function DSigma(x) result(ds) !Jensen's sigma '
         real(dp), intent(in):: x
         real(dp):: ds
-        ds=(-1.d0+4.d0*x**2+x**4)/(1.d0-x**2)-.3551d0*x**2-.3178d0*x**4-0.027066*x**6!Jensen's sigma'
+        ds=(-1.d0+4.d0*x**2+x**4)/(1.d0-x**2)-.3551d0*x**2-.3178d0*x**4-0.027066*x**6
     end function DSigma
 
 
@@ -142,11 +142,16 @@ subroutine gamow_general(this,full)
     type(EmissionData)                      :: new
     logical, intent(in)                     :: full !determine if maxbeta, minbeta
 
-    real(dp), parameter                     :: dw = 1.d-2, xlim = 0.08d0
+    real(dp)                                :: dw, xlim = 0.08d0
     real(dp)                                :: x, xmax
     integer                                 :: iflag
     
     x = this%W / (this%F * this%R)
+    if (this%mode > 0) then
+        dw = 0.3d0
+    else
+        dw = 1.d-2
+    endif
 
     if (x>xlim) then !not x<<1, use numerical integration
         if (x>0.4d0) then !the second root is far away
@@ -214,6 +219,7 @@ end subroutine gamow_KX
 
 subroutine gamow_num(this,xmax)
     use bspline, only: db1val
+    use std_mat, only: binsearch
 
     type(EmissionData), intent(inout)   :: this
     real(dp), intent(in)                :: xmax
@@ -226,9 +232,12 @@ subroutine gamow_num(this,xmax)
     ! integration and root finding working variables
     real(dp), dimension(maxint)         :: ALIST, BLIST, RLIST, ELIST
     real(dp)                            :: ABSERR
-    integer                             :: IFLAG, NEVAL, IER, IORD(maxint), LAST, i
+    integer                             :: IFLAG, NEVAL, IER, IORD(maxint), LAST
         
-    real(dp)                            :: G, x = 1.d-5 , x1(2), x2(2)
+    real(dp)                            :: G, x = 1.d-5 , x1(2), x2(2), dx, xrmax
+    integer                             :: i, indxm
+    
+    xrmax = xr(ubound(xr))
 
     if (this%Um == -1.d20) then ! Um is not initialized
         this%Um = -local_min(x, xmax, 1.d-8, 1.d-8, neg_bar, this%xm)
@@ -239,10 +248,21 @@ subroutine gamow_num(this,xmax)
     endif
     if (abs(this%Um - (this%W - this%F * this%R))<.2d0) then ! almost without maximum
         this%minbeta = 1.d20
-    else
-        this%minbeta = 22.761d0 / sqrt(abs(diff2(bar,this%xm)))
+    else 
+        if (this%mode <= 0) then  
+            dx = 1.d-2
+        else !if interpolation choose big dx for diff2 to avoid numerical instabillity
+            indxm = binsearch(this%xr,this%xm)
+            if (indxm == 1) then  !avoid segfault
+                dx  =  this%xr(2)-this%xr(1)
+            else
+                dx = this%xr(indxm) - this%xr(indxm -1)
+            endif
+        endif
+        this%minbeta = 22.761d0 / sqrt(abs(diff2(bar,this%xm,dx)))
     endif
-        
+    
+
     x1 = [0.01d0,this%xm]
     x2 = [this%xm,xmax]
     call dfzero(bar,x1(1),x1(2),x1(1),RtolRoot,AtolRoot,IFLAG)
@@ -262,6 +282,10 @@ subroutine gamow_num(this,xmax)
         if (this%mode > 0) then
             call db1val(x, idx, this%tx, size(this%Vr), knotx, &
                         this%bcoef, Vinterp, iflag, inbvx)
+            if (iflag /= 0) then !out of bounds.. do linear extrapolation 
+                Vinterp = this%Vr(xrmax) + (x - this%xr(xrmax)) * &
+                (this%Vr(xrmax)-this%Vr(xrmax-1)) / (this%xr(xrmax)-this%xr(xrmax-1))
+            endif  
             V = this%W - Vinterp - Q / (x + ( 0.5d0 * (x**2)) / this%R)
         else
             V = this%W - (this%F * this%R * x*(this%gamma - 1.d0) + this%F * x**2) &

@@ -35,6 +35,34 @@ subroutine plot(xdata,ydata)
     close(fidy)
 end subroutine
 
+    pure function binsearch(x,x0)  result(ind)
+!binary search in sorted vector x for x(i) closest to x
+    real(dp), intent(in)    :: x(:), x0
+    integer                 :: ind, i, ia, ib, imid
+       
+    ia = 1
+    ib = size(x)
+    do i=1,size(x)
+        imid = (ia + ib) / 2
+        if (x(imid) < x0) then
+            ia = imid
+        else
+            ib = imid
+        endif
+        if (abs(ia-ib) <= 1) then
+            if (abs(x(ia)-x0) < abs(x(ib)-x0)) then
+                ind = ia
+            else
+                ind = ib
+            endif
+            return
+        endif
+    enddo
+end function binsearch
+    
+    
+    
+
 subroutine csvprint(fileunit,dataarr)
     ! write real numbers to a CSV file
     integer, intent(in):: fileunit
@@ -136,11 +164,10 @@ pure function interp1(xi,yi,x) result(y)
     endif
 end function interp1
 
-function diff2(f,x) result(y)!second derivative of a function f at point x
-    double precision, intent(in)::x
+function diff2(f,x,dx) result(y)!second derivative of a function f at point x
+    double precision, intent(in)::x,dx
     double precision, external::f
     double precision::y
-    double precision,parameter::dx=1.d-2
 
     y=(f(x+dx)+f(x-dx)-2.d0*f(x))/(dx*dx)
 end function diff2
