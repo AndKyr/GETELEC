@@ -1,31 +1,41 @@
 program surfacepoints
 
-use interface_helmod, only: InterData, J_from_phi
+use interface_helmod, only: InterData, J_from_phi , interp_set
 use pyplot_mod , only: pyplot
 
 implicit none
 
 integer, parameter      :: dp=8, fidout=8646, font=35, nline=50
 
-real(dp), allocatable   :: phi(:,:,:)
+
 type(InterData)         :: this
 integer                 :: icount, jcount, indsize(2),i
+integer, allocatable    :: inds(:,:)
+real(dp), allocatable   :: Jem(:), heat(:), F(:)
 
 type(pyplot)            :: plt   !! pytplot handler
 
 
-call read_phi(phi,this%grid_spacing)
+call read_phi(this%phi,this%grid_spacing)
 this%grid_spacing = this%grid_spacing * 0.1d0
+call interp_set(this)
+inds = surf_points(this%phi)
+allocate(Jem(size(inds,2)), heat(size(inds,2)))
 
-
-call J_from_phi(phi,this)
+do i = 1,size(inds,2)
+    this%Nstart = inds(:,i)
+    call J_from_phi(this)
+    Jem(i) = this%Jem
+    heat(i) = this%heat
+    F(i) =  norm2(this%F)
+enddo
 
 open(fidout,file='data/boundary_grid.xyz',action='write',status='replace')
 write(fidout,*) size(log10(this%Jem))
 write(fidout,*) 'eimaste treloi'
 
-do i=1,size(this%Nstart,2)
-    write(fidout,*) i, this%Nstart(:,i)*this%grid_spacing, log10(this%Jem(i))
+do i=1,size(inds,2)
+    write(fidout,*) i, inds(:,i)*this%grid_spacing, log10(this%Jem(i))
 enddo 
 
 
@@ -36,23 +46,22 @@ call plt%initialize(grid=.true.,xlabel='$1/F [nm/V]$',ylabel='$J (A/nm^2)$', &
             legend=.true.,axis_equal=.false., legend_fontsize=font, &
             xtick_labelsize=font,ytick_labelsize=font,axes_labelsize=font)
             
-call plt%add_plot(1.d0/this%F,log10(this%Jem),label='$current$', &
+call plt%add_plot(1.d0/F,log10(Jem),label='$current$', &
                     linestyle='b.',linewidth=2)
                     
-call plt%add_plot(1.d0/this%F,log10(abs(this%heat)),label='$heat$', &
+call plt%add_plot(1.d0/F,log10(abs(heat)),label='$heat$', &
                     linestyle='r.',linewidth=2)
                     
 call plt%savefig('png/surfacepoints.png', pyfile='python/surfacepoints.py')
 
-deallocate(this%Nstart, this%F, this%R,this%gamma, this%Jem, this%heat)
+deallocate(inds, F, heat, Jem, this%phi, this%bcoef, this%tx, this%ty, this%tz)
 
 print * , 'Timing:'
 print *, 'Set:', this%TimeInSet
 print *, 'Interpolate:', this%TimeInt 
-print *, 'Fit', this%TimeFit
 print *, 'Current:', this%TimeCur
 
- contains
+contains
 
 subroutine read_phi(phi,grid_spacing)
 

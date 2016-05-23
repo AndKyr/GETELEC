@@ -107,6 +107,7 @@ subroutine J_from_phi(phi,this)
         kstart = this%Nstart(3,j)
     
         !find direction of the line (same as Efield direction)
+        ! always 
         Efstart=([phi(istart+1,jstart,kstart), &
                  phi(istart,jstart+1,kstart), &
                  phi(istart,jstart,kstart+1)]-[phi(istart-1,jstart,kstart), &
@@ -135,10 +136,10 @@ subroutine J_from_phi(phi,this)
 !                plot = .false.
 !            endif
                 
-            call cpu_time(t1)
-            call fitpot(this%rline,Vline,this%F(j),this%R(j),this%gamma(j),plot)
-            call cpu_time(t2)
-            this%TimeFit = this%TimeFit + t2 - t1
+!            call cpu_time(t1)
+!            call fitpot(this%rline,Vline,this%F(j),this%R(j),this%gamma(j),plot)
+!            call cpu_time(t2)
+!            this%TimeFit = this%TimeFit + t2 - t1
         else
             this%F(j) = norm2(Efstart)
             this%R(j) = 1.d4

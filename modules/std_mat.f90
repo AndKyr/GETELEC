@@ -35,7 +35,7 @@ subroutine plot(xdata,ydata)
     close(fidy)
 end subroutine
 
-    pure function binsearch(x,x0)  result(ind)
+pure function binsearch(x,x0)  result(ind)
 !binary search in sorted vector x for x(i) closest to x
     real(dp), intent(in)    :: x(:), x0
     integer                 :: ind, i, ia, ib, imid
