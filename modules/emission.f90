@@ -73,7 +73,7 @@ subroutine cur_dens(this)
         print *, 'Error: negative R inputed'
     endif
     
-    if (this%gamma < 1.d0) then
+    if (this%gamma < 0.d0) then
         this%gamma = 1.d0
         print *, 'Error: negative gamma inputed'
     endif
@@ -99,6 +99,8 @@ subroutine cur_dens(this)
     
     this%Um = -1.d20  !set maximum values to unknown
     this%xm = -1.d20
+    
+!    call print_data(this)
     call gamow_general(this,.true.) !calculate barrier parameters
 
     if (this%kT * this%maxbeta < nlimf) then!field regime
@@ -478,6 +480,7 @@ subroutine J_num_integ(this)
         Jsum = Jsum + fj
     enddo
     this%Jem = Jsum * zs * this%kT * dE
+    if (i>2*Nvals) i = 2*Nvals
     
     G(1:i+j) = [Gdown(i:1:-1),Gup(1:j)]!bring G vectors together and in correct order
     do k=1,i+j!integrate for nottingham effect

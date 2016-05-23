@@ -2,13 +2,13 @@ module new_interface
 
 implicit none
 
-integer, parameter  :: dp=8, Nr=64 
-integer, parameter  :: kx=2, ky=2, kz=2, iknot=0  !interpolation parameters
+integer, parameter  :: dp=8, Nr=32
+integer, parameter  :: kx=6, ky=6, kz=6, iknot=0  !interpolation parameters
 real(dp), parameter :: Jlim=1.d-22, Fmin = 0.5d0, rmax = 3.d0
 
 type, public       :: InterData
 
-    real(dp)                :: F(3), kT, W, Jem, heat
+    real(dp)                :: F(3) = [1.d0,1.d0,1.d0], kT = 5.d-2, W = 4.5d0, Jem, heat
     !Parameters defining emission at each point
     real(dp)                :: grid_spacing(3)
     !External potential and grid spacing parameters
@@ -104,9 +104,8 @@ subroutine J_from_phi(this)
     !the above are spline-related parameters
     
     integer                 :: i, istart,jstart,kstart
-    real(dp), dimension(3)  :: direc, Efstart
+    real(dp)                :: direc(3)
 
-    
     real(dp)                :: t1, t2
 
     
@@ -132,7 +131,7 @@ subroutine J_from_phi(this)
         !set the line of interpolation and interpolate
         this%xline = this%grid_spacing(1)*(istart-1) + this%rline * direc(1)
         this%yline = this%grid_spacing(2)*(jstart-1) + this%rline * direc(2)
-        this%zline = this%grid_spacing(3)*(istart-1) + this%rline * direc(3)
+        this%zline = this%grid_spacing(3)*(kstart-1) + this%rline * direc(3)
                 
         do i=1,Nr !interpolate for all points of rline
             call db3val(this%xline(i), this%yline(i), this%zline(i), idx, idy, idz, &
@@ -146,9 +145,9 @@ subroutine J_from_phi(this)
         that%xr = this%rline
         that%Vr = this%Vline
         that%mode = 1
-!        print *, that%xr
+!        print *, that%Vr
     else
-        that%F = norm2(Efstart)
+        that%F = norm2(this%F)
         that%R = 1.d4
         that%gamma = 1.d0
         that%mode = 0
@@ -162,6 +161,7 @@ subroutine J_from_phi(this)
     call cur_dens(that)
     if (that%Jem > Jlim) then
         that%full = .true.
+        that%mode = 1
         call cur_dens(that)
     endif
     call cpu_time(t2)
