@@ -1,6 +1,6 @@
 program surfacepoints
 
-use interface_helmod, only: InterData, J_from_phi , interp_set
+use new_interface, only: InterData, J_from_phi , interp_set, surf_points
 use pyplot_mod , only: pyplot
 
 implicit none
@@ -15,12 +15,13 @@ real(dp), allocatable   :: Jem(:), heat(:), F(:)
 
 type(pyplot)            :: plt   !! pytplot handler
 
-
+this%W = 4.5d0
+this%kT = 0.07d0
 call read_phi(this%phi,this%grid_spacing)
 this%grid_spacing = this%grid_spacing * 0.1d0
 call interp_set(this)
 inds = surf_points(this%phi)
-allocate(Jem(size(inds,2)), heat(size(inds,2)))
+allocate(Jem(size(inds,2)), heat(size(inds,2)), F(size(inds,2)))
 
 do i = 1,size(inds,2)
     this%Nstart = inds(:,i)
@@ -31,11 +32,11 @@ do i = 1,size(inds,2)
 enddo
 
 open(fidout,file='data/boundary_grid.xyz',action='write',status='replace')
-write(fidout,*) size(log10(this%Jem))
+write(fidout,*) size(Jem)
 write(fidout,*) 'eimaste treloi'
 
 do i=1,size(inds,2)
-    write(fidout,*) i, inds(:,i)*this%grid_spacing, log10(this%Jem(i))
+    write(fidout,*) i, inds(:,i)*this%grid_spacing, log10(Jem(i))
 enddo 
 
 

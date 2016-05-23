@@ -128,7 +128,9 @@ subroutine cur_dens(this)
         this%regime = 'I'
     endif
     
-    if (this%mode > 0) deallocate(this%bcoef, this%tx)
+!    call print_data(this)
+    
+    if (allocated(this%bcoef)) deallocate(this%bcoef, this%tx)
     
     contains
 

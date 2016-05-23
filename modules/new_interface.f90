@@ -1,8 +1,8 @@
-module interface_helmod
+module new_interface
 
 implicit none
 
-integer, parameter  :: dp=8, Nr=32 
+integer, parameter  :: dp=8, Nr=64 
 integer, parameter  :: kx=2, ky=2, kz=2, iknot=0  !interpolation parameters
 real(dp), parameter :: Jlim=1.d-22, Fmin = 0.5d0, rmax = 3.d0
 
@@ -33,22 +33,24 @@ subroutine interp_set(this)
 
     type(InterData), intent(inout)      :: this
     real(dp), allocatable               :: x(:), y(:), z(:)
+    integer                             :: i, iflag
     
     this%nx = size(this%phi,1)
     this%ny = size(this%phi,2)
     this%nz = size(this%phi,3)
 
 
-    allocate(x(this%nx),y(this%ny),z(nthis%z),this%bcoef(this%nx,this%ny,this%nz))
+    allocate(x(this%nx),y(this%ny),z(this%nz),this%bcoef(this%nx,this%ny,this%nz))
     allocate(this%tx(this%nx + kx),this%ty(this%ny + ky),this%tz(this%nz + kz))
-    x = [(this%grid_spacing(1)*(i-1), i=1,nx)]
-    y = [(this%grid_spacing(2)*(i-1), i=1,ny)]
-    z = [(this%grid_spacing(3)*(i-1), i=1,nz)]
+    x = [(this%grid_spacing(1)*(i-1), i=1,this%nx)]
+    y = [(this%grid_spacing(2)*(i-1), i=1,this%ny)]
+    z = [(this%grid_spacing(3)*(i-1), i=1,this%nz)]
     call db3ink(x, this%nx, y, this%ny, z, this%nz, this%phi, kx, ky, kz, iknot, &
                 this%tx, this%ty, this%tz, this%bcoef, iflag)
     if (iflag /= 0) then
         stop 'Something went wrong with interpolation set'
     endif
+    this%set = .true.
     
 end subroutine interp_set
  
@@ -101,10 +103,9 @@ subroutine J_from_phi(this)
     integer                 :: idx=0, idy=0, idz=0, iflag
     !the above are spline-related parameters
     
-    integer                 :: i, j, istart,jstart,kstart
+    integer                 :: i, istart,jstart,kstart
     real(dp), dimension(3)  :: direc, Efstart
-    
-    logical                 :: plot = .false.
+
     
     real(dp)                :: t1, t2
 
@@ -113,9 +114,9 @@ subroutine J_from_phi(this)
 
     this%rline = linspace(0.d0, rmax, Nr)
 
-    istart = this%Nstart(1,j)
-    jstart = this%Nstart(2,j)
-    kstart = this%Nstart(3,j)
+    istart = this%Nstart(1)
+    jstart = this%Nstart(2)
+    kstart = this%Nstart(3)
     
         !find direction of the line (same as Efield direction)
         ! always 
@@ -129,9 +130,9 @@ subroutine J_from_phi(this)
     if (norm2(this%F)> Fmin) then
         direc = this%F / norm2(this%F)
         !set the line of interpolation and interpolate
-        this%xline = x(istart) + this%rline * direc(1)
-        this%yline = y(jstart) + this%rline * direc(2)
-        this%zline = z(kstart) + this%rline * direc(3)
+        this%xline = this%grid_spacing(1)*(istart-1) + this%rline * direc(1)
+        this%yline = this%grid_spacing(2)*(jstart-1) + this%rline * direc(2)
+        this%zline = this%grid_spacing(3)*(istart-1) + this%rline * direc(3)
                 
         do i=1,Nr !interpolate for all points of rline
             call db3val(this%xline(i), this%yline(i), this%zline(i), idx, idy, idz, &
@@ -145,6 +146,7 @@ subroutine J_from_phi(this)
         that%xr = this%rline
         that%Vr = this%Vline
         that%mode = 1
+!        print *, that%xr
     else
         that%F = norm2(Efstart)
         that%R = 1.d4
@@ -156,6 +158,7 @@ subroutine J_from_phi(this)
     that%kT = this%kT
     
     call cpu_time(t1)
+    that%full = .false.
     call cur_dens(that)
     if (that%Jem > Jlim) then
         that%full = .true.
@@ -165,5 +168,7 @@ subroutine J_from_phi(this)
     this%TimeCur = this%TimeCur + t2 - t1
 
 end subroutine J_from_phi
+
+end module new_interface
 
 
