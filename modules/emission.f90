@@ -1,18 +1,35 @@
 module emission
+!*************
+!Author: Andreas Kyritsakis, University of Helsinki, 2016
+!This module aims to calculate field emission current density and Nottingham effect 
+!heating. The input has to be given in the EmissionData type structure. The output
+!is also collected from there. All the theory behind this module can be found in 
+!A. Kyritsakis, J. Xanthakis, J. Appl. Phys. 119, 045303 (2016); 
+!http://dx.doi.org/10.1063/1.4940721
+!*******************
 
 use std_mat, only: diff2, local_min, linspace
 use pyplot_mod, only: pyplot
 implicit none
 
-integer, parameter                  :: Ny=200, dp=8, sp=4 
+integer, parameter                  :: Ny = 200, dp = 8, sp = 4
                                        !Ny: length of special functions array
+                                       
 real(dp), parameter                 :: pi=acos(-1.d0), b=6.83089d0, zs=1.6183d-4, &
                                        gg=10.246d0, Q=0.35999d0, kBoltz=8.6173324d-5
+                                    !universal constants
+                                
+real(dp), parameter                :: xlim = 0.08d0 
+!xlim: limit that determines distinguishing between sharp regime (Numerical integral)
+!and blunt regime where KX approximation is used
+
 integer, parameter                  :: knotx = 6, iknot = 0, idx = 0
                                        !No of bspline knots
-logical, save                       :: spectroscopy= .false.
+logical, save                       :: spectroscopy= .false. 
+!set to true if you want to output spectroscopy data 
 
 type, public    :: EmissionData
+!this type holds all the crucial data for the calculation of emission
 
     real(dp)    :: F=5.d0, R=100.d0, gamma=1.d0
         !Electrostatics: Field, Radius, enhancement factor
@@ -22,7 +39,7 @@ type, public    :: EmissionData
         !Calculated results: Current density and Nott. heat
     real(dp)    :: xm=-1.d20, Um=-1.d20, maxbeta=0.d0, minbeta=0.d0
         !Barrier characteristics: xm=x point where barrier is max,
-        ! Um=maximum barrier value, dGUm=dG/dreal(dp), allocatable    :: V(:), xr(:)
+        ! Um=maximum barrier value, maxbeta=dG/dE @Fermi, minbeta=dG/dE @Um
     character   :: regime ='F', sharpness = 'B'
         !'f' for field, 'i' for intermediate, 't' for thermal regimes
         !'s' for sharp tip (numerical integration) and 'b' for blunt (KX approx)
@@ -46,7 +63,7 @@ end type EmissionData
 subroutine cur_dens(this)
 !Calculates current density, main module function
 
-    type(EmissionData), intent(inout)      :: this
+    type(EmissionData), intent(inout)      :: this !main data handling structure
     
     real(dp)        :: Jf, Jt, n, s, E0, dE, heatf, heatt, F2, Fend
     real(dp)        :: nlimf=.7d0, nlimt=2.d0   !limits for n to distinguish regimes
@@ -61,13 +78,9 @@ subroutine cur_dens(this)
         print *, 'Error: negative gamma inputed'
     endif
     
-!    print *, 'xr = ', this%xr
-!    print *, 'Vr = ', this%Vr
-    
-    if (this%mode == -1) then
+    if (this%mode == -1) then !fit data to F,R,gamma model
         call fitpot(this%xr, this%Vr, this%F, this%R, this%gamma)
-        print *, 'fitted'
-    elseif (this%mode == 1)  then
+    elseif (this%mode == 1)  then !interpolation mode. Crude estimation for F,R,gamma
         this%F = ( this%Vr(2) - this%Vr(1) ) / ( this%xr(2) - this%xr(1) )
         F2 = ( this%Vr(3) - this%Vr(2) ) / ( this%xr(3) - this%xr(2) )
         Fend = ( this%Vr(size(this%Vr)) - this%Vr(size(this%Vr)-1) ) / &
@@ -76,31 +89,31 @@ subroutine cur_dens(this)
         this%gamma = this%F / Fend
     endif
     
-    if (this%full) then
+    if (this%full) then !if full calculation expand borders of regimes
         nlimf = 0.7d0
         nlimt = 2.d0
-    else
+    else !if only GTF equation standard limit = 1
         nlimf = 1.d0
         nlimt = 1.d0
     endif
     
-    this%Um = -1.d20
+    this%Um = -1.d20  !set maximum values to unknown
     this%xm = -1.d20
-    call gamow_general(this,.true.)
+    call gamow_general(this,.true.) !calculate barrier parameters
 
     if (this%kT * this%maxbeta < nlimf) then!field regime
         this%Jem = zs*pi* this%kT * exp(-this%Gam) &
                     / (this%maxbeta * sin(pi * this%maxbeta * this%kT))
         !Murphy-Good version of FN
-        this%heat = -zs*(pi**2) * (this%kT**2) * &
+        this%heat = -zs*(pi**2) * (this%kT**2) * &!theoretical Nottingham at F regime
                     exp(-this%Gam)*cos(pi* this%maxbeta * this%kT)  &
                     / (this%maxbeta * (sin(pi * this%maxbeta * this%kT )**2))
         this%regime = 'F'
     else if (this%kT * this%minbeta > nlimt) then !thermal regime
-        n = 1.d0/(this%kT * this%minbeta)
+        n = 1.d0/(this%kT * this%minbeta) !standard Jensen parameters
         s = this%minbeta * this%Um
-        Jf = zs * ( this%minbeta **(-2)) * Sigma(1.d0/n) * exp(-s);
-        Jt = zs * (this%kT**2) * exp(-n*s) * Sigma(n)
+        Jf = zs * ( this%minbeta **(-2)) * Sigma(1.d0/n) * exp(-s)
+        Jt = zs * (this%kT**2) * exp(-n*s) * Sigma(n)  !J and heat components
         this%Jem = Jt+Jf/(n**2)
         heatt = (n*s+1.d0)*Sigma(n)*exp(-n*s)
         heatf = (n**3)*DSigma(1.d0/n)*exp(-s)
@@ -125,12 +138,11 @@ subroutine cur_dens(this)
         Sig = (1.d0+x**2)/(1.d0-x**2)-.3551d0*x**2-0.1059d0*x**4-0.039*x**6
     end function Sigma
     
-    pure function DSigma(x) result(ds) !Jensen's sigma '
+    pure function DSigma(x) result(ds) !Jensen's sigma'
         real(dp), intent(in):: x
         real(dp):: ds
         ds=(-1.d0+4.d0*x**2+x**4)/(1.d0-x**2)-.3551d0*x**2-.3178d0*x**4-0.027066*x**6
     end function DSigma
-
 
 end subroutine cur_dens 
 
@@ -138,17 +150,19 @@ end subroutine cur_dens
 subroutine gamow_general(this,full)
 !Calculates Gamow exponent in the general case: Choose appropriate approximation
     use bspline, only: db1ink
-    type(EmissionData), intent(inout)       :: this
+    type(EmissionData), intent(inout)       :: this !data structure
     type(EmissionData)                      :: new
-    logical, intent(in)                     :: full !determine if maxbeta, minbeta
+    logical, intent(in)                     :: full
+    !determine if maxbeta, minbeta will be calculated. Not needed when numerical
+    !integration over energies is done in the intermediate regime
 
-    real(dp)                                :: dw, xlim = 0.08d0
+    real(dp)                                :: dw!delta w.f. for maxbeta differential
     real(dp)                                :: x, xmax
     integer                                 :: iflag
     
-    x = this%W / (this%F * this%R)
-    if (this%mode > 0) then
-        dw = 0.3d0
+    x = this%W / (this%F * this%R)!length of barrier indicator
+    if (this%mode > 0) then !if interpolating data are more sensitive, use big dw
+        dw = 0.1d0
     else
         dw = 1.d-2
     endif
@@ -172,13 +186,13 @@ subroutine gamow_general(this,full)
         this%sharpness='S'
         if (this%Um < 0.d0 .or. (.not. full)) then !barrier lost
             this%maxbeta = 0.d0
-        elseif (this%Gam == 1.d20) then
+        elseif (this%Gam == 1.d20) then !too long barrier
             this%maxbeta = 1.d20
         else
-            new = this
+            new = this !copy structure for calculation for E-dw
             new%W = this%W + dw
             call gamow_num(new,xmax)
-            this%maxbeta = abs(new%Gam - this%Gam) / dw
+            this%maxbeta = abs(new%Gam - this%Gam) / dw !derivative
         endif
     else !large radius, KX approximation usable
         call gamow_KX(this)
@@ -210,8 +224,9 @@ subroutine gamow_KX(this)
     v = lininterp(vv,0.d0,1.d0,yf)
     omeg = lininterp(ww,0.d0,1.d0,yf)
     
-    this%maxbeta = gg*(sqrt(this%W) / this%F)*(t+ps*(this%W / (this%F * this%R)))
-    this%Gam = (2*gg/3)*((this%W **1.5d0) / this%F) *(v+omeg*(this%W / (this%F * this%R)))
+    this%maxbeta = gg*(sqrt(this%W) / this%F) * (t+ps*(this%W / (this%F * this%R)))
+    this%Gam = (2*gg/3)*((this%W **1.5d0) / this%F) &
+                * (v+omeg*(this%W / (this%F * this%R)))
     this%Um = this%W - 2.d0*sqrt(this%F * Q)-0.75d0 * Q / this%R
     this%minbeta = 16.093d0/sqrt(this%F **1.5d0 / sqrt(Q) - 4* this%F / this%R)
     
@@ -222,28 +237,29 @@ subroutine gamow_num(this,xmax)
     use std_mat, only: binsearch
 
     type(EmissionData), intent(inout)   :: this
-    real(dp), intent(in)                :: xmax
+    real(dp), intent(in)                :: xmax !maximum x for the length of barrier
     
     !integration and root finding tolerance parameters
-    integer, parameter                  :: maxint = 256
+    integer, parameter                  :: maxint = 256 !maximum integration intervs
     real(dp), parameter                 :: AtolRoot=1.d-6, RtolRoot=1.d-6, &
                                            AtolInt=1.d-5, RtolInt=1.d-5
 
-    ! integration and root finding working variables
+    ! integration and root finding working variables, see slatec reference
     real(dp), dimension(maxint)         :: ALIST, BLIST, RLIST, ELIST
     real(dp)                            :: ABSERR
     integer                             :: IFLAG, NEVAL, IER, IORD(maxint), LAST
         
-    real(dp)                            :: G, x = 1.d-5 , x1(2), x2(2), dx, xrmax
-    integer                             :: i, indxm
+    real(dp)                            :: G, x = 1.d-5 , x1(2), x2(2), dx
+    integer                             :: i, indxm, ixrm !indxm index of xr closest
+                                                          !to xm
     
-    xrmax = xr(ubound(xr))
+    ixrm = size(this%xr)
 
     if (this%Um == -1.d20) then ! Um is not initialized
         this%Um = -local_min(x, xmax, 1.d-8, 1.d-8, neg_bar, this%xm)
     endif
-    if (this%Um<0.d0) then
-        this%Gam=0.d0
+    if (this%Um < 0.d0) then !lost barrier
+        this%Gam = 0.d0
         return
     endif
     if (abs(this%Um - (this%W - this%F * this%R))<.2d0) then ! almost without maximum
@@ -263,12 +279,12 @@ subroutine gamow_num(this,xmax)
     endif
     
 
-    x1 = [0.01d0,this%xm]
-    x2 = [this%xm,xmax]
-    call dfzero(bar,x1(1),x1(2),x1(1),RtolRoot,AtolRoot,IFLAG)
-    call dfzero(bar,x2(1),x2(2),x2(1),RtolRoot,AtolRoot,IFLAG)
+    x1 = [0.01d0, this%xm]
+    x2 = [this%xm, xmax]
+    call dfzero(bar,x1(1),x1(2),x1(1),RtolRoot,AtolRoot,IFLAG) !first root
+    call dfzero(bar,x2(1),x2(2),x2(1),RtolRoot,AtolRoot,IFLAG) !second root
     call dqage(sqrt_bar,x1(2),x2(1),AtolInt,RtolInt,2,1000,G,ABSERR, &
-    NEVAL,IER,ALIST,BLIST,RLIST,ELIST,IORD,LAST)
+    NEVAL,IER,ALIST,BLIST,RLIST,ELIST,IORD,LAST) !integrate
     this%Gam = gg * G
     
     contains
@@ -279,15 +295,15 @@ subroutine gamow_num(this,xmax)
         integer                 :: iflag, inbvx
         inbvx = 1
         
-        if (this%mode > 0) then
+        if (this%mode > 0) then !interpolation
             call db1val(x, idx, this%tx, size(this%Vr), knotx, &
                         this%bcoef, Vinterp, iflag, inbvx)
             if (iflag /= 0) then !out of bounds.. do linear extrapolation 
-                Vinterp = this%Vr(xrmax) + (x - this%xr(xrmax)) * &
-                (this%Vr(xrmax)-this%Vr(xrmax-1)) / (this%xr(xrmax)-this%xr(xrmax-1))
+                Vinterp = this%Vr(ixrm) + (x - this%xr(ixrm)) * &
+                (this%Vr(ixrm)-this%Vr(ixrm-1)) / (this%xr(ixrm)-this%xr(ixrm-1))
             endif  
             V = this%W - Vinterp - Q / (x + ( 0.5d0 * (x**2)) / this%R)
-        else
+        else !use standard F,R,gamma model for the electrostatic potential
             V = this%W - (this%F * this%R * x*(this%gamma - 1.d0) + this%F * x**2) &
                 / (this%gamma * x + this%R * (this%gamma - 1.d0)) &
                 - Q / (x + ( 0.5d0 * (x**2)) / this%R)
@@ -312,6 +328,8 @@ subroutine GTFinter(this)
 !calculates estimation of current according to GTF theory for intermediate regime
     type(EmissionData), intent(inout)   :: this
     
+    ! calculated in single precision because slatec's polynomial root subroutine
+    ! supports only sp
     real(sp)            :: C_FN, Bq, B_FN, UmaxokT, polybeta(3), work(8)
     complex(sp)         :: rt(2)
     integer             :: ierr
@@ -352,7 +370,7 @@ subroutine J_num_integ(this)
     
     real(dp), parameter                 :: cutoff=1.d-4 
             !cutoff of the exponentially decreasing
-    integer, parameter                  ::Nvals=256, fidout=1953
+    integer, parameter                  :: Nvals=256, fidout=1953
             !no of intervals for integration and fidout for spectroscopy
             
     real(dp)                            :: Gj, G(4*Nvals), Ej, dE, Ea, Eb
@@ -367,7 +385,7 @@ subroutine J_num_integ(this)
     this%Um = -1.d20
     this%xm = -1.d20
     
-    call gamow_general(this,.true.)
+    call gamow_general(this,.true.) !make first estimation and calculate Um, xm etc.
     
     if (this%Gam == 0.d0) then!if no barrier for fermi electrons
         this%Jem = 1.d20
@@ -478,7 +496,7 @@ subroutine J_num_integ(this)
     endif
 
     contains
-    pure function lFD(E,kT) result(L)
+    pure function lFD(E,kT) result(L) !Fermi dirac log function 
         real(dp), intent(in)::E,kT
         real(dp) :: L
         if (E>10.d0*kT) then
