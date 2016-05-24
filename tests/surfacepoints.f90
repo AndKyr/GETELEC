@@ -36,7 +36,7 @@ write(fidout,*) size(Jem)
 write(fidout,*) 'eimaste treloi'
 
 do i=1,size(inds,2)
-    write(fidout,*) i, inds(:,i)*this%grid_spacing, log10(Jem(i))
+    write(fidout,*) i, inds(:,i)*this%grid_spacing, log10(Jem(i)), F(i)
 enddo 
 
 
@@ -60,7 +60,8 @@ deallocate(inds, F, heat, Jem, this%phi, this%bcoef, this%tx, this%ty, this%tz)
 print * , 'Timing:'
 print *, 'Set:', this%TimeInSet
 print *, 'Interpolate:', this%TimeInt 
-print *, 'Current:', this%TimeCur
+print *, 'Current:', this%TimeCur, 'from which', this%TimeCurFull, 'Fullcalc'
+print *, 'Calculated full' ,this%icount, 'times'
 
 contains
 

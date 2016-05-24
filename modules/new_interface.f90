@@ -4,7 +4,7 @@ implicit none
 
 integer, parameter  :: dp=8, Nr=32
 integer, parameter  :: kx=4, ky=4, kz=4, iknot=0  !interpolation parameters
-real(dp), parameter :: Jlim=1.d-22, Fmin = 0.5d0, rmax = 3.d0
+real(dp), parameter :: Jlim=1.d-22, Fmin = 1.8d0, rmax = 3.d0
 
 type, public       :: InterData
 
@@ -21,8 +21,9 @@ type, public       :: InterData
     !External potential and its corresponding spline parameters
     logical                 :: set = .false.
     !true if interpolation has been set (db3ink called)
-    real(dp)                :: TimeCur=0.d0, TimeInSet=0.d0, TimeInt=0.d0 
+    real(dp)                :: TimeCur=0.d0, TimeInSet=0.d0, TimeInt=0.d0, TimeCurFull = 0.d0 
     !timing variables
+    integer                 :: icount = 0
 end type InterData
     
 
@@ -34,7 +35,9 @@ subroutine interp_set(this)
     type(InterData), intent(inout)      :: this
     real(dp), allocatable               :: x(:), y(:), z(:)
     integer                             :: i, iflag
+    real(dp)                            :: t2, t1 !timing
     
+    call cpu_time(t1)
     this%nx = size(this%phi,1)
     this%ny = size(this%phi,2)
     this%nz = size(this%phi,3)
@@ -51,6 +54,8 @@ subroutine interp_set(this)
         stop 'Something went wrong with interpolation set'
     endif
     this%set = .true.
+    call cpu_time(t2)
+    this%TimeInSet = this%TimeInSet + t2 - t1
     
 end subroutine interp_set
  
@@ -103,29 +108,27 @@ subroutine J_from_phi(this)
     integer                 :: idx=0, idy=0, idz=0, iflag
     !the above are spline-related parameters
     
-    integer                 :: i, istart,jstart,kstart
+    integer                 :: i, istart,jstart,kstart   
     real(dp)                :: direc(3)
+    integer, save           :: ifullcount = 1
 
-    real(dp)                :: t1, t2
+    real(dp)                :: t1, t2, t3
 
-    
     call cpu_time(t1)
-
     this%rline = linspace(0.d0, rmax, Nr)
 
     istart = this%Nstart(1)
     jstart = this%Nstart(2)
     kstart = this%Nstart(3)
     
-        !find direction of the line (same as Efield direction)
-        ! always 
+    !find direction of the line (same as Efield direction)
     this%F = ([this%phi(istart+1,jstart,kstart), &
                  this%phi(istart,jstart+1,kstart), &
                  this%phi(istart,jstart,kstart+1)] - &
                  [this%phi(istart-1,jstart,kstart), &
                  this%phi(istart,jstart-1,kstart), &
                  this%phi(istart,jstart,kstart-1)])/this%grid_spacing
-                 
+    
     if (norm2(this%F)> Fmin) then
         direc = this%F / norm2(this%F)
         !set the line of interpolation and interpolate
@@ -139,20 +142,18 @@ subroutine J_from_phi(this)
                         kx, ky, kz, this%bcoef, this%Vline(i),  &
                         iflag, inbvx, inbvy, inbvz, iloy, iloz)
         enddo
-        call cpu_time(t2)
-        this%TimeInt = this%TimeInt + t2 - t1
         
         that%xr = this%rline
         that%Vr = this%Vline
         that%mode = 1
-!        print *, that%Vr
     else
         that%F = norm2(this%F)
         that%R = 1.d4
         that%gamma = 1.d0
         that%mode = 0
     endif
-    
+    call cpu_time(t2)
+    this%TimeInt = this%TimeInt + t2 - t1
     that%W = this%W
     that%kT = this%kT
     
@@ -160,9 +161,12 @@ subroutine J_from_phi(this)
     that%full = .false.
     call cur_dens(that)
     if (that%Jem > Jlim) then
+        call cpu_time(t3)
         that%full = .true.
-        that%mode = 1
         call cur_dens(that)
+        call cpu_time(t2)
+        this%TimeCurFull = this%TimeCurFull + t2 - t3
+        this%icount = this%icount + 1
     endif
     this%Jem = that%Jem
     this%heat = that%heat

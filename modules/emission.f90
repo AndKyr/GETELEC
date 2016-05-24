@@ -17,13 +17,13 @@ integer, parameter                  :: Ny = 200, dp = 8, sp = 4
                                        
 real(dp), parameter                 :: pi=acos(-1.d0), b=6.83089d0, zs=1.6183d-4, &
                                        gg=10.246d0, Q=0.35999d0, kBoltz=8.6173324d-5
-                                    !universal constants
+                                       !universal constants
                                 
 real(dp), parameter                :: xlim = 0.08d0 
 !xlim: limit that determines distinguishing between sharp regime (Numerical integral)
 !and blunt regime where KX approximation is used
 
-integer, parameter                  :: knotx = 6, iknot = 0, idx = 0
+integer, parameter                  :: knotx = 4, iknot = 0, idx = 0
                                        !No of bspline knots
 logical, save                       :: spectroscopy= .false. 
 !set to true if you want to output spectroscopy data 
@@ -133,6 +133,7 @@ subroutine cur_dens(this)
 !    call print_data(this)
     
     if (allocated(this%bcoef)) deallocate(this%bcoef, this%tx)
+    if (this%mode == 2) this%mode = 1
     
     contains
 
