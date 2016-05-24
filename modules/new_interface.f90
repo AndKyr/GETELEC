@@ -3,7 +3,7 @@ module new_interface
 implicit none
 
 integer, parameter  :: dp=8, Nr=32
-integer, parameter  :: kx=6, ky=6, kz=6, iknot=0  !interpolation parameters
+integer, parameter  :: kx=4, ky=4, kz=4, iknot=0  !interpolation parameters
 real(dp), parameter :: Jlim=1.d-22, Fmin = 0.5d0, rmax = 3.d0
 
 type, public       :: InterData
@@ -164,6 +164,8 @@ subroutine J_from_phi(this)
         that%mode = 1
         call cur_dens(that)
     endif
+    this%Jem = that%Jem
+    this%heat = that%heat
     call cpu_time(t2)
     this%TimeCur = this%TimeCur + t2 - t1
 
