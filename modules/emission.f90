@@ -19,13 +19,14 @@ real(dp), parameter                 :: pi=acos(-1.d0), b=6.83089d0, zs=1.6183d-4
                                        gg=10.246d0, Q=0.35999d0, kBoltz=8.6173324d-5
                                        !universal constants
                                 
-real(dp), parameter                :: xlim = 0.08d0 
+real(dp), parameter                :: xlim = 0.08d0, varlim = 5.d-2, gammalim = 1.d2 
 !xlim: limit that determines distinguishing between sharp regime (Numerical integral)
 !and blunt regime where KX approximation is used
+!varlim : limit of variance for the fitting approximation (has meaning for mode==-2)
 
 integer, parameter                  :: knotx = 4, iknot = 0, idx = 0
                                        !No of bspline knots
-logical, save                       :: spectroscopy= .false. 
+logical, parameter                  :: spectroscopy= .false., debug = .true. 
 !set to true if you want to output spectroscopy data 
 
 type, public    :: EmissionData
@@ -37,13 +38,14 @@ type, public    :: EmissionData
         !Materical Characteristics: Work funciton,Temperature
     real(dp)    :: Jem=1.d-200, heat=1.d-200, Gam=1.d10 
         !Calculated results: Current density and Nott. heat
-    real(dp)    :: xm=-1.d20, Um=-1.d20, maxbeta=0.d0, minbeta=0.d0
+    real(dp)    :: xm=-1.d20, Um=-1.d20, maxbeta=0.d0, minbeta=0.d0, xmax = 2.d0
         !Barrier characteristics: xm=x point where barrier is max,
         ! Um=maximum barrier value, maxbeta=dG/dE @Fermi, minbeta=dG/dE @Um
+        !xmax: estimation for maximum extent of the barrier
     character   :: regime ='F', sharpness = 'B'
         !'f' for field, 'i' for intermediate, 't' for thermal regimes
         !'s' for sharp tip (numerical integration) and 'b' for blunt (KX approx)
-    logical     :: full = .true. !full calculation if true, else GTF approximation
+    logical     :: full = .false. !full calculation if true, else GTF approximation
     
     real(dp), allocatable   :: xr(:), Vr(:)     !xr(nx), Vr(nx)
         !electrostatic potential externally defined as Vr(xr)
@@ -52,43 +54,44 @@ type, public    :: EmissionData
            !bspline related parameters
     
     integer                 :: mode = 0
-        !Mode of calculation. 0: barrier model (F,R,gamma)
-        !-1: fitting external data to (F,R,gamma)
-        !1: interpolation of Vr(xr), 2: interpolation but db1ink has been set up
+        !Mode of calculation:  
+        !0: Barrier model (F,R,gamma)
+        !-1: Fitting external data to (F,R,gamma)
+        !1: Interpolation of Vr(xr), 2: interpolation but db1ink has been set up
+        !-2 :Fit to (F,R,gamma). If fitting not satisfactory, use interpolation
+        !-3 : Barrier model, but force 'Blunt KX approximation' 
 end type EmissionData
 
 
- contains
+contains
 
 subroutine cur_dens(this)
 !Calculates current density, main module function
 
     type(EmissionData), intent(inout)      :: this !main data handling structure
     
-    real(dp)        :: Jf, Jt, n, s, E0, dE, heatf, heatt, F2, Fend
+    real(dp)        :: Jf, Jt, n, s, E0, dE, heatf, heatt, F2, Fend, var
     real(dp)        :: nlimf=.7d0, nlimt=2.d0   !limits for n to distinguish regimes
     
-    if (this%R < 0.d0) then
-        this%R = 1.d4
-        print *, 'Error: negative R inputed'
+    if (this%mode < 0) then !fit data to F,R,gamma model
+        var = fitpot(this%xr, this%Vr, this%F, this%R, this%gamma)
+        if ((var > varlim .or. isnan(var)) .and. this%mode == -2) this%mode = 1
     endif
-    
-    if (this%gamma < 0.d0) then
-        this%gamma = 1.d0
-        print *, 'Error: negative gamma inputed'
-    endif
-    
-    if (this%mode == -1) then !fit data to F,R,gamma model
-        call fitpot(this%xr, this%Vr, this%F, this%R, this%gamma)
-    elseif (this%mode == 1)  then !interpolation mode. Crude estimation for F,R,gamma
+    if (this%mode == 1)  then !interpolation mode. Crude estimation for F,R,gamma
         this%F = ( this%Vr(2) - this%Vr(1) ) / ( this%xr(2) - this%xr(1) )
         F2 = ( this%Vr(3) - this%Vr(2) ) / ( this%xr(3) - this%xr(2) )
-        Fend = ( this%Vr(size(this%Vr)) - this%Vr(size(this%Vr)-1) ) / &
-                ( this%xr(size(this%xr)) - this%xr(size(this%xr)-1) )
+        Fend = ( this%Vr(size(this%Vr)) - this%Vr(size(this%Vr)-3) ) / &
+                ( this%xr(size(this%xr)) - this%xr(size(this%xr)-3) )
         this%R= abs(this%F/((F2-this%F)/(this%xr(3)-this%xr(1))))
         this%gamma = this%F / Fend
     endif
     
+    if (this%gamma < 0.d0 .or. this%gamma > gammalim) then
+        this%mode = -3
+        if (debug) print *, 'Warning: weird gamma found. KX approx forced'
+    endif
+    
+ 
     if (this%full) then !if full calculation expand borders of regimes
         nlimf = 0.7d0
         nlimt = 2.d0
@@ -133,7 +136,12 @@ subroutine cur_dens(this)
 !    call print_data(this)
     
     if (allocated(this%bcoef)) deallocate(this%bcoef, this%tx)
-    if (this%mode == 2) this%mode = 1
+    if (this%mode == 2) this%mode = 1 !return to initial mode 1 
+    
+    if (isnan(this%Jem) .or. isnan(this%heat)) then
+        call print_data(this)
+        print *, 'var = ', var
+    endif
     
     contains
 
@@ -162,23 +170,30 @@ subroutine gamow_general(this,full)
     !integration over energies is done in the intermediate regime
 
     real(dp)                                :: dw!delta w.f. for maxbeta differential
-    real(dp)                                :: x, xmax
+    real(dp)                                :: x
     integer                                 :: iflag
     
     x = this%W / (this%F * this%R)!length of barrier indicator
     if (this%mode > 0) then !if interpolating data are more sensitive, use big dw
         dw = 0.1d0
     else
-        dw = 1.d-2
+        dw = 5.d-2
     endif
+    
+    if (x>0.4d0) then !the second root is far away
+        this%xmax = min(this%W * this%gamma / this%F, 10.d0)
+    else  !the second root is close to the standard W/F
+        this%xmax = 2.d0 * this%W / this%F
+    endif
+    
+    if (this%R < 0.8d0) then
+        this%R = 0.8d0
+        print *, 'Warning: negative R inputed'
+    endif
+    
 
-    if (x>xlim) then !not x<<1, use numerical integration
-        if (x>0.4d0) then !the second root is far away
-            xmax = this%W * this%gamma / this%F
-        else  !the second root is close to the standard W/F
-            xmax = 2.d0 * this%W / this%F
-        endif
-        
+
+    if (x>xlim .and. this%mode /= -3) then !not x<<1, use numerical integration
         if (this%mode == 1) then    !setup spline interpolation
             allocate(this%tx(size(this%Vr) + knotx), this%bcoef(size(this%Vr)))
             call db1ink(this%xr, size(this%xr), this%Vr, knotx, iknot, &
@@ -187,7 +202,7 @@ subroutine gamow_general(this,full)
             this%mode = 2 !change mode so no need to call db1ink again
         endif
             
-        call gamow_num(this,xmax)
+        call gamow_num(this)
         this%sharpness='S'
         if (this%Um < 0.d0 .or. (.not. full)) then !barrier lost
             this%maxbeta = 0.d0
@@ -196,14 +211,14 @@ subroutine gamow_general(this,full)
         else
             new = this !copy structure for calculation for E-dw
             new%W = this%W + dw
-            call gamow_num(new,xmax)
+            call gamow_num(new)
             this%maxbeta = abs(new%Gam - this%Gam) / dw !derivative
         endif
     else !large radius, KX approximation usable
         call gamow_KX(this)
         this%sharpness='B'
     endif
-        
+    
 end subroutine gamow_general
 
 subroutine gamow_KX(this) 
@@ -237,13 +252,12 @@ subroutine gamow_KX(this)
     
 end subroutine gamow_KX
 
-subroutine gamow_num(this,xmax)
+subroutine gamow_num(this)
     use bspline, only: db1val
     use std_mat, only: binsearch
 
     type(EmissionData), intent(inout)   :: this
-    real(dp), intent(in)                :: xmax !maximum x for the length of barrier
-    
+        
     !integration and root finding tolerance parameters
     integer, parameter                  :: maxint = 256 !maximum integration intervs
     real(dp), parameter                 :: AtolRoot=1.d-6, RtolRoot=1.d-6, &
@@ -261,7 +275,7 @@ subroutine gamow_num(this,xmax)
     ixrm = size(this%xr)
 
     if (this%Um == -1.d20) then ! Um is not initialized
-        this%Um = -local_min(x, xmax, 1.d-8, 1.d-8, neg_bar, this%xm)
+        this%Um = -local_min(x, this%xmax, 1.d-8, 1.d-8, neg_bar, this%xm)
     endif
     if (this%Um < 0.d0) then !lost barrier
         this%Gam = 0.d0
@@ -285,7 +299,7 @@ subroutine gamow_num(this,xmax)
     
 
     x1 = [0.01d0, this%xm]
-    x2 = [this%xm, xmax]
+    x2 = [this%xm, this%xmax]
     call dfzero(bar,x1(1),x1(2),x1(1),RtolRoot,AtolRoot,IFLAG) !first root
     call dfzero(bar,x2(1),x2(2),x2(1),RtolRoot,AtolRoot,IFLAG) !second root
     call dqage(sqrt_bar,x1(2),x2(1),AtolInt,RtolInt,2,1000,G,ABSERR, &
@@ -335,29 +349,34 @@ subroutine GTFinter(this)
     
     ! calculated in single precision because slatec's polynomial root subroutine
     ! supports only sp
-    real(sp)            :: C_FN, Bq, B_FN, UmaxokT, polybeta(3), work(8)
+    real(sp)            ::  polybeta(3), work(8)
     complex(sp)         :: rt(2)
     integer             :: ierr
-    real(dp)            :: zmax, Em, Gm, s, heatt, heatf
+    real(dp)            :: zmax, Em, Gm, s, heatt, heatf, C_FN, Bq, B_FN, UmaxokT
     
 
-    C_FN = real(this%maxbeta * this%Um, sp)
-    Bq = real(this%minbeta * this%Um, sp)
-    B_FN = real(this%Gam, sp)
-    UmaxokT = real(this%Um / this%kT, sp)
+    C_FN = this%maxbeta * this%Um
+    Bq = this%minbeta * this%Um
+    B_FN = this%Gam
+    UmaxokT = this%Um / this%kT
     
-    polybeta = [3.*(C_FN+Bq-2.*B_FN), 2.*(3.*B_FN-Bq-2.*C_FN), C_FN-UmaxokT]
+    polybeta = real([3.*(C_FN+Bq-2.*B_FN), 2.*(3.*B_FN-Bq-2.*C_FN), C_FN-UmaxokT],sp)
     
     call RPQR79(2,polybeta,rt,ierr,work)
     zmax=minval(real(rt,dp));
     if (zmax<0) then
         zmax=maxval(real(rt,dp))
     endif
+    
     Em = this%Um * zmax
     Gm = -(C_FN+Bq-2.*B_FN) * zmax**3 - (3.*B_FN-Bq-2.*C_FN) * zmax**2 &
             -C_FN * zmax + B_FN
     s = Em / this%kT + Gm
-    
+    if (Gm < 0.d0) then
+        print *, 'zmax = ', zmax, 'Gm = ', Gm
+        call print_data(this)
+    endif
+        
     heatt = (s+1.d0)*exp(-s)
     heatf = exp(-s)
     
@@ -456,7 +475,7 @@ subroutine J_num_integ(this)
         endif
         Jsum = Jsum + fj
     enddo
-    
+    if (j>2*Nvals) j = 2*Nvals
     do i=1,2*Nvals!integrate over low energies
         Ej = E0 - i * dE
         Umax = this%Um - Ej
@@ -530,8 +549,8 @@ subroutine print_data(this, filenum)
     write (fid,'(A10,ES12.4,/A10,ES12.4)') 'W = ', this%W, 'kT = ', this%kT
     write (fid,'(A10,ES12.4,/A10,ES12.4,/A10,ES12.4)') &
             'Jem = ', this%Jem, 'heat = ', this%heat, 'Gamow = ', this%Gam
-    write (fid,'(A10,ES12.4,/A10,ES12.4,/A10,ES12.4,/A10,ES12.4)') &
-            'xm = ', this%xm, 'Um = ', this%Um, &
+    write (fid,'(A10,ES12.4,/A10,ES12.4,/A10,ES12.4,/A10,ES12.4,/A10,ES12.4)') &
+            'xm = ', this%xm, 'xmax = ', this%xmax, 'Um = ', this%Um, &
             'maxbeta = ', this%maxbeta, 'minbeta = ', this%minbeta
     write (fid,'(A10,A12,/A10,A12,/A10,I10,/A10,L10)') 'Regime:  ', this%regime, &
                                      'Sharpness:', this%sharpness,  &
@@ -541,7 +560,7 @@ subroutine print_data(this, filenum)
 end subroutine print_data
 
 
-subroutine fitpot(x,V,F,R,gamma)
+function fitpot(x,V,F,R,gamma)  result(var)
     !Fits V(x) data to F,R,gamma standard potential using L-V
     !minimization module
     use Levenberg_Marquardt, only: nlinfit
@@ -570,6 +589,67 @@ subroutine fitpot(x,V,F,R,gamma)
         real(dp)             :: y
         y=(p(1)*p(2)*x*(p(3)-1.d0)+p(1)*x**2) / (p(3)*x+p(2)*(p(3)-1.d0))
     end function fun
-end subroutine fitpot
+end function fitpot
+
+subroutine plot_barrier(this)
+    use pyplot_mod, only: pyplot
+    use bspline, only: db1val
+    
+    type (EmissionData), intent(in)     :: this
+    type (pyplot)           :: plt
+    real(dp)                :: x(128), Ubar(128)
+    real(dp)                :: Vplot(size(this%xr))
+    integer                 :: ixrm, i
+    integer, parameter      :: font = 32
+    
+    x = linspace(1.d-4,this%xmax,128)
+    ixrm = size(this%xr)
+    do i =1, 128
+        Ubar(i) = bar(x(i))
+        Ubar(i) = max(Ubar(i),-1.d0) 
+    enddo
+
+    call plt%initialize(grid=.true.,xlabel='$x(nm)$',ylabel='$U(eV)$', &
+            figsize=[20,15], font_size=font, title='FN-plot test', &
+            legend=.true.,axis_equal=.false., legend_fontsize=font, &
+            xtick_labelsize=font,ytick_labelsize=font,axes_labelsize=font)
+            
+    call plt%add_plot(x,Ubar,label='$barrier$', &
+                    linestyle='b-',linewidth=2)
+    if (allocated(this%xr)) then
+        Vplot =this%W - this%Vr - Q / (this%xr + ( 0.5d0 * (this%xr**2)) / this%R)
+        where (Vplot < -1.d0) Vplot = -1.d0
+        call plt%add_plot(this%xr,Vplot,label='$barrier points$', &
+                    linestyle='r*',markersize = 10)
+    endif
+                    
+    call plt%savefig('png/barrierplot.png', pyfile='python/barrierplot.py')
+    
+
+    contains
+    
+    pure function bar(x) result(V)!sphere barrier model
+        real(dp), intent(in)    :: x
+        real(dp)                :: V, Vinterp
+        integer                 :: iflag, inbvx
+        inbvx = 1
+        
+        if (this%mode > 0) then !interpolation
+            call db1val(x, idx, this%tx, size(this%Vr), knotx, &
+                        this%bcoef, Vinterp, iflag, inbvx)
+            if (iflag /= 0) then !out of bounds.. do linear extrapolation 
+                Vinterp = this%Vr(ixrm) + (x - this%xr(ixrm)) * &
+                (this%Vr(ixrm)-this%Vr(ixrm-1)) / (this%xr(ixrm)-this%xr(ixrm-1))
+            endif  
+            V = this%W - Vinterp - Q / (x + ( 0.5d0 * (x**2)) / this%R)
+        else !use standard F,R,gamma model for the electrostatic potential
+            V = this%W - (this%F * this%R * x*(this%gamma - 1.d0) + this%F * x**2) &
+                / (this%gamma * x + this%R * (this%gamma - 1.d0)) &
+                - Q / (x + ( 0.5d0 * (x**2)) / this%R)
+        endif
+    end function bar
+end subroutine plot_barrier
+
+
 
 end module emission

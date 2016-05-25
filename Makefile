@@ -12,8 +12,8 @@ FFLAGS = -ffree-line-length-none -fbounds-check -Imod -O3 #-Wall -pedantic# -ped
 .SECONDARY: $(MODOBJ)
 
 current: bin/current.exe
-	./bin/current.exe 2.8 4.5 700. 1 5. 10.
 	./bin/current.exe 2.8 4.5 700. 0 5. 10.
+	./bin/current.exe 2.8 4.5 700. 1 5. 10.
 
 test: bin/test.exe
 	./bin/test.exe

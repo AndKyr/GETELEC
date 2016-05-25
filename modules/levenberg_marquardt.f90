@@ -19,7 +19,7 @@ MODULE Levenberg_Marquardt
 ! amiller @ bigpond.net.au
 
 IMPLICIT NONE
-INTEGER, PARAMETER :: dp = SELECTED_REAL_KIND(12, 60), Nmaxval = 200
+INTEGER, PARAMETER :: dp = SELECTED_REAL_KIND(12, 60), Nmaxval = 32
 
 PRIVATE
 PUBLIC :: dp, lmdif1, lmdif, lmder1, lmder, enorm, nlinfit

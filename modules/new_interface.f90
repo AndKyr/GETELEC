@@ -2,9 +2,9 @@ module new_interface
 
 implicit none
 
-integer, parameter  :: dp=8, Nr=32
+integer, parameter  :: dp=8, Nr=64
 integer, parameter  :: kx=4, ky=4, kz=4, iknot=0  !interpolation parameters
-real(dp), parameter :: Jlim=1.d-22, Fmin = 1.8d0, rmax = 3.d0
+real(dp), parameter :: Jlim=1.d-21, Fmin = 1.8d0
 
 type, public       :: InterData
 
@@ -109,13 +109,14 @@ subroutine J_from_phi(this)
     !the above are spline-related parameters
     
     integer                 :: i, istart,jstart,kstart   
-    real(dp)                :: direc(3)
+    real(dp)                :: direc(3), Fnorm, rmax, Vmax, xmax, ymax, zmax
+                                        !rmax: maximum distance for rline
     integer, save           :: ifullcount = 1
 
     real(dp)                :: t1, t2, t3
 
     call cpu_time(t1)
-    this%rline = linspace(0.d0, rmax, Nr)
+    
 
     istart = this%Nstart(1)
     jstart = this%Nstart(2)
@@ -128,9 +129,28 @@ subroutine J_from_phi(this)
                  [this%phi(istart-1,jstart,kstart), &
                  this%phi(istart,jstart-1,kstart), &
                  this%phi(istart,jstart,kstart-1)])/this%grid_spacing
-    
-    if (norm2(this%F)> Fmin) then
-        direc = this%F / norm2(this%F)
+    Fnorm = norm2(this%F)
+    if (Fnorm> Fmin) then
+        direc = this%F / Fnorm
+        rmax = 2.d0 * this%W / Fnorm
+        do i = 1,10
+            xmax = this%grid_spacing(1)*(istart-1) + rmax * direc(1)
+            ymax = this%grid_spacing(2)*(jstart-1) + rmax * direc(2)
+            zmax = this%grid_spacing(3)*(kstart-1) + rmax * direc(3)
+            call db3val(xmax, ymax, zmax, idx, idy, idz, &
+                    this%tx, this%ty, this%tz, this%nx, this%ny, this%nz, &
+                    kx, ky, kz, this%bcoef, Vmax,  &
+                    iflag, inbvx, inbvy, inbvz, iloy, iloz)
+            if (iflag /=0) then
+                rmax = rmax / 1.5d0
+                exit
+            endif
+            
+            if (Vmax > this%W) exit
+            rmax = 1.2d0 * rmax 
+        enddo
+        
+        this%rline = linspace(0.d0, rmax, Nr)
         !set the line of interpolation and interpolate
         this%xline = this%grid_spacing(1)*(istart-1) + this%rline * direc(1)
         this%yline = this%grid_spacing(2)*(jstart-1) + this%rline * direc(2)
@@ -142,10 +162,10 @@ subroutine J_from_phi(this)
                         kx, ky, kz, this%bcoef, this%Vline(i),  &
                         iflag, inbvx, inbvy, inbvz, iloy, iloz)
         enddo
-        
         that%xr = this%rline
         that%Vr = this%Vline
-        that%mode = 1
+        that%mode = -2
+!        print *, 'V(end)=', this%Vline(size(this%Vline))
     else
         that%F = norm2(this%F)
         that%R = 1.d4

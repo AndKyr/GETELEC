@@ -22,7 +22,6 @@ this%grid_spacing = this%grid_spacing * 0.1d0
 call interp_set(this)
 inds = surf_points(this%phi)
 allocate(Jem(size(inds,2)), heat(size(inds,2)), F(size(inds,2)))
-print *, shape(this%phi)
 do i = 1,size(inds,2)
     this%Nstart = inds(:,i)
     call J_from_phi(this)
