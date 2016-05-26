@@ -3,7 +3,7 @@ module std_mat
 !are used quite frequently
 implicit none
 
-integer,parameter::dp=8
+integer, parameter      ::dp=8
 
 contains
 
@@ -34,40 +34,12 @@ subroutine plot(xdata,ydata)
     close(fidx)
     close(fidy)
 end subroutine
-
-pure function binsearch(x,x0)  result(ind)
-!binary search in sorted vector x for x(i) closest to x
-    real(dp), intent(in)    :: x(:), x0
-    integer                 :: ind, i, ia, ib, imid
-       
-    ia = 1
-    ib = size(x)
-    do i=1,size(x)
-        imid = (ia + ib) / 2
-        if (x(imid) < x0) then
-            ia = imid
-        else
-            ib = imid
-        endif
-        if (abs(ia-ib) <= 1) then
-            if (abs(x(ia)-x0) < abs(x(ib)-x0)) then
-                ind = ia
-            else
-                ind = ib
-            endif
-            return
-        endif
-    enddo
-end function binsearch
     
-    
-    
-
 subroutine csvprint(fileunit,dataarr)
     ! write real numbers to a CSV file
-    integer, intent(in):: fileunit
-    double precision, intent(in) :: dataarr(:,:)
-    integer            :: i, j 
+    integer, intent(in)     :: fileunit
+    real(dp), intent(in)    :: dataarr(:,:)
+    integer                 :: i, j 
 
     do i=1,size(dataarr,1)
         do j=1,size(dataarr,2)
@@ -83,9 +55,9 @@ end subroutine csvprint
 
 subroutine csvread(fileunit,dataarr,rows,cols)
     ! read real numbers from a CSV file
-    integer, intent(in):: fileunit,rows,cols
-    double precision, intent(out) :: dataarr(rows,cols)
-    integer            :: i
+    integer, intent(in)           :: fileunit,rows,cols
+    real(dp), intent(out)         :: dataarr(rows,cols)
+    integer                       :: i
 
     do i=1,rows
         read(fileunit,*) dataarr(i,:)
@@ -93,10 +65,10 @@ subroutine csvread(fileunit,dataarr,rows,cols)
 end subroutine csvread
 
 pure function linspace(a,b,N) result(x)
-    double precision,intent(in)::a,b
-    integer,intent(in) ::N
-    double precision :: dx,x(N)
-    integer :: i
+    real(dp), intent(in)    ::a,b
+    integer, intent(in)     ::N
+    real(dp)                :: dx,x(N)
+    integer                 :: i
     
     dx=(b-a)/(N-1)
     do i=1,N
@@ -120,10 +92,10 @@ end function logspace
 pure function lininterp(yi,a,b,x) result(y)
 !simple linear interpolation function
 !appropriate for uniform linspace
-    double precision, intent(in):: a,b,x, yi(:) ! yi interpolation array, a,b are x interval limits and x is the requested point
-    integer :: Nnear,N
-    double precision:: y,dx,dy,xnear
-!   print *, yi
+    real(dp), intent(in)    :: a, b, x, yi(:) 
+    ! yi interpolation array, a, b are x interval limits and x is the requested point
+    integer                 :: Nnear, N
+    real(dp)                :: y, dx, dy, xnear
     
     if (x<a .or. x>b) then
         y=1.d200
@@ -138,36 +110,67 @@ pure function lininterp(yi,a,b,x) result(y)
     else
         dy=yi(Nnear)-yi(Nnear-1)
     endif
-!   print*, 'Nnear=', Nnear, '|| N=', N, '|| dx=', dx, '|| dy=', dy, '|| xnear=', xnear, '|| x=', x
     y=yi(Nnear)+(dy/dx)*(x-xnear)
-end function
+end function lininterp
 
 pure function interp1(xi,yi,x) result(y)
 !simple linear interpolation function (same as interp1 of matlab)
 !appropriate for non-uniform linspace
 
-!! be careful!! this  function is not thoroughly tested yet!!!!!
-    double precision, intent(in) :: xi(:),yi(:),x
-    double precision :: y
-    integer :: i,j,Nlow
-    Nlow=0
-    do j=1,size(xi)
-        if (xi(j)>x) then
-            Nlow=j-1
-            exit
-        endif
-    enddo
-    if (Nlow<1 .or. j>size(xi)) then 
-        y=1.d200
-    else
-        y=yi(Nlow)+((yi(Nlow+1)-yi(Nlow))/(xi(Nlow+1)-xi(Nlow)))*(x-xi(Nlow))
-    endif
+    real(dp), intent(in)    :: xi(:), yi(:), x
+    real(dp)                :: y(2) ! 1: output, 2: flag
+    integer                 :: dN, Nclose, binout(2)
+    
+    binout = binsearch(xi,x) !find closest xi to x
+    y(2) = real(binout(2),dp)
+    if (binout(2) /= 0) return
+    dN = 1
+    Nclose = binout(1)
+    if (xi(Nclose) > x) dN = -1
+    y(1) = yi(Nclose) + (x-xi(Nclose)) * & !linear interpolation
+        ((yi(Nclose + dN) - yi(Nclose)) / (xi(Nclose + dN) - xi(Nclose)))
+    
 end function interp1
 
+pure function binsearch(x, x0)  result(ind)
+!binary search in sorted vector x for x(i) closest to x
+    real(dp), intent(in)    :: x(:), x0
+    integer                 :: ind(2) ! 1: output, 2: iflag
+    !iflag 0: fine, 1: x0 out of bounds, -1: x not sorted
+    integer                 :: i, ia, ib, imid
+    
+    if ((x0 < x(1)) .or. (x0 > x(size(x)))) then
+        ind(2) = 1
+        return
+    endif
+    
+    ia = 1
+    ib = size(x) +1
+    do i=1,size(x)
+        imid = (ia + ib) / 2
+        if (x(imid) < x0) then
+            ia = imid
+        else
+            ib = imid
+        endif
+        if (abs(ia-ib) <= 1) then
+            if (abs(x(ia)-x0) < abs(x(ib)-x0)) then
+                ind = ia
+            else
+                ind = ib
+            endif
+            ind(2) = 0
+            return
+        endif
+    enddo
+    ind(2) = -1
+    
+end function binsearch
+
 function diff2(f,x,dx) result(y)!second derivative of a function f at point x
-    double precision, intent(in)::x,dx
-    double precision, external::f
-    double precision::y
+    real(dp), intent(in)    :: x, dx
+    real(dp), external      :: f
+    real(dp)                ::y
 
     y=(f(x+dx)+f(x-dx)-2.d0*f(x))/(dx*dx)
 end function diff2
