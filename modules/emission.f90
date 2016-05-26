@@ -19,15 +19,20 @@ real(dp), parameter                 :: pi=acos(-1.d0), b=6.83089d0, zs=1.6183d-4
                                        gg=10.246d0, Q=0.35999d0, kBoltz=8.6173324d-5
                                        !universal constants
                                 
-real(dp), parameter                :: xlim = 0.08d0, varlim = 8.d-2, gammalim = 1.d2 
+real(dp), parameter                :: xlim = 0.08d0, gammalim = 1.d2
+real(dp), parameter                :: Jfitlim = 1.d-13,  varlim = 4.d-2
 !xlim: limit that determines distinguishing between sharp regime (Numerical integral)
 !and blunt regime where KX approximation is used
 !varlim : limit of variance for the fitting approximation (has meaning for mode==-2)
+!Jfitlim : limit of current approximation above which interpolation is allowed
+!if J<Jfitlim fitting is forced
+!gammalim : maximum acceptable gamma. above it KX is forced
+!
 
-integer, parameter                  :: knotx = 6, iknot = 0, idx = 0
+integer, parameter                  :: knotx = 4, iknot = 0, idx = 0
                                        !No of bspline knots
 logical, parameter                  :: spectroscopy= .false.
-logical, parameter                  :: debug = .true., verbose = .true. 
+logical, parameter                  :: debug = .true., verbose = .false. 
 !set to true if you want to output spectroscopy data 
 
 type, public    :: EmissionData
@@ -86,7 +91,8 @@ subroutine cur_dens(this)
     if (this%mode < 0) then !fit data to F,R,gamma model
         if (debug) call cpu_time(t1)
         var = fitpot(this%xr, this%Vr, this%F, this%R, this%gamma)
-        if ((var > varlim .or. isnan(var)) .and. this%mode == -2) this%mode = 1
+        if ((var > varlim .or. isnan(var)) .and. &
+            (this%mode == -2 .and. this%Jem > Jfitlim)) this%mode = 1
         !if mode = -2 and not satisfactory fitting, return to interpolation
         if (debug) then
             call cpu_time(t2)
@@ -160,7 +166,7 @@ subroutine cur_dens(this)
     
     if (debug .and. (isnan(this%Jem) .or. isnan(this%heat)) .or. this%Jem < 1.d-201) then
         call print_data(this)
-!        call plot_barrier(this)
+        call plot_barrier(this)
     endif
     
     contains
@@ -234,7 +240,6 @@ subroutine gamow_general(this,full)
             new = this !copy structure for calculation for E-dw
             new%W = this%W - dw
             call gamow_num(new)
-            if (isnan(new%Gam)) call print_data(new)
             this%maxbeta = abs(new%Gam - this%Gam) / dw !derivative
         endif
     else !large radius, KX approximation usable
@@ -644,9 +649,6 @@ subroutine plot_barrier(this)
     real(dp)                :: x(Nx), Ubar(Nx)
     real(dp)                :: Vplot(size(this%xr))
     integer                 :: ixrm, i
-    
-    
-    call print_data(this)
     
     x = linspace(1.d-4,this%xmax,Nx)
     ixrm = size(this%xr)
