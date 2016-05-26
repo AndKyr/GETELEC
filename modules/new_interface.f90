@@ -4,11 +4,13 @@ implicit none
 
 integer, parameter  :: dp=8, Nr=64
 integer, parameter  :: kx=4, ky=4, kz=4, iknot=0  !interpolation parameters
-real(dp), parameter :: Jlim=1.d-21, Fmin = 1.8d0
+real(dp), parameter :: Jlim=1.d-19, Fmin = 1.8d0
+logical, parameter  :: debug = .true.
 
 type, public       :: InterData
 
-    real(dp)                :: F(3) = [1.d0,1.d0,1.d0], kT = 5.d-2, W = 4.5d0, Jem, heat
+    real(dp)                :: F(3) = [1.d0, 1.d0, 1.d0], kT = 5.d-2, W = 4.5d0
+    real(dp)                :: Jem, heat !ouput parameters
     !Parameters defining emission at each point
     real(dp)                :: grid_spacing(3)
     !External potential and grid spacing parameters
@@ -21,9 +23,13 @@ type, public       :: InterData
     !External potential and its corresponding spline parameters
     logical                 :: set = .false.
     !true if interpolation has been set (db3ink called)
-    real(dp)                :: TimeCur=0.d0, TimeInSet=0.d0, TimeInt=0.d0, TimeCurFull = 0.d0 
-    !timing variables
-    integer                 :: icount = 0
+    real(dp)                :: timings(7) !timing variables
+    !1: Interpolation set, 2: interpolation evaluate 3: Cur: fitting
+    !4: Cur: 1D interpolation set. 
+    !5: Cur: J_num_integ with barrier model
+    !6: J_num_integ with interpolation
+    !7: Cur: GTF
+    integer                 :: counts(7)  !counting variables (same as timings)
 end type InterData
     
 
@@ -37,7 +43,7 @@ subroutine interp_set(this)
     integer                             :: i, iflag
     real(dp)                            :: t2, t1 !timing
     
-    call cpu_time(t1)
+    if (debug) call cpu_time(t1)
     this%nx = size(this%phi,1)
     this%ny = size(this%phi,2)
     this%nz = size(this%phi,3)
@@ -54,8 +60,12 @@ subroutine interp_set(this)
         stop 'Something went wrong with interpolation set'
     endif
     this%set = .true.
-    call cpu_time(t2)
-    this%TimeInSet = this%TimeInSet + t2 - t1
+    
+    if (debug) then
+        call cpu_time(t2)
+        this%timings(1) = this%timings(1) + t2 - t1
+        this%counts(1) = this%counts(1) + 1
+    endif
     
 end subroutine interp_set
  
@@ -103,7 +113,7 @@ subroutine J_from_phi(this)
     
     type(InterData), intent(inout)  :: this
     
-    type(EmissionData)      :: that !emission data structure
+    type(EmissionData),save :: that !emission data structure
     integer                 :: inbvx=1,inbvy=1,inbvz=1,iloy=1,iloz=1
     integer                 :: idx=0, idy=0, idz=0, iflag
     !the above are spline-related parameters
@@ -111,13 +121,12 @@ subroutine J_from_phi(this)
     integer                 :: i, istart,jstart,kstart   
     real(dp)                :: direc(3), Fnorm, rmax, Vmax, xmax, ymax, zmax
                                         !rmax: maximum distance for rline
-    integer, save           :: ifullcount = 1
+    logical                 :: badcontition
+    real(dp)                :: t1, t2
 
-    real(dp)                :: t1, t2, t3
-
-    call cpu_time(t1)
+    badcontition = .false.
+    if (debug) call cpu_time(t1)
     
-
     istart = this%Nstart(1)
     jstart = this%Nstart(2)
     kstart = this%Nstart(3)
@@ -142,20 +151,22 @@ subroutine J_from_phi(this)
                     kx, ky, kz, this%bcoef, Vmax,  &
                     iflag, inbvx, inbvy, inbvz, iloy, iloz)
             if (iflag /=0) then
-                rmax = rmax / 1.5d0
+                rmax = rmax / 1.3d0
+                badcontition = .true.
                 exit
             endif
             
             if (Vmax > this%W) exit
-            rmax = 1.2d0 * rmax 
+            rmax = 1.3d0 * rmax 
         enddo
+        if (i==11) badcontition = .true.
         
         this%rline = linspace(0.d0, rmax, Nr)
         !set the line of interpolation and interpolate
         this%xline = this%grid_spacing(1)*(istart-1) + this%rline * direc(1)
         this%yline = this%grid_spacing(2)*(jstart-1) + this%rline * direc(2)
         this%zline = this%grid_spacing(3)*(kstart-1) + this%rline * direc(3)
-                
+       
         do i=1,Nr !interpolate for all points of rline
             call db3val(this%xline(i), this%yline(i), this%zline(i), idx, idy, idz, &
                         this%tx, this%ty, this%tz, this%nx, this%ny, this%nz, &
@@ -164,34 +175,38 @@ subroutine J_from_phi(this)
         enddo
         that%xr = this%rline
         that%Vr = this%Vline
-        that%mode = -2
-!        print *, 'V(end)=', this%Vline(size(this%Vline))
+        that%mode = 1 !in general case use interpolation
+        if (badcontition) that%mode = -3 
     else
         that%F = norm2(this%F)
         that%R = 1.d4
         that%gamma = 1.d0
         that%mode = 0
     endif
-    call cpu_time(t2)
-    this%TimeInt = this%TimeInt + t2 - t1
+    
+    if (debug) then
+        call cpu_time(t2)
+        this%timings(2) = this%timings(2) + t2 - t1
+        this%counts(2) = this%counts(2) + 1
+    endif
+    
     that%W = this%W
     that%kT = this%kT
-    
-    call cpu_time(t1)
     that%full = .false.
+    
     call cur_dens(that)
+    
     if (that%Jem > Jlim) then
-        call cpu_time(t3)
         that%full = .true.
+        that%mode = -2 !try fitting first. If not successful, do interpolation
         call cur_dens(that)
-        call cpu_time(t2)
-        this%TimeCurFull = this%TimeCurFull + t2 - t3
-        this%icount = this%icount + 1
     endif
     this%Jem = that%Jem
     this%heat = that%heat
-    call cpu_time(t2)
-    this%TimeCur = this%TimeCur + t2 - t1
+    do i =1,5 !copy timings and counts from that
+        this%timings(i+2) = that%timings(i)
+        this%counts(i+2) = that%counts(i)
+    enddo
 
 end subroutine J_from_phi
 

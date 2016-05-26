@@ -57,10 +57,15 @@ call plt%savefig('png/surfacepoints.png', pyfile='python/surfacepoints.py')
 deallocate(inds, F, heat, Jem, this%phi, this%bcoef, this%tx, this%ty, this%tz)
 
 print * , 'Timing:'
-print *, 'Set:', this%TimeInSet
-print *, 'Interpolate:', this%TimeInt 
-print *, 'Current:', this%TimeCur, 'from which', this%TimeCurFull, 'Fullcalc'
-print *, 'Calculated full' ,this%icount, 'times'
+print *, 'Set 3D:', this%timings(1), 's,  called', this%counts(1), 'times'
+print *, 'Interpolate 3D:', this%timings(2), 's,  called', this%counts(2), 'times'
+print *, 'Fitting:', this%timings(3), 's,  called', this%counts(3), 'times'
+print *, 'Set 1D:', this%timings(4), 's,  called', this%counts(4), 'times'
+print *, 'Current full model:', this%timings(5), 's, called', this%counts(5), 'times'
+print *, 'Current full interp:', this%timings(6), 's, called', this%counts(6), 'times'
+print *, 'Current GTF:', this%timings(7), 's,  called', this%counts(7), 'times'
+print *, 'Total time:', sum(this%timings), 's'
+
 
 contains
 
