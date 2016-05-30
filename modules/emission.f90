@@ -19,7 +19,7 @@ real(dp), parameter                 :: pi=acos(-1.d0), b=6.83089d0, zs=1.6183d-4
                                        gg=10.246d0, Q=0.35999d0, kBoltz=8.6173324d-5
                                        !universal constants
                                 
-real(dp), parameter                :: xlim = 0.08d0, gammalim = 1.d2
+real(dp), parameter                :: xlim = 0.07d0, gammalim = 1.d2
 real(dp), parameter                :: Jfitlim = 1.d-13,  varlim = 4.d-2
 !xlim: limit that determines distinguishing between sharp regime (Numerical integral)
 !and blunt regime where KX approximation is used
@@ -38,7 +38,7 @@ logical, parameter                  :: debug = .true., verbose = .false.
 type, public    :: EmissionData
 !this type holds all the crucial data for the calculation of emission
 
-    real(dp)    :: F=5.d0, R=100.d0, gamma=1.d0
+    real(dp)    :: F=5.d0, R=100.d0, gamma=10.d0
         !Electrostatics: Field, Radius, enhancement factor
     real(dp)    :: W=4.5d0, kT=2.5d-2
         !Materical Characteristics: Work funciton,Temperature
@@ -122,7 +122,7 @@ subroutine cur_dens(this)
  
     if (this%full) then !if full calculation expand borders of regimes
         nlimf = 0.7d0
-        nlimt = 2.d0
+        nlimt = 2.5d0
     else !if only GTF equation standard limit = 1
         nlimf = 1.d0
         nlimt = 1.d0
@@ -134,22 +134,12 @@ subroutine cur_dens(this)
     call gamow_general(this,.true.) !calculate barrier parameters
 
     if (this%kT * this%maxbeta < nlimf) then!field regime
-        this%Jem = zs*pi* this%kT * exp(-this%Gam) &
-                    / (this%maxbeta * sin(pi * this%maxbeta * this%kT))
-        !Murphy-Good version of FN
-        this%heat = -zs*(pi**2) * (this%kT**2) * &!theoretical Nottingham at F regime
-                    exp(-this%Gam)*cos(pi* this%maxbeta * this%kT)  &
-                    / (this%maxbeta * (sin(pi * this%maxbeta * this%kT )**2))
+        n = 1.d0/(this%kT * this%maxbeta) !standard Jensen parameters
+        s = this%Gam
         this%regime = 'F'
     else if (this%kT * this%minbeta > nlimt) then !thermal regime
         n = 1.d0/(this%kT * this%minbeta) !standard Jensen parameters
         s = this%minbeta * this%Um
-        Jf = zs * ( this%minbeta **(-2)) * Sigma(1.d0/n) * exp(-s)
-        Jt = zs * (this%kT**2) * exp(-n*s) * Sigma(n)  !J and heat components
-        this%Jem = Jt+Jf/(n**2)
-        heatt = (n*s+1.d0)*Sigma(n)*exp(-n*s)
-        heatf = (n**3)*DSigma(1.d0/n)*exp(-s)
-        this%heat = zs*(heatt-heatf)*(this%kT**3)
         this%regime = 'T'
     else  !intermediate regime
         if (this%full) then
@@ -158,6 +148,13 @@ subroutine cur_dens(this)
             call GTFinter(this)
         endif
         this%regime = 'I'
+    endif
+    
+    if (this%regime /= 'I') then
+        this%heat = zs * (this%kT**3) * ( ( (n*s + 1.d0) * Sigma(n) - DSigma(n)) * &
+                    exp(-n*s) + (n**3) * DSigma(1.d0/n) * exp(-s) )
+        this%Jem = zs * (this%kT**2) * ((n**2) * Sigma(1.d0/n) * exp(-s) &
+                    + exp(-n*s) * Sigma(n))
     endif
     
    
@@ -180,7 +177,8 @@ subroutine cur_dens(this)
     pure function DSigma(x) result(ds) !Jensen's sigma'
         real(dp), intent(in):: x
         real(dp):: ds
-        ds=(-1.d0+4.d0*x**2+x**4)/(1.d0-x**2)-.3551d0*x**2-.3178d0*x**4-0.027066*x**6
+        ds = (-1.d0 + 3.6449 * x**2 + 1.3925d0 * x**4 + 0.0853d0 * x**6 + &
+            0.0723d0 * x**8 - 0.195d0 * x**10)/((-1.d0 + x**2)**2)
     end function DSigma
 
 end subroutine cur_dens 
@@ -202,7 +200,7 @@ subroutine gamow_general(this,full)
     
     x = this%W / (this%F * this%R)!length of barrier indicator
     if (this%mode > 0) then !if interpolating data are more sensitive, use big dw
-        dw = 0.1d0
+        dw = 0.01d0
     else
         dw = 1.d-2
     endif
@@ -383,7 +381,7 @@ subroutine GTFinter(this)
     real(sp)            ::  polybeta(3), work(8)
     complex(sp)         :: rt(2)
     integer             :: ierr
-    real(dp)            :: zmax, Em, Gm, s, heatt, heatf, C_FN, Bq, B_FN, UmaxokT
+    real(dp)            :: zmax, Em, Gm, s, C_FN, Bq, B_FN, UmaxokT
     real(dp)            :: t1, t2 !timing variables
     
     if (debug) call cpu_time(t1)
@@ -408,11 +406,8 @@ subroutine GTFinter(this)
         print *, 'zmax = ', zmax, 'Gm = ', Gm
         call print_data(this)
     endif
-
-    heatt = (s+1.d0)*exp(-s)
-    heatf = exp(-s)
     
-    this%heat = zs*(heatt+heatf)*(this%kT**3)
+    this%heat = zs*(this%kT**3)*exp(-s) * (s + 1.d0 + .5d0*s**2)
     this%Jem = zs * (this%kT**2) * exp(-s) * (s + 1.d0)
     if (debug) then
         call cpu_time(t2)
