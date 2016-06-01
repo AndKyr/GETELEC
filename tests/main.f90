@@ -6,84 +6,138 @@ use std_mat, only: linspace
 
 implicit none
 
-integer,parameter       :: dp=8, Nf=1024, font=35
-real(dp), parameter     :: Fmin=0.5d0, Fmax=8.d0
+integer,parameter       :: dp=8, Nf=2048, font=35
+real(dp), parameter     :: Fmin=0.4d0, Fmax=10.d0, T = 1.d3
 
-real(dp)                :: T=1.d3, Fi(Nf), Ji(Nf), heati(Nf), t1,t2, Japp(Nf), heatapp(Nf)
-!real(dp), allocatable   :: Jib(Nf) , Jis(Nf)
-integer                 :: i , fidout = 1564
-character               :: reg(Nf), sharp(Nf), regap(Nf), sharpap(Nf)
+real(dp), dimension(Nf) :: Fi, Jfs, Jis, Jts, Jfb, Jib, Jtb, &
+                           hfs, his, hts, hfb, hib, htb, Japp, happ, &
+                           Ffs, Fis, Fts, Ffb, Fib, Ftb
+integer                 :: i, j, fs=0, is=0, ts=0, fb=0, ib=0, tb=0
+real(dp)                :: Ri(3)
 
-type(EmissionData)      :: new
-type(pyplot)            :: plt 
+type(EmissionData)      :: this
+type(pyplot)            :: plt1, plt2
 
-
-new%kT=kBoltz*T
-
-new%gamma = 15.d0
-Fi=linspace(Fmin,Fmax,Nf)
-call cpu_time(t1)
-do i=1,Nf
-    
-    new%F=Fi(i)
-    
-    new%full = .true.
-    new%mode = 0
-    new%R =4.d0
-    call cur_dens(new)
-    Ji(i) = new%Jem
-    heati(i) = new%heat
-    reg(i) = new%regime
-    sharp(i) = new%sharpness
-
-    new%full = .false.
-    new%mode = -3
-    new%R = 4.d0
-    call cur_dens(new)
-    Japp(i) = new%Jem
-    heatapp(i) = new%heat
-    regap(i) = new%regime
-    sharpap(i) = new%sharpness
-    
-enddo
-call cpu_time(t2)
-
-open(fidout,file="python/data.py",action="write",status="replace")
-write(fidout,'(a)') 'import numpy as np'
-write(fidout,'(a)') 'def dummy():'
-write(fidout,*)'J = np.array([', (Ji(i), ',', i=1,Nf-1), Ji(Nf),'])'
-write(fidout,*)'F = np.array([', (Fi(i), ',', i=1,Nf-1), Fi(Nf),'])'
-write(fidout,*)'Japp = np.array([', (Japp(i), ',', i=1,Nf-1), Japp(Nf),'])'
-write(fidout,*)'heat = np.array([', (heati(i), ',', i=1,Nf-1), heati(Nf),'])'
-write(fidout,*)'heatapp = np.array([', (heatapp(i), ',', i=1,Nf-1), heatapp(Nf),'])'
-write(fidout,*)'reg = np.array([', (ichar(reg(i)), ',', i=1,Nf-1), ichar(reg(Nf)),'])'
-write(fidout,*)'sharp = np.array([', (ichar(sharp(i)), ',', i=1,Nf-1), ichar(sharp(Nf)),'])'
-write(fidout,*)'regap = np.array([', (ichar(regap(i)), ',', i=1,Nf-1), ichar(regap(Nf)),'])'
-write(fidout,*)'sharpap = np.array([', (ichar(sharpap(i)), ',', i=1,Nf-1), ichar(sharpap(Nf)),'])'
-write(fidout,*) 'return (J,F,Japp,heat,heatapp,reg,sharp,regap,sharpap)'
-close(fidout)
-
-call plt%initialize(grid=.true.,xlabel='$1/F [nm/V]$',ylabel='$J (A/nm^2)$', &
-            figsize=[20,15], font_size=font, title='FN-plot test', &
-            legend=.true.,axis_equal=.false., legend_fontsize=font, &
+call plt1%initialize(grid=.true.,xlabel='$1/F [nm/V]$',ylabel='$J (A/nm^2)$', &
+            figsize=[20,15], font_size=font, &
+            legend=.false.,axis_equal=.false., legend_fontsize=font, &
             xtick_labelsize=font,ytick_labelsize=font,axes_labelsize=font)
             
-call plt%add_plot(1/Fi,log10(Ji),label='$current$', &
-                    linestyle='b-',linewidth=2)
-                    
-!call plt%add_plot(1/Fi,log10(abs(heati)),label='$heat$', &
-!                    linestyle='r-',linewidth=2)
-                    
-call plt%add_plot(1/Fi,log10(Japp),label='$current-approx$', &
-                    linestyle='b--',linewidth=2)
-                    
-!call plt%add_plot(1/Fi,log10(abs(heatapp)),label='$heat-approx$', &
-!                    linestyle='r--',linewidth=2)
-                    
-call plt%savefig('png/FNplot.png', pyfile='python/FNplot.py')
-!call system('cd python')
-!call system('python python/main.py')
-!call system('cd ..')
+call plt2%initialize(grid=.true.,xlabel='$1/F [nm/V]$',ylabel='$P_N (W/nm^2)$', &
+            figsize=[20,15], font_size=font, &
+            legend=.false.,axis_equal=.false., legend_fontsize=font, &
+            xtick_labelsize=font,ytick_labelsize=font,axes_labelsize=font)
 
-call print_data(new)
+
+this%kT=kBoltz*T
+this%gamma = 15.d0
+Fi=1.d0/linspace(1.d0/Fmax,1.d0/Fmin,Nf)
+Ri = [1.d0, 8.d0, 200.d0]
+
+do j = 1,3
+        fs=0
+        is=0
+        ts=0
+        fb=0
+        ib=0
+        tb=0
+    do i=1,Nf
+
+        
+        this%F= Fi(i)
+        this%full = .true.
+        this%mode = 0
+        this%R = Ri(j)
+        call cur_dens(this)
+        
+        if (this%regime == 'F') then
+            if (this%sharpness == 'S') then
+                fs = fs + 1
+                Jfs(fs) = this%Jem
+                hfs(fs) = this%heat
+                Ffs(fs) = this%F
+            else
+                fb = fb + 1
+                Jfb(fb) = this%Jem
+                hfb(fb) = this%heat
+                Ffb(fb) = this%F
+            endif
+        elseif (this%regime == 'I') then
+            if (this%sharpness == 'S') then
+                is = is + 1
+                Jis(is) = this%Jem
+                his(is) = this%heat
+                Fis(is) = this%F
+            else
+                ib = ib + 1
+                Jib(ib) = this%Jem
+                hib(ib) = this%heat
+                Fib(ib) = this%F
+            endif
+        else
+            if (this%sharpness == 'S') then
+                ts = ts + 1
+                Jts(ts) = this%Jem
+                hts(ts) = this%heat
+                Fts(ts) = this%F
+            else
+                tb = tb + 1
+                Jtb(tb) = this%Jem
+                htb(tb) = this%heat
+                Ftb(tb) = this%F
+            endif
+        endif
+    if (this%R > 5.d0) then
+        this%full = .false.
+        this%mode = -3
+        call cur_dens(this)
+        Japp(i) = this%Jem
+        happ(i) = this%heat
+    endif
+        
+    enddo
+    
+    if (this%R < 1.d2) then
+              
+        if (fs > 0) call plt1%add_plot(1./Ffs(1:fs), Jfs(1:fs), linestyle='b-', &
+                        label='fs', linewidth=2, yscale = 'log')
+        if (fb > 0) call plt1%add_plot(1./Ffb(1:fb), Jfb(1:fb), linestyle='b--', &
+                        yscale = 'log', label='fb', linewidth=2)
+        if (ib > 0) call plt1%add_plot(1./Fib(1:ib), Jib(1:ib), linestyle='k--', &
+                        yscale = 'log', label='ib', linewidth=2)                    
+        if (is > 0) call plt1%add_plot(1./Fis(1:is), Jis(1:is), linestyle='k-', &
+                        yscale = 'log', label='is', linewidth=2)
+        if (tb > 0) call plt1%add_plot(1./Ftb(1:tb), Jtb(1:tb), linestyle='r--', &
+                        yscale = 'log', label='tb', linewidth=2)
+        if (ts > 0) call plt1%add_plot(1./Fts(1:ts), Jts(1:ts), linestyle='r-', &
+                        yscale = 'log', label='ts', linewidth=2)
+
+                              
+        if (fs > 0) call plt2%add_plot(1./Ffs(1:fs), abs(hfs(1:fs)), linestyle='b-',&
+                        label='fs', linewidth=2, yscale = 'log')
+        if (fb > 0) call plt2%add_plot(1./Ffb(1:fb), abs(hfb(1:fb)),linestyle='b--',&
+                        yscale = 'log', label='fb', linewidth=2)
+        if (ib > 0) call plt2%add_plot(1./Fib(1:ib), abs(hib(1:ib)),linestyle='k--',&
+                        yscale = 'log', label='ib', linewidth=2)                    
+        if (is > 0) call plt2%add_plot(1./Fis(1:is), abs(his(1:is)), linestyle='k-',&
+                        yscale = 'log', label='is', linewidth=2)
+        if (tb > 0) call plt2%add_plot(1./Ftb(1:tb), abs(htb(1:tb)),linestyle='r--',&
+                        yscale = 'log', label='tb', linewidth=2)
+        if (ts > 0) call plt2%add_plot(1./Fts(1:ts), abs(hts(1:ts)), linestyle='r-',&
+                        yscale = 'log', label='ts', linewidth=2)
+    endif
+                    
+    if (this%R > 5.d0) then
+        call plt1%add_plot(1/Fi,Japp,linestyle='m:', &
+                        label='app',linewidth=2, yscale = 'log')
+        call plt2%add_plot(1./Fi, abs(happ), linestyle='m:', label='app', &
+                    linewidth=2, yscale = 'log')
+    endif
+enddo
+
+call plt1%savefig('png/Jplot.png', pyfile='python/Jplot.py')                    
+call plt2%savefig('png/heatplot.png', pyfile='python/heatplot.py')
+
+
+!call print_data(this)
 end program

@@ -19,7 +19,7 @@ real(dp), parameter                 :: pi=acos(-1.d0), b=6.83089d0, zs=1.6183d-4
                                        gg=10.246d0, Q=0.35999d0, kBoltz=8.6173324d-5
                                        !universal constants
                                 
-real(dp), parameter                :: xlim = 0.1d0, gammalim = 1.d2
+real(dp), parameter                :: xlim = 0.18d0, gammalim = 1.d2
 real(dp), parameter                :: Jfitlim = 1.d-13,  varlim = 4.d-2
 real(dp), parameter                :: nlimfield = 0.6d0,  nlimthermal = 2.3d0
 !xlim: limit that determines distinguishing between sharp regime (Numerical integral)

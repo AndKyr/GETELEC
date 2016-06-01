@@ -19,7 +19,7 @@ ax2 = fig2.gca()
 ax.grid()
 ax.set_xlabel(r"$1/F [nm/V]$")
 ax.set_ylabel(r"$J [A/nm^2]$")
-ax2.set_ylabel(r"$P_N [W/nm^2]$")
+ax2.set_ylabel(r"$|P_N| [W/nm^2]$")
 ax2.set_xlabel(r"$1/F [nm/V]$")
 ax2.grid()
 #for tl in ax2.get_yticklabels():
