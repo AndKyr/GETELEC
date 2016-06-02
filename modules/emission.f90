@@ -33,8 +33,10 @@ real(dp), parameter                :: nlimfield = 0.6d0,  nlimthermal = 2.3d0
 integer, parameter                  :: knotx = 4, iknot = 0, idx = 0
                                        !No of bspline knots
 logical, parameter                  :: spectroscopy= .false.
+!set to true if you want to output spectroscopy data
 logical, parameter                  :: debug = .true., verbose = .false. 
-!set to true if you want to output spectroscopy data 
+!if debug, warnings are printed, parts are timed and calls are counted
+!if debug and verbose all warnings are printed
 
 type, public    :: EmissionData
 !this type holds all the crucial data for the calculation of emission
@@ -157,6 +159,8 @@ subroutine cur_dens(this)
         this%Jem = zs * (this%kT**2) * ((n**2) * Sigma(1.d0/n) * exp(-s) &
                     + exp(-n*s) * Sigma(n))
     endif
+    
+    this%heat = - this%heat
     
    
     if (allocated(this%bcoef)) deallocate(this%bcoef, this%tx)
@@ -371,13 +375,15 @@ subroutine gamow_KX(this, full)
         ps = psi(Ny)
         v = vv(Ny)
         omeg = ww(Ny)
-        print *, 'Warning: yf=', yf ,' out of interpolation bounds'
+        if (debug .and. verbose) &
+            print *, 'Warning: yf=', yf ,' out of interpolation bounds'
     elseif  (yf<0.d0) then
         t= tt(1)
         ps = psi(1)
         v = vv(1)
         omeg = ww(1)
-        print *, 'Warning: yf=', yf ,' out of interpolation bounds'
+        if (debug .and. verbose) &
+            print *, 'Warning: yf=', yf ,' out of interpolation bounds'
     else
         t = lininterp(tt,0.d0,1.d0,yf)
         ps = lininterp(psi,0.d0,1.d0,yf)
@@ -394,7 +400,7 @@ subroutine gamow_KX(this, full)
         this%xm = sqrt(Q / this%F) + Q / (this%F * this%R)
         temp =  (this%F**1.5d0) / sqrt(Q) - 4.d0 * this%F / this%R
         if (temp < 0.d0) then
-            print *, 'Warning: minbeta goes to negative root'
+            if(debug .and. verbose) print *, 'Warning: minbeta goes to negative root'
             temp  =  1.d-10  !make sure that sqrt is positive, avoid NaNs
         endif
         this%minbeta = 16.093d0/sqrt(abs(temp))

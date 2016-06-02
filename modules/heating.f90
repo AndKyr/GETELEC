@@ -1,13 +1,25 @@
-module new_interface
+module heating
 
 implicit none
 
 integer, parameter  :: dp=8, Nr=64
 integer, parameter  :: kx=4, ky=4, kz=4, iknot=0  !interpolation parameters
 real(dp), parameter :: Jlim=1.d-19, Fmin = 1.8d0 , rho = 16.8d0 !(ohm * nm)
+
+
+
+
 logical, parameter  :: debug = .true.
 
-type, public       :: InterData
+type, public        :: HeatData
+
+    real(dp)        :: dx=1.d-6, dt = 1.d-5, convergence_criterion = 1.d-15
+    integer         :: solvesteps
+
+    real(dp)        :: tempinit(:), tempfinal(:), T_boundary
+    real(dp)        :: fse
+
+type, private       :: InterData
 
     real(dp)                :: F(3) = [1.d0, 1.d0, 1.d0], kT = 5.d-2, W = 4.5d0
     real(dp)                :: Jem, heat !ouput parameters
@@ -65,7 +77,6 @@ subroutine interp_set(this)
         this%timings(1) = this%timings(1) + t2 - t1
         this%counts(1) = this%counts(1) + 1
     endif
-    
 end subroutine interp_set
  
 
@@ -302,5 +313,3 @@ function surf_points(phi) result(inds2)
 end function surf_points
 
 end module new_interface
-
-

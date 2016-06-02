@@ -135,8 +135,8 @@ do j = 1,3
     endif
 enddo
 
-call plt1%savefig('png/Jplot.png', pyfile='python/Jplot.py')                    
-call plt2%savefig('png/heatplot.png', pyfile='python/heatplot.py')
+call plt1%savefig('png/Jplot.png', pyfile='python/Jplot2.py')                    
+call plt2%savefig('png/heatplot.png', pyfile='python/heatplot2.py')
 
 
 !call print_data(this)
