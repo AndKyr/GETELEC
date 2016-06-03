@@ -112,7 +112,7 @@ function get_heat(this) result(TotalHeat)
             enddo
             if (icount > Nx*Ny / 2) then
                 Pnot(k) = 0.d0 
-                Icur(k) =0.d0  
+                Icur(k) = 0.d0  
                 Ar(k) = dS * Nx * Ny
                 exit
             endif

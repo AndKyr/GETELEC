@@ -16,7 +16,7 @@ integer, parameter                  :: Ny = 200, dp = 8, sp = 4
                                        !Ny: length of special functions array
                                        
 real(dp), parameter                 :: pi=acos(-1.d0), b=6.83089d0, zs=1.6183d-4, &
-                                       gg=10.246d0, Q=0.35999d0, kBoltz=8.6173324d-5
+                                       gg=10.246d0, Q=0.35999d0
                                        !universal constants
                                 
 real(dp), parameter                :: xlim = 0.18d0, gammalim = 1.d2
@@ -166,7 +166,7 @@ subroutine cur_dens(this)
     if (allocated(this%bcoef)) deallocate(this%bcoef, this%tx)
     if (this%mode == 2) this%mode = 1 !return to initial mode 1 
     
-    if (debug .and. (isnan(this%Jem) .or. isnan(this%heat)) .or. this%Jem < 1.d-201) then
+    if (debug .and.(isnan(this%Jem) .or. isnan(this%heat) .or.this%Jem<1.d-201)) then
         call print_data(this)
         call plot_barrier(this)
     endif
@@ -291,12 +291,12 @@ subroutine gamow_num(this,full)
             this%Gam = 0.d0
             return
         endif
-        if (abs(this%Um - (this%W - this%F * this%R))<.2d0) then ! almost without maximum
+        if (abs(this%Um - (this%W - this%F * this%R))<.2d0) then !almost without max
             this%minbeta = 1.d20
         else 
             if (this%mode <= 0) then  
                 dx = 1.d-2
-            else !if interpolation choose big dx for diff2 to avoid numerical instabillity
+            else !if interpolation choose big dx for diff2. Αvoid num instabillity
                 binout = binsearch(this%xr,this%xm)
                 if (binout(2) /= 0) stop 'xr not sorted or xm out of bounds'
                 indxm = binout(1)
@@ -395,7 +395,7 @@ subroutine gamow_KX(this, full)
     this%Gam = (2*gg/3)*((this%W **1.5d0) / this%F) &
                 * (v+omeg*(this%W / (this%F * this%R)))
     if (full) then
-        this%maxbeta = gg*(sqrt(this%W) / this%F) * (t+ps*(this%W / (this%F * this%R)))
+        this%maxbeta = gg*(sqrt(this%W)/this%F) * (t+ps*(this%W / (this%F * this%R)))
         this%Um = this%W - 2.d0*sqrt(this%F * Q) + 1.5d0 * Q / this%R
         this%xm = sqrt(Q / this%F) + Q / (this%F * this%R)
         temp =  (this%F**1.5d0) / sqrt(Q) - 4.d0 * this%F / this%R
@@ -749,7 +749,6 @@ subroutine plot_barrier(this)
         endif
     end function bar
 end subroutine plot_barrier
-
 
 
 end module emission
