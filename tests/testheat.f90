@@ -1,6 +1,6 @@
 program testheat
 
-use heating, only: Potential, interp_set, get_heat
+use heating, only: Potential, interp_set, get_heat, HeatData, heateq
 
 implicit none
 
@@ -8,23 +8,34 @@ integer, parameter      :: dp=8, fidout=8646, font=35, nline=50
 
 
 type(Potential)         :: poten
-real(dp), allocatable   :: temp(:), TotalHeat(:)
-
+type(HeatData)          :: heat
+integer                 :: i
 
 
 
 call read_phi(poten%phi,poten%grid_spacing)
 poten%grid_spacing = poten%grid_spacing * 0.1d0
 
-allocate(TotalHeat(size(poten%phi,3)),temp(size(poten%phi,3)))
-temp = 700.d0
+allocate(heat%tempinit(size(poten%phi,3)), heat%hpower(size(poten%phi,3)), &
+heat%tempfinal(size(poten%phi,3)))
+heat%tempinit = 700.d0
 call interp_set(poten)
-TotalHeat = get_heat(temp,poten)
+call get_heat(heat,poten)
 
-print *, 'Total Heat = ', TotalHeat
+print *, 'Total Heat = ', heat%hpower(heat%tipbounds(1):heat%tipbounds(2))
+
+heat%Tbound = 300.d0
+heat%maxtime = 1e4
+heat%dt = 1.d-1
 
 
-deallocate (TotalHeat,temp)
+
+call heateq(heat)
+
+print *, 'temperature after ', heat%tempfinal(heat%tipbounds(1):heat%tipbounds(2))
+
+
+deallocate (heat%tempinit, heat%hpower, heat%tempfinal)
 deallocate(poten%phi,poten%bcoef, poten%tx, poten%ty, poten%tz)
 
 contains
