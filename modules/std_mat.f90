@@ -3,146 +3,176 @@ module std_mat
 !are used quite frequently
 implicit none
 
-integer,parameter::dp=8
+integer, parameter      ::dp=8
 
 contains
 
 subroutine plot1(xdata,ydata)
-	real(dp), intent(in):: xdata(:),ydata(:)
+    real(dp), intent(in):: xdata(:),ydata(:)
 
-	integer, parameter:: fidx=2365689,fidy=24685945
+    integer, parameter:: fidx=2365689,fidy=24685945
 
-	open(fidx,file='xdata.csv')
-	open(fidy,file='ydata.csv')
-	write(fidx,"(es22.15)") xdata
-	write(fidy,"(es22.15)") ydata
-	call system('python plot.py')
-	close(fidx)
-	close(fidy)
+    open(fidx,file='xdata.csv')
+    open(fidy,file='ydata.csv')
+    write(fidx,"(es22.15)") xdata
+    write(fidy,"(es22.15)") ydata
+    call system('python plot.py')
+    close(fidx)
+    close(fidy)
 end subroutine
 
 subroutine plot(xdata,ydata)
-	real(dp), intent(in):: xdata(:,:),ydata(:,:)
+    real(dp), intent(in):: xdata(:,:),ydata(:,:)
 
-	integer, parameter:: fidx=2365689,fidy=24685945
+    integer, parameter:: fidx=2365689,fidy=24685945
 
-	open(fidx,file='xdata.csv')
-	open(fidy,file='ydata.csv')
-	call csvprint(fidx,xdata)
-	call csvprint(fidy,ydata)
-	call system('python ../plot.py')
-	close(fidx)
-	close(fidy)
+    open(fidx,file='xdata.csv')
+    open(fidy,file='ydata.csv')
+    call csvprint(fidx,xdata)
+    call csvprint(fidy,ydata)
+    call system('python ../plot.py')
+    close(fidx)
+    close(fidy)
 end subroutine
-
+    
 subroutine csvprint(fileunit,dataarr)
-	! write real numbers to a CSV file
-	integer, intent(in):: fileunit
-	double precision, intent(in) :: dataarr(:,:)
-	integer            :: i, j 
+    ! write real numbers to a CSV file
+    integer, intent(in)     :: fileunit
+    real(dp), intent(in)    :: dataarr(:,:)
+    integer                 :: i, j 
 
-	do i=1,size(dataarr,1)
-		do j=1,size(dataarr,2)
-			if (j==size(dataarr,2)) then
-				write(fileunit,"(es22.15)",advance='no') dataarr(i,j)
-			else
-				write(fileunit,"(es22.15,',')",advance='no') dataarr(i,j)
-			endif
-		enddo
-		write(fileunit,*) ''
-	end do
+    do i=1,size(dataarr,1)
+        do j=1,size(dataarr,2)
+            if (j==size(dataarr,2)) then
+                write(fileunit,"(es22.15)",advance='no') dataarr(i,j)
+            else
+                write(fileunit,"(es22.15,',')",advance='no') dataarr(i,j)
+            endif
+        enddo
+        write(fileunit,*) ''
+    end do
 end subroutine csvprint
 
 subroutine csvread(fileunit,dataarr,rows,cols)
-	! read real numbers from a CSV file
-	integer, intent(in):: fileunit,rows,cols
-	double precision, intent(out) :: dataarr(rows,cols)
-	integer            :: i
+    ! read real numbers from a CSV file
+    integer, intent(in)           :: fileunit,rows,cols
+    real(dp), intent(out)         :: dataarr(rows,cols)
+    integer                       :: i
 
-	do i=1,rows
-		read(fileunit,*) dataarr(i,:)
-	end do
+    do i=1,rows
+        read(fileunit,*) dataarr(i,:)
+    end do
 end subroutine csvread
 
 pure function linspace(a,b,N) result(x)
-	double precision,intent(in)::a,b
-	integer,intent(in) ::N
-	double precision :: dx,x(N)
-	integer :: i
-	
-	dx=(b-a)/(N-1)
-	do i=1,N
-		x(i)=a+(i-1)*dx
-	enddo
+    real(dp), intent(in)    ::a,b
+    integer, intent(in)     ::N
+    real(dp)                :: dx,x(N)
+    integer                 :: i
+    
+    dx=(b-a)/(N-1)
+    do i=1,N
+        x(i)=a+(i-1)*dx
+    enddo
 end function linspace
 
 pure function logspace(a,b,N) result(x)
-	double precision,intent(in)::a,b
-	integer,intent(in) ::N
-	double precision :: dlogx,logx(N),x(N)
-	integer :: i
-	
-	dlogx=(log(b)-log(a))/(N-1)
-	do i=1,N
-		logx(i)=log(a)+(i-1)*dlogx
-	enddo
-	x=exp(logx)
+    double precision,intent(in)::a,b
+    integer,intent(in) ::N
+    double precision :: dlogx,logx(N),x(N)
+    integer :: i
+    
+    dlogx=(log(b)-log(a))/(N-1)
+    do i=1,N
+        logx(i)=log(a)+(i-1)*dlogx
+    enddo
+    x=exp(logx)
 end function logspace
 
 pure function lininterp(yi,a,b,x) result(y)
 !simple linear interpolation function
 !appropriate for uniform linspace
-	double precision, intent(in):: a,b,x, yi(:) ! yi interpolation array, a,b are x interval limits and x is the requested point
-	integer :: Nnear,N
-	double precision:: y,dx,dy,xnear
-!	print *, yi
-	
-	if (x<a .or. x>b) then
-		y=1.d200
-		return
-	endif
-	N=size(yi)
-	Nnear=nint((x-a)*N/(b-a))
-	dx=(b-a)/dfloat(N-1)
-	xnear=a+(Nnear-1)*dx
-	if (x>xnear) then
-		dy=yi(Nnear+1)-yi(Nnear)
-	else
-		dy=yi(Nnear)-yi(Nnear-1)
-	endif
-!	print*, 'Nnear=', Nnear, '|| N=', N, '|| dx=', dx, '|| dy=', dy, '|| xnear=', xnear, '|| x=', x
-	y=yi(Nnear)+(dy/dx)*(x-xnear)
-end function
+    real(dp), intent(in)    :: a, b, x, yi(:) 
+    ! yi interpolation array, a, b are x interval limits and x is the requested point
+    integer                 :: Nnear, N
+    real(dp)                :: y, dx, dy, xnear
+    
+    if (x<a .or. x>b) then
+        y=1.d200
+        return
+    endif
+    N=size(yi)
+    Nnear=nint((x-a)*(N-1)/(b-a))+1
+    dx=(b-a)/dfloat(N-1)
+    xnear=a+(Nnear-1)*dx
+    if (x>xnear) then
+        dy=yi(Nnear+1)-yi(Nnear)
+    else
+        dy=yi(Nnear)-yi(Nnear-1)
+    endif
+    y=yi(Nnear)+(dy/dx)*(x-xnear)
+end function lininterp
 
 pure function interp1(xi,yi,x) result(y)
 !simple linear interpolation function (same as interp1 of matlab)
 !appropriate for non-uniform linspace
 
-!! be careful!! this  function is not thoroughly tested yet!!!!!
-	double precision, intent(in) :: xi(:),yi(:),x
-	double precision :: y
-	integer :: i,j,Nlow
-	Nlow=0
-	do j=1,size(xi)
-		if (xi(j)>x) then
-			Nlow=j-1
-			exit
-		endif
-	enddo
-	if (Nlow<1 .or. j>size(xi)) then 
-		y=1.d200
-	else
-		y=yi(Nlow)+((yi(Nlow+1)-yi(Nlow))/(xi(Nlow+1)-xi(Nlow)))*(x-xi(Nlow))
-	endif
+    real(dp), intent(in)    :: xi(:), yi(:), x
+    real(dp)                :: y(2) ! 1: output, 2: flag
+    integer                 :: dN, Nclose, binout(2)
+    
+    binout = binsearch(xi,x) !find closest xi to x
+    y(2) = real(binout(2),dp)
+    if (binout(2) /= 0) return
+    dN = 1
+    Nclose = binout(1)
+    if (xi(Nclose) > x) dN = -1
+    y(1) = yi(Nclose) + (x-xi(Nclose)) * & !linear interpolation
+        ((yi(Nclose + dN) - yi(Nclose)) / (xi(Nclose + dN) - xi(Nclose)))
+    
 end function interp1
 
-function diff2(f,x) result(y)!second derivative of a function f at point x
-	double precision, intent(in)::x
-	double precision, external::f
-	double precision::y
-	double precision,parameter::dx=1.d-2
+pure function binsearch(x, x0)  result(ind)
+!binary search in sorted vector x for x(i) closest to x
+    real(dp), intent(in)    :: x(:), x0
+    integer                 :: ind(2) ! 1: output, 2: iflag
+    !iflag 0: fine, 1: x0 out of bounds, -1: x not sorted
+    integer                 :: i, ia, ib, imid
+    
+    if ((x0 < x(1)) .or. (x0 > x(size(x)))) then
+        ind(2) = 1
+        return
+    endif
+    
+    ia = 1
+    ib = size(x) +1
+    do i=1,size(x)
+        imid = (ia + ib) / 2
+        if (x(imid) < x0) then
+            ia = imid
+        else
+            ib = imid
+        endif
+        if (abs(ia-ib) <= 1) then
+            if (abs(x(ia)-x0) < abs(x(ib)-x0)) then
+                ind = ia
+            else
+                ind = ib
+            endif
+            ind(2) = 0
+            return
+        endif
+    enddo
+    ind(2) = -1
+    
+end function binsearch
 
-	y=(f(x+dx)+f(x-dx)-2.d0*f(x))/(dx*dx)
+function diff2(f,x,dx) result(y)!second derivative of a function f at point x
+    real(dp), intent(in)    :: x, dx
+    real(dp), external      :: f
+    real(dp)                ::y
+
+    y=(f(x+dx)+f(x-dx)-2.d0*f(x))/(dx*dx)
 end function diff2
 
 function local_min ( a, b, eps, t, f, x )
@@ -352,6 +382,6 @@ function local_min ( a, b, eps, t, f, x )
   local_min = fx
 
   return
-end
+end function local_min
 
 end module std_mat

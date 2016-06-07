@@ -1,36 +1,143 @@
 program main
 
-use emission, only: Jcur
-use std_mat, only: csvread,csvprint
-use omp_lib
+use emission, only: gamow_general, EmissionData, print_data, J_num_integ, cur_dens, kBoltz
+use pyplot_mod, only: pyplot
+use std_mat, only: linspace
+
 implicit none
 
-integer,parameter::dp=8,Nvals=500
-real(dp):: params(4),F(Nvals),W,R,T,gamma,J(Nvals),regnum(Nvals),arrout(Nvals,3),heat(Nvals)
-character :: regime(Nvals)
-integer:: i,fidout=1987,fidin=1821,nthreads
+integer,parameter       :: dp=8, Nf=2048, font=35
+real(dp), parameter     :: Fmin=0.4d0, Fmax=10.d0, T = 1.d3
 
-open(fidin,file="paramin.csv",action="read")
-read(fidin,*) params(:)
-read(fidin,*) F(:)
-close(fidin)
+real(dp), dimension(Nf) :: Fi, Jfs, Jis, Jts, Jfb, Jib, Jtb, &
+                           hfs, his, hts, hfb, hib, htb, Japp, happ, &
+                           Ffs, Fis, Fts, Ffb, Fib, Ftb
+integer                 :: i, j, fs=0, is=0, ts=0, fb=0, ib=0, tb=0
+real(dp)                :: Ri(3)
 
-W=params(1)
-R=params(2)
-T=params(3)
-gamma=params(4)
+type(EmissionData)      :: this
+type(pyplot)            :: plt1, plt2
 
-J=Jcur(F,W,R,gamma,T,regime,heat)
+call plt1%initialize(grid=.true.,xlabel='$1/F [nm/V]$',ylabel='$J (A/nm^2)$', &
+            figsize=[20,15], font_size=font, &
+            legend=.false.,axis_equal=.false., legend_fontsize=font, &
+            xtick_labelsize=font,ytick_labelsize=font,axes_labelsize=font)
+            
+call plt2%initialize(grid=.true.,xlabel='$1/F [nm/V]$',ylabel='$P_N (W/nm^2)$', &
+            figsize=[20,15], font_size=font, &
+            legend=.false.,axis_equal=.false., legend_fontsize=font, &
+            xtick_labelsize=font,ytick_labelsize=font,axes_labelsize=font)
 
-where (regime=='f') regnum=-1.d0
-where (regime=='t') regnum=1.d0
-where (regime=='i') regnum=0.d0
-arrout(:,1)=1.d0/F
-arrout(:,2)=log(J)
-arrout(:,3)=regnum
 
-open(fidout,file="J-Fplot.csv",action="write",status="replace")
-call csvprint(fidout,arrout)
-close(fidout)
+this%kT=kBoltz*T
+this%gamma = 15.d0
+Fi=1.d0/linspace(1.d0/Fmax,1.d0/Fmin,Nf)
+Ri = [1.d0, 8.d0, 200.d0]
 
+do j = 1,3
+        fs=0
+        is=0
+        ts=0
+        fb=0
+        ib=0
+        tb=0
+    do i=1,Nf
+
+        
+        this%F= Fi(i)
+        this%full = .true.
+        this%mode = 0
+        this%R = Ri(j)
+        call cur_dens(this)
+        
+        if (this%regime == 'F') then
+            if (this%sharpness == 'S') then
+                fs = fs + 1
+                Jfs(fs) = this%Jem
+                hfs(fs) = this%heat
+                Ffs(fs) = this%F
+            else
+                fb = fb + 1
+                Jfb(fb) = this%Jem
+                hfb(fb) = this%heat
+                Ffb(fb) = this%F
+            endif
+        elseif (this%regime == 'I') then
+            if (this%sharpness == 'S') then
+                is = is + 1
+                Jis(is) = this%Jem
+                his(is) = this%heat
+                Fis(is) = this%F
+            else
+                ib = ib + 1
+                Jib(ib) = this%Jem
+                hib(ib) = this%heat
+                Fib(ib) = this%F
+            endif
+        else
+            if (this%sharpness == 'S') then
+                ts = ts + 1
+                Jts(ts) = this%Jem
+                hts(ts) = this%heat
+                Fts(ts) = this%F
+            else
+                tb = tb + 1
+                Jtb(tb) = this%Jem
+                htb(tb) = this%heat
+                Ftb(tb) = this%F
+            endif
+        endif
+    if (this%R > 5.d0) then
+        this%full = .false.
+        this%mode = -3
+        call cur_dens(this)
+        Japp(i) = this%Jem
+        happ(i) = this%heat
+    endif
+        
+    enddo
+    
+    if (this%R < 1.d2) then
+              
+        if (fs > 0) call plt1%add_plot(1./Ffs(1:fs), Jfs(1:fs), linestyle='b-', &
+                        label='fs', linewidth=2, yscale = 'log')
+        if (fb > 0) call plt1%add_plot(1./Ffb(1:fb), Jfb(1:fb), linestyle='b--', &
+                        yscale = 'log', label='fb', linewidth=2)
+        if (ib > 0) call plt1%add_plot(1./Fib(1:ib), Jib(1:ib), linestyle='k--', &
+                        yscale = 'log', label='ib', linewidth=2)                    
+        if (is > 0) call plt1%add_plot(1./Fis(1:is), Jis(1:is), linestyle='k-', &
+                        yscale = 'log', label='is', linewidth=2)
+        if (tb > 0) call plt1%add_plot(1./Ftb(1:tb), Jtb(1:tb), linestyle='r--', &
+                        yscale = 'log', label='tb', linewidth=2)
+        if (ts > 0) call plt1%add_plot(1./Fts(1:ts), Jts(1:ts), linestyle='r-', &
+                        yscale = 'log', label='ts', linewidth=2)
+
+                              
+        if (fs > 0) call plt2%add_plot(1./Ffs(1:fs), abs(hfs(1:fs)), linestyle='b-',&
+                        label='fs', linewidth=2, yscale = 'log')
+        if (fb > 0) call plt2%add_plot(1./Ffb(1:fb), abs(hfb(1:fb)),linestyle='b--',&
+                        yscale = 'log', label='fb', linewidth=2)
+        if (ib > 0) call plt2%add_plot(1./Fib(1:ib), abs(hib(1:ib)),linestyle='k--',&
+                        yscale = 'log', label='ib', linewidth=2)                    
+        if (is > 0) call plt2%add_plot(1./Fis(1:is), abs(his(1:is)), linestyle='k-',&
+                        yscale = 'log', label='is', linewidth=2)
+        if (tb > 0) call plt2%add_plot(1./Ftb(1:tb), abs(htb(1:tb)),linestyle='r--',&
+                        yscale = 'log', label='tb', linewidth=2)
+        if (ts > 0) call plt2%add_plot(1./Fts(1:ts), abs(hts(1:ts)), linestyle='r-',&
+                        yscale = 'log', label='ts', linewidth=2)
+    endif
+                    
+    if (this%R > 5.d0) then
+        call plt1%add_plot(1/Fi,Japp,linestyle='m:', &
+                        label='app',linewidth=2, yscale = 'log')
+        call plt2%add_plot(1./Fi, abs(happ), linestyle='m:', label='app', &
+                    linewidth=2, yscale = 'log')
+    endif
+enddo
+
+call plt1%savefig('png/Jplot.png', pyfile='python/Jplot2.py')                    
+call plt2%savefig('png/heatplot.png', pyfile='python/heatplot2.py')
+
+
+!call print_data(this)
 end program
