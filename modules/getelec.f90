@@ -1,4 +1,4 @@
-module emission
+module GeTElEC
 !*************
 !Author: Andreas Kyritsakis, University of Helsinki, 2016
 !This module aims to calculate field emission current density and Nottingham effect 
@@ -34,7 +34,7 @@ integer, parameter                  :: knotx = 4, iknot = 0, idx = 0
                                        !No of bspline knots
 logical, parameter                  :: spectroscopy= .false.
 !set to true if you want to output spectroscopy data
-logical, parameter                  :: debug = .true., verbose = .false. 
+logical, parameter                  :: debug = .false., verbose = .false. 
 !if debug, warnings are printed, parts are timed and calls are counted
 !if debug and verbose all warnings are printed
 
@@ -751,4 +751,4 @@ subroutine plot_barrier(this)
 end subroutine plot_barrier
 
 
-end module emission
+end module GeTElEC

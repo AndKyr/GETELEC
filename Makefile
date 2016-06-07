@@ -1,7 +1,7 @@
 
 FC = gfortran-5
 MODOBJ = modules/obj/std_mat.o modules/obj/bspline.o \
-  modules/obj/levenberg_marquardt.o modules/obj/emission.o \
+  modules/obj/levenberg_marquardt.o modules/obj/getelec.o \
   modules/obj/new_interface.o modules/obj/pyplot_mod.o modules/obj/heating.o
   
 DEPS  = -lslatec

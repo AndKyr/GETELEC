@@ -5,17 +5,17 @@ implicit none
 integer, parameter  :: dp = 8, Nr = 64 !No of interpolation points in emission line
 real(dp), parameter :: kBoltz = 8.6173324d-5 !Boltzmann constant in eV/K
 integer, parameter  :: kx = 4, ky = 4, kz = 4, iknot = 0  !interpolation parameters
-real(dp), parameter :: Jlimratio = 1.d-6, Flimratio = 0.3d0 
+real(dp), parameter :: Jlimratio = 1.d-4, Flimratio = 0.2d0 
 !minimum current and field ratio to max for full calculation
 real(dp), parameter :: convergence_criterion = 1.d-15, workfunc = 4.5d0
 
-real(dp)            :: fse = 2.d0
+real(dp)            :: fse = 50.d0 !finite size effect for conductivity
 
 logical, parameter  :: debug = .true.
 
 type, public        :: HeatData
 
-    real(dp), allocatable   :: tempinit(:), tempfinal(:), hpower(:)
+    real(dp), allocatable   :: tempinit(:), tempfinal(:), hpower(:), J_avg(:)
     !initial temperature, final temperature, deposited heating power (W/nm^3)
     real(dp)                :: Tbound, maxtime, dt = 1.d-3, dx !dx in nm
     !boundary bulk temperature, maximum time evolution, timestep, spacestep, all SI
@@ -97,7 +97,7 @@ subroutine get_heat(heat,poten)
                     point%Nstart = [i,j,k]
                     call emit_atpoint(poten,point)
                     Pnot(k) = Pnot(k) + point%heatNot !add Not heat 
-                    Icur(k) = Icur(k) + point%Jem  ! add Current to slice
+                    Icur(k) = Icur(k) + point%Jem  ! add Current density to slice
                     Ar(k) = Ar(k) + dS
                     icount = icount + 1
                 else if (ptype == -1) then !interior point
@@ -113,9 +113,9 @@ subroutine get_heat(heat,poten)
                 exit
             endif
         enddo
-        Icur(k) = Icur(k) * dS
-        Pnot(k) = Pnot(k) * dS
-        Pjoule(k) =  rho * poten%grid_spacing(3) * Icur(k)**2 / max(Ar(k), 1.d-100)
+        Icur(k) = Icur(k) * dS !multiply by elementary area to get current
+        Pnot(k) = Pnot(k) * dS !multiply by elementary area to get Watts
+        Pjoule(k) =  rho * heat%dx * (Icur(k)**2) / max(Ar(k), 1.d-100)
         heat%hpower(k) =  (Pjoule(k) + Pnot(k)) / (Ar(k) * heat%dx)
         !Total heat density in SI units
         if ((.not. intip) .and. (Icur(k) >0.d0)) then
@@ -126,11 +126,14 @@ subroutine get_heat(heat,poten)
             heat%tipbounds(1) = k + 1
             intip = .false.
         endif
-        !if (intip) print *, 'icount=',icount,'Icur=', Icur(k), 'Pnot =', Pnot(k), &
-        !           'Pjoule=', Pjoule(k), 'Ptot=', heat%hpower(k) 
+        if (debug) then
+            if (intip) print *, 'icount=',icount,'Icur=', Icur(k), 'Pnot =', &
+                Pnot(k), 'Pjoule=', Pjoule(k), 'Ptot=', heat%hpower(k) 
+        endif
     enddo
+    heat%J_avg = Icur / Ar
     
-    print *, 'Fmax = ', point%Fmax, 'Jmax =', point%Jmax
+    if (debug) print *, 'Timings', point%timings
     
     contains
     
@@ -159,7 +162,7 @@ subroutine emit_atpoint(poten,point)
 ! carefull: every distance in this function is in nm 
     use bspline, only: db3val
     use std_mat, only: linspace
-    use emission, only: EmissionData, cur_dens
+    use GeTElEC, only: EmissionData, cur_dens
     
     type(Potential), intent(in)         :: poten !potential data struct
     type(PointEmission), intent(inout)  :: point !point data struct
@@ -184,7 +187,7 @@ subroutine emit_atpoint(poten,point)
     istart = point%Nstart(1)
     jstart = point%Nstart(2)
     kstart = point%Nstart(3)
-    dx = poten%grid_spacing(1) !convert Angstrom to nm
+    dx = poten%grid_spacing(1)
     dy = poten%grid_spacing(2)
     dz = poten%grid_spacing(3)
     
@@ -334,9 +337,15 @@ subroutine heateq(heat)
         heat%temperror = norm2((Tnew - Told) / Told)
         if (heat%temperror < convergence_criterion * heat%dt) exit
     enddo
-    heat%tempfinal(heat%tipbounds(1) : heat%tipbounds(2)) = Tnew 
-    print *, 'done ', j-1, 'steps and time = ', j * heat%dt
-    print *, 'error = ', heat%temperror
+    heat%tempfinal(heat%tipbounds(1) : heat%tipbounds(2)) = Tnew
+    heat%tempfinal(1 : heat%tipbounds(1)) = heat%Tbound
+    heat%tempfinal(heat%tipbounds(2):) = -1.d0 
+    
+    if (debug) then
+        print *, 'done ', j-1, 'steps and time = ', j * heat%dt
+        print *, 'error = ', heat%temperror
+    endif
+  
     contains
     
     subroutine tridiag(a, b, c, r, u)

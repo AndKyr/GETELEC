@@ -162,7 +162,7 @@ end function get_heat
 subroutine J_from_phi(this)
     use bspline, only: db3val
     use std_mat, only: linspace
-    use emission, only: EmissionData, cur_dens
+    use GetElEC, only: EmissionData, cur_dens
     
     type(InterData), intent(inout)  :: this
     

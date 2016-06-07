@@ -22,17 +22,15 @@ heat%tempinit = 700.d0
 call interp_set(poten)
 call get_heat(heat,poten)
 
-print *, 'Total Heat = ', heat%hpower(heat%tipbounds(1):heat%tipbounds(2))
-
-heat%Tbound = 300.d0
-heat%maxtime = 1e4
+heat%Tbound = 700.d0
+heat%maxtime = 1.d6
 heat%dt = 1.d-1
 
 
 
 call heateq(heat)
 
-print *, 'temperature after ', heat%tempfinal(heat%tipbounds(1):heat%tipbounds(2))
+print *, 'temperature after ', heat%tempfinal
 
 
 deallocate (heat%tempinit, heat%hpower, heat%tempfinal)
