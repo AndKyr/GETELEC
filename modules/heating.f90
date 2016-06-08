@@ -83,17 +83,19 @@ subroutine get_heat(heat,poten)
     Icur = 0.d0
     intip = .false.
     heat%dx = poten%grid_spacing(3)
+    point%Fmax = 0.d0
+    point%Jmax = 0.d0
     do k = poten%nz-1, 2, -1
         icount=0
         Pnot(k) = 0.d0 !Not counts from zero
         Icur(k) = Icur(k+1) / dS !upwards current is accumulative
         Ar(k) = 1.d-20
-        point%kT = kBoltz * heat%tempinit(k)
-        rho = resistivity(heat%tempinit(k)) * fse !resistivity of the slice 
+        point%kT = kBoltz * heat%tempinit(k) 
         do j=2,poten%ny-1
             do i=2,poten%nx-1
                 ptype = classify_point(i,j,k)
                 if (ptype == 0) then !surface point
+                    
                     point%Nstart = [i,j,k]
                     call emit_atpoint(poten,point)
                     Pnot(k) = Pnot(k) + point%heatNot !add Not heat 
@@ -113,27 +115,33 @@ subroutine get_heat(heat,poten)
                 exit
             endif
         enddo
-        Icur(k) = Icur(k) * dS !multiply by elementary area to get current
-        Pnot(k) = Pnot(k) * dS !multiply by elementary area to get Watts
-        Pjoule(k) =  rho * heat%dx * (Icur(k)**2) / max(Ar(k), 1.d-100)
-        heat%hpower(k) =  (Pjoule(k) + Pnot(k)) / (Ar(k) * heat%dx)
-        !Total heat density in SI units
         if ((.not. intip) .and. (Icur(k) >0.d0)) then
             heat%tipbounds(2) = k
             intip = .true.
         endif
+        if (intip) then
+            rho = resistivity(heat%tempinit(k)) * fse
+            Icur(k) = Icur(k) * dS !multiply by elementary area to get current
+            Pnot(k) = Pnot(k) * dS !multiply by elementary area to get Watts
+            Pjoule(k) =  rho * heat%dx * (Icur(k)**2) / max(Ar(k), 1.d-100)
+            heat%hpower(k) =  (Pjoule(k) + Pnot(k)) / (Ar(k) * heat%dx)
+            !Total heat density in SI units
+        endif
+            
         if (intip .and. Icur(k) <= 0.d0) then
             heat%tipbounds(1) = k + 1
             intip = .false.
         endif
-        if (debug) then
-            if (intip) print *, 'icount=',icount,'Icur=', Icur(k), 'Pnot =', &
-                Pnot(k), 'Pjoule=', Pjoule(k), 'Ptot=', heat%hpower(k) 
-        endif
+
     enddo
     heat%J_avg = Icur / Ar
     
-    if (debug) print *, 'Timings', point%timings
+    if (debug) then
+        print *, 'tempinittop=', heat%tempinit(heat%tipbounds(2)), 'Icurbase=', &
+            Icur(heat%tipbounds(1)), 'Pnottop =', Pnot(heat%tipbounds(2)), &
+            'Ptottop=', heat%hpower(heat%tipbounds(2))
+        print *, 'Fmax = ', point%Fmax
+    endif
     
     contains
     
@@ -271,6 +279,7 @@ subroutine emit_atpoint(poten,point)
     point%timings(1) = poten%timing
     point%counts(1) = 1
     if (point%Jem > point%Jmax) point%Jmax = point%Jem
+    
 
 end subroutine emit_atpoint
 
@@ -300,10 +309,7 @@ subroutine heateq(heat)
 
     K1 = K / Cv
     Tnew = heat%tempinit(heat%tipbounds(1) : heat%tipbounds(2))
-    Tnew(1) = heat%Tbound
-    
-    print *, 'dx = ', heat%dx, 'dt = ', heat%dt
-   
+    Tnew(1) = heat%Tbound 
 
     do j = 1, solvesteps
         Told = Tnew
@@ -339,12 +345,12 @@ subroutine heateq(heat)
     enddo
     heat%tempfinal(heat%tipbounds(1) : heat%tipbounds(2)) = Tnew
     heat%tempfinal(1 : heat%tipbounds(1)) = heat%Tbound
-    heat%tempfinal(heat%tipbounds(2):) = -1.d0 
+    heat%tempfinal(heat%tipbounds(2)+1:) = -1.d0 
     
-    if (debug) then
-        print *, 'done ', j-1, 'steps and time = ', j * heat%dt
-        print *, 'error = ', heat%temperror
-    endif
+!    if (debug) then
+!        print *, 'done ', j-1, 'steps and time = ', j * heat%dt
+!        print *, 'error = ', heat%temperror
+!    endif
   
     contains
     

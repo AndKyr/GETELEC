@@ -1,5 +1,6 @@
 module GeTElEC
 !*************
+! General Tool for Electron Emission Calculations
 !Author: Andreas Kyritsakis, University of Helsinki, 2016
 !This module aims to calculate field emission current density and Nottingham effect 
 !heating. The input has to be given in the EmissionData type structure. The output
