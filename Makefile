@@ -1,5 +1,5 @@
 
-FC = gfortran-5
+FC = gfortran
 MODOBJ = modules/obj/std_mat.o modules/obj/bspline.o \
   modules/obj/levenberg_marquardt.o modules/obj/pyplot_mod.o modules/obj/getelec.o \
   modules/obj/new_interface.o modules/obj/heating.o
@@ -15,8 +15,6 @@ LINKLIBS = ar -rcT
 
 all: $(MODOBJ) #make into library
 	ar rcs $(LIBNAME) -o $(MODOBJ)
-	#ar -rcT $(LIBNAME) $(TEMPLIB) $(LIBS) 
-	#rm libtemp.a
 	
 	
 .PHONY: main spectroscopy spline3d splinemission surfacepoints current

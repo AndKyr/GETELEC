@@ -1705,7 +1705,7 @@
             present(bcoef3)) then
             if (size(x)/=size(f3,1)) then; iflag = 700; return; end if
             if (size(y)/=size(f3,2)) then; iflag = 701; return; end if
-            if (size(z)/=size(f3,2)) then; iflag = 702; return; end if
+            if (size(z)/=size(f3,3)) then; iflag = 702; return; end if
             if (size(x)/=size(bcoef3,1)) then; iflag = 800; return; end if
             if (size(y)/=size(bcoef3,2)) then; iflag = 801; return; end if
             if (size(z)/=size(bcoef3,3)) then; iflag = 802; return; end if

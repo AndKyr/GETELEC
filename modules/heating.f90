@@ -15,20 +15,21 @@ logical, parameter  :: debug = .true.
 
 type, public        :: HeatData
 
-    real(dp), allocatable   :: tempinit(:), tempfinal(:), hpower(:), J_avg(:)
+    real(dp), allocatable       :: tempinit(:), tempfinal(:), hpower(:), J_avg(:)
     !initial temperature, final temperature, deposited heating power (W/nm^3)
-    real(dp)                :: Tbound, maxtime, dt = 1.d-3, dx !dx in nm
-    !boundary bulk temperature, maximum time evolution, timestep, spacestep, all SI
-    integer                 :: tipbounds(2), maxsteps = 1e6, stepsdone
+    real(dp)                    :: Tbound, maxtime, dt = 1.d-3, dx 
+    !boundary bulk temperature (K), maximum time evolution (fs),
+    !timestep (fs), spacestep (nm)
+    integer                     :: tipbounds(2), maxsteps = 1e6, stepsdone
     ! tipbounds in grid, maximum time steps
-    real(dp)                :: temperror
+    real(dp)                    :: temperror
 end type HeatData
 
 type, public        :: Potential !data defining the potential at all gridpoints
 
     real(dp), allocatable   :: phi(:,:,:) !potential at all gridpoints
     real(dp)                :: grid_spacing(3)  !in nm
-    integer                 :: nx, ny, nz !shape(phi)
+    integer                 :: nx = 0, ny = 0, nz = 0 !shape(phi)
     
     real(dp),allocatable    :: bcoef(:,:,:), tx(:), ty(:), tz(:) 
     !interpolation data. Set after db3ink is called
@@ -95,12 +96,15 @@ subroutine get_heat(heat,poten)
             do i=2,poten%nx-1
                 ptype = classify_point(i,j,k)
                 if (ptype == 0) then !surface point
-                    
                     point%Nstart = [i,j,k]
                     call emit_atpoint(poten,point)
-                    Pnot(k) = Pnot(k) + point%heatNot !add Not heat 
-                    Icur(k) = Icur(k) + point%Jem  ! add Current density to slice
-                    Ar(k) = Ar(k) + dS
+                    if (isnan(point%Jem) .or. isnan(point%heatNot)) then
+                        print *, 'WARNING: NaN found in emission calc'
+                    else
+                        Pnot(k) = Pnot(k) + point%heatNot !add Not heat 
+                        Icur(k) = Icur(k) + point%Jem  ! add Current density to slice
+                        Ar(k) = Ar(k) + dS
+                    endif
                     icount = icount + 1
                 else if (ptype == -1) then !interior point
                     Ar(k) = Ar(k) + dS   !increase slice's area
@@ -141,6 +145,10 @@ subroutine get_heat(heat,poten)
             Icur(heat%tipbounds(1)), 'Pnottop =', Pnot(heat%tipbounds(2)), &
             'Ptottop=', heat%hpower(heat%tipbounds(2))
         print *, 'Fmax = ', point%Fmax
+        if (isnan(Icur(heat%tipbounds(1)))) then
+            print *, 'Icur:', Icur(heat%tipbounds(1):heat%tipbounds(2))
+            print *, 'Pnot:', Pnot(heat%tipbounds(1):heat%tipbounds(2))
+        endif
     endif
     
     contains
@@ -346,11 +354,6 @@ subroutine heateq(heat)
     heat%tempfinal(heat%tipbounds(1) : heat%tipbounds(2)) = Tnew
     heat%tempfinal(1 : heat%tipbounds(1)) = heat%Tbound
     heat%tempfinal(heat%tipbounds(2)+1:) = -1.d0 
-    
-!    if (debug) then
-!        print *, 'done ', j-1, 'steps and time = ', j * heat%dt
-!        print *, 'error = ', heat%temperror
-!    endif
   
     contains
     
@@ -380,29 +383,38 @@ subroutine heateq(heat)
     
 end subroutine heateq
 
-subroutine interp_set(this)
+subroutine poten_create(this, phi_in, gridspace)
     use bspline, only: db3ink
 
-    type(Potential), intent(inout)      :: this
-    real(dp), allocatable               :: x(:), y(:), z(:)
-    integer                             :: i, iflag
-    real(dp)                            :: t2, t1 !timing
+    type(Potential), intent(inout)  :: this
+    real(dp), intent(in)            :: phi_in(:,:,:), gridspace(3)
+    real(dp)                        :: x(size(phi_in, 1)), y(size(phi_in, 2)), &
+                                        z(size(phi_in, 3))
+    integer                         :: i, iflag
+    real(dp)                        :: t2, t1 !timing
     
     if (debug) call cpu_time(t1)
-    this%nx = size(this%phi,1)
-    this%ny = size(this%phi,2)
-    this%nz = size(this%phi,3)
-
-
-    allocate(x(this%nx),y(this%ny),z(this%nz),this%bcoef(this%nx,this%ny,this%nz))
-    allocate(this%tx(this%nx + kx),this%ty(this%ny + ky),this%tz(this%nz + kz))
+    
+    this%grid_spacing = gridspace
+    if (this%nx/=size(x) .or. this%ny/=size(y) .or. this%nz/=size(z)) then
+        this%nx = size(phi_in,1)
+        this%ny = size(phi_in,2)
+        this%nz = size(phi_in,3)
+        if (allocated(this%phi)) deallocate(this%phi, this%bcoef, this%tx, &
+                                            this%ty, this%tz)
+        allocate(this%phi(this%nx, this%ny, this%nz), &
+            this%bcoef(this%nx, this%ny, this%nz), &
+            this%tx(this%nx + kx), this%ty(this%ny + ky), this%tz(this%nz + kz))
+    endif
     x = [(this%grid_spacing(1)*(i-1), i=1,this%nx)]
     y = [(this%grid_spacing(2)*(i-1), i=1,this%ny)]
     z = [(this%grid_spacing(3)*(i-1), i=1,this%nz)]
+    this%phi = phi_in
     call db3ink(x, this%nx, y, this%ny, z, this%nz, this%phi, kx, ky, kz, iknot, &
                 this%tx, this%ty, this%tz, this%bcoef, iflag)
     if (iflag /= 0) then
-        stop 'Something went wrong with interpolation set'
+        print *, 'Something went wrong with interpolation set. iflag=', iflag
+        stop 
     endif
     this%set = .true.
     
@@ -410,7 +422,7 @@ subroutine interp_set(this)
         call cpu_time(t2)
         this%timing = this%timing + t2 - t1
     endif
-end subroutine interp_set
+end subroutine poten_create
 
 function resistivity(T) result(rho)
     real(dp), intent(in)    :: T !temperature
