@@ -1,12 +1,12 @@
 program current
 
-use emission, only: EmissionData, dp, cur_dens, kBoltz, print_data, plot_barrier
+use GeTElEC, only: EmissionData, dp, cur_dens, print_data, plot_barrier
 use std_mat, only: linspace
 
 type(EmissionData)      :: this
 integer                 :: i, Nx = 32
 character(len=32)       :: arg
-real(dp)                :: t1,t2
+real(dp)                :: t1,t2, kBoltz = 8.6173324d-5
     
 i = iargc()      
 if (i < 3) then

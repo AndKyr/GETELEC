@@ -705,11 +705,13 @@
 !
 ! Save the figure.
 
-    subroutine savefig(me, figfile, pyfile)
+    subroutine savefig(me, figfile, pyfile, show)
 
     class(pyplot),    intent(inout)        :: me      !! pyplot handler
     character(len=*), intent(in)           :: figfile !! file name for the figure
     character(len=*), intent(in), optional :: pyfile  !! name of the Python script to generate
+    logical, intent(in), optional          :: show
+    
 
     if (allocated(me%str)) then
 
@@ -723,7 +725,8 @@
             call me%add_str('')
         end if
         call me%add_str('plt.savefig("'//trim(figfile)//'")')
-	call me%add_str('plt.show()')
+	
+    if ((.not. present(show)) .or. show) call me%add_str('plt.show()')
 
         !run it:
         call me%execute(pyfile)

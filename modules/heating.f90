@@ -98,8 +98,11 @@ subroutine get_heat(heat,poten)
                 if (ptype == 0) then !surface point
                     point%Nstart = [i,j,k]
                     call emit_atpoint(poten,point)
-                    if (isnan(point%Jem) .or. isnan(point%heatNot)) then
-                        print *, 'WARNING: NaN found in emission calc'
+                    if (isnan(point%Jem) .or. isnan(point%heatNot) .or. &
+                                point%Jem < 0.d0 .or. point%Jem > 1.d10) then
+                    !case wrong J is coming out
+                        print *, 'WARNING: NaN or Inf found in emission calc'
+                        Icur(k) = Icur(k) + 1.d-200
                     else
                         Pnot(k) = Pnot(k) + point%heatNot !add Not heat 
                         Icur(k) = Icur(k) + point%Jem  ! add Current density to slice
@@ -136,19 +139,21 @@ subroutine get_heat(heat,poten)
             heat%tipbounds(1) = k + 1
             intip = .false.
         endif
-
     enddo
     heat%J_avg = Icur / Ar
     
     if (debug) then
-        print *, 'tempinittop=', heat%tempinit(heat%tipbounds(2)), 'Icurbase=', &
-            Icur(heat%tipbounds(1)), 'Pnottop =', Pnot(heat%tipbounds(2)), &
-            'Ptottop=', heat%hpower(heat%tipbounds(2))
+        print *, 'Icurbase=', Icur(heat%tipbounds(1)), &
+            'Pnottop =', Pnot(heat%tipbounds(2))
+        print *, 'Pjouletop=', Pjoule(heat%tipbounds(2)), &
+            'Ptotaltop=', heat%hpower(heat%tipbounds(2)) 
         print *, 'Fmax = ', point%Fmax
+        print *, icount, 'points calculated'
         if (isnan(Icur(heat%tipbounds(1)))) then
             print *, 'Icur:', Icur(heat%tipbounds(1):heat%tipbounds(2))
             print *, 'Pnot:', Pnot(heat%tipbounds(1):heat%tipbounds(2))
         endif
+!        print *, Pnot(heat%tipbounds(1):heat%tipbounds(2))
     endif
     
     contains
@@ -288,7 +293,6 @@ subroutine emit_atpoint(poten,point)
     point%counts(1) = 1
     if (point%Jem > point%Jmax) point%Jmax = point%Jem
     
-
 end subroutine emit_atpoint
 
 
@@ -297,7 +301,6 @@ subroutine heateq(heat)
 
     type(HeatData), intent(inout)   :: heat
 
-    integer, parameter      :: method = 1
     real(dp), parameter     :: Cv = 3.45d-6, L = 2.44e-8 
     ! Cv in(W*fs/(nm^3 K)), L=Wiedemann-Frantz constant in W*Ohm/K^2
     real(dp)                :: K, K1, K2, K3, cd, rho 
@@ -325,9 +328,9 @@ subroutine heateq(heat)
             rho = resistivity(Told(i)) * fse
             K = L * Told(i) / rho
             K1 = K / Cv
-            a(i) = -K1 * heat%dt / (2.d0 * heat%dx**2)
-            b(i) = 1.d0 + K1 * heat%dt / heat%dx**2
-            c(i) = -K1 * heat%dt / (2 * heat%dx**2)
+            a(i) = -K1 * heat%dt / (heat%dx**2)
+            b(i) = 1.d0 + 2.d0 * K1 * heat%dt / heat%dx**2
+            c(i) = -K1 * heat%dt / (heat%dx**2)
             ! Here we cheat a bit. Use old value of T as temperature when it 
             ! should be avg. of new and old, since the resistivity is non-linear.
             ! (Can't solve for the new temperature otherwise)
