@@ -11,13 +11,14 @@ module GeTElEC
 
 use std_mat, only: diff2, local_min, linspace
 use pyplot_mod, only: pyplot
+use iso_c_binding
 implicit none
 
 integer, parameter                  :: Ny = 200, dp = 8, sp = 4
                                        !Ny: length of special functions array
                                        
 real(dp), parameter                 :: pi=acos(-1.d0), b=6.83089d0, zs=1.6183d-4, &
-                                       gg=10.246d0, Q=0.35999d0
+                                       gg=10.246d0, Q=0.35999d0, kBoltz =8.6173324d-5
                                        !universal constants
                                 
 real(dp), parameter                :: xlim = 0.18d0, gammalim = 1.d2
@@ -163,9 +164,6 @@ subroutine cur_dens(this)
     
     this%heat = - this%heat
     
-   
-    if (allocated(this%bcoef)) deallocate(this%bcoef, this%tx)
-    if (this%mode == 2) this%mode = 1 !return to initial mode 1 
     
     if (debug .and.(isnan(this%Jem) .or. isnan(this%heat) .or.this%Jem<1.d-201)) then
         call print_data(this)
@@ -637,15 +635,17 @@ subroutine print_data(this, filenum)
         fid=filenum
     endif
     
-    write (fid,'(A10,ES12.4,/A10,ES12.4,/A10,ES12.4)') &
-            'F = ', this%F, 'R = ', this%R, 'gamma = ', this%gamma
-    write (fid,'(A10,ES12.4,/A10,ES12.4)') 'W = ', this%W, 'kT = ', this%kT
-    write (fid,'(A10,ES12.4,/A10,ES12.4,/A10,ES12.4)') &
-            'Jem = ', this%Jem, 'heat = ', this%heat, 'Gamow = ', this%Gam
-    write (fid,'(A10,ES12.4,/A10,ES12.4,/A10,ES12.4,/A10,ES12.4,/A10,ES12.4)') &
-            'xm = ', this%xm, 'xmax = ', this%xmax, 'Um = ', this%Um, &
-            'maxbeta = ', this%maxbeta, 'minbeta = ', this%minbeta
-    write (fid,'(A10,A12,/A10,A12,/A10,I10,/A10,L10)') 'Regime:  ', this%regime, &
+    write (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4)') 'F =', this%F, &
+            'V/nm', 'R =', this%R, 'nm', 'gamma =', this%gamma
+    write (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10)') 'W =', this%W, 'eV', &
+            'kT =', this%kT, 'eV'
+    write (fid,'(/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4)') 'Jem =', this%Jem, &
+            'A/nm^2', 'NotHeat =', this%heat,'W/nm^2', 'Gamow =', this%Gam
+    write (fid,'(/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4,A10)') 'xm =', &
+            this%xm, 'nm', 'xmax =', this%xmax, 'nm', 'Um =', this%Um, 'eV'
+    write (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10)') ,'dG/dE@Ef =', this%maxbeta, &
+            '(eV)^-1', 'dG/dE@Um =', this%minbeta, '(eV)^-1'
+    write (fid,'(/A10,A12,/A10,A12,/A10,I10,/A10,L10)') 'Regime:  ', this%regime, &
                                      'Sharpness:', this%sharpness,  &
                                      'Mode:', this%mode, &
                                      'Full', this%full
@@ -699,6 +699,7 @@ subroutine plot_barrier(this)
     
     x = linspace(1.d-4,this%xmax,Nx)
     ixrm = size(this%xr)
+    print *, this%mode
     do i =1, Nx
         Ubar(i) = bar(x(i))
         Ubar(i) = max(Ubar(i),-1.d0) 
@@ -722,26 +723,19 @@ subroutine plot_barrier(this)
 
     contains
     
-    function bar(x) result(V)!sphere barrier model
+    pure function bar(x) result(V)!sphere barrier model
         real(dp), intent(in)    :: x
         real(dp)                :: V, Vinterp, interpout(2)
         integer                 :: iflag, inbvx
-        
+
         if (this%mode > 0) then !interpolation
-            if (this%mode == 3) then !simple linear interpolation
-                interpout = interp1(this%xr,this%Vr,x)
-                Vinterp = interpout(1)
-                iflag = int(interpout(2))
-            else
-                inbvx = 1
-                call db1val(x, idx, this%tx, size(this%Vr), knotx, &
+            inbvx = 1
+            call db1val(x, idx, this%tx, size(this%Vr), knotx, &
                         this%bcoef, Vinterp, iflag, inbvx)
-            endif
             if (iflag /= 0) then !out of bounds.. do linear extrapolation 
                 Vinterp = this%Vr(ixrm) + (x - this%xr(ixrm)) * &
                 (this%Vr(ixrm)-this%Vr(ixrm-1)) / (this%xr(ixrm)-this%xr(ixrm-1))
-            endif
-!            print *, iflag 
+            endif  
             V = this%W - Vinterp - Q / (x + ( 0.5d0 * (x**2)) / this%R)
         else !use standard F,R,gamma model for the electrostatic potential
             V = this%W - (this%F * this%R * x*(this%gamma - 1.d0) + this%F * x**2) &
@@ -750,6 +744,63 @@ subroutine plot_barrier(this)
         endif
     end function bar
 end subroutine plot_barrier
+
+subroutine desetroy(this)
+    type(EmissionData), intent(inout)   :: this
+    
+    if (this%mode == 2) then
+        this%mode = 1 !return to initial mode 1
+        deallocate(this%bcoef, this%tx)
+    endif
+    
+    if (allocated(this%xr)) deallocate(this%xr,this%Vr)
+    
+end subroutine desetroy
+
+subroutine cur_dens_c(F, W, R, gamma, Temp, mode, Nr, xr, Vr, full, Jem, &
+                                                    heat, regime, sharp) bind(c)
+    
+    real(c_double), intent(in)      :: F, W, R, gamma, Temp
+    integer(c_int), intent(in)      :: Nr, mode, full
+    type(c_ptr), intent(in)         :: xr, Vr
+    
+    real(c_double), intent(out)     :: Jem, heat
+    character(c_char), intent(out)  :: regime, sharpness
+    
+    real(c_double), pointer         :: xr_fptr(:), Vr_fptr(:), xr_tptr(:), Vr_tptr(:)
+    
+    type(EmissionData)              :: this
+    
+    this%F = F
+    this%W = W
+    this%R = R
+    this%kT = kBoltz * Temp
+    this%gamma = gamma
+    this%mode = mode
+    this%full = full
+    call c_f_pointer(xr,xr_array,[Nr])
+    call c_f_pointer(Vr,Vr_array,[Nr])
+    
+    if (this%mode > 0) then
+        if (Nr == 0) then
+            stop 'Incompatible mode with length of potential array'
+        else
+            allocate(this%xr(Nr), this%Vr(Nr)) !allocate object data
+            xr_tptr => this%xr !associate tptr pointers with object data
+            Vr_tptr => this%Vr
+            xr_tptr = xr_fptr !copy c input data to object data
+            Vr_tptr = Vr_fptr
+        endif
+    endif
+    
+    call cur_dens(this)
+    
+    Jem = this%Jem
+    heat = this%heat
+    regime = this%regime
+    sharpness = this%sharpness
+
+end subroutine cur_dens_c
 
 
 end module GeTElEC

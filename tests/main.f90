@@ -1,6 +1,6 @@
 program main
 
-use emission, only: gamow_general, EmissionData, print_data, J_num_integ, cur_dens, kBoltz
+use GeTElEC, only: gamow_general, EmissionData, print_data, J_num_integ, cur_dens, kBoltz
 use pyplot_mod, only: pyplot
 use std_mat, only: linspace
 

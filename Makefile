@@ -24,8 +24,7 @@ testheat: bin/testheat.exe
 	./bin/testheat.exe
 
 current: bin/current.exe
-	./bin/current.exe 2.8 4.5 700. 0 5. 10.
-	./bin/current.exe 2.8 4.5 700. 1 5. 10.
+	./bin/current.exe 5.0 4.5 800.0 5.0 0 T
 
 testinterp: bin/testinterp.exe
 	./bin/testinterp.exe
