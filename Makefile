@@ -1,4 +1,4 @@
-
+CC = gcc
 FC = gfortran
 MODOBJ = modules/obj/std_mat.o modules/obj/bspline.o \
   modules/obj/levenberg_marquardt.o modules/obj/pyplot_mod.o modules/obj/getelec.o \
@@ -6,6 +6,7 @@ MODOBJ = modules/obj/std_mat.o modules/obj/bspline.o \
   
 DEPS  = -lslatec
 FFLAGS = -ffree-line-length-none -fbounds-check -Imod -O3 #-Wall -pedantic# -pedantic -O3
+CFLAGS = -Imod -O3
 
 LIBNAME=libemission.a
 TEMPLIB = libtemp.a
@@ -19,6 +20,9 @@ all: $(MODOBJ) #make into library
 	
 .PHONY: main spectroscopy spline3d splinemission surfacepoints current
 .SECONDARY: $(MODOBJ)
+
+ccall: bin/ccall.exe
+	./bin/ccall.exe
 
 testheat: bin/testheat.exe
 	./bin/testheat.exe
@@ -44,9 +48,12 @@ spline1d: bin/spline1d.exe
 
 spectroscopy: bin/spectroscopy.exe
 	./bin/spectroscopy.exe
-
+	
 bin/%.exe: obj/%.o $(MODOBJ)
 	$(FC) $(FFLAGS) $^ $(DEPS) -o $@
+	
+obj/ccall.o : tests/c_interface.c
+	$(CC) $(CFLAGS) $^ -c -o $@ 
 
 obj/%.o : $(MODOBJ) tests/%.f90
 	$(FC) $(FFLAGS) -c $(lastword $^) -o $@

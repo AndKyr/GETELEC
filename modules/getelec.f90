@@ -757,17 +757,22 @@ subroutine desetroy(this)
     
 end subroutine desetroy
 
-subroutine cur_dens_c(F, W, R, gamma, Temp, mode, Nr, xr, Vr, full, Jem, &
+subroutine cur_dens_c(F, W, R, gamma, Temp, mode, arrays, full, Jem, &
                                                     heat, regime, sharp) bind(c)
+                                                    
+    type, bind(c)   :: passarr
+        integer(c_int)  :: Nr
+        type(c_ptr)     :: xr, Vr
+    end type passarr
     
     real(c_double), intent(in)      :: F, W, R, gamma, Temp
-    integer(c_int), intent(in)      :: Nr, mode, full
-    type(c_ptr), intent(in)         :: xr, Vr
+    integer(c_int), intent(in)      :: mode, full
+    type(passarr), intent(in)       :: arrays
     
     real(c_double), intent(out)     :: Jem, heat
-    character(c_char), intent(out)  :: regime, sharpness
+    character(c_char), intent(out)  :: regime, sharp
     
-    real(c_double), pointer         :: xr_fptr(:), Vr_fptr(:), xr_tptr(:), Vr_tptr(:)
+    real(c_double), pointer         :: xr_fptr(:), Vr_fptr(:)
     
     type(EmissionData)              :: this
     
@@ -777,19 +782,22 @@ subroutine cur_dens_c(F, W, R, gamma, Temp, mode, Nr, xr, Vr, full, Jem, &
     this%kT = kBoltz * Temp
     this%gamma = gamma
     this%mode = mode
-    this%full = full
-    call c_f_pointer(xr,xr_array,[Nr])
-    call c_f_pointer(Vr,Vr_array,[Nr])
+    this%full = .not. (full==0)
     
     if (this%mode > 0) then
-        if (Nr == 0) then
-            stop 'Incompatible mode with length of potential array'
+        if (arrays%Nr == 0) then
+            stop 'Error: Incompatible mode with length of potential array'
         else
-            allocate(this%xr(Nr), this%Vr(Nr)) !allocate object data
-            xr_tptr => this%xr !associate tptr pointers with object data
-            Vr_tptr => this%Vr
-            xr_tptr = xr_fptr !copy c input data to object data
-            Vr_tptr = Vr_fptr
+            call c_f_pointer(arrays%xr, xr_fptr, [arrays%Nr])!copy pointers to fortran from c
+            call c_f_pointer(arrays%Vr, Vr_fptr, [arrays%Nr])
+            
+            print *, arrays%Nr
+            print *, Vr_fptr
+!            print *, Vr_fptr
+            
+            allocate(this%xr(arrays%Nr), this%Vr(arrays%Nr)) !allocate object data
+            this%xr = xr_fptr
+            this%Vr = Vr_fptr!copy c input data to object data
         endif
     endif
     
@@ -798,7 +806,8 @@ subroutine cur_dens_c(F, W, R, gamma, Temp, mode, Nr, xr, Vr, full, Jem, &
     Jem = this%Jem
     heat = this%heat
     regime = this%regime
-    sharpness = this%sharpness
+    sharp = this%sharpness
+    call print_data(this)
 
 end subroutine cur_dens_c
 
