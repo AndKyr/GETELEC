@@ -10,8 +10,7 @@ module GeTElEC
 !*******************
 
 use std_mat, only: diff2, local_min, linspace
-use pyplot_mod, only: pyplot
-use iso_c_binding
+
 implicit none
 
 integer, parameter                  :: Ny = 200, dp = 8, sp = 4
@@ -65,13 +64,14 @@ type, public    :: EmissionData
            !bspline related parameters
     
     integer                 :: mode = 0
-        !Mode of calculation:  
+        !Mode of barrier calculation:  
         !0: Barrier model (F,R,gamma)
         !-1: Fitting external data to (F,R,gamma)
         !1: Interpolation of Vr(xr), 
         !2: interpolation but db1ink has been set up
         !-2 :Fit to (F,R,gamma). If fitting not satisfactory, use interpolation
-        !-3 : Barrier model, but force 'Blunt KX approximation'. "Bad" barrier. 
+        !-3 : Barrier model, but force 'Blunt KX approximation'. "Bad" barrier.
+        !-4 : fit to polynomial (not implemented yet) 
         
     real(dp)                :: timings(5) = 0.d0
     !timing variables for cpu cost profiling
@@ -757,45 +757,37 @@ subroutine desetroy(this)
     
 end subroutine desetroy
 
-subroutine cur_dens_c(F, W, R, gamma, Temp, mode, arrays, full, Jem, &
-                                                    heat, regime, sharp) bind(c)
-                                                    
-    type, bind(c)   :: passarr
-        integer(c_int)  :: Nr
-        type(c_ptr)     :: xr, Vr
-    end type passarr
-    
-    real(c_double), intent(in)      :: F, W, R, gamma, Temp
-    integer(c_int), intent(in)      :: mode, full
-    type(passarr), intent(in)       :: arrays
-    
-    real(c_double), intent(out)     :: Jem, heat
-    character(c_char), intent(out)  :: regime, sharp
-    
+subroutine cur_dens_c(passdata) bind(c)
+    use iso_c_binding  
+                                                  
+    type, bind(c)   :: cstruct
+        real(c_double)      :: F, W, R, gamma, Temp !input parameters
+        real(c_double)      :: Jem, heat !ouput parameters
+        type(c_ptr)         :: xr, Vr     !input vectors
+        character(c_char)   :: regime, sharp  !output chars showing regimes
+        integer(c_int)      :: Nr, full, mode !len of vectors xr, Vr and full
+    end type cstruct
+
+    type(cstruct), intent(inout)    :: passdata
+   
     real(c_double), pointer         :: xr_fptr(:), Vr_fptr(:)
-    
     type(EmissionData)              :: this
     
-    this%F = F
-    this%W = W
-    this%R = R
-    this%kT = kBoltz * Temp
-    this%gamma = gamma
-    this%mode = mode
-    this%full = .not. (full==0)
+    this%F = passdata%F; this%W = passdata%W; this%R = passdata%R; 
+    this%kT = kBoltz * passdata%Temp; this%gamma = passdata%gamma; 
+    this%mode = passdata%mode; this%full = .not. (passdata%full == 0)
     
     if (this%mode > 0) then
-        if (arrays%Nr == 0) then
+        if (passdata%Nr == 0) then
             stop 'Error: Incompatible mode with length of potential array'
         else
-            call c_f_pointer(arrays%xr, xr_fptr, [arrays%Nr])!copy pointers to fortran from c
-            call c_f_pointer(arrays%Vr, Vr_fptr, [arrays%Nr])
+            call c_f_pointer(passdata%xr, xr_fptr, [passdata%Nr])
+            !copy pointers to fortran from c
+            call c_f_pointer(passdata%Vr, Vr_fptr, [passdata%Nr])
             
-            print *, arrays%Nr
             print *, Vr_fptr
-!            print *, Vr_fptr
             
-            allocate(this%xr(arrays%Nr), this%Vr(arrays%Nr)) !allocate object data
+            allocate(this%xr(passdata%Nr), this%Vr(passdata%Nr))!allocate object data
             this%xr = xr_fptr
             this%Vr = Vr_fptr!copy c input data to object data
         endif
@@ -803,10 +795,10 @@ subroutine cur_dens_c(F, W, R, gamma, Temp, mode, arrays, full, Jem, &
     
     call cur_dens(this)
     
-    Jem = this%Jem
-    heat = this%heat
-    regime = this%regime
-    sharp = this%sharpness
+    passdata%Jem = this%Jem
+    passdata%heat = this%heat
+    passdata%regime = this%regime
+    passdata%sharp = this%sharpness
     call print_data(this)
 
 end subroutine cur_dens_c

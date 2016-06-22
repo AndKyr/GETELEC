@@ -1,58 +1,52 @@
 CC = gcc
 FC = gfortran
+
 MODOBJ = modules/obj/std_mat.o modules/obj/bspline.o \
   modules/obj/levenberg_marquardt.o modules/obj/pyplot_mod.o modules/obj/getelec.o \
-  modules/obj/new_interface.o modules/obj/heating.o
+  modules/obj/heating.o
   
 DEPS  = -lslatec
-FFLAGS = -ffree-line-length-none -fbounds-check -Imod -O3 #-Wall -pedantic# -pedantic -O3
-CFLAGS = -Imod -O3
+FFLAGS = -ffree-line-length-none -fbounds-check -Imod -O3 -fPIC 
+CFLAGS = -O3 -fPIC
 
-LIBNAME=libemission.a
+LIBNAME=libgetelec.a
 TEMPLIB = libtemp.a
 LIBS = /usr/lib/libslatec.a
 AR=ar rcs
 LINKLIBS = ar -rcT
 
 all: $(MODOBJ) #make into library
-	ar rcs $(LIBNAME) -o $(MODOBJ)
+	$(AR) $(TEMPLIB) -o $(MODOBJ)
+	$(LINKLIBS) $(LIBNAME) $(TEMPLIB) $(LIBS)
 	
 	
-.PHONY: main spectroscopy spline3d splinemission surfacepoints current
+.PHONY: ccall current main spectroscopy
 .SECONDARY: $(MODOBJ)
 
-ccall: bin/ccall.exe
-	./bin/ccall.exe
 
-testheat: bin/testheat.exe
-	./bin/testheat.exe
 
 current: bin/current.exe
 	./bin/current.exe 5.0 4.5 800.0 5.0 0 T
 
-testinterp: bin/testinterp.exe
-	./bin/testinterp.exe
-
 main: bin/main.exe
 	./bin/main.exe
 
-surfacepoints: bin/surfacepoints.exe
-	./bin/surfacepoints.exe
-# 	ovito data/boundary_grid.xyz
-
-splinemission: bin/splinemission.exe
-	./bin/splinemission.exe
-
-spline1d: bin/spline1d.exe
-	./bin/spline1d.exe
-
 spectroscopy: bin/spectroscopy.exe
 	./bin/spectroscopy.exe
+
+lib/libgetelec.so:	cobj/c_interface.o lib/libgetelec.a 
+	$(CC) -fPIC -shared -o $@ $^ -lslatec   
+	
+lib/libemission.a: lib/libgetelec.a
+	$(LINKLIBS) $@ $< $(LIBS) 
+	
+lib/libgetelec.a: $(MODOBJ)
+	$(AR) $@ -o $(MODOBJ)
 	
 bin/%.exe: obj/%.o $(MODOBJ)
 	$(FC) $(FFLAGS) $^ $(DEPS) -o $@
 	
-obj/ccall.o : tests/c_interface.c
+cobj/%.o : tests/%.c
 	$(CC) $(CFLAGS) $^ -c -o $@ 
 
 obj/%.o : $(MODOBJ) tests/%.f90
@@ -62,4 +56,4 @@ modules/obj/%.o : modules/%.f90
 	$(FC) $(FFLAGS) -Jmod -c $< -o $@ 
 
 clean:
-	rm -rf bin/* obj/* modules/obj/* *.a
+	rm -rf bin/* obj/* lib/* modules/obj/* *.a *.so *.o
