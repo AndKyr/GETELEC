@@ -1,5 +1,7 @@
 CC = gcc
 FC = gfortran
+AR=ar rcs
+LINKLIBS = ar -rcT
 
 MODOBJ = modules/obj/std_mat.o modules/obj/bspline.o \
   modules/obj/levenberg_marquardt.o modules/obj/pyplot_mod.o modules/obj/getelec.o \
@@ -9,21 +11,20 @@ DEPS  = -lslatec
 FFLAGS = -ffree-line-length-none -fbounds-check -Imod -O3 -fPIC 
 CFLAGS = -O3 -fPIC
 
-LIBNAME=libgetelec.a
-TEMPLIB = libtemp.a
-LIBS = /usr/lib/libslatec.a
-AR=ar rcs
-LINKLIBS = ar -rcT
+LIBSTATIC=lib/libgetelec.a
+LIBDEPS = /usr/lib/libslatec.a
+LIBSFULL = lib/libemission.a
+LIBSHARED = lib/libgetelec.so
 
-all: $(MODOBJ) #make into library
-	$(AR) $(TEMPLIB) -o $(MODOBJ)
-	$(LINKLIBS) $(LIBNAME) $(TEMPLIB) $(LIBS)
-	
+CINTERFACE = cobj/inter_comsol.o
+
+
 	
 .PHONY: ccall current main spectroscopy
-.SECONDARY: $(MODOBJ)
+.SECONDARY: *.o #$(MODOBJ)
 
-
+ctest: bin/ctest.out
+	./bin/ctest.out
 
 current: bin/current.exe
 	./bin/current.exe 5.0 4.5 800.0 5.0 0 T
@@ -34,14 +35,17 @@ main: bin/main.exe
 spectroscopy: bin/spectroscopy.exe
 	./bin/spectroscopy.exe
 
-lib/libgetelec.so:	cobj/c_interface.o lib/libgetelec.a 
-	$(CC) -fPIC -shared -o $@ $^ -lslatec   
+$(LIBSHARED): $(CINTERFACE) $(LIBSTATIC) 
+	$(CC) -fPIC -shared -o $@ $^ $(DEPS)   
 	
-lib/libemission.a: lib/libgetelec.a
-	$(LINKLIBS) $@ $< $(LIBS) 
+$(LIBSFULL): $(LIBSTATIC)
+	$(LINKLIBS) $@ $< $(LIBDEPS) 
 	
-lib/libgetelec.a: $(MODOBJ)
+$(LIBSTATIC): $(MODOBJ)
 	$(AR) $@ -o $(MODOBJ)
+	
+bin/%.out: cobj/%.o $(LIBSHARED)
+	$(CC) -L./lib -Wl,-rpath=./lib -o $@ $^ #-lgetelec
 	
 bin/%.exe: obj/%.o $(MODOBJ)
 	$(FC) $(FFLAGS) $^ $(DEPS) -o $@

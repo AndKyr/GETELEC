@@ -8,7 +8,7 @@ struct emission{
     int Nr, full, mode; //length of vectors xr ,Vt, and logical for full calculation 
 };
 
-extern void cur_dens_c(struct emission * data);
+extern void cur_dens_c(struct emission *data);
 
 int libfun(double W, double T, int Nr, double *x, double *V,
             double *Jem, double *heat){
@@ -34,3 +34,6 @@ int libfun(double W, double T, int Nr, double *x, double *V,
     *heat = data.heat;
     return 0;
 }
+
+
+

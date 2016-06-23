@@ -777,15 +777,13 @@ subroutine cur_dens_c(passdata) bind(c)
     this%kT = kBoltz * passdata%Temp; this%gamma = passdata%gamma; 
     this%mode = passdata%mode; this%full = .not. (passdata%full == 0)
     
-    if (this%mode > 0) then
+    if (this%mode /= 0 .or. this%mode /= -3.) then
         if (passdata%Nr == 0) then
             stop 'Error: Incompatible mode with length of potential array'
         else
             call c_f_pointer(passdata%xr, xr_fptr, [passdata%Nr])
             !copy pointers to fortran from c
             call c_f_pointer(passdata%Vr, Vr_fptr, [passdata%Nr])
-            
-            print *, Vr_fptr
             
             allocate(this%xr(passdata%Nr), this%Vr(passdata%Nr))!allocate object data
             this%xr = xr_fptr
@@ -799,7 +797,9 @@ subroutine cur_dens_c(passdata) bind(c)
     passdata%heat = this%heat
     passdata%regime = this%regime
     passdata%sharp = this%sharpness
-    call print_data(this)
+    if(debug) call print_data(this)
+    
+    if (allocated(this%xr)) deallocate(this%xr, this%Vr)
 
 end subroutine cur_dens_c
 
