@@ -1,5 +1,5 @@
 module GeTElEC
-!*************
+!******************
 ! General Tool for Electron Emission Calculations
 !Author: Andreas Kyritsakis, University of Helsinki, 2016
 !This module aims to calculate field emission current density and Nottingham effect 
@@ -21,7 +21,8 @@ real(dp), parameter                 :: pi=acos(-1.d0), b=6.83089d0, zs=1.6183d-4
                                        !universal constants
                                 
 real(dp), parameter                :: xlim = 0.18d0, gammalim = 1.d2
-real(dp), parameter                :: Jfitlim = 1.d-13,  varlim = 4.d-2
+real(dp), parameter                :: Jfitlim = 1.d-13,  varlim = 4.d-2 
+real(dp), parameter                :: epsfit = 1.d-4
 real(dp), parameter                :: nlimfield = 0.6d0,  nlimthermal = 2.3d0
 !xlim: limit that determines distinguishing between sharp regime (Numerical integral)
 !and blunt regime where KX approximation is used
@@ -29,13 +30,15 @@ real(dp), parameter                :: nlimfield = 0.6d0,  nlimthermal = 2.3d0
 !Jfitlim : limit of current approximation above which interpolation is allowed
 !if J<Jfitlim fitting is forced
 !gammalim : maximum acceptable gamma. above it KX is forced
+!epspoly : accuracy required in polynomial fitting
 !nlimfield, nlimthermal are the limits for n to distinguish regimes
 
-integer, parameter                  :: knotx = 4, iknot = 0, idx = 0
-                                       !No of bspline knots
+integer, parameter                  :: knotx = 4, iknot = 0, idx = 0, Nmaxpoly = 10
+                                       !knotx: No of bspline knots. 
+                                       !Nmxpoly: max degree of the fitted polynomial
 logical, parameter                  :: spectroscopy= .false.
 !set to true if you want to output spectroscopy data
-logical, parameter                  :: debug = .false., verbose = .false. 
+logical, parameter                  :: debug = .true., verbose = .true. 
 !if debug, warnings are printed, parts are timed and calls are counted
 !if debug and verbose all warnings are printed
 
@@ -60,18 +63,29 @@ type, public    :: EmissionData
     real(dp), allocatable   :: xr(:), Vr(:)     !xr(nx), Vr(nx)
         !electrostatic potential externally defined as Vr(xr)
         
-    real(dp), allocatable   :: tx(:), bcoef(:)!tx(nx + kx), bcoef(nx)
-           !bspline related parameters
+    real(dp), allocatable   :: tx(:), bcoef(:)  !tx(nx + kx), bcoef(nx)
+        !bspline related parameters
+
+    real(dp), allocatable   :: Apoly(:)
+    integer                 :: Ndeg
+        ! polynomial fitting working and result array created by dpolfit
     
     integer                 :: mode = 0
         !Mode of barrier calculation:  
-        !0: Barrier model (F,R,gamma)
-        !-1: Fitting external data to (F,R,gamma)
+        !0 : Barrier model (F,R,gamma)
+
         !1: Interpolation of Vr(xr), 
-        !2: interpolation but db1ink has been set up
-        !-2 :Fit to (F,R,gamma). If fitting not satisfactory, use interpolation
-        !-3 : Barrier model, but force 'Blunt KX approximation'. "Bad" barrier.
-        !-4 : fit to polynomial (not implemented yet) 
+        !2: interpolation and db1ink has been set up
+
+        !-1 : Barrier model, but force 'Blunt KX approximation'. "Bad" barrier.
+
+        !-10: Fitting external data to (F,R,gamma)
+        !-11 : Fit to (F,R,gamma). If fitting not satisfactory, use interpolation
+        !-12 : Fit to (F,R,gamma). Fitting is already done
+        
+        !-20 : fit to polynomial
+        !-21 : fit to polynomial. If fitting not satisfactory, use interpolation
+        !-22 : fit to polynomial and fitting has already been done, Apoly is ready
         
     real(dp)                :: timings(5) = 0.d0
     !timing variables for cpu cost profiling
@@ -93,19 +107,28 @@ subroutine cur_dens(this)
     real(dp)        :: nlimf, nlimt   !limits for n to distinguish regimes
     real(dp)        :: t1,t2,t3 !timing variables
     
-    if (this%mode < 0 .and. allocated(this%xr)) then !fit data to F,R,gamma model
-        if (debug) call cpu_time(t1)
-        var = fitpot(this%xr, this%Vr, this%F, this%R, this%gamma)
-        if ((var > varlim .or. isnan(var)) .and. &
-            (this%mode == -2 .and. this%Jem > Jfitlim)) this%mode = 1
-        !if mode = -2 and not satisfactory fitting, return to interpolation
-        if (debug) then
-            call cpu_time(t2)
-            this%timings(1) = this%timings(1) + t2 -t1
-            this%counts(1) = this%counts(1) + 1
-        endif
+    if (debug) call cpu_time(t1)
+    !preparing calculation according to calculation mode
+    
+    if (this%mode < -1) then !fit external data
+        
+        if (this%mode == -10 .or. this%mode == -11) var = fitpot(this)
+        if (this%mode == -20 .or. this%mode == -21) var = fitpoly(this)
+        !do the fitting
+        
+        
+        if ( (this%mode == 11 .or. this%mode == 21) &!mode that checks fitting 
+            .and. (this%Jem > Jfitlim) &! and current density is worth calculating 
+            .and. (var > varlim .or. isnan(var)) ) & ! and fitting not satisfactory
+                this%mode = 1 !switch to interpolation mode
+        
     endif
-    if (this%mode == 1)  then !interpolation mode. Crude estimation for F,R,gamma
+    
+    
+    
+    
+    
+    if (this%mode == 1) then        
         this%F = ( this%Vr(2) - this%Vr(1) ) / ( this%xr(2) - this%xr(1) )
         F2 = ( this%Vr(3) - this%Vr(2) ) / ( this%xr(3) - this%xr(2) )
         Fend = ( this%Vr(size(this%Vr)) - this%Vr(size(this%Vr)-3) ) / &
@@ -114,17 +137,23 @@ subroutine cur_dens(this)
         this%gamma = this%F / Fend
     endif
     
-    if (this%gamma < 0.d0 .or. this%gamma > gammalim .or. this%mode ==3) then
-        this%mode = -3
+    if (debug) then !calculate preparation time
+        call cpu_time(t2)
+        this%timings(1) = this%timings(1) + t2 -t1
+        this%counts(1) = this%counts(1) + 1
+    endif
+
+    
+    if (this%gamma < 0.d0 .or. this%gamma > gammalim) then !force KX
+        this%mode = -1
         if (debug .and. verbose) print *, 'Warning: weird gamma found. KX forced'
     endif
     
     if (this%R < 0.1d0) then
         this%R = 0.1d0
-        if (debug .and. verbose) print *, 'Warning: R<0.1 inputed'
+        if (debug .and. verbose) print *, 'Warning: R < 0.1 inputed'
     endif
     
- 
     if (this%full) then !if full calculation expand borders of regimes
         nlimf = nlimfield
         nlimt = nlimthermal
@@ -204,11 +233,6 @@ subroutine gamow_general(this,full)
     
     xmaxallowed = 1.d3
     x = this%W / (this%F * this%R)!length of barrier indicator
-    if (this%mode > 0) then !if interpolating data are more sensitive, use big dw
-        dw = 0.01d0
-    else
-        dw = 1.d-2
-    endif
     
     if (x>0.4d0) then !the second root is far away
         if (this%mode > 0) xmaxallowed = 10.d0
@@ -218,13 +242,13 @@ subroutine gamow_general(this,full)
         this%xmax = 2.d0 * this%W / this%F
     endif
     
-    if (x>xlim .and. this%mode /= -3) then !not x<<1, use numerical integration
+    if (x > xlim .and. this%mode /= -1) then !not x<<1, use numerical integration
         if (this%mode == 1) then    !setup spline interpolation
             if (debug) call cpu_time(t1)
             allocate(this%tx(size(this%Vr) + knotx), this%bcoef(size(this%Vr)))
             call db1ink(this%xr, size(this%xr), this%Vr, knotx, iknot, &
                         this%tx, this%bcoef, iflag)
-            if (iflag/=0) print *, 'error in spline setup in gamow_general'
+            if (iflag/=0) print *, 'error in spline setup, iflag = ', iflag
             this%mode = 2 !change mode so no need to call db1ink again
             
             if (debug) then
@@ -319,34 +343,42 @@ subroutine gamow_num(this,full)
     
     contains
     
-    pure function bar(x) result(V)!sphere barrier model
+    function bar(x) result(V)!sphere barrier model
         real(dp), intent(in)    :: x
-        real(dp)                :: V, Vinterp, interpout(2)
+        real(dp)                :: V, Vinterp(2)
         integer                 :: iflag, inbvx
-
-        if (this%mode > 0) then !interpolation
-            inbvx = 1
-            call db1val(x, idx, this%tx, size(this%Vr), knotx, &
-                        this%bcoef, Vinterp, iflag, inbvx)
-            if (iflag /= 0) then !out of bounds.. do linear extrapolation 
-                Vinterp = this%Vr(ixrm) + (x - this%xr(ixrm)) * &
-                (this%Vr(ixrm)-this%Vr(ixrm-1)) / (this%xr(ixrm)-this%xr(ixrm-1))
-            endif  
-            V = this%W - Vinterp - Q / (x + ( 0.5d0 * (x**2)) / this%R)
-        else !use standard F,R,gamma model for the electrostatic potential
-            V = this%W - (this%F * this%R * x*(this%gamma - 1.d0) + this%F * x**2) &
-                / (this%gamma * x + this%R * (this%gamma - 1.d0)) &
+        
+        select case (this%mode)
+            case (2)
+                inbvx = 1
+                call db1val(x, idx, this%tx, size(this%Vr), knotx, &
+                        this%bcoef, Vinterp(1), iflag, inbvx)
+                if (iflag /= 0) then !out of bounds.. do linear extrapolation 
+                    Vinterp(1) = this%Vr(ixrm) + (x - this%xr(ixrm)) * &
+                    (this%Vr(ixrm)-this%Vr(ixrm-1)) / (this%xr(ixrm)-this%xr(ixrm-1))
+                endif
+                V = this%W - Vinterp(1) - Q / (x + ( 0.5d0 * (x**2)) / this%R)
+            case (-22)
+                call dp1vlu(this%Ndeg, 0, x, Vinterp(1), Vinterp(2:), this%Apoly)
+                V = this%W - Vinterp(1) - Q / (x + ( 0.5d0 * (x**2)) / this%R)
+            case (0,-12)
+            !use standard F,R,gamma model for the electrostatic potential
+                V = this%W - (this%F * this%R * x*(this%gamma - 1.d0)  &
+                + this%F * x**2) / (this%gamma * x + this%R * (this%gamma - 1.d0)) &
                 - Q / (x + ( 0.5d0 * (x**2)) / this%R)
-        endif
+            case default
+                print *, 'Error: invalid mode in bar(). Mode = ', this%mode  
+                stop
+        end select
     end function bar
     
-    pure function neg_bar(x) result(nv)
+    function neg_bar(x) result(nv)
         real(dp), intent(in)    ::x
         real(dp)                ::nv
         nv = - bar(x)
     end function neg_bar
     
-    pure function sqrt_bar(x) result(rv)
+    function sqrt_bar(x) result(rv)
         real(dp), intent(in)    ::x
         real(dp)                ::rv
         rv=sqrt(bar(x))
@@ -653,26 +685,29 @@ subroutine print_data(this, filenum)
 end subroutine print_data
 
 
-function fitpot(x,V,F,R,gamma)  result(var)
+function fitpot(this)  result(var)
     !Fits V(x) data to F,R,gamma standard potential using L-V
     !minimization module
     use Levenberg_Marquardt, only: nlinfit
     
-    real(dp), intent(in)    ::x(:),V(:)
-    real(dp), intent(out)   ::F,R,gamma
-    real(dp)                ::p(3),F2,Fend,var
+    
+    type(EmissionData), intent(inout)   :: this
+    
+    real(dp)                :: p(3), F2, Fend, var
     
     integer                 :: Nstart=3,i
     
-    p(1) = (V(Nstart)-V(Nstart-1))/(x(Nstart)-x(Nstart-1))
-    F2 = (V(Nstart+1)-V(Nstart))/(x(Nstart+1)-x(Nstart))
-    Fend = (V(size(V))-V(size(V)-1))/(x(size(x))-x(size(x)-1))
-    p(2) = abs(2.d0/((F2-p(1))/(x(Nstart)-x(Nstart-1))))
-    p(3) = p(1)/Fend
-    var=nlinfit(fun,x,V,p)
-    F=p(1)
-    R=p(2)
-    gamma=p(3)
+    p(1) = (this%Vr(Nstart) - this%Vr(Nstart-1)) &
+            / (this%xr(Nstart) - this%xr(Nstart-1))
+    F2 = (this%Vr(Nstart+1) - this%Vr(Nstart)) / (this%xr(Nstart+1) -this%xr(Nstart))
+    Fend = (this%Vr(size(this%Vr)) - this%Vr(size(this%Vr) - 1)) / &
+            (this%xr(size(this%xr)) - this%xr(size(this%xr) - 1))
+    p(2) = abs(2.d0 / ((F2-p(1)) / (this%xr(Nstart) - this%xr(Nstart - 1))))
+    p(3) = p(1) / Fend
+    var = nlinfit(fun, this%xr, this%Vr, p, epsfit)
+    this%F = p(1)
+    this%R = p(2)
+    this%gamma = p(3)
 
     contains
 
@@ -680,9 +715,39 @@ function fitpot(x,V,F,R,gamma)  result(var)
         real(dp), intent(in) :: x
         real(dp), intent(in) :: p(:)
         real(dp)             :: y
-        y=(p(1)*p(2)*x*(p(3)-1.d0)+p(1)*x**2) / (p(3)*x+p(2)*(p(3)-1.d0))
+        y = (p(1) * p(2) * x * (p(3) - 1.d0) + p(1) * x**2) &
+            / (p(3) * x + p(2) * (p(3) - 1.d0))
     end function fun
 end function fitpot
+
+function fitpoly(this)  result(var)
+    !Fits V(x) data to polynomial
+
+    type(EmissionData), intent(inout)   :: this
+    real(dp), dimension(size(this%xr))  :: ww, rr
+    real(dp)                            :: var, eps
+    integer                             :: ierr 
+    
+    ww(1) = -1.d0
+    eps = epsfit
+    allocate (this%Apoly(3*size(this%xr) + 3*Nmaxpoly + 3))
+    
+    if (debug .and. verbose) print *, 'starting polynomial fitting'
+    
+    call dpolft(size(this%xr), this%xr, this%Vr, ww, Nmaxpoly, this%ndeg, eps,  &
+                rr, ierr, this%Apoly)
+    
+    if (debug .and. verbose) print *, 'done poilynomial fitting'
+    
+    if (ierr/=1) then
+        print *, 'error in polynomial fitting with ierr = ', ierr
+        return
+    endif
+    var = eps
+    this%mode = -22
+    
+end function fitpoly
+
 
 subroutine plot_barrier(this)
     use pyplot_mod, only: pyplot
@@ -699,7 +764,7 @@ subroutine plot_barrier(this)
     
     x = linspace(1.d-4,this%xmax,Nx)
     ixrm = size(this%xr)
-    print *, this%mode
+    print *, 'the mode is :' , this%mode
     do i =1, Nx
         Ubar(i) = bar(x(i))
         Ubar(i) = max(Ubar(i),-1.d0) 
@@ -723,25 +788,32 @@ subroutine plot_barrier(this)
 
     contains
     
-    pure function bar(x) result(V)!sphere barrier model
+    function bar(x) result(V)!sphere barrier model
         real(dp), intent(in)    :: x
-        real(dp)                :: V, Vinterp, interpout(2)
+        real(dp)                :: V, Vinterp(2)
         integer                 :: iflag, inbvx
-
-        if (this%mode > 0) then !interpolation
-            inbvx = 1
-            call db1val(x, idx, this%tx, size(this%Vr), knotx, &
-                        this%bcoef, Vinterp, iflag, inbvx)
-            if (iflag /= 0) then !out of bounds.. do linear extrapolation 
-                Vinterp = this%Vr(ixrm) + (x - this%xr(ixrm)) * &
-                (this%Vr(ixrm)-this%Vr(ixrm-1)) / (this%xr(ixrm)-this%xr(ixrm-1))
-            endif  
-            V = this%W - Vinterp - Q / (x + ( 0.5d0 * (x**2)) / this%R)
-        else !use standard F,R,gamma model for the electrostatic potential
-            V = this%W - (this%F * this%R * x*(this%gamma - 1.d0) + this%F * x**2) &
-                / (this%gamma * x + this%R * (this%gamma - 1.d0)) &
+        
+        select case (this%mode)
+            case (2)
+                inbvx = 1
+                call db1val(x, idx, this%tx, size(this%Vr), knotx, &
+                        this%bcoef, Vinterp(1), iflag, inbvx)
+                if (iflag /= 0) then !out of bounds.. do linear extrapolation 
+                    Vinterp(1) = this%Vr(ixrm) + (x - this%xr(ixrm)) * &
+                    (this%Vr(ixrm)-this%Vr(ixrm-1)) / (this%xr(ixrm)-this%xr(ixrm-1))
+                endif
+                V = this%W - Vinterp(1) - Q / (x + ( 0.5d0 * (x**2)) / this%R)
+            case (-22)
+                call dp1vlu(this%Ndeg, 0, x, Vinterp(1), Vinterp(2:), this%Apoly)
+                V = this%W - Vinterp(1) - Q / (x + ( 0.5d0 * (x**2)) / this%R)
+            case (0,-12)
+            !use standard F,R,gamma model for the electrostatic potential
+                V = this%W - (this%F * this%R * x*(this%gamma - 1.d0)  &
+                + this%F * x**2) / (this%gamma * x + this%R * (this%gamma - 1.d0)) &
                 - Q / (x + ( 0.5d0 * (x**2)) / this%R)
-        endif
+            case default
+                stop 'Error: wrong mode reached to barrier calculation'
+        end select
     end function bar
 end subroutine plot_barrier
 
@@ -754,6 +826,7 @@ subroutine desetroy(this)
     endif
     
     if (allocated(this%xr)) deallocate(this%xr,this%Vr)
+    if (allocated(this%Apoly)) deallocate(this%Apoly)
     
 end subroutine desetroy
 
@@ -777,7 +850,7 @@ subroutine cur_dens_c(passdata) bind(c)
     this%kT = kBoltz * passdata%Temp; this%gamma = passdata%gamma; 
     this%mode = passdata%mode; this%full = .not. (passdata%full == 0)
     
-    if (this%mode /= 0 .or. this%mode /= -3.) then
+    if (this%mode /= 0 .or. this%mode /= -1) then
         if (passdata%Nr == 0) then
             stop 'Error: Incompatible mode with length of potential array'
         else

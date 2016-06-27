@@ -89,7 +89,7 @@ do j = 1,3
         endif
     if (this%R > 5.d0) then
         this%full = .false.
-        this%mode = -3
+        this%mode = -1
         call cur_dens(this)
         Japp(i) = this%Jem
         happ(i) = this%heat

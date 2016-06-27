@@ -70,7 +70,8 @@ call cpu_time(t2)
 call print_data(this)
 if (debug) then
     call plot_barrier(this)
-    print *, 'Elapsed time: ', t2-t1
+    print *, 'Timings: ', this%timings
+    print *, 'total elapsed time:', t2-t1
 endif
 
 

@@ -27,7 +27,7 @@ ctest: bin/ctest.out
 	./bin/ctest.out
 
 current: bin/current.exe
-	./bin/current.exe 5.0 4.5 800.0 5.0 0 T
+	./bin/current.exe 5.0 4.5 800.0 5.0 -21 T
 
 main: bin/main.exe
 	./bin/main.exe

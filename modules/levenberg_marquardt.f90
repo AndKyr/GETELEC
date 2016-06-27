@@ -26,12 +26,11 @@ PUBLIC :: dp, lmdif1, lmdif, lmder1, lmder, enorm, nlinfit
 
  CONTAINS
 
-function nlinfit(fun,xdata,ydata,p0) result(var)
+function nlinfit(fun, xdata, ydata, p0, tol) result(var)
 !Added to module By Andreas Kyritsakis 31.03.2016
 !Simple function to data to non linear function
 
-    real(dp), intent(in)        :: xdata(:) !input x data
-    real(dp), intent(in)        :: ydata(:) !input y data
+    real(dp), intent(in)        :: xdata(:), ydata(:), tol !input x, y data and tol
     real(dp), intent(inout)     :: p0(:)    !in: initial guess, out:result
     interface                               !user provided function to be fit
         pure function fun(x,p) result(y)
@@ -44,14 +43,13 @@ function nlinfit(fun,xdata,ydata,p0) result(var)
     end interface
 
     real(dp)                    :: var,fvec(size(xdata))
-    real(dp),parameter          :: tol=1.d-10 !change tolerance if needed
     integer                     :: i,m,n,info,iwa(size(p0))
     
     m=size(xdata)
     n=size(p0)
 
     call lmdif1(fcn,m,n,p0,fvec,tol,info,iwa)
-    var=sum(sqrt(fvec)/abs(ydata))/m
+    var = sum(sqrt(fvec)/abs(ydata))/m
     
     contains
 

@@ -1,16 +1,20 @@
 /* A C interface for interoperability of GeTElEC with COMSOL. The comsol name of the
  * external function should be "getelec". 
  * 
- * nArgs-1 is the number of potential points
- * given for each emission point. Each inReal array column contains the x points
- * on the line outside each emission point (each emission point corresponds to 
- * a different column). The first element of each column contains the temperature.
- * The same applies to inImag for the potential values. First element contains the 
- * work function of each point. The number of points is equal to blockSize and is 
+ * nArgs-1 is the number of potential points given for each emission point. 
+ * Each inReal array column contains the x points on the line outside each 
+ * emission point (each emission point corresponds to a different column).
+ *  
+ * The first element of each column contains the temperature.
+ * The same applies to inImag for the potential values. 
+ * First element contains the 
+ * work function of each point. 
+ * 
+ * The number of points is equal to blockSize and is 
  * the number of columns of the arrays.
  * 
  * On output the blockSize length vectors outReal and outImag contain the resulting
- * current density and nottingham heat correspondingly*/
+ * current density and nottingham heat correspondingly */
 
 #include <stdio.h>
 #include <math.h>
