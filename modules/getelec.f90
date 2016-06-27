@@ -38,7 +38,7 @@ integer, parameter                  :: knotx = 4, iknot = 0, idx = 0, Nmaxpoly =
                                        !Nmxpoly: max degree of the fitted polynomial
 logical, parameter                  :: spectroscopy= .false.
 !set to true if you want to output spectroscopy data
-logical, parameter                  :: debug = .true., verbose = .true. 
+logical, parameter                  :: debug = .true., verbose = .false. 
 !if debug, warnings are printed, parts are timed and calls are counted
 !if debug and verbose all warnings are printed
 
@@ -124,11 +124,7 @@ subroutine cur_dens(this)
         
     endif
     
-    
-    
-    
-    
-    if (this%mode == 1) then        
+    if (this%mode == 1 .or. this%mode == -22) then        
         this%F = ( this%Vr(2) - this%Vr(1) ) / ( this%xr(2) - this%xr(1) )
         F2 = ( this%Vr(3) - this%Vr(2) ) / ( this%xr(3) - this%xr(2) )
         Fend = ( this%Vr(size(this%Vr)) - this%Vr(size(this%Vr)-3) ) / &
@@ -233,7 +229,7 @@ subroutine gamow_general(this,full)
     
     xmaxallowed = 1.d3
     x = this%W / (this%F * this%R)!length of barrier indicator
-    
+    dw = 1.d-2
     if (x>0.4d0) then !the second root is far away
         if (this%mode > 0) xmaxallowed = 10.d0
         this%xmax = min(this%W * this%gamma / this%F, xmaxallowed)
@@ -737,7 +733,7 @@ function fitpoly(this)  result(var)
     call dpolft(size(this%xr), this%xr, this%Vr, ww, Nmaxpoly, this%ndeg, eps,  &
                 rr, ierr, this%Apoly)
     
-    if (debug .and. verbose) print *, 'done poilynomial fitting'
+    if (debug .and. verbose) print *, 'done poilynomial fitting. ndeg=', this%ndeg
     
     if (ierr/=1) then
         print *, 'error in polynomial fitting with ierr = ', ierr

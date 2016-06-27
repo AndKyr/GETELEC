@@ -19,7 +19,7 @@ int libfun(double W, double T, int Nr, double *x, double *V,
     
     data.F = 5.0; data.R = 5.0; data.gamma = 10.0;
     data.W = W;   data.Temp = T;
-    data.mode = -2; data.full = 1;
+    data.mode = -20; data.full = 1;
     
     data.Nr = Nr;
     

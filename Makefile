@@ -31,6 +31,8 @@ current: bin/current.exe
 
 main: bin/main.exe
 	./bin/main.exe
+	
+
 
 spectroscopy: bin/spectroscopy.exe
 	./bin/spectroscopy.exe
