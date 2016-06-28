@@ -11,7 +11,7 @@ real(dp), parameter :: convergence_criterion = 1.d-15, workfunc = 4.5d0
 
 real(dp)            :: fse = 50.d0 !finite size effect for conductivity
 
-logical, parameter  :: debug = .true.
+logical, parameter  :: debug = .true., timings = .true.
 
 type, public        :: HeatData
 
@@ -141,6 +141,8 @@ subroutine get_heat(heat,poten)
         endif
     enddo
     heat%J_avg = Icur / Ar
+
+    if (timings) print *, point%timings
     
     if (debug) then
         print *, 'Icurbase=', Icur(heat%tipbounds(1)), &
@@ -257,8 +259,8 @@ subroutine emit_atpoint(poten,point)
         enddo
         that%xr = point%rline
         that%Vr = point%Vline
-        that%mode = 1 !in general case use interpolation
-        if (badcontition) that%mode = -3 
+        that%mode = -21 !in general case use polyfit trial
+        if (badcontition) that%mode = -1 !use barrier model and force KX 
     else
         that%F = norm2(point%F)
         that%R = 1.d4
@@ -280,7 +282,7 @@ subroutine emit_atpoint(poten,point)
     
     if (that%Jem > point%Jmax * Jlimratio) then
         that%full = .true.
-        that%mode = -2 !try fitting first. If not successful, do interpolation
+        that%mode = -21 !try polyfit first. If not successful, do interpolation
         call cur_dens(that)
     endif
     point%Jem = that%Jem

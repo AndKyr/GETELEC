@@ -32,7 +32,8 @@ current: bin/current.exe
 main: bin/main.exe
 	./bin/main.exe
 	
-
+surfacepoints: bin/surfacepoints.exe
+	./bin/surfacepoints.exe
 
 spectroscopy: bin/spectroscopy.exe
 	./bin/spectroscopy.exe
