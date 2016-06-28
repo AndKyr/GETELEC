@@ -240,7 +240,7 @@ subroutine emit_atpoint(poten,point)
                 exit
             endif
             
-            if (Vmax > point%W) exit
+            if (Vmax > 1.2d0 * point%W) exit
             rmax = 1.3d0 * rmax 
         enddo
         if (i==11) badcontition = .true.

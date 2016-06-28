@@ -21,7 +21,7 @@ real(dp), parameter                 :: pi=acos(-1.d0), b=6.83089d0, zs=1.6183d-4
                                        !universal constants
                                 
 real(dp), parameter                :: xlim = 0.18d0, gammalim = 1.d2
-real(dp), parameter                :: Jfitlim = 1.d-13,  varlim = 4.d-2 
+real(dp), parameter                :: Jfitlim = 1.d-20,  varlim = 1.d-3 
 real(dp), parameter                :: epsfit = 1.d-4
 real(dp), parameter                :: nlimfield = 0.6d0,  nlimthermal = 2.3d0
 !xlim: limit that determines distinguishing between sharp regime (Numerical integral)
@@ -231,7 +231,7 @@ subroutine gamow_general(this,full)
     x = this%W / (this%F * this%R)!length of barrier indicator
     dw = 1.d-2
     if (x>0.4d0) then !the second root is far away
-        if (this%mode > 0) xmaxallowed = 10.d0
+        if (this%mode /= 0 .or. this%mode /= -12) xmaxallowed = 10.d0
         this%xmax = min(this%W * this%gamma / this%F, xmaxallowed)
         !maximum length xmaxallowed
     else  !the second root is close to the standard W/F
@@ -310,31 +310,35 @@ subroutine gamow_num(this,full)
             this%Gam = 0.d0
             return
         endif
-        if (abs(this%Um - (this%W - this%F * this%R))<.2d0) then !almost without max
-            this%minbeta = 1.d20
-        else 
-            if (this%mode <= 0) then  
-                dx = 1.d-2
-            else !if interpolation choose big dx for diff2. Αvoid num instabillity
-                binout = binsearch(this%xr,this%xm)
-                if (binout(2) /= 0) stop 'xr not sorted or xm out of bounds'
-                indxm = binout(1)
-                if (indxm == 1) then  !avoid segfault
-                    dx  =  this%xr(2)-this%xr(1)
-                else
-                    dx = this%xr(indxm) - this%xr(indxm -1)
-                endif
+
+        if (this%mode == 0 .or. this%mode == -12) then  
+            dx = 1.d-2
+        else !if interpolation choose big dx for diff2. Αvoid num instabillity
+            binout = binsearch(this%xr,this%xm)
+            if (binout(2) /= 0) stop 'xr not sorted or xm out of bounds'
+            indxm = binout(1)
+            if (indxm == 1) then  !avoid segfault
+                dx  =  this%xr(2)-this%xr(1)
+            else
+                dx = this%xr(indxm) - this%xr(indxm -1)
             endif
         endif
         this%minbeta = 22.761d0 / sqrt(abs(diff2(bar,this%xm,dx)))
+        if (isnan(this%minbeta)) print *, 'indxm=', indxm, 'dx=', dx, &
+                'U(xm+dx)=', bar(this%xm+dx), 'U(xm-dx)=', bar(this%xm-dx)
+                
     endif
 
     x1 = [0.01d0, this%xm]
     x2 = [this%xm, this%xmax]
     call dfzero(bar,x1(1),x1(2),x1(1),RtolRoot,AtolRoot,IFLAG) !first root
-    call dfzero(bar,x2(1),x2(2),x2(1),RtolRoot,AtolRoot,IFLAG) !second root   
+    if (IFLAG /= 1) print *, 'error in first barrier first root. IFLAG = ', IFLAG
+    call dfzero(bar,x2(1),x2(2),x2(1),RtolRoot,AtolRoot,IFLAG) !second root
+    if (IFLAG /= 1) print *, 'error in second barrier first root. IFLAG = ', IFLAG   
     call dqage(sqrt_bar,x1(2),x2(1),AtolInt,RtolInt,2,maxint,G,ABSERR, &
     NEVAL,IER,ALIST,BLIST,RLIST,ELIST,IORD,LAST) !integrate
+    if (IER /= 0) print *, 'Warning: Error in integration dqage. IER = ', &
+            IER, 'G=', G, 'roots:', x1(2), x2(1)
     this%Gam = gg * G
     
     contains
@@ -355,7 +359,12 @@ subroutine gamow_num(this,full)
                 endif
                 V = this%W - Vinterp(1) - Q / (x + ( 0.5d0 * (x**2)) / this%R)
             case (-22)
-                call dp1vlu(this%Ndeg, 0, x, Vinterp(1), Vinterp(2:), this%Apoly)
+                if (x<= this%xr(ixrm)) then
+                    call dp1vlu(this%Ndeg, 0, x, Vinterp(1), Vinterp(2:), this%Apoly)
+                else
+                    Vinterp(1) = this%Vr(ixrm) + (x - this%xr(ixrm)) * &
+                    (this%Vr(ixrm)-this%Vr(ixrm-1)) / (this%xr(ixrm)-this%xr(ixrm-1))
+                endif
                 V = this%W - Vinterp(1) - Q / (x + ( 0.5d0 * (x**2)) / this%R)
             case (0,-12)
             !use standard F,R,gamma model for the electrostatic potential
@@ -726,22 +735,22 @@ function fitpoly(this)  result(var)
     
     ww(1) = -1.d0
     eps = epsfit
-    allocate (this%Apoly(3*size(this%xr) + 3*Nmaxpoly + 3))
+    if ((size(this%Apoly)) /=  (3*size(this%xr) + 3*Nmaxpoly + 3)) then
+        if (allocated(this%Apoly)) deallocate(this%Apoly)
+        allocate (this%Apoly(3*size(this%xr) + 3*Nmaxpoly + 3))
+    endif
     
-    if (debug .and. verbose) print *, 'starting polynomial fitting'
     
     call dpolft(size(this%xr), this%xr, this%Vr, ww, Nmaxpoly, this%ndeg, eps,  &
                 rr, ierr, this%Apoly)
-    
-    if (debug .and. verbose) print *, 'done poilynomial fitting. ndeg=', this%ndeg
-    
-    if (ierr/=1) then
-        print *, 'error in polynomial fitting with ierr = ', ierr
-        return
-    endif
     var = eps
     this%mode = -22
     
+    if (debug .and. verbose) print *, 'done poilynomial fitting. ndeg=', this%ndeg
+    
+    if (ierr /= 1 .and. ierr /= 3) print *, &
+        'error in polynomial fitting with ierr = ', ierr
+            
 end function fitpoly
 
 
@@ -800,7 +809,12 @@ subroutine plot_barrier(this)
                 endif
                 V = this%W - Vinterp(1) - Q / (x + ( 0.5d0 * (x**2)) / this%R)
             case (-22)
-                call dp1vlu(this%Ndeg, 0, x, Vinterp(1), Vinterp(2:), this%Apoly)
+                if (x<= this%xr(ixrm)) then
+                    call dp1vlu(this%Ndeg, 0, x, Vinterp(1), Vinterp(2:), this%Apoly)
+                else
+                    Vinterp(1) = this%Vr(ixrm) + (x - this%xr(ixrm)) * &
+                    (this%Vr(ixrm)-this%Vr(ixrm-1)) / (this%xr(ixrm)-this%xr(ixrm-1))
+                endif
                 V = this%W - Vinterp(1) - Q / (x + ( 0.5d0 * (x**2)) / this%R)
             case (0,-12)
             !use standard F,R,gamma model for the electrostatic potential
@@ -808,7 +822,8 @@ subroutine plot_barrier(this)
                 + this%F * x**2) / (this%gamma * x + this%R * (this%gamma - 1.d0)) &
                 - Q / (x + ( 0.5d0 * (x**2)) / this%R)
             case default
-                stop 'Error: wrong mode reached to barrier calculation'
+                print *, 'Error: invalid mode in bar(). Mode = ', this%mode  
+                stop
         end select
     end function bar
 end subroutine plot_barrier

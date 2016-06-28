@@ -38,7 +38,7 @@ call plt%initialize(grid=.true.,xlabel='$h [nm]$',ylabel='$P_h [W/nm^3]$', &
             xtick_labelsize=font, ytick_labelsize=font, axes_labelsize=font)
             
 call plt%add_plot(z,log10(heat%hpower(heat%tipbounds(1):heat%tipbounds(2))), &
-            label='$heat$', linestyle='b.',linewidth=2)
+            label='$heat$', linestyle='b-',linewidth=2)
                 
                     
 call plt%savefig('png/surfacepoints.png', pyfile='python/surfacepoints.py')
