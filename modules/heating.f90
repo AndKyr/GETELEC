@@ -8,10 +8,16 @@ integer, parameter  :: kx = 4, ky = 4, kz = 4, iknot = 0  !interpolation paramet
 real(dp), parameter :: Jlimratio = 1.d-4, Flimratio = 0.2d0 
 !minimum current and field ratio to max for full calculation
 real(dp), parameter :: convergence_criterion = 1.d-15, workfunc = 4.5d0
+integer, parameter  :: compmode = 1
+!mode of calculation for comparison purposes
+!1: full calculation with full implementation of getelec
+!2: forcing "blunt" calculation with GTF
+!3: Not taking into account the Nottingham effect
+!4: both (2) and (3)
 
 real(dp)            :: fse = 50.d0 !finite size effect for conductivity
 
-logical, parameter  :: debug = .true., timings = .true.
+logical, parameter  :: debug = .true., timings = .false.
 
 type, public        :: HeatData
 
@@ -145,17 +151,19 @@ subroutine get_heat(heat,poten)
     if (timings) print *, point%timings
     
     if (debug) then
-        print *, 'Icurbase=', Icur(heat%tipbounds(1)), &
-            'Pnottop =', Pnot(heat%tipbounds(2))
-        print *, 'Pjouletop=', Pjoule(heat%tipbounds(2)), &
-            'Ptotaltop=', heat%hpower(heat%tipbounds(2)) 
-        print *, 'Fmax = ', point%Fmax
-        print *, icount, 'points calculated'
+        print '(A15,F13.5,A10)', 'TipHeight =', &
+            (heat%tipbounds(2) - heat%tipbounds(1)) * poten%grid_spacing(3), 'nm' 
+        print '(A15,ES13.5,A10/A15,ES13.5,A10)', 'Icurbase =', &
+                Icur(heat%tipbounds(1)),  'A', &
+                'Pnottop =', Pnot(heat%tipbounds(2)), 'W'
+        print '(A15,ES13.5,A10/A15,ES13.5,A10)', 'Pjouletop =', &
+            Pjoule(heat%tipbounds(2)), 'W', &
+            'Ptotaltop =', heat%hpower(heat%tipbounds(2)), 'W/nm^3'
+        print '(A15,F13.5,A10)', 'Fmax =', point%Fmax, 'V/nm'
         if (isnan(Icur(heat%tipbounds(1)))) then
             print *, 'Icur:', Icur(heat%tipbounds(1):heat%tipbounds(2))
             print *, 'Pnot:', Pnot(heat%tipbounds(1):heat%tipbounds(2))
         endif
-!        print *, Pnot(heat%tipbounds(1):heat%tipbounds(2))
     endif
     
     contains
@@ -185,7 +193,7 @@ subroutine emit_atpoint(poten,point)
 ! carefull: every distance in this function is in nm 
     use bspline, only: db3val
     use std_mat, only: linspace
-    use GeTElEC, only: EmissionData, cur_dens
+    use GeTElEC, only: EmissionData, cur_dens, print_data
     
     type(Potential), intent(in)         :: poten !potential data struct
     type(PointEmission), intent(inout)  :: point !point data struct
@@ -199,10 +207,14 @@ subroutine emit_atpoint(poten,point)
     real(dp)                :: direc(3), Fnorm, rmax, Vmax, xmax, ymax, zmax 
     !direc: direction of field, rmax: maximum distance for rline. All in nm
     real(dp)                :: dx, dy, dz !grid spacing in nm
-    logical                 :: badcontition
+    logical                 :: badcontition, firsttime = .true.
     real(dp)                :: t1, t2
 
     badcontition = .false.
+    if (firsttime) then
+        allocate(that%xr(Nr), that%Vr(Nr))
+        firsttime = .false.
+    endif
     
     if (.not. poten%set) print *, 'Error: interpolation not set'
     
@@ -280,11 +292,26 @@ subroutine emit_atpoint(poten,point)
     
     call cur_dens(that)
     
+    if (that%ierr /= 0) then
+        print *, 'Error in getelec cur_dens. Printing from heating emit_atpoint'
+        call print_data(that, .true.)
+        print *,  
+        stop 'Terminating ...'
+    endif
+    
     if (that%Jem > point%Jmax * Jlimratio) then
         that%full = .true.
-        that%mode = -21 !try polyfit first. If not successful, do interpolation
         call cur_dens(that)
     endif
+    
+    if (that%ierr /= 0) then
+        print *, 'Error in getelec cur_dens. Printing from heating emit_atpoint'
+        call print_data(that, .true.) 
+        stop 'Terminating ...'
+        print *, 'point:', point%Nstart
+        print *, 'field:', Fnorm, 'rmax:', rmax, 'rline:', point%rline
+    endif
+    
     point%Jem = that%Jem
     point%heatNot = that%heat
     do i =1,5 !copy timings and counts from that

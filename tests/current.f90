@@ -67,7 +67,7 @@ endif
 call cpu_time(t1)
 call cur_dens(this)
 call cpu_time(t2)
-call print_data(this)
+call print_data(this,.true.)
 if (debug) then
     call plot_barrier(this)
     print *, 'Timings: ', this%timings

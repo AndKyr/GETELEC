@@ -23,6 +23,9 @@ CINTERFACE = cobj/inter_comsol.o
 .PHONY: ccall current main spectroscopy
 .SECONDARY: *.o #$(MODOBJ)
 
+$(LIBSFULL): $(LIBSTATIC)
+	$(LINKLIBS) $@ $< $(LIBDEPS)
+
 ctest: bin/ctest.out
 	./bin/ctest.out
 
@@ -39,10 +42,7 @@ spectroscopy: bin/spectroscopy.exe
 	./bin/spectroscopy.exe
 
 $(LIBSHARED): $(CINTERFACE) $(LIBSTATIC) 
-	$(CC) -fPIC -shared -o $@ $^ $(DEPS)   
-	
-$(LIBSFULL): $(LIBSTATIC)
-	$(LINKLIBS) $@ $< $(LIBDEPS) 
+	$(CC) -fPIC -shared -o $@ $^ $(DEPS)    
 	
 $(LIBSTATIC): $(MODOBJ)
 	$(AR) $@ -o $(MODOBJ)

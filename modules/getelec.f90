@@ -87,6 +87,13 @@ type, public    :: EmissionData
         !-21 : fit to polynomial. If fitting not satisfactory, use interpolation
         !-22 : fit to polynomial and fitting has already been done, Apoly is ready
         
+    integer                 :: ierr = 0
+        ! Integer to store error information. 
+        ! 0: Everything is fine and well - defined.
+        ! 1: Mode should give xr, Vr and they are not allocated properly
+        ! 2: Wrong input values for xr, Vr are given: non-monotonous
+        ! 4: Unknown error: some NaN appeared 
+        
     real(dp)                :: timings(5) = 0.d0
     !timing variables for cpu cost profiling
     !1: fitting time. 2: interpolation set time. 
@@ -106,9 +113,24 @@ subroutine cur_dens(this)
     real(dp)        :: Jf, Jt, n, s, E0, dE, heatf, heatt, F2, Fend, var
     real(dp)        :: nlimf, nlimt   !limits for n to distinguish regimes
     real(dp)        :: t1,t2,t3 !timing variables
+    integer         :: i
     
+    this%ierr = 0
     if (debug) call cpu_time(t1)
     !preparing calculation according to calculation mode
+    if (this%mode > 0 .or. this%mode < -1) then
+        if (size(this%xr) < 2 .or. size(this%Vr) /= size(this%xr)) then
+            this%ierr = 1
+            return
+        else
+            do i = 2,size(this%xr)
+                if (this%xr(i) < this%xr(i-1) .or. this%Vr(i) < this%Vr(i-1)) then
+                    this%ierr = 2
+                    return
+                endif
+            enddo
+        endif
+    endif
     
     if (this%mode < -1) then !fit external data
         
@@ -116,12 +138,10 @@ subroutine cur_dens(this)
         if (this%mode == -20 .or. this%mode == -21) var = fitpoly(this)
         !do the fitting
         
-        
         if ( (this%mode == 11 .or. this%mode == 21) &!mode that checks fitting 
             .and. (this%Jem > Jfitlim) &! and current density is worth calculating 
             .and. (var > varlim .or. isnan(var)) ) & ! and fitting not satisfactory
                 this%mode = 1 !switch to interpolation mode
-        
     endif
     
     if (this%mode == 1 .or. this%mode == -22) then        
@@ -191,8 +211,9 @@ subroutine cur_dens(this)
     
     
     if (debug .and.(isnan(this%Jem) .or. isnan(this%heat) .or.this%Jem<1.d-201)) then
-        call print_data(this)
-        call plot_barrier(this)
+        this%ierr = 4
+        call print_data(this,.true.)
+        !call plot_barrier(this)
     endif
     
     contains
@@ -274,8 +295,10 @@ subroutine gamow_general(this,full)
     if (debug) then
         if (isnan(this%Gam) .or. isnan(this%maxbeta) .or. isnan (this%minbeta) &
                     .or. isnan(this%Um)) then
-            call print_data(this)
-            call plot_barrier(this)
+            print *, 'Printing from gamow_general()'
+            call print_data(this,.true.)
+!            call plot_barrier(this)
+        this%ierr = 4
         endif
     endif
     
@@ -331,14 +354,24 @@ subroutine gamow_num(this,full)
 
     x1 = [0.01d0, this%xm]
     x2 = [this%xm, this%xmax]
+    
     call dfzero(bar,x1(1),x1(2),x1(1),RtolRoot,AtolRoot,IFLAG) !first root
-    if (IFLAG /= 1) print *, 'error in first barrier first root. IFLAG = ', IFLAG
+    if (IFLAG /= 1) then
+        print *, 'error in barrier first root. IFLAG = ', IFLAG
+        call print_data(this,.true.)
+    endif
+    
     call dfzero(bar,x2(1),x2(2),x2(1),RtolRoot,AtolRoot,IFLAG) !second root
-    if (IFLAG /= 1) print *, 'error in second barrier first root. IFLAG = ', IFLAG   
+    if (IFLAG /= 1) then
+        print *, 'error in second barrier root. IFLAG = ', IFLAG
+        call print_data(this,.true.)
+    endif
+    
     call dqage(sqrt_bar,x1(2),x2(1),AtolInt,RtolInt,2,maxint,G,ABSERR, &
     NEVAL,IER,ALIST,BLIST,RLIST,ELIST,IORD,LAST) !integrate
     if (IER /= 0) print *, 'Warning: Error in integration dqage. IER = ', &
             IER, 'G=', G, 'roots:', x1(2), x2(1)
+    
     this%Gam = gg * G
     
     contains
@@ -349,7 +382,7 @@ subroutine gamow_num(this,full)
         integer                 :: iflag, inbvx
         
         select case (this%mode)
-            case (2)
+            case (2) !interpolation mode.. Use splines
                 inbvx = 1
                 call db1val(x, idx, this%tx, size(this%Vr), knotx, &
                         this%bcoef, Vinterp(1), iflag, inbvx)
@@ -358,10 +391,10 @@ subroutine gamow_num(this,full)
                     (this%Vr(ixrm)-this%Vr(ixrm-1)) / (this%xr(ixrm)-this%xr(ixrm-1))
                 endif
                 V = this%W - Vinterp(1) - Q / (x + ( 0.5d0 * (x**2)) / this%R)
-            case (-22)
+            case (-22) ! fitted polynomial mode. Evaluate fitted polynomial
                 if (x<= this%xr(ixrm)) then
                     call dp1vlu(this%Ndeg, 0, x, Vinterp(1), Vinterp(2:), this%Apoly)
-                else
+                else !out of bounds. Polynomial misbehaves. Use extrapolation
                     Vinterp(1) = this%Vr(ixrm) + (x - this%xr(ixrm)) * &
                     (this%Vr(ixrm)-this%Vr(ixrm-1)) / (this%xr(ixrm)-this%xr(ixrm-1))
                 endif
@@ -563,7 +596,7 @@ subroutine J_num_integ(this)
         if (Umax > 0.d0) then
             new = this
             new%W = this%W - Ej
-            call gamow_general(new,.false.)
+            call gamow_general(new,.false.) !fastly calculate only G 
             Gj = new%Gam
         else
             Gj = this%minbeta * Umax
@@ -660,10 +693,11 @@ subroutine J_num_integ(this)
     end function lFD
 end subroutine J_num_integ
 
-subroutine print_data(this, filenum)
+subroutine print_data(this, full, filenum)
     !print the state of the object nicely
     type(EmissionData), intent(in)      :: this
     integer, intent(in), optional       :: filenum
+    logical, intent(in), optional       :: full
     integer                             :: fid
     
     if (.not. present(filenum)) then
@@ -671,6 +705,7 @@ subroutine print_data(this, filenum)
     else
         fid=filenum
     endif
+
     
     write (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4)') 'F =', this%F, &
             'V/nm', 'R =', this%R, 'nm', 'gamma =', this%gamma
@@ -682,10 +717,18 @@ subroutine print_data(this, filenum)
             this%xm, 'nm', 'xmax =', this%xmax, 'nm', 'Um =', this%Um, 'eV'
     write (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10)') ,'dG/dE@Ef =', this%maxbeta, &
             '(eV)^-1', 'dG/dE@Um =', this%minbeta, '(eV)^-1'
-    write (fid,'(/A10,A12,/A10,A12,/A10,I10,/A10,L10)') 'Regime:  ', this%regime, &
+    write (fid,'(/A10,A12,/A10,A12,/A10,I12,/A10,L12,/A10,I12)') &
+                                     'Regime:', this%regime, &
                                      'Sharpness:', this%sharpness,  &
                                      'Mode:', this%mode, &
-                                     'Full', this%full
+                                     'Full:', this%full, &
+                                     'Ierr:', this%ierr
+    
+    if (present(full) .and. full) then
+        write(fid, '(/A12,A12)') 'x', 'V(x)'
+        write(fid, '(200(F12.5,F12.5/))') this%xr, this%Vr
+    endif
+    
     
 end subroutine print_data
 
