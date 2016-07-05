@@ -17,7 +17,7 @@ integer, parameter  :: compmode = 1
 
 real(dp)            :: fse = 50.d0 !finite size effect for conductivity
 
-logical, parameter  :: debug = .true., timings = .false.
+logical, parameter  :: debug = .false., timings = .false., printheat = .true.
 
 type, public        :: HeatData
 
@@ -65,6 +65,12 @@ type, public        :: PointEmission
     !6: J_num_integ with interpolation
     !7: Cur: GTF
     integer                 :: counts(7)  !counting variables (same as timings)
+    
+    integer                 :: ierr !error indicator
+    !0 : everything went fine
+    !10+ getelec ierr : geterlec error in the first not full calculation
+    !20+ getelec ierr : getelec error in the second full calculation
+    
 end type PointEmission
 
 contains
@@ -77,7 +83,7 @@ subroutine get_heat(heat,poten)
         
     type(PointEmission)             :: point
                
-    integer                         :: i, j, k, icount, ptype !type of point 
+    integer                         :: i, j, k, icount, ptype, Nerrors !type of point 
     real(dp)                        :: dS, rho 
     !area corresponding at each gridpoint, resistivity
     real(dp), dimension(size(heat%tempinit)) :: Pnot, Icur, Ar, Pjoule
@@ -92,6 +98,8 @@ subroutine get_heat(heat,poten)
     heat%dx = poten%grid_spacing(3)
     point%Fmax = 0.d0
     point%Jmax = 0.d0
+    Nerrors = 0 !initialize to zero the number of encountered errors
+    
     do k = poten%nz-1, 2, -1
         icount=0
         Pnot(k) = 0.d0 !Not counts from zero
@@ -104,11 +112,11 @@ subroutine get_heat(heat,poten)
                 if (ptype == 0) then !surface point
                     point%Nstart = [i,j,k]
                     call emit_atpoint(poten,point)
-                    if (isnan(point%Jem) .or. isnan(point%heatNot) .or. &
-                                point%Jem < 0.d0 .or. point%Jem > 1.d10) then
-                    !case wrong J is coming out
-                        print *, 'WARNING: NaN or Inf found in emission calc'
+                    if (point%ierr /= 0) then !something wrong in J coming out
+                        if (debug) &
+                            print *, 'WARNING: NaN or Inf found in emission calc'
                         Icur(k) = Icur(k) + 1.d-200
+                        Nerrors = Nerrors + 1
                     else
                         Pnot(k) = Pnot(k) + point%heatNot !add Not heat 
                         Icur(k) = Icur(k) + point%Jem  ! add Current density to slice
@@ -137,6 +145,7 @@ subroutine get_heat(heat,poten)
             Icur(k) = Icur(k) * dS !multiply by elementary area to get current
             Pnot(k) = Pnot(k) * dS !multiply by elementary area to get Watts
             Pjoule(k) =  rho * heat%dx * (Icur(k)**2) / max(Ar(k), 1.d-100)
+            if (compmode >= 3) Pnot(k) = 0.d0 
             heat%hpower(k) =  (Pjoule(k) + Pnot(k)) / (Ar(k) * heat%dx)
             !Total heat density in SI units
         endif
@@ -150,20 +159,17 @@ subroutine get_heat(heat,poten)
 
     if (timings) print *, point%timings
     
-    if (debug) then
+    if (printheat) then
         print '(A15,F13.5,A10)', 'TipHeight =', &
             (heat%tipbounds(2) - heat%tipbounds(1)) * poten%grid_spacing(3), 'nm' 
         print '(A15,ES13.5,A10/A15,ES13.5,A10)', 'Icurbase =', &
                 Icur(heat%tipbounds(1)),  'A', &
-                'Pnottop =', Pnot(heat%tipbounds(2)), 'W'
-        print '(A15,ES13.5,A10/A15,ES13.5,A10)', 'Pjouletop =', &
-            Pjoule(heat%tipbounds(2)), 'W', &
-            'Ptotaltop =', heat%hpower(heat%tipbounds(2)), 'W/nm^3'
+                'Pnot =', sum(Pnot(heat%tipbounds(1) : heat%tipbounds(2))), 'W'
+        print '(A15,ES13.5,A10/A15,ES13.5,A10)', 'Pjoule =', &
+            sum(Pjoule(heat%tipbounds(1) : heat%tipbounds(2))), 'W', &
+            'Ptot@top =', heat%hpower(heat%tipbounds(2)), 'W/nm^3'
         print '(A15,F13.5,A10)', 'Fmax =', point%Fmax, 'V/nm'
-        if (isnan(Icur(heat%tipbounds(1)))) then
-            print *, 'Icur:', Icur(heat%tipbounds(1):heat%tipbounds(2))
-            print *, 'Pnot:', Pnot(heat%tipbounds(1):heat%tipbounds(2))
-        endif
+        print '(A15,I13)', 'Nerrors =', Nerrors
     endif
     
     contains
@@ -193,7 +199,7 @@ subroutine emit_atpoint(poten,point)
 ! carefull: every distance in this function is in nm 
     use bspline, only: db3val
     use std_mat, only: linspace
-    use GeTElEC, only: EmissionData, cur_dens, print_data
+    use GeTElEC, only: EmissionData, cur_dens, print_data, plot_barrier
     
     type(Potential), intent(in)         :: poten !potential data struct
     type(PointEmission), intent(inout)  :: point !point data struct
@@ -235,7 +241,7 @@ subroutine emit_atpoint(poten,point)
                  poten%phi(istart,jstart,kstart-1)]) / [dx, dy, dz]
     Fnorm = norm2(point%F)
     if (Fnorm > point%Fmax) point%Fmax = Fnorm
-    if (Fnorm >= point%Fmax * Flimratio) then
+    if (Fnorm >= point%Fmax * Flimratio .and. (compmode == 1 .or. compmode==3)) then
         direc = point%F / Fnorm
         rmax = 2.d0 * point%W / Fnorm
         do i = 1,10
@@ -277,7 +283,7 @@ subroutine emit_atpoint(poten,point)
         that%F = norm2(point%F)
         that%R = 1.d4
         that%gamma = 1.d0
-        that%mode = 0
+        that%mode = -1
     endif
     
     if (debug) then
@@ -293,23 +299,26 @@ subroutine emit_atpoint(poten,point)
     call cur_dens(that)
     
     if (that%ierr /= 0) then
-        print *, 'Error in getelec cur_dens. Printing from heating emit_atpoint'
-        call print_data(that, .true.)
-        print *,  
-        stop 'Terminating ...'
+        if (debug) then
+            print *, 'Error in getelec cur_dens 1st call. Printing data:'
+            print *, 'point:', point%Nstart
+            call print_data(that, .true.)
+        endif
+        that%Jem = 0.d0
+        that%heat = 0.d0
+        point%ierr = 10+that%ierr
     endif
     
-    if (that%Jem > point%Jmax * Jlimratio) then
-        that%full = .true.
-        call cur_dens(that)
-    endif
     
     if (that%ierr /= 0) then
-        print *, 'Error in getelec cur_dens. Printing from heating emit_atpoint'
-        call print_data(that, .true.) 
-        stop 'Terminating ...'
-        print *, 'point:', point%Nstart
-        print *, 'field:', Fnorm, 'rmax:', rmax, 'rline:', point%rline
+        if (debug) then
+            print *, 'Error in getelec cur_dens 2nd call. Printing data:'
+            print *, 'point:', point%Nstart
+            call print_data(that, .true.)
+        endif
+        that%Jem = 0.d0
+        that%heat = 0.d0
+        point%ierr = 20+that%ierr
     endif
     
     point%Jem = that%Jem

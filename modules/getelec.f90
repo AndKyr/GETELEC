@@ -38,9 +38,14 @@ integer, parameter                  :: knotx = 4, iknot = 0, idx = 0, Nmaxpoly =
                                        !Nmxpoly: max degree of the fitted polynomial
 logical, parameter                  :: spectroscopy= .false.
 !set to true if you want to output spectroscopy data
-logical, parameter                  :: debug = .true., verbose = .false. 
+logical, parameter                  :: debug = .true., verbose = .true. 
 !if debug, warnings are printed, parts are timed and calls are counted
 !if debug and verbose all warnings are printed
+
+integer, parameter                  :: fiderr = 987465
+character(len=14)                   :: errorfile = 'GetelecErr.txt'
+
+
 
 type, public    :: EmissionData
 !this type holds all the crucial data for the calculation of emission
@@ -92,7 +97,10 @@ type, public    :: EmissionData
         ! 0: Everything is fine and well - defined.
         ! 1: Mode should give xr, Vr and they are not allocated properly
         ! 2: Wrong input values for xr, Vr are given: non-monotonous
-        ! 4: Unknown error: some NaN appeared 
+        ! 4: Unknown error: some NaN appeared
+        ! 10+: Some error in dfzero 1st appeared. + gives the ierr of dfzero
+        ! 20+: Same as previous but for dfzero 2nd
+        ! 30+: Save as previous but for dqage 
         
     real(dp)                :: timings(5) = 0.d0
     !timing variables for cpu cost profiling
@@ -120,12 +128,14 @@ subroutine cur_dens(this)
     !preparing calculation according to calculation mode
     if (this%mode > 0 .or. this%mode < -1) then
         if (size(this%xr) < 2 .or. size(this%Vr) /= size(this%xr)) then
+            print *, 'Error: xr and Vr not proper sizes'
             this%ierr = 1
             return
         else
             do i = 2,size(this%xr)
                 if (this%xr(i) < this%xr(i-1) .or. this%Vr(i) < this%Vr(i-1)) then
                     this%ierr = 2
+                    print *, 'Error: non monotonously increasing xr or Vr'
                     return
                 endif
             enddo
@@ -209,11 +219,13 @@ subroutine cur_dens(this)
     
     this%heat = - this%heat
     
+    if (debug .and. verbose) call plot_barrier(this)
     
-    if (debug .and.(isnan(this%Jem) .or. isnan(this%heat) .or.this%Jem<1.d-201)) then
-        this%ierr = 4
-        call print_data(this,.true.)
-        !call plot_barrier(this)
+    if ((isnan(this%Jem) .or. isnan(this%heat) .or.this%Jem<1.d-201)) then
+        if (this%ierr == 0) this%ierr = 4
+        open(fiderr, file = errorfile, action = 'write', access = 'append')
+        call print_data(this, .true., fiderr)
+        close(fiderr)
     endif
     
     contains
@@ -251,13 +263,20 @@ subroutine gamow_general(this,full)
     xmaxallowed = 1.d3
     x = this%W / (this%F * this%R)!length of barrier indicator
     dw = 1.d-2
-    if (x>0.4d0) then !the second root is far away
-        if (this%mode /= 0 .or. this%mode /= -12) xmaxallowed = 10.d0
-        this%xmax = min(this%W * this%gamma / this%F, xmaxallowed)
-        !maximum length xmaxallowed
-    else  !the second root is close to the standard W/F
-        this%xmax = 2.d0 * this%W / this%F
+    
+    if (this%mode == 0 .or. this%mode == -12 .or. this%mode == -1) then
+    
+        if (x>0.4d0) then !the second root is far away
+            xmaxallowed = 10.d0
+            this%xmax = min(this%W * this%gamma / this%F, xmaxallowed)
+            !maximum length xmaxallowed
+        else  !the second root is close to the standard W/F
+            this%xmax = 2.d0 * this%W / this%F
+        endif
+    else
+        this%xmax = this%xr(size(this%xr))
     endif
+    
     
     if (x > xlim .and. this%mode /= -1) then !not x<<1, use numerical integration
         if (this%mode == 1) then    !setup spline interpolation
@@ -290,16 +309,6 @@ subroutine gamow_general(this,full)
     else !large radius, KX approximation usable
         call gamow_KX(this,full)
         this%sharpness='B'
-    endif
-    
-    if (debug) then
-        if (isnan(this%Gam) .or. isnan(this%maxbeta) .or. isnan (this%minbeta) &
-                    .or. isnan(this%Um)) then
-            print *, 'Printing from gamow_general()'
-            call print_data(this,.true.)
-!            call plot_barrier(this)
-        this%ierr = 4
-        endif
     endif
     
 end subroutine gamow_general
@@ -356,21 +365,14 @@ subroutine gamow_num(this,full)
     x2 = [this%xm, this%xmax]
     
     call dfzero(bar,x1(1),x1(2),x1(1),RtolRoot,AtolRoot,IFLAG) !first root
-    if (IFLAG /= 1) then
-        print *, 'error in barrier first root. IFLAG = ', IFLAG
-        call print_data(this,.true.)
-    endif
+    if (IFLAG /= 1) this%ierr = 10 + IFLAG
     
     call dfzero(bar,x2(1),x2(2),x2(1),RtolRoot,AtolRoot,IFLAG) !second root
-    if (IFLAG /= 1) then
-        print *, 'error in second barrier root. IFLAG = ', IFLAG
-        call print_data(this,.true.)
-    endif
+    if (IFLAG /= 1) this%ierr = 20 + IFLAG
     
     call dqage(sqrt_bar,x1(2),x2(1),AtolInt,RtolInt,2,maxint,G,ABSERR, &
     NEVAL,IER,ALIST,BLIST,RLIST,ELIST,IORD,LAST) !integrate
-    if (IER /= 0) print *, 'Warning: Error in integration dqage. IER = ', &
-            IER, 'G=', G, 'roots:', x1(2), x2(1)
+    if (IER /= 0) this%ierr = 30 + IER
     
     this%Gam = gg * G
     
@@ -698,7 +700,7 @@ subroutine print_data(this, full, filenum)
     type(EmissionData), intent(in)      :: this
     integer, intent(in), optional       :: filenum
     logical, intent(in), optional       :: full
-    integer                             :: fid
+    integer                             :: fid, i
     
     if (.not. present(filenum)) then
         fid = 6
@@ -725,8 +727,10 @@ subroutine print_data(this, full, filenum)
                                      'Ierr:', this%ierr
     
     if (present(full) .and. full) then
-        write(fid, '(/A12,A12)') 'x', 'V(x)'
-        write(fid, '(200(F12.5,F12.5/))') this%xr, this%Vr
+        write(fid, '(/A15,A15)') 'x', 'V(x)'
+        do i = 1, size(this%xr)
+            write(fid, '(F15.10,F15.10)') this%xr(i), this%Vr(i)
+        enddo
     endif
     
     
@@ -829,9 +833,8 @@ subroutine plot_barrier(this)
         where (Vplot < -1.d0) Vplot = -1.d0
         call plt%add_plot(this%xr,Vplot,label='$barrier points$', &
                     linestyle='r*',markersize = 10)
-    endif
-                    
-    call plt%savefig('png/barrierplot.png', pyfile='python/barrierplot.py')
+    endif 
+    call plt%savefig('barrierplot.png', pyfile='barrierplot.py')
     
 
     contains

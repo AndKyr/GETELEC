@@ -25,6 +25,9 @@ CINTERFACE = cobj/inter_comsol.o
 
 $(LIBSFULL): $(LIBSTATIC)
 	$(LINKLIBS) $@ $< $(LIBDEPS)
+	
+fromfile: bin/fromfile.exe data/barrierdata.dat
+	./bin/fromfile.exe
 
 ctest: bin/ctest.out
 	./bin/ctest.out
