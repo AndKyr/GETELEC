@@ -58,7 +58,7 @@ if (i >= 7) then
 endif
 
 
-if (this%mode /= 0) then
+if (this%mode > 0 .or. this%mode < -1) then
     allocate(this%xr(Nx), this%Vr(Nx))
     this%xr = linspace(0.d0,3.d0,Nx)
     this%Vr = (this%F * this%R * this%xr*(this%gamma - 1.d0) + this%F * this%xr**2) &
@@ -69,7 +69,6 @@ call cur_dens(this)
 call cpu_time(t2)
 call print_data(this,.true.)
 if (debug) then
-    call plot_barrier(this)
     print *, 'Timings: ', this%timings
     print *, 'total elapsed time:', t2-t1
 endif

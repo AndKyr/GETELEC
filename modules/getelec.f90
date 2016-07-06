@@ -38,7 +38,7 @@ integer, parameter                  :: knotx = 4, iknot = 0, idx = 0, Nmaxpoly =
                                        !Nmxpoly: max degree of the fitted polynomial
 logical, parameter                  :: spectroscopy= .false.
 !set to true if you want to output spectroscopy data
-logical, parameter                  :: debug = .true., verbose = .true. 
+logical, parameter                  :: debug = .false., verbose = .false. 
 !if debug, warnings are printed, parts are timed and calls are counted
 !if debug and verbose all warnings are printed
 
@@ -211,15 +211,27 @@ subroutine cur_dens(this)
     endif
     
     if (this%regime /= 'I') then
-        this%heat = zs * (this%kT**3) * ( ( (n*s + 1.d0) * Sigma(n) - DSigma(n)) * &
+        if (n > 5.d0) then
+            this%Jem = zs*pi* this%kT * exp(-this%Gam) & !Murphy-Good version of FN
+                / (this%maxbeta * sin(pi * this%maxbeta * this%kT))
+            this%heat = -zs*(pi**2) * (this%kT**2) * & !Nottingham at F regime
+                exp(-this%Gam)*cos(pi* this%maxbeta * this%kT)  &
+                / (this%maxbeta * (sin(pi * this%maxbeta * this%kT )**2))
+        else
+            this%heat = zs * (this%kT**3) * ( ( (n*s + 1.d0) * Sigma(n) - DSigma(n)) * &
                     exp(-n*s) + (n**3) * DSigma(1.d0/n) * exp(-s) )
-        this%Jem = zs * (this%kT**2) * ((n**2) * Sigma(1.d0/n) * exp(-s) &
+            this%Jem = zs * (this%kT**2) * ((n**2) * Sigma(1.d0/n) * exp(-s) &
                     + exp(-n*s) * Sigma(n))
+        endif
     endif
     
     this%heat = - this%heat
     
-    if (debug .and. verbose) call plot_barrier(this)
+    if (debug .and. verbose) then
+        call plot_barrier(this)
+        print '(A10, ES12.4/A10, ES12.4)', 'n =', n, 's =', s
+        print '(A10, ES12.4/A10, ES12.4)', 'Sig(n)', Sigma(n), 'Sig(1/n) =', Sigma(1/n)
+    endif
     
     if ((isnan(this%Jem) .or. isnan(this%heat) .or.this%Jem<1.d-201)) then
         if (this%ierr == 0) this%ierr = 4
@@ -267,7 +279,7 @@ subroutine gamow_general(this,full)
     if (this%mode == 0 .or. this%mode == -12 .or. this%mode == -1) then
     
         if (x>0.4d0) then !the second root is far away
-            xmaxallowed = 10.d0
+            xmaxallowed = 25.d0
             this%xmax = min(this%W * this%gamma / this%F, xmaxallowed)
             !maximum length xmaxallowed
         else  !the second root is close to the standard W/F
@@ -709,7 +721,7 @@ subroutine print_data(this, full, filenum)
     endif
 
     
-    write (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4)') 'F =', this%F, &
+    write (fid,'(//A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4)') 'F =', this%F, &
             'V/nm', 'R =', this%R, 'nm', 'gamma =', this%gamma
     write (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10)') 'W =', this%W, 'eV', &
             'kT =', this%kT, 'eV'
@@ -726,7 +738,7 @@ subroutine print_data(this, full, filenum)
                                      'Full:', this%full, &
                                      'Ierr:', this%ierr
     
-    if (present(full) .and. full) then
+    if (present(full) .and. full .and. allocated(this%xr)) then
         write(fid, '(/A15,A15)') 'x', 'V(x)'
         do i = 1, size(this%xr)
             write(fid, '(F15.10,F15.10)') this%xr(i), this%Vr(i)
@@ -862,7 +874,7 @@ subroutine plot_barrier(this)
                     (this%Vr(ixrm)-this%Vr(ixrm-1)) / (this%xr(ixrm)-this%xr(ixrm-1))
                 endif
                 V = this%W - Vinterp(1) - Q / (x + ( 0.5d0 * (x**2)) / this%R)
-            case (0,-12)
+            case (0,-12, -1)
             !use standard F,R,gamma model for the electrostatic potential
                 V = this%W - (this%F * this%R * x*(this%gamma - 1.d0)  &
                 + this%F * x**2) / (this%gamma * x + this%R * (this%gamma - 1.d0)) &

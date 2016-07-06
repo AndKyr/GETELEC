@@ -7,7 +7,7 @@ use std_mat, only: linspace
 implicit none
 
 integer,parameter       :: dp=8, Nf=2048, font=35
-real(dp), parameter     :: Fmin=0.4d0, Fmax=10.d0, T = 1.d3
+real(dp), parameter     :: Fmin=0.4d0, Fmax=15.d0, T = 600.0
 
 real(dp), dimension(Nf) :: Fi, Jfs, Jis, Jts, Jfb, Jib, Jtb, &
                            hfs, his, hts, hfb, hib, htb, Japp, happ, &

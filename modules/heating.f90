@@ -8,7 +8,7 @@ integer, parameter  :: kx = 4, ky = 4, kz = 4, iknot = 0  !interpolation paramet
 real(dp), parameter :: Jlimratio = 1.d-4, Flimratio = 0.2d0 
 !minimum current and field ratio to max for full calculation
 real(dp), parameter :: convergence_criterion = 1.d-15, workfunc = 4.5d0
-integer, parameter  :: compmode = 1
+integer, parameter  :: compmode = 4
 !mode of calculation for comparison purposes
 !1: full calculation with full implementation of getelec
 !2: forcing "blunt" calculation with GTF
@@ -282,8 +282,8 @@ subroutine emit_atpoint(poten,point)
     else
         that%F = norm2(point%F)
         that%R = 1.d4
-        that%gamma = 1.d0
-        that%mode = -1
+        that%gamma = 1.1d0
+        that%mode = 0
     endif
     
     if (debug) then
@@ -309,16 +309,20 @@ subroutine emit_atpoint(poten,point)
         point%ierr = 10+that%ierr
     endif
     
+    if (that%Jem > point%Jmax * Jlimratio .and. (compmode==1 .or. compmode==3)) then
+        that%full = .true.
+        call cur_dens(that)
     
-    if (that%ierr /= 0) then
-        if (debug) then
-            print *, 'Error in getelec cur_dens 2nd call. Printing data:'
-            print *, 'point:', point%Nstart
-            call print_data(that, .true.)
+        if (that%ierr /= 0) then
+            if (debug) then
+                print *, 'Error in getelec cur_dens 2nd call. Printing data:'
+                print *, 'point:', point%Nstart
+                call print_data(that, .true.)
+            endif
+            that%Jem = 0.d0
+            that%heat = 0.d0
+            point%ierr = 20+that%ierr
         endif
-        that%Jem = 0.d0
-        that%heat = 0.d0
-        point%ierr = 20+that%ierr
     endif
     
     point%Jem = that%Jem
@@ -339,11 +343,10 @@ subroutine heateq(heat)
 
     type(HeatData), intent(inout)   :: heat
 
-    real(dp), parameter     :: Cv = 3.45d-6, L = 2.44e-8 
+    real(dp), parameter     :: Cv = 3.45d-6, L = 2.44d-8 
     ! Cv in(W*fs/(nm^3 K)), L=Wiedemann-Frantz constant in W*Ohm/K^2
-    real(dp)                :: K, K1, K2, K3, cd, rho 
+    real(dp)                :: K, K1, rho 
     !K: Thermal conductivity, W/(nm K)
-    ! K2 = rho0/(Cv*T0)
     real(dp), dimension(heat%tipbounds(2)-heat%tipbounds(1) + 1) :: &
                                                             a, b, c, d, Told, Tnew
     !tridiagonal vectors and temporary temperature working space
@@ -369,9 +372,6 @@ subroutine heateq(heat)
             a(i) = -K1 * heat%dt / (heat%dx**2)
             b(i) = 1.d0 + 2.d0 * K1 * heat%dt / heat%dx**2
             c(i) = -K1 * heat%dt / (heat%dx**2)
-            ! Here we cheat a bit. Use old value of T as temperature when it 
-            ! should be avg. of new and old, since the resistivity is non-linear.
-            ! (Can't solve for the new temperature otherwise)
             d(i) = Told(i) + heat%dt * heat%hpower(i+heat%tipbounds(1)-1) / Cv
         enddo
             
@@ -478,7 +478,7 @@ function resistivity(T) result(rho)
         print *, "Temperature capped at 1200K. Your system may be melting!", T
 
         if(Ti<5) Ti = 5
-        if(Ti+1>120) Ti = 120
+        if(Ti>120) Ti = 120
     end if
     ! Resistivity is an exponential function, so use log to make it linear, 
     !do normal interpolation, and then make it exponential again
