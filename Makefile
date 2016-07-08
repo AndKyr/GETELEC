@@ -8,7 +8,7 @@ MODOBJ = modules/obj/std_mat.o modules/obj/bspline.o \
   modules/obj/heating.o
   
 DEPS  = -lslatec
-FFLAGS = -ffree-line-length-none -fbounds-check -Imod -O3 -fPIC 
+FFLAGS = -ffree-line-length-none -fbounds-check -Imod -O3 -fPIC
 CFLAGS = -O3 -fPIC
 
 LIBSTATIC=lib/libgetelec.a

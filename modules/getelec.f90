@@ -323,6 +323,11 @@ subroutine gamow_general(this,full)
         this%sharpness='B'
     endif
     
+    if (isnan(this%Gam) .or. isnan(new%Gam)) then
+        print *, 'new ='
+        call print_data(new)
+    endif
+    
 end subroutine gamow_general
 
 subroutine gamow_num(this,full)
@@ -373,8 +378,8 @@ subroutine gamow_num(this,full)
                 
     endif
 
-    x1 = [0.01d0, this%xm]
-    x2 = [this%xm, this%xmax]
+    x1 = [0.01d0, this%xm] !interval for search of first root
+    x2 = [this%xm, this%xmax] !interval for search of second root
     
     call dfzero(bar,x1(1),x1(2),x1(1),RtolRoot,AtolRoot,IFLAG) !first root
     if (IFLAG /= 1) this%ierr = 10 + IFLAG
@@ -382,9 +387,11 @@ subroutine gamow_num(this,full)
     call dfzero(bar,x2(1),x2(2),x2(1),RtolRoot,AtolRoot,IFLAG) !second root
     if (IFLAG /= 1) this%ierr = 20 + IFLAG
     
-    call dqage(sqrt_bar,x1(2),x2(1),AtolInt,RtolInt,2,maxint,G,ABSERR, &
+    call dqage(sqrt_bar,maxval(x1),minval(x2),AtolInt,RtolInt,2,maxint,G,ABSERR, &
     NEVAL,IER,ALIST,BLIST,RLIST,ELIST,IORD,LAST) !integrate
     if (IER /= 0) this%ierr = 30 + IER
+    !caution in the interval limits. x1, x2 are not necessarily returned from dfzero
+    !in increasing order. Use maxval, minval!!!
     
     this%Gam = gg * G
     

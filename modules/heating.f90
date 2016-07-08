@@ -8,7 +8,7 @@ integer, parameter  :: kx = 4, ky = 4, kz = 4, iknot = 0  !interpolation paramet
 real(dp), parameter :: Jlimratio = 1.d-4, Flimratio = 0.2d0 
 !minimum current and field ratio to max for full calculation
 real(dp), parameter :: convergence_criterion = 1.d-15, workfunc = 4.5d0
-integer, parameter  :: compmode = 4
+integer, parameter  :: compmode = 1
 !mode of calculation for comparison purposes
 !1: full calculation with full implementation of getelec
 !2: forcing "blunt" calculation with GTF
@@ -473,12 +473,12 @@ function resistivity(T) result(rho)
 
     Ti = nint(T)/10
 
-    if (Ti<5 .or. Ti+1>120) then
-        print *, "WARNING: Temperature out of range in resisitivity calculation."
-        print *, "Temperature capped at 1200K. Your system may be melting!", T
+    if (Ti < 5 .or. Ti > 119) then
+        if (debug) print *, &
+            "WARNING: Temperature out of range in resisitivity calculation. T =", T
 
-        if(Ti<5) Ti = 5
-        if(Ti>120) Ti = 120
+        Ti = min(Ti,119) ! cap up to 119
+        Ti = max(Ti,5)   ! bottom down to 5
     end if
     ! Resistivity is an exponential function, so use log to make it linear, 
     !do normal interpolation, and then make it exponential again

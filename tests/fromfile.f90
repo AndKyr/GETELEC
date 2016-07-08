@@ -17,9 +17,6 @@ do i = 1,Nx
     read(fid,*), x(i), V(i)
 enddo
 
-print *, x
-print *, V
-
 this%xr = x
 this%Vr = V
 this%W = 4.5d0
@@ -30,6 +27,6 @@ this%mode = -20
 
 call cur_dens(this)
 
-call print_data(this,.true.)
+call print_data(this)
 
 end program fromfile
