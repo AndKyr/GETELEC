@@ -83,7 +83,7 @@ subroutine get_heat(heat,poten)
         
     type(PointEmission)             :: point
                
-    integer                         :: i, j, k, icount, ptype, Nerrors !type of point 
+    integer                         :: i, j, k, icount, ptype, Nerrors, Ncorrect 
     real(dp)                        :: dS, rho 
     !area corresponding at each gridpoint, resistivity
     real(dp), dimension(size(heat%tempinit)) :: Pnot, Icur, Ar, Pjoule
@@ -99,7 +99,7 @@ subroutine get_heat(heat,poten)
     point%Fmax = 0.d0
     point%Jmax = 0.d0
     Nerrors = 0 !initialize to zero the number of encountered errors
-    
+    Ncorrect = 0
     do k = poten%nz-1, 2, -1
         icount=0
         Pnot(k) = 0.d0 !Not counts from zero
@@ -121,6 +121,7 @@ subroutine get_heat(heat,poten)
                         Pnot(k) = Pnot(k) + point%heatNot !add Not heat 
                         Icur(k) = Icur(k) + point%Jem  ! add Current density to slice
                         Ar(k) = Ar(k) + dS
+                        Ncorrect = Ncorrect + 1
                     endif
                     icount = icount + 1
                 else if (ptype == -1) then !interior point
@@ -169,7 +170,7 @@ subroutine get_heat(heat,poten)
             sum(Pjoule(heat%tipbounds(1) : heat%tipbounds(2))), 'W', &
             'Ptot@top =', heat%hpower(heat%tipbounds(2)), 'W/nm^3'
         print '(A15,F13.5,A10)', 'Fmax =', point%Fmax, 'V/nm'
-        print '(A15,I13)', 'Nerrors =', Nerrors
+        print '(A15,I13,A1,I13)', 'Nerr / Ncorr =', Nerrors , '/', Ncorrect
     endif
     
     contains
@@ -258,7 +259,7 @@ subroutine emit_atpoint(poten,point)
                 exit
             endif
             
-            if (Vmax > 1.2d0 * point%W) exit
+            if (Vmax > 1.1d0 * point%W) exit
             rmax = 1.3d0 * rmax 
         enddo
         if (i==11) badcontition = .true.

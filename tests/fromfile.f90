@@ -28,5 +28,6 @@ this%mode = -20
 call cur_dens(this)
 
 call print_data(this)
+call plot_barrier(this)
 
 end program fromfile

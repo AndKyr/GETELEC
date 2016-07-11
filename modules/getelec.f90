@@ -20,7 +20,7 @@ real(dp), parameter                 :: pi=acos(-1.d0), b=6.83089d0, zs=1.6183d-4
                                        gg=10.246d0, Q=0.35999d0, kBoltz =8.6173324d-5
                                        !universal constants
                                 
-real(dp), parameter                :: xlim = 0.18d0, gammalim = 1.d2
+real(dp), parameter                :: xlim = 0.18d0, gammalim = 1.d3
 real(dp), parameter                :: Jfitlim = 1.d-20,  varlim = 1.d-3 
 real(dp), parameter                :: epsfit = 1.d-4
 real(dp), parameter                :: nlimfield = 0.6d0,  nlimthermal = 2.3d0
@@ -93,7 +93,8 @@ type, public    :: EmissionData
         !-22 : fit to polynomial and fitting has already been done, Apoly is ready
         
     integer                 :: ierr = 0
-        ! Integer to store error information. 
+        ! Integer to store error information.
+        ! -1: invalid kT or W. Return zeroes without calculation 
         ! 0: Everything is fine and well - defined.
         ! 1: Mode should give xr, Vr and they are not allocated properly
         ! 2: Wrong input values for xr, Vr are given: non-monotonous
@@ -121,22 +122,51 @@ subroutine cur_dens(this)
     real(dp)        :: Jf, Jt, n, s, E0, dE, heatf, heatt, F2, Fend, var
     real(dp)        :: nlimf, nlimt   !limits for n to distinguish regimes
     real(dp)        :: t1,t2,t3 !timing variables
+    real(dp), allocatable :: xtemp(:), Vtemp(:)
     integer         :: i
     
     this%ierr = 0
+    if (this%W <= 0.d0 .or. this%kT < 0) then !check input validity
+        this%ierr = -1
+        this%Jem = 0.d0
+        this%heat = 0.d0
+        open(fiderr, file = errorfile, action ='write', access ='append')
+        call print_data(this, .true., fiderr)
+        close(fiderr)
+        return
+    endif
+    
     if (debug) call cpu_time(t1)
     !preparing calculation according to calculation mode
     if (this%mode > 0 .or. this%mode < -1) then
         if (size(this%xr) < 2 .or. size(this%Vr) /= size(this%xr)) then
             print *, 'Error: xr and Vr not proper sizes'
+            open(fiderr, file = errorfile, action = 'write', access = 'append')
+            call print_data(this, .true., fiderr)
+            close(fiderr)
             this%ierr = 1
             return
         else
             do i = 2,size(this%xr)
                 if (this%xr(i) < this%xr(i-1) .or. this%Vr(i) < this%Vr(i-1)) then
                     this%ierr = 2
-                    print *, 'Error: non monotonously increasing xr or Vr'
-                    return
+                    print *, 'Error: non monotonously increasing xr or Vr. i =', i
+                    open(fiderr, file = errorfile, action ='write', access ='append')
+                    call print_data(this, .true., fiderr)
+                    close(fiderr)
+                    if (this%Vr(i) > this%W) then !if length enough to cover barrier
+                        allocate(xtemp(i-1), Vtemp(i-1))
+                        xtemp = this%xr(1:i-1)
+                        Vtemp = this%Vr(1:i-1)
+                        deallocate(this%xr, this%Vr)!get rid of the last bad values
+                        allocate(this%xr(i-1), this%Vr(i-1))
+                        this%xr = xtemp
+                        this%Vr = Vtemp
+                        this%ierr = 0 !return to normal execution
+                        exit
+                    else
+                        return
+                    endif
                 endif
             enddo
         endif
@@ -748,7 +778,7 @@ subroutine print_data(this, full, filenum)
     if (present(full) .and. full .and. allocated(this%xr)) then
         write(fid, '(/A15,A15)') 'x', 'V(x)'
         do i = 1, size(this%xr)
-            write(fid, '(F15.10,F15.10)') this%xr(i), this%Vr(i)
+            write(fid, '(F15.10,A1,F15.10)') this%xr(i), ',' , this%Vr(i)
         enddo
     endif
     
@@ -951,6 +981,5 @@ subroutine cur_dens_c(passdata) bind(c)
     if (allocated(this%xr)) deallocate(this%xr, this%Vr)
 
 end subroutine cur_dens_c
-
 
 end module GeTElEC
