@@ -17,11 +17,15 @@ LIBSFULL = lib/libemission.a
 LIBSHARED = lib/libgetelec.so
 
 CINTERFACE = cobj/inter_comsol.o
-
-
+DIRS = bin cobj lib mod obj modules/obj
 	
 .PHONY: ccall current main spectroscopy
 .SECONDARY: *.o #$(MODOBJ)
+
+all: $(DIRS) $(LIBSFULL)
+
+$(DIRS):
+	mkdir -p $(DIRS)
 
 $(LIBSFULL): $(LIBSTATIC)
 	$(LINKLIBS) $@ $< $(LIBDEPS)

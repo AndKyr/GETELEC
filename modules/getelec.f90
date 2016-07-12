@@ -172,6 +172,9 @@ subroutine cur_dens(this)
         endif
     endif
     
+    if (isnan(this%kT) .or. this%kT < 1.d-5) this%kT = 0.025d0 ! Default value 300K
+    if (isnan(this%W) .or. this%W < 0.5d0) this%W = 4.5d0 ! Default value 4.5eV
+    
     if (this%mode < -1) then !fit external data
         
         if (this%mode == -10 .or. this%mode == -11) var = fitpot(this)

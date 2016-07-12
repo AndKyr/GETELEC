@@ -11,8 +11,8 @@ real(dp), parameter :: convergence_criterion = 1.d-15, workfunc = 4.5d0
 integer, parameter  :: compmode = 1
 !mode of calculation for comparison purposes
 !1: full calculation with full implementation of getelec
-!2: forcing "blunt" calculation with GTF
-!3: Not taking into account the Nottingham effect
+!2: forcing "blunt" calculation with GTF (takes into account Nottingham)
+!3: Not taking into account the Nottingham effect (only Joule heating)
 !4: both (2) and (3)
 
 real(dp)            :: fse = 50.d0 !finite size effect for conductivity
