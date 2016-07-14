@@ -170,7 +170,7 @@ subroutine get_heat(heat,poten)
             sum(Pjoule(heat%tipbounds(1) : heat%tipbounds(2))), 'W', &
             'Ptot@top =', heat%hpower(heat%tipbounds(2)), 'W/nm^3'
         print '(A15,F13.5,A10)', 'Fmax =', point%Fmax, 'V/nm'
-        print '(A15,I13,A1,I13)', 'Nerr / Ncorr =', Nerrors , '/', Ncorrect
+        print '(A15,I12,A1,I10)', 'Nerr / Ncorr =', Nerrors , '/', Ncorrect
     endif
     
     contains

@@ -126,7 +126,8 @@ subroutine cur_dens(this)
     integer         :: i
     
     this%ierr = 0
-    if (this%W <= 0.d0 .or. this%kT < 0) then !check input validity
+    if (this%W <= 0.d0 .or. this%kT < 0 .or. isnan(this%W) .or. isnan(this%kT)) then 
+        !check input validity
         this%ierr = -1
         this%Jem = 0.d0
         this%heat = 0.d0
@@ -171,9 +172,6 @@ subroutine cur_dens(this)
             enddo
         endif
     endif
-    
-    if (isnan(this%kT) .or. this%kT < 1.d-5) this%kT = 0.025d0 ! Default value 300K
-    if (isnan(this%W) .or. this%W < 0.5d0) this%W = 4.5d0 ! Default value 4.5eV
     
     if (this%mode < -1) then !fit external data
         
