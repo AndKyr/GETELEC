@@ -2,23 +2,33 @@ module heating
 
 implicit none
 
+!parameters that are set probably permanently and are not changed by user:
+
 integer, parameter  :: dp = 8, Nr = 64 !No of interpolation points in emission line
 real(dp), parameter :: kBoltz = 8.6173324d-5 !Boltzmann constant in eV/K
 integer, parameter  :: kx = 4, ky = 4, kz = 4, iknot = 0  !interpolation parameters
 real(dp), parameter :: Jlimratio = 1.d-4, Flimratio = 0.2d0 
 !minimum current and field ratio to max for full calculation
-real(dp), parameter :: convergence_criterion = 1.d-15, workfunc = 4.5d0
-integer, parameter  :: compmode = 1
+real(dp), parameter :: convergence_criterion = 1.d-15
+!convergence criterion for heat equation in case the steady state is asked
+logical, parameter  :: debug = .false., timings = .false., printheat = .true.
+
+
+
+!parameters changed by the user that and will be read from file on execution:
+
+real(dp), save      :: workfunc = 4.5d0, fse = 40.d0, tau = 500.d0
+!work function, finite size effect multiplyier, brendsen scaling velocity relax time
+integer, save       :: compmode = 1
 !mode of calculation for comparison purposes
 !1: full calculation with full implementation of getelec
 !2: forcing "blunt" calculation with GTF (takes into account Nottingham)
 !3: Not taking into account the Nottingham effect (only Joule heating)
 !4: both (2) and (3)
 
-real(dp)            :: fse = 50.d0 !finite size effect for conductivity
 
-logical, parameter  :: debug = .false., timings = .false., printheat = .true.
 
+!Definition of module types
 type, public        :: HeatData
 
     real(dp), allocatable       :: tempinit(:), tempfinal(:), hpower(:), J_avg(:)
@@ -73,8 +83,11 @@ type, public        :: PointEmission
     
 end type PointEmission
 
+
 contains
 
+
+!Module subroutines...
 subroutine get_heat(heat,poten)
 ! finds surfacepoints from poten, calculates current and Nottingham at each one
 ! and calculates deposited heat density at each grid z slice    
@@ -194,6 +207,7 @@ subroutine get_heat(heat,poten)
     end function classify_point
 
 end subroutine get_heat
+
 
 subroutine emit_atpoint(poten,point)
 ! calculates emission current and nottingham heating in a grid point
@@ -425,6 +439,7 @@ subroutine heateq(heat)
     
 end subroutine heateq
 
+
 subroutine poten_create(this, phi_in, gridspace)
     use bspline, only: db3ink
 
@@ -466,6 +481,7 @@ subroutine poten_create(this, phi_in, gridspace)
     endif
 end subroutine poten_create
 
+
 function resistivity(T) result(rho)
     real(dp), intent(in)    :: T !temperature
     real(dp)                :: rho
@@ -488,5 +504,93 @@ function resistivity(T) result(rho)
 
     rho = rho*10.d0 ! Convert to units Ohm*nm
 end function resistivity
+
+
+subroutine scale_vels(atoms, x1, heat, deltat_fs, delta, box)
+
+    ! rewritten by A. Kyritsakis. First version not including Electromigration
+    implicit none
+
+    type(HeatData), intent(in)  :: heat
+    
+    integer, intent(in)     :: atoms(:,:,:) !Atoms on the grid 
+    real(dp), intent(inout) :: x1(:) !< Atom velocities (parcas units)
+    real(dp), intent(in)    :: deltat_fs, delta, box(3) 
+    !Timestep (fs), Timestep inparcas units, Box size (Angstrom)
+
+
+    real(dp)                :: Ek, Ek2, lambdas, sumlambdas
+    !Ek: Kinetic energy a each k-slice
+    !Ek0: Kinetic energy corresponding to temperature at each slice
+    !lambdas: scaling factor for each k-slice
+    !sumlambdas: sum of lambdas to print the average over tip
+    integer             :: ilambdas ! counter of lambdas calcated for ti
+    integer             :: i, j, k, m, Nslice
+    !m: atom index on the xq velocities vector of parcas
+    !Nslice : No of atoms in each slice
+    
+    sumlambdas = 0.d0
+    ilambdas = 0
+
+    do k = heat%tipbounds(1), heat%tipbounds(2)
+        Ek = 0.d0 !put initial kinetic to zero for each slice
+        Nslice = 0
+        do j = 1, size(atoms,2)
+            do i = 1, size(atoms,1)
+                m = atoms(i, j, k)
+                if (m > 0) then !if grid point has atoms
+                    m = (m - 1)*3
+                    Ek = Ek + ( x1(m + 1)**2 * box(1)**2 + &
+                        x1(m + 2)**2 * box(2)**2 + &
+                        x1(m + 3)**2 * box(3)**2) / (2.d0 * delta**2)
+                    ! add kinetic energy of atom to total slice kinetic energy
+                    Nslice = Nslice + 1
+                endif
+            enddo
+        enddo
+        Ek2 = 1.5d0 * Nslice * kBoltz * heat%tempfinal(k) 
+        !Energy corresponding to slice temperature (Desired energy)
+        lambdas = sqrt(1.d0 + deltat_fs * (Ek2 / Ek - 1.d0) / tau )
+        !Scaling factor according to Brendsen theory
+            
+        if (Ek > 0) then ! if there were any atoms on the slice
+            do j = 1, size(atoms, 2) !loop over all atoms of the slice
+                do i = 1, size(atoms, 1)
+                    m = atoms(i, j, k)
+                    if (m > 0) then
+                        m = (m - 1)*3
+                        x1(m + 1 : m + 3) = x1(m + 1 : m + 3) * lambdas
+                    endif
+                    !scale velocities
+                enddo
+            enddo
+            sumlambdas = sumlambdas + lambdas !Add sumlambdas to keep track
+            ilambdas = ilambdas + 1
+        end if
+    enddo
+
+    if(debug) print '(A15,ES13.5)', '<lambas> =', sumlambdas / ilambdas
+
+end subroutine scale_vels
+
+subroutine read_params()
+
+    integer, parameter  :: fid = 549687
+    character(len=12)   :: str
+    
+    open(fid, file = 'in/heatparams.in', action = 'read')
+    
+    read(fid,'(2A)')
+    read(fid,*) str, workfunc
+    if (str(1:8)/='workfunc') stop 'ERROR: not correct order in heatparams'
+    read(fid,*) str, tau
+    if (str(1:3)/='tau') stop 'ERROR: not correct order in heatparams'
+    read(fid,*) str, compmode
+    if (str(1:8)/='compmode') stop 'ERROR: not correct order in heatparams'
+    close(fid)
+    
+    print *, 'heatparams read successfully', workfunc, tau, compmode
+
+end subroutine read_params
 
 end module heating
