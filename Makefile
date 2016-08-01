@@ -29,9 +29,9 @@ $(DIRS):
 
 $(LIBSFULL): $(LIBSTATIC)
 	$(LINKLIBS) $@ $< $(LIBDEPS)
-	
-fromfile: bin/fromfile.exe data/barrierdata.dat
-	./bin/fromfile.exe
+
+fitFN: bin/fitFN.exe
+	./bin/fitFN.exe
 
 ctest: bin/ctest.out
 	./bin/ctest.out

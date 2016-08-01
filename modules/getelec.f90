@@ -530,7 +530,10 @@ subroutine gamow_KX(this, full)
 end subroutine gamow_KX
 
 subroutine GTFinter(this)
-!calculates estimation of current according to GTF theory for intermediate regime
+!Calculates estimation of current according to GTF theory for intermediate regime.
+!It is used when a fast calculation is needed and we don't care about full numerical
+!calculation for all energies in the intermediate regime.
+
     type(EmissionData), intent(inout)   :: this
     
     ! calculated in single precision because slatec's polynomial root subroutine
@@ -982,5 +985,45 @@ subroutine cur_dens_c(passdata) bind(c)
     if (allocated(this%xr)) deallocate(this%xr, this%Vr)
 
 end subroutine cur_dens_c
+
+
+function fitFNplot(xdata, ydata, params, epsfit, Nmaxeval) result(var)
+
+    use Levenberg_Marquardt, only: nlinfit, Nmaxval
+
+    real(dp), intent(in)        :: xdata(:), ydata(:)
+    real(dp), intent(inout)     :: betas(3), works(3), radii(3), gammas(3), Temps(3)
+    
+    real(dp)                    :: var, epsfit
+    
+    
+    
+    p = [betas, works, radii, gamms, Temps]
+    var = nlinfit(fun, xdata, ydata, p, epsfit)
+    
+    betas =  p(1)
+    works = p(2)
+    radii = p(3)
+    gammas = p(4)
+    Temps = p(5)
+    
+    function fun(x, p) result(y)
+    
+        real(dp), intent(in)    :: x, p(:), pmin(:), pmax(:)
+        real(dp)                :: y, dpmin, dpmax
+        type(EmissionData)          :: this
+         
+        
+        this%F = p(1) / x !F = beta * V  = beta / xdata
+        this%W = p(2) !work function
+        this%R = p(3) !radius
+        this%gamma = p(4)  ! gamma
+        this%kT = kBoltz * p(5) !temperature
+        
+        call cur_dens(this)
+        y = log(this%Jem)
+        
+end function fitFNplot
+
 
 end module GeTElEC

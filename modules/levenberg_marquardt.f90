@@ -19,19 +19,22 @@ MODULE Levenberg_Marquardt
 ! amiller @ bigpond.net.au
 
 IMPLICIT NONE
-INTEGER, PARAMETER :: dp = SELECTED_REAL_KIND(12, 60), Nmaxval = 32
+INTEGER, PARAMETER :: dp = SELECTED_REAL_KIND(12, 60)
+integer, save      :: Nmaxval = 32
 
 PRIVATE
 PUBLIC :: dp, lmdif1, lmdif, lmder1, lmder, enorm, nlinfit
 
  CONTAINS
 
-function nlinfit(fun, xdata, ydata, p0, tol) result(var)
+function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol) result(var)
 !Added to module By Andreas Kyritsakis 31.03.2016
 !Simple function to data to non linear function
 
-    real(dp), intent(in)        :: xdata(:), ydata(:), tol !input x, y data and tol
+    real(dp), intent(in)        :: xdata(:), ydata(:), pmin(:), pmax(:), tol 
+    !input x, y data, vectors with min and max params, tolerance
     real(dp), intent(inout)     :: p0(:)    !in: initial guess, out:result
+    
     interface                               !user provided function to be fit
         pure function fun(x,p) result(y)
             implicit none
@@ -42,26 +45,45 @@ function nlinfit(fun, xdata, ydata, p0, tol) result(var)
         end function fun
     end interface
 
-    real(dp)                    :: var,fvec(size(xdata))
-    integer                     :: i,m,n,info,iwa(size(p0))
+    real(dp)                    :: var, fvec(size(xdata))
+    integer                     :: i, m, n, info, iwa(size(p0))
     
-    m=size(xdata)
-    n=size(p0)
+    m = size(xdata)
+    n = size(p0)
 
-    call lmdif1(fcn,m,n,p0,fvec,tol,info,iwa)
+    call lmdif1(fcn, m, n, p0, fvec, tol, info, iwa)
     var = sum(sqrt(fvec)/abs(ydata))/m
     
     contains
 
     subroutine fcn(m, n, p, fvec, iflag)
+        
         integer, intent(in)     :: m, n
         real(dp), intent(in)    :: p(:)
         real(dp), intent(inout) :: fvec(:)
         integer, intent(inout)  :: iflag
-
-        do i=1,m
-            fvec(i)=(fun(xdata(i),p)-ydata(i))**2
+        
+        real(dp), dimension(size(p))    :: dpmin, dpmax, peval, 
+        
+        dpmin = p / pmin
+        dpmax = pmax - p
+        
+        if minval(dpmin < 0.d0)
+        
+        do i = 1, n ! limit peval between pmin and pmax
+            peval(i) = max(p(i), pmin(i))
+            peval(i) = min(p(i), pmax(i))
         enddo
+        
+        multiplier = exp(sum(abs(log(peval / p))))
+
+        do i = 1, m
+            fvec(i) = (fun(xdata(i), p) - ydata(i))**2
+        enddo
+        
+        if (multiplier > (1.d0 + 1.d-10)) fvec = fvec * 1.d10 * multiplier
+        
+        
     end subroutine  
 end function nlinfit
 
