@@ -798,21 +798,28 @@ function fitpot(this)  result(var)
     
     type(EmissionData), intent(inout)   :: this
     
-    real(dp)                :: p(3), F2, Fend, var
+    real(dp)                :: p(3), F2, Fend, var, pmin(3), pmax(3)
     
     integer                 :: Nstart=3,i
     
+    pmin = [0.d0, 1.d-5, 1.d0]
+    pmax = [30.d0, 1.d4, 1.d5]
+    
     p(1) = (this%Vr(Nstart) - this%Vr(Nstart-1)) &
-            / (this%xr(Nstart) - this%xr(Nstart-1))
+            / (this%xr(Nstart) - this%xr(Nstart-1)) !guess for F (dV/dx @x=0)
     F2 = (this%Vr(Nstart+1) - this%Vr(Nstart)) / (this%xr(Nstart+1) -this%xr(Nstart))
+    !F at the second point
     Fend = (this%Vr(size(this%Vr)) - this%Vr(size(this%Vr) - 1)) / &
-            (this%xr(size(this%xr)) - this%xr(size(this%xr) - 1))
+            (this%xr(size(this%xr)) - this%xr(size(this%xr) - 1))!F at the end
     p(2) = abs(2.d0 / ((F2-p(1)) / (this%xr(Nstart) - this%xr(Nstart - 1))))
-    p(3) = p(1) / Fend
-    var = nlinfit(fun, this%xr, this%Vr, p, epsfit)
+    !estimation for R
+    p(3) = p(1) / Fend !estimation for gamma
+    var = nlinfit(fun, this%xr, this%Vr, p, pmin, pmax, epsfit)
     this%F = p(1)
     this%R = p(2)
     this%gamma = p(3)
+    
+    this%mode = -12 !set mode to show that fitting is done
 
     contains
 
@@ -987,29 +994,24 @@ subroutine cur_dens_c(passdata) bind(c)
 end subroutine cur_dens_c
 
 
-function fitFNplot(xdata, ydata, params, epsfit, Nmaxeval) result(var)
+function fitFNplot(xdata, ydata, params, pmin, pmax, epsfit, Nmaxeval) result(var)
 
     use Levenberg_Marquardt, only: nlinfit, Nmaxval
 
-    real(dp), intent(in)        :: xdata(:), ydata(:)
-    real(dp), intent(inout)     :: betas(3), works(3), radii(3), gammas(3), Temps(3)
+    real(dp), intent(in)        :: xdata(:), ydata(:), pmin(5), pmax(5)
+    real(dp), intent(inout)     :: params(5)
+    integer, intent(in)         :: Nmaxeval
     
     real(dp)                    :: var, epsfit
     
+    Nmaxval = Nmaxeval
+    var = nlinfit(fun, xdata, ydata, params, pmin, pmax, epsfit)
     
-    
-    p = [betas, works, radii, gamms, Temps]
-    var = nlinfit(fun, xdata, ydata, p, epsfit)
-    
-    betas =  p(1)
-    works = p(2)
-    radii = p(3)
-    gammas = p(4)
-    Temps = p(5)
+    contains
     
     function fun(x, p) result(y)
     
-        real(dp), intent(in)    :: x, p(:), pmin(:), pmax(:)
+        real(dp), intent(in)    :: x, p(:)
         real(dp)                :: y, dpmin, dpmax
         type(EmissionData)          :: this
          
@@ -1022,7 +1024,8 @@ function fitFNplot(xdata, ydata, params, epsfit, Nmaxeval) result(var)
         
         call cur_dens(this)
         y = log(this%Jem)
-        
+    end function fun
+         
 end function fitFNplot
 
 

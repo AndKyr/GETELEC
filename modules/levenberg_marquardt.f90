@@ -23,7 +23,7 @@ INTEGER, PARAMETER :: dp = SELECTED_REAL_KIND(12, 60)
 integer, save      :: Nmaxval = 32
 
 PRIVATE
-PUBLIC :: dp, lmdif1, lmdif, lmder1, lmder, enorm, nlinfit
+PUBLIC :: dp, lmdif1, lmdif, lmder1, lmder, enorm, nlinfit, Nmaxval
 
  CONTAINS
 
@@ -36,7 +36,7 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol) result(var)
     real(dp), intent(inout)     :: p0(:)    !in: initial guess, out:result
     
     interface                               !user provided function to be fit
-        pure function fun(x,p) result(y)
+        function fun(x,p) result(y)
             implicit none
             integer,parameter :: dp = selected_real_kind(12,60)
             real(dp), intent(in) :: x
@@ -63,12 +63,11 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol) result(var)
         real(dp), intent(inout) :: fvec(:)
         integer, intent(inout)  :: iflag
         
-        real(dp), dimension(size(p))    :: dpmin, dpmax, peval, 
+        real(dp), dimension(size(p))    :: dpmin, dpmax, peval
+        real(dp)                :: multiplier
         
         dpmin = p / pmin
         dpmax = pmax - p
-        
-        if minval(dpmin < 0.d0)
         
         do i = 1, n ! limit peval between pmin and pmax
             peval(i) = max(p(i), pmin(i))
@@ -83,8 +82,8 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol) result(var)
         
         if (multiplier > (1.d0 + 1.d-10)) fvec = fvec * 1.d10 * multiplier
         
-        
-    end subroutine  
+    end subroutine fcn
+
 end function nlinfit
 
 SUBROUTINE lmdif1(fcn, m, n, x, fvec, tol, info, iwa)
