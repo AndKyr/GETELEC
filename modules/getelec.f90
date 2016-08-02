@@ -20,7 +20,7 @@ real(dp), parameter                 :: pi=acos(-1.d0), b=6.83089d0, zs=1.6183d-4
                                        gg=10.246d0, Q=0.35999d0, kBoltz =8.6173324d-5
                                        !universal constants
                                 
-real(dp), parameter                :: xlim = 0.18d0, gammalim = 1.d3
+real(dp), parameter                :: xlim = 0.1d0, gammalim = 1.d3
 real(dp), parameter                :: Jfitlim = 1.d-20,  varlim = 1.d-3 
 real(dp), parameter                :: epsfit = 1.d-4
 real(dp), parameter                :: nlimfield = 0.6d0,  nlimthermal = 2.3d0
@@ -994,18 +994,19 @@ subroutine cur_dens_c(passdata) bind(c)
 end subroutine cur_dens_c
 
 
-function fitFNplot(xdata, ydata, params, pmin, pmax, epsfit, Nmaxeval) result(var)
+function fitFNplot(xdata, ydata, params, pmin, pmax, epsfit, Nmaxeval, yshift) result(var)
 
     use Levenberg_Marquardt, only: nlinfit, Nmaxval
 
     real(dp), intent(in)        :: xdata(:), ydata(:), pmin(5), pmax(5)
     real(dp), intent(inout)     :: params(5)
     integer, intent(in)         :: Nmaxeval
+    real(dp), intent(out)       :: yshift
     
     real(dp)                    :: var, epsfit
     
     Nmaxval = Nmaxeval
-    var = nlinfit(fun, xdata, ydata, params, pmin, pmax, epsfit)
+    var = nlinfit(fun, xdata, ydata, params, pmin, pmax, epsfit, .true., yshift)
     
     contains
     
@@ -1027,6 +1028,81 @@ function fitFNplot(xdata, ydata, params, pmin, pmax, epsfit, Nmaxeval) result(va
     end function fun
          
 end function fitFNplot
+
+
+function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, shift, yshift) result(var)
+!Added to module By Andreas Kyritsakis 31.03.2016
+!Simple function to data to non linear function
+
+    real(dp), intent(in)        :: xdata(:), ydata(:), pmin(:), pmax(:), tol 
+    !input x, y data, vectors with min and max params, tolerance
+    real(dp), intent(inout)     :: p0(:)    !in: initial guess, out:result
+    
+    logical, intent(in), optional   :: shift
+    real(dp), intent(out), optional :: yshift
+    
+    interface                               !user provided function to be fit
+        function fun(x,p) result(y)
+            implicit none
+            integer,parameter :: dp = selected_real_kind(12,60)
+            real(dp), intent(in) :: x
+            real(dp), intent(in) :: p(:)
+            real(dp)             :: y
+        end function fun
+    end interface
+
+    real(dp)                    :: var, fvec(size(xdata))
+    integer                     :: i, m, n, info, iwa(size(p0)), lwa
+    integer, save               :: Nvals = 0
+    real(dp)                    :: wa(size(p0))
+    
+    m = size(xdata)
+    n = size(p0)
+    lwa = n *(m + 5) + m
+
+    call DNLS1E(fcn, 1, m, n, p0, fvec, tol, 0,  info, iwa, wa, lwa)
+    var = sum(sqrt(fvec)/abs(ydata))/m
+    
+    print *, 'fit info:', info, 'tol = ', tol
+    print *, 'Nvals = ', Nvals
+    
+    contains
+
+    subroutine fcn(iflag, m, n, p, fvec, fjac, ldfjac)
+        
+        integer, intent(in)     :: m, n
+        real(dp), intent(in)    :: p(n)
+        real(dp), intent(inout) :: fvec(m), fjac
+        integer, intent(inout)  :: iflag, ldfjac
+        
+        real(dp)                :: peval(n)
+        real(dp)                :: multiplier, funeval
+        
+        yshift = 0.d0
+        do i = 1, n ! limit peval between pmin and pmax
+            peval(i) = max(p(i), pmin(i))
+            peval(i) = min(peval(i), pmax(i))
+        enddo
+        
+!        multiplier = exp(sum(abs(log(abs(peval / p)))))
+        multiplier  = sum(abs(peval - p))
+
+        do i = 1, m
+            funeval = fun(xdata(i), peval)
+            if (i==1 .and. present(shift) .and. shift) &
+                yshift = ydata(1) - funeval
+            fvec(i) = abs(funeval - ydata(i) + yshift)
+        enddo
+
+        if (multiplier > 1.d-10) &
+            fvec = fvec * 1.d2 * exp(multiplier)
+            
+        Nvals = Nvals + 1
+
+        
+    end subroutine fcn
+
+end function nlinfit
 
 
 end module GeTElEC

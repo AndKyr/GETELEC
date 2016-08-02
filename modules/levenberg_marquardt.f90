@@ -27,13 +27,16 @@ PUBLIC :: dp, lmdif1, lmdif, lmder1, lmder, enorm, nlinfit, Nmaxval
 
  CONTAINS
 
-function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol) result(var)
+function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, shift, yshift) result(var)
 !Added to module By Andreas Kyritsakis 31.03.2016
 !Simple function to data to non linear function
 
     real(dp), intent(in)        :: xdata(:), ydata(:), pmin(:), pmax(:), tol 
     !input x, y data, vectors with min and max params, tolerance
     real(dp), intent(inout)     :: p0(:)    !in: initial guess, out:result
+    
+    logical, intent(in), optional   :: shift
+    real(dp), intent(out), optional :: yshift
     
     interface                               !user provided function to be fit
         function fun(x,p) result(y)
@@ -47,12 +50,16 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol) result(var)
 
     real(dp)                    :: var, fvec(size(xdata))
     integer                     :: i, m, n, info, iwa(size(p0))
+    integer, save               :: Nvals = 0
     
     m = size(xdata)
     n = size(p0)
 
     call lmdif1(fcn, m, n, p0, fvec, tol, info, iwa)
     var = sum(sqrt(fvec)/abs(ydata))/m
+    
+    print *, 'fit info:', info, 'tol = ', tol
+    print *, 'Nvals = ', Nvals
     
     contains
 
@@ -63,24 +70,36 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol) result(var)
         real(dp), intent(inout) :: fvec(:)
         integer, intent(inout)  :: iflag
         
-        real(dp), dimension(size(p))    :: dpmin, dpmax, peval
-        real(dp)                :: multiplier
+        real(dp)                :: peval(size(p))
+        real(dp)                :: multiplier, funeval
         
-        dpmin = p / pmin
-        dpmax = pmax - p
-        
+        yshift = 0.d0
         do i = 1, n ! limit peval between pmin and pmax
             peval(i) = max(p(i), pmin(i))
-            peval(i) = min(p(i), pmax(i))
+            peval(i) = min(peval(i), pmax(i))
         enddo
         
-        multiplier = exp(sum(abs(log(peval / p))))
+!        multiplier = exp(sum(abs(log(abs(peval / p)))))
+        multiplier  = sum(abs(peval - p))
 
         do i = 1, m
-            fvec(i) = (fun(xdata(i), p) - ydata(i))**2
+            funeval = fun(xdata(i), peval)
+            if (i==1 .and. present(shift) .and. shift) &
+                yshift = ydata(1) - funeval
+            fvec(i) = abs(funeval - ydata(i) + yshift)
         enddo
         
-        if (multiplier > (1.d0 + 1.d-10)) fvec = fvec * 1.d10 * multiplier
+!        if (multiplier > (1.d0 + 1.d-10)) fvec = fvec * 1.d6 * multiplier
+        if (multiplier > 1.d-10) &
+            fvec = fvec * 1.d2 * exp(multiplier)
+            
+        Nvals = Nvals + 1
+        
+!        print *, 'multiplier:', multiplier
+!        print *, 'pnow:', p
+!        print *, 'peval:', peval
+!        print *, 'pmin:', pmin
+!        print *, 'pmax:', pmax 
         
     end subroutine fcn
 

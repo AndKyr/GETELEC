@@ -30,8 +30,8 @@ $(DIRS):
 $(LIBSFULL): $(LIBSTATIC)
 	$(LINKLIBS) $@ $< $(LIBDEPS)
 
-fitFN: bin/fitFN.exe
-	./bin/fitFN.exe
+fitFN: bin/fitFNplot.exe
+	./bin/fitFNplot.exe
 
 ctest: bin/ctest.out
 	./bin/ctest.out

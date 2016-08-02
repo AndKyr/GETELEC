@@ -1,6 +1,6 @@
 program fitFN
 
-use GeTElEc, only fitFNplot
+use GeTElEc, only: fitFNplot
 
 integer, parameter      :: fid = 549687
 
@@ -23,11 +23,15 @@ do i = 1, Ndata
     read (fid, *) xdata(i), ydata(i)
 enddo
 
+print *, xdata
+print *, ''
+print *, ydata
 
-var = fitFNplot(xdata,ydata,betas, works, radii, gammas, Temps)
 
-print *, 'result: [beta, W, R, gamma, T]: ', betas, works, radii, gammas, Temps
-print *, 'variance:', var
+!var = fitFNplot(xdata,ydata,betas, works, radii, gammas, Temps)
+
+!print *, 'result: [beta, W, R, gamma, T]: ', betas, works, radii, gammas, Temps
+!print *, 'variance:', var
 
 end program
 
