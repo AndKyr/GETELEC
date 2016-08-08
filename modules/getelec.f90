@@ -13,17 +13,17 @@ use std_mat, only: diff2, local_min, linspace
 
 implicit none
 
-integer, parameter                  :: Ny = 200, dp = 8, sp = 4
-                                       !Ny: length of special functions array
-                                       
-real(dp), parameter                 :: pi=acos(-1.d0), b=6.83089d0, zs=1.6183d-4, &
-                                       gg=10.246d0, Q=0.35999d0, kBoltz =8.6173324d-5
-                                       !universal constants
-                                
-real(dp), parameter                :: xlim = 0.1d0, gammalim = 1.d3
-real(dp), parameter                :: Jfitlim = 1.d-20,  varlim = 1.d-3 
-real(dp), parameter                :: epsfit = 1.d-4
-real(dp), parameter                :: nlimfield = 0.6d0,  nlimthermal = 2.3d0
+integer, parameter      :: Ny = 200, dp = 8, sp = 4
+                        !Ny: length of special functions array
+
+real(dp), parameter     :: pi = acos(-1.d0), b = 6.83089d0, zs = 1.6183d-4, &
+                           gg = 10.246d0, Q = 0.35999d0, kBoltz = 8.6173324d-5
+                        !universal constants
+
+real(dp), parameter     :: xlim = 0.1d0, gammalim = 1.d3
+real(dp), parameter     :: Jfitlim = 1.d-20,  varlim = 1.d-3 
+real(dp), parameter     :: epsfit = 1.d-4
+real(dp), parameter     :: nlimfield = 0.6d0,  nlimthermal = 2.3d0
 !xlim: limit that determines distinguishing between sharp regime (Numerical integral)
 !and blunt regime where KX approximation is used
 !varlim : limit of variance for the fitting approximation (has meaning for mode==-2)
@@ -33,16 +33,16 @@ real(dp), parameter                :: nlimfield = 0.6d0,  nlimthermal = 2.3d0
 !epspoly : accuracy required in polynomial fitting
 !nlimfield, nlimthermal are the limits for n to distinguish regimes
 
-integer, parameter                  :: knotx = 4, iknot = 0, idx = 0, Nmaxpoly = 10
-                                       !knotx: No of bspline knots. 
-                                       !Nmxpoly: max degree of the fitted polynomial
-logical, parameter                  :: spectroscopy= .false.
+integer, parameter      :: knotx = 4, iknot = 0, idx = 0, Nmaxpoly = 10
+                          !knotx: No of bspline knots. 
+                          !Nmxpoly: max degree of the fitted polynomial
+logical, parameter      :: spectroscopy= .false.
 !set to true if you want to output spectroscopy data
-logical, parameter                  :: debug = .false., verbose = .false. 
+logical, parameter      :: debug = .false., verbose = .false. 
 !if debug, warnings are printed, parts are timed and calls are counted
 !if debug and verbose all warnings are printed
 
-integer, parameter                  :: fiderr = 987465
+integer, parameter      :: fiderr = 987465
 character(len=14)                   :: errorfile = 'GetelecErr.txt'
 
 
@@ -833,7 +833,7 @@ function fitpot(this)  result(var)
 end function fitpot
 
 function fitpoly(this)  result(var)
-    !Fits V(x) data to polynomial
+    !Fits V(x) data to polynomial. Uses dpolfit from slatec.
 
     type(EmissionData), intent(inout)   :: this
     real(dp), dimension(size(this%xr))  :: ww, rr
@@ -841,11 +841,13 @@ function fitpoly(this)  result(var)
     integer                             :: ierr 
     
     ww(1) = -1.d0
-    eps = epsfit
+    eps = epsfit !don't insert module parameter into slatec f77 function
+    
     if ((size(this%Apoly)) /=  (3*size(this%xr) + 3*Nmaxpoly + 3)) then
         if (allocated(this%Apoly)) deallocate(this%Apoly)
         allocate (this%Apoly(3*size(this%xr) + 3*Nmaxpoly + 3))
     endif
+    !make sure that the arrays are allocated properly and have the correct size
     
     
     call dpolft(size(this%xr), this%xr, this%Vr, ww, Nmaxpoly, this%ndeg, eps,  &
@@ -996,7 +998,7 @@ end subroutine cur_dens_c
 
 function fitFNplot(xdata, ydata, params, pmin, pmax, epsfit, Nmaxeval, yshift) result(var)
 
-    use Levenberg_Marquardt, only: nlinfit, Nmaxval
+!    use Levenberg_Marquardt, only: nlinfit, Nmaxval
 
     real(dp), intent(in)        :: xdata(:), ydata(:), pmin(5), pmax(5)
     real(dp), intent(inout)     :: params(5)
@@ -1005,7 +1007,7 @@ function fitFNplot(xdata, ydata, params, pmin, pmax, epsfit, Nmaxeval, yshift) r
     
     real(dp)                    :: var, epsfit
     
-    Nmaxval = Nmaxeval
+!    Nmaxval = Nmaxeval
     var = nlinfit(fun, xdata, ydata, params, pmin, pmax, epsfit, .true., yshift)
     
     contains
@@ -1052,15 +1054,17 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, shift, yshift) result(v
     end interface
 
     real(dp)                    :: var, fvec(size(xdata))
-    integer                     :: i, m, n, info, iwa(size(p0)), lwa
+    integer                     :: i, m, n, info, iwa(size(p0)), lwa, iopt, nprint
     integer, save               :: Nvals = 0
-    real(dp)                    :: wa(size(p0))
+    real(dp)                    :: wa(size(p0) * (size(xdata) + 5) + size(xdata))
     
     m = size(xdata)
     n = size(p0)
     lwa = n *(m + 5) + m
+    iopt = 1
+    nprint = 0
 
-    call DNLS1E(fcn, 1, m, n, p0, fvec, tol, 0,  info, iwa, wa, lwa)
+    call DNLS1E(fcn, iopt, m, n, p0, fvec, tol, nprint,  info, iwa, wa, lwa)
     var = sum(sqrt(fvec)/abs(ydata))/m
     
     print *, 'fit info:', info, 'tol = ', tol
