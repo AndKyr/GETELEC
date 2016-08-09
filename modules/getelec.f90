@@ -793,7 +793,7 @@ end subroutine print_data
 function fitpot(this)  result(var)
     !Fits V(x) data to F,R,gamma standard potential using L-V
     !minimization module
-    use Levenberg_Marquardt, only: nlinfit
+!    use Levenberg_Marquardt, only: nlinfit
     
     
     type(EmissionData), intent(inout)   :: this
@@ -1053,7 +1053,7 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, shift, yshift) result(v
         end function fun
     end interface
 
-    real(dp)                    :: var, fvec(size(xdata))
+    real(dp)                    :: var, fvec(size(xdata)), yshiftloc
     integer                     :: i, m, n, info, iwa(size(p0)), lwa, iopt, nprint
     integer, save               :: Nvals = 0
     real(dp)                    :: wa(size(p0) * (size(xdata) + 5) + size(xdata))
@@ -1063,12 +1063,13 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, shift, yshift) result(v
     lwa = n *(m + 5) + m
     iopt = 1
     nprint = 0
-
+    
     call DNLS1E(fcn, iopt, m, n, p0, fvec, tol, nprint,  info, iwa, wa, lwa)
     var = sum(sqrt(fvec)/abs(ydata))/m
     
     print *, 'fit info:', info, 'tol = ', tol
     print *, 'Nvals = ', Nvals
+    if (present(yshift)) yshift = yshiftloc
     
     contains
 
@@ -1082,27 +1083,27 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, shift, yshift) result(v
         real(dp)                :: peval(n)
         real(dp)                :: multiplier, funeval
         
-        yshift = 0.d0
         do i = 1, n ! limit peval between pmin and pmax
             peval(i) = max(p(i), pmin(i))
             peval(i) = min(peval(i), pmax(i))
         enddo
         
-!        multiplier = exp(sum(abs(log(abs(peval / p)))))
         multiplier  = sum(abs(peval - p))
-
         do i = 1, m
             funeval = fun(xdata(i), peval)
-            if (i==1 .and. present(shift) .and. shift) &
-                yshift = ydata(1) - funeval
-            fvec(i) = abs(funeval - ydata(i) + yshift)
+            if (i==1 .and. present(shift) .and. shift) then
+                yshiftloc = ydata(i) - funeval !local variable for yshift
+            else
+                yshiftloc = 0.d0
+            endif
+            fvec(i) = abs(funeval - ydata(i) + yshiftloc)
         enddo
 
         if (multiplier > 1.d-10) &
             fvec = fvec * 1.d2 * exp(multiplier)
             
         Nvals = Nvals + 1
-
+        
         
     end subroutine fcn
 
