@@ -42,6 +42,9 @@ current: bin/current.exe
 main: bin/main.exe
 	./bin/main.exe
 	
+KXerror: bin/KXerror.exe
+	./bin/KXerror.exe
+	
 surfacepoints: bin/surfacepoints.exe
 	./bin/surfacepoints.exe
 

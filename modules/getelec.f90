@@ -1033,15 +1033,18 @@ end function fitFNplot
 
 
 function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, shift, yshift) result(var)
-!Added to module By Andreas Kyritsakis 31.03.2016
-!Simple function to data to non linear function
+!Fit data to arbitrary function by using the Levenberg-Marquardt algorithm
+!implemented in the dnls1e function in slatec. This implementation gives the option
+!to give extreme values for the fitted parameters and introduce a y-shift to match
+!the first value of the data. Handy in case there is an arbitrary adjustable additive
+!parameter as in the case of FN-plot analysis with the sigma prefactor.
 
     real(dp), intent(in)        :: xdata(:), ydata(:), pmin(:), pmax(:), tol 
     !input x, y data, vectors with min and max params, tolerance
     real(dp), intent(inout)     :: p0(:)    !in: initial guess, out:result
     
-    logical, intent(in), optional   :: shift
-    real(dp), intent(out), optional :: yshift
+    logical, intent(in), optional   :: shift !logical showing if y-shift is used
+    real(dp), intent(out), optional :: yshift !output the y-shift introduced.
     
     interface                               !user provided function to be fit
         function fun(x,p) result(y)
@@ -1103,7 +1106,6 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, shift, yshift) result(v
             fvec = fvec * 1.d2 * exp(multiplier)
             
         Nvals = Nvals + 1
-        
         
     end subroutine fcn
 
