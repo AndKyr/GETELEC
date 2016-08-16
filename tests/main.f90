@@ -6,8 +6,8 @@ use std_mat, only: linspace
 
 implicit none
 
-integer,parameter       :: dp=8, Nf=2048, font=35
-real(dp), parameter     :: Fmin=0.4d0, Fmax=15.d0, T = 600.0
+integer,parameter       :: dp=8, Nf=2048, font=40, lw = 3
+real(dp), parameter     :: Fmin=0.4d0, Fmax=14.d0, T = 1000.0
 
 real(dp), dimension(Nf) :: Fi, Jfs, Jis, Jts, Jfb, Jib, Jtb, &
                            hfs, his, hts, hfb, hib, htb, Japp, happ, &
@@ -18,12 +18,12 @@ real(dp)                :: Ri(3)
 type(EmissionData)      :: this
 type(pyplot)            :: plt1, plt2
 
-call plt1%initialize(grid=.true.,xlabel='$1/F [nm/V]$',ylabel='$J (A/nm^2)$', &
+call plt1%initialize(grid=.true.,xlabel='$1/F \ [nm/V]$',ylabel='$J \ [A/nm^2]$', &
             figsize=[20,15], font_size=font, &
             legend=.false.,axis_equal=.false., legend_fontsize=font, &
             xtick_labelsize=font,ytick_labelsize=font,axes_labelsize=font)
             
-call plt2%initialize(grid=.true.,xlabel='$1/F [nm/V]$',ylabel='$P_N (W/nm^2)$', &
+call plt2%initialize(grid=.true.,xlabel='$1/F \ [nm/V]$',ylabel='$P_N \ [W/nm^2]$', &
             figsize=[20,15], font_size=font, &
             legend=.false.,axis_equal=.false., legend_fontsize=font, &
             xtick_labelsize=font,ytick_labelsize=font,axes_labelsize=font)
@@ -87,9 +87,9 @@ do j = 1,3
                 Ftb(tb) = this%F
             endif
         endif
-    if (this%R > 5.d0) then
+    if (this%R > 0.d0) then
         this%full = .false.
-        this%mode = -1
+        this%mode = 0
         call cur_dens(this)
         Japp(i) = this%Jem
         happ(i) = this%heat
@@ -100,34 +100,34 @@ do j = 1,3
     if (this%R < 1.d2) then
               
         if (fs > 0) call plt1%add_plot(1./Ffs(1:fs), Jfs(1:fs), linestyle='b-', &
-                        label='fs', linewidth=2, yscale = 'log')
+                        label='fs', linewidth=lw, yscale = 'log')
         if (fb > 0) call plt1%add_plot(1./Ffb(1:fb), Jfb(1:fb), linestyle='b--', &
-                        yscale = 'log', label='fb', linewidth=2)
+                        yscale = 'log', label='fb', linewidth=lw)
         if (ib > 0) call plt1%add_plot(1./Fib(1:ib), Jib(1:ib), linestyle='k--', &
-                        yscale = 'log', label='ib', linewidth=2)                    
+                        yscale = 'log', label='ib', linewidth=lw)                    
         if (is > 0) call plt1%add_plot(1./Fis(1:is), Jis(1:is), linestyle='k-', &
-                        yscale = 'log', label='is', linewidth=2)
+                        yscale = 'log', label='is', linewidth=lw)
         if (tb > 0) call plt1%add_plot(1./Ftb(1:tb), Jtb(1:tb), linestyle='r--', &
-                        yscale = 'log', label='tb', linewidth=2)
+                        yscale = 'log', label='tb', linewidth=lw)
         if (ts > 0) call plt1%add_plot(1./Fts(1:ts), Jts(1:ts), linestyle='r-', &
-                        yscale = 'log', label='ts', linewidth=2)
+                        yscale = 'log', label='ts', linewidth=lw)
 
                               
         if (fs > 0) call plt2%add_plot(1./Ffs(1:fs), abs(hfs(1:fs)), linestyle='b-',&
-                        label='fs', linewidth=2, yscale = 'log')
+                        label='fs', linewidth=lw, yscale = 'log')
         if (fb > 0) call plt2%add_plot(1./Ffb(1:fb), abs(hfb(1:fb)),linestyle='b--',&
-                        yscale = 'log', label='fb', linewidth=2)
+                        yscale = 'log', label='fb', linewidth=lw)
         if (ib > 0) call plt2%add_plot(1./Fib(1:ib), abs(hib(1:ib)),linestyle='k--',&
-                        yscale = 'log', label='ib', linewidth=2)                    
+                        yscale = 'log', label='ib', linewidth=lw)                    
         if (is > 0) call plt2%add_plot(1./Fis(1:is), abs(his(1:is)), linestyle='k-',&
-                        yscale = 'log', label='is', linewidth=2)
+                        yscale = 'log', label='is', linewidth=lw)
         if (tb > 0) call plt2%add_plot(1./Ftb(1:tb), abs(htb(1:tb)),linestyle='r--',&
-                        yscale = 'log', label='tb', linewidth=2)
+                        yscale = 'log', label='tb', linewidth=lw)
         if (ts > 0) call plt2%add_plot(1./Fts(1:ts), abs(hts(1:ts)), linestyle='r-',&
-                        yscale = 'log', label='ts', linewidth=2)
+                        yscale = 'log', label='ts', linewidth=lw)
     endif
                     
-    if (this%R > 5.d0) then
+    if (this%R > 0.d0) then
         call plt1%add_plot(1/Fi,Japp,linestyle='m:', &
                         label='app',linewidth=2, yscale = 'log')
         call plt2%add_plot(1./Fi, abs(happ), linestyle='m:', label='app', &

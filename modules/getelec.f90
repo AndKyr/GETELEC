@@ -23,7 +23,7 @@ real(dp), parameter     :: pi = acos(-1.d0), b = 6.83089d0, zs = 1.6183d-4, &
 real(dp), parameter     :: xlim = 0.1d0, gammalim = 1.d3
 real(dp), parameter     :: Jfitlim = 1.d-20,  varlim = 1.d-3 
 real(dp), parameter     :: epsfit = 1.d-4
-real(dp), parameter     :: nlimfield = 0.6d0,  nlimthermal = 2.3d0
+real(dp), parameter     :: nlimfield = 0.6d0,  nlimthermal = 2.5d0
 !xlim: limit that determines distinguishing between sharp regime (Numerical integral)
 !and blunt regime where KX approximation is used
 !varlim : limit of variance for the fitting approximation (has meaning for mode==-2)
@@ -43,7 +43,7 @@ logical, parameter      :: debug = .false., verbose = .false.
 !if debug and verbose all warnings are printed
 
 integer, parameter      :: fiderr = 987465
-character(len=14)                   :: errorfile = 'GetelecErr.txt'
+character(len=14)       :: errorfile = 'GetelecErr.txt'
 
 
 
@@ -242,7 +242,8 @@ subroutine cur_dens(this)
     endif
     
     if (this%regime /= 'I') then
-        if (n > 5.d0) then
+        if (n > 5.d0) then !for n>5 use MG expressions. Approximations for Sigma
+                           ! misbehave  
             this%Jem = zs*pi* this%kT * exp(-this%Gam) & !Murphy-Good version of FN
                 / (this%maxbeta * sin(pi * this%maxbeta * this%kT))
             this%heat = -zs*(pi**2) * (this%kT**2) * & !Nottingham at F regime
@@ -712,8 +713,9 @@ subroutine J_num_integ(this)
     G(1:i+j) = [Gdown(i:1:-1),Gup(1:j)]!bring G vectors together and in correct order
     
     do k=1,i+j!integrate for nottingham effect
-        integrand = Ej * (insum + .5d0*dE / (1.d0 + exp(G(k)))) &
+        integrand = Ej * (insum + .5d0*dE / (1.d0 + exp(G(k)))) & 
                     / (1.d0 + exp(Ej/this%kT))
+        !.5d0 ... term is what remains from insum for ending trapezoid rule
         insum = insum + dE / (1.d0 + exp(G(k)))
         outsum = outsum + integrand
         if (spectroscopy) then

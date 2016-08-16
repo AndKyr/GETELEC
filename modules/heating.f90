@@ -11,7 +11,10 @@ real(dp), parameter :: Jlimratio = 1.d-4, Flimratio = 0.2d0
 !minimum current and field ratio to max for full calculation
 real(dp), parameter :: convergence_criterion = 1.d-15
 !convergence criterion for heat equation in case the steady state is asked
-logical, parameter  :: debug = .false., timings = .false., printheat = .true.
+logical, parameter  :: debug = .false., timings = .false., printheat = .true., &
+                        savedata = .true.
+                        
+integer, parameter  :: Nsavedata = 50
 
 
 
@@ -95,6 +98,8 @@ subroutine get_heat(heat,poten)
     type(HeatData), intent(inout)   :: heat !heat data inout
         
     type(PointEmission)             :: point
+    
+    integer, parameter              :: fid = 897465
                
     integer                         :: i, j, k, icount, ptype, Nerrors, Ncorrect 
     real(dp)                        :: dS, rho 
@@ -103,7 +108,9 @@ subroutine get_heat(heat,poten)
     !Not heat (W), Total Current through slice(Amps), Slice area (nm**2),
     !total heat density at slice(W / m^3), Joule heat at lattice(W)
     logical                         :: intip
-                                                 
+    integer, save                   :: Ncalls = 0
+
+                                                     
     dS = product(poten%grid_spacing(1:2))
     point%W = workfunc
     Icur = 0.d0
@@ -185,6 +192,24 @@ subroutine get_heat(heat,poten)
         print '(A15,F13.5,A10)', 'Fmax =', point%Fmax, 'V/nm'
         print '(A15,I12,A1,I10)', 'Nerr / Ncorr =', Nerrors , '/', Ncorrect
     endif
+    
+    if (savedata .and. mod(Ncalls,Nsavedata) == 0) then
+   
+        if(Ncalls == 0) then
+            open(fid,file='out/heatdata.dat', action='write', status='replace')
+            write (fid,*) 'Ncalls, Pjoule, Pnot, tempfinit, zi'
+        endif
+        
+        write (fid,*)
+        write(fid,*) Ncalls
+        write (fid,*) Pjoule(heat%tipbounds(1):heat%tipbounds(2))
+        write (fid,*) Pnot(heat%tipbounds(1):heat%tipbounds(2))
+        write (fid,*) heat%tempinit(heat%tipbounds(1):heat%tipbounds(2))
+        write (fid,*) &
+            [(poten%grid_spacing(3)*i, i=1,(1+heat%tipbounds(2)-heat%tipbounds(1)))]
+    endif
+
+    Ncalls = Ncalls + 1
     
     contains
     
