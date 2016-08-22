@@ -22,7 +22,7 @@ integer, parameter  :: Nsavedata = 50
 
 real(dp), save      :: workfunc = 4.5d0, fse = 40.d0, tau = 500.d0
 !work function, finite size effect multiplyier, brendsen scaling velocity relax time
-integer, save       :: compmode = 1
+integer, save       :: compmode = 1, Nsteps
 !mode of calculation for comparison purposes
 !1: full calculation with full implementation of getelec
 !2: forcing "blunt" calculation with GTF (takes into account Nottingham)
@@ -193,7 +193,7 @@ subroutine get_heat(heat,poten)
         print '(A15,I12,A1,I10)', 'Nerr / Ncorr =', Nerrors , '/', Ncorrect
     endif
     
-    if (savedata .and. mod(Ncalls,Nsavedata) == 0) then
+    if (savedata .and. mod(Nsteps,Nsavedata) == 0) then
    
         if(Ncalls == 0) then
             open(fid,file='out/heatdata.dat', action='write', status='replace')

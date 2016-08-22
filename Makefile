@@ -29,6 +29,9 @@ $(DIRS):
 
 $(LIBSFULL): $(LIBSTATIC)
 	$(LINKLIBS) $@ $< $(LIBDEPS)
+	
+varyingTemp: bin/varyingTemp.exe
+	./bin/varyingTemp.exe	
 
 fitFN: bin/fitFNplot.exe
 	./bin/fitFNplot.exe
