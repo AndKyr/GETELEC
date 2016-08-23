@@ -1,5 +1,5 @@
 module GeTElEC
-!******************
+!************************************************************************************
 ! General Tool for Electron Emission Calculations
 !Author: Andreas Kyritsakis, University of Helsinki, 2016
 !This module aims to calculate field emission current density and Nottingham effect 
@@ -7,45 +7,69 @@ module GeTElEC
 !is also collected from there. All the theory behind this module can be found in 
 !A. Kyritsakis, J. Xanthakis, J. Appl. Phys. 119, 045303 (2016); 
 !http://dx.doi.org/10.1063/1.4940721
-!*******************
+!************************************************************************************
 
 use std_mat, only: diff2, local_min, linspace
 
 implicit none
 
-integer, parameter      :: Ny = 200, dp = 8, sp = 4
-                        !Ny: length of special functions array
+private
+public :: cur_dens, cur_dens_c, print_data, EmissionData, plot_barrier, debug, dp
 
+!************************************************************************************
+!Global parameters not to be defined by the user
+
+integer, parameter      :: Ny = 200, dp = 8, sp = 4, fiderr = 987465, &
+                          iknot = 0, idx = 0, knotx = 4 , fidparams = 812327
+!Ny: length of special functions array
+!knotx: No of bspline knots.
+!idx, iknot: spline module parameters to bee kept 0
+!dp, sp: double and single precision parameters
+!fiderr: file id number for outputing error file 
 real(dp), parameter     :: pi = acos(-1.d0), b = 6.83089d0, zs = 1.6183d-4, &
                            gg = 10.246d0, Q = 0.35999d0, kBoltz = 8.6173324d-5
-                        !universal constants
+!b, gg: exponential constants for Gamow
+!kBoltz: Boltzmann constant
+!zs : sommerfeld constant
+! Q image potential constant
+! all universal constants are in units nm, eV, Α
 
-real(dp), parameter     :: xlim = 0.1d0, gammalim = 1.d3
-real(dp), parameter     :: Jfitlim = 1.d-20,  varlim = 1.d-3 
-real(dp), parameter     :: epsfit = 1.d-4
-real(dp), parameter     :: nlimfield = 0.6d0,  nlimthermal = 2.5d0, nmaxlim = 3.d0
+character(len=14), parameter   :: errorfile = 'GetelecErr.txt', &
+                                  paramfile = 'GetelecPar.txt'
+! names for the error output file and the parameters input file
+
+logical, parameter      :: debug = .true., verbose = .false.
+!if debug, warnings are printed, parts are timed and calls are counted 
+!if debug and verbose all warnings are printed and barrier is plotted
+
+!************************************************************************************
+!Global parameters that are defined by the user from the params.txt file 
+
+real(dp), save          :: xlim = 0.1d0, gammalim = 1.d3, Jfitlim = 1.d-20, &
+                           varlim = 1.d-3, epsfit = 1.d-4, nlimfield = 0.6d0, &
+                           nlimthermal = 2.5d0, nmaxlim = 3.d0                           
+integer, save           :: Nmaxpoly = 10
+logical, save           :: spectra= .false. 
+
 !xlim: limit that determines distinguishing between sharp regime (Numerical integral)
 !and blunt regime where KX approximation is used
-!varlim : limit of variance for the fitting approximation (has meaning for mode==-2)
+!nlimfield, nlimthermal are the limits for n to distinguish regimes
+!nmaxlim: the maximum acceptable Jensen's n, above which the MG version of the 
+!temperature corrected FN formula is used
+
+!gammalim : maximum acceptable gamma. above it KX is forced
 !Jfitlim : limit of current approximation above which interpolation is allowed
 !if J<Jfitlim fitting is forced
-!gammalim : maximum acceptable gamma. above it KX is forced
-!epspoly : accuracy required in polynomial fitting
-!nlimfield, nlimthermal are the limits for n to distinguish regimes
 
-integer, parameter      :: knotx = 4, iknot = 0, idx = 0, Nmaxpoly = 10
-                          !knotx: No of bspline knots. 
-                          !Nmxpoly: max degree of the fitted polynomial
-logical, parameter      :: spectroscopy= .false.
-!set to true if you want to output spectroscopy data
-logical, parameter      :: debug = .false., verbose = .false. 
-!if debug, warnings are printed, parts are timed and calls are counted
-!if debug and verbose all warnings are printed
+!epsfit : accuracy required in fittings
+!varlim : limit of variance for the fitting approximation (has meaning for mode==-2)
+!if the fitting variance is more than varlim we switch to spline mode
 
-integer, parameter      :: fiderr = 987465
-character(len=14)       :: errorfile = 'GetelecErr.txt'
+!Nmxpoly: max degree of the fitted polynomial
+!spectra: set to true if you want to output spectroscopy data  
 
-
+!************************************************************************************
+logical, save          :: readparams = .false.
 
 type, public    :: EmissionData
 !this type holds all the crucial data for the calculation of emission
@@ -72,7 +96,7 @@ type, public    :: EmissionData
         !bspline related parameters
 
     real(dp), allocatable   :: Apoly(:)
-    integer                 :: Ndeg
+    integer                 :: Ndeg !degree of polynomial fit
         ! polynomial fitting working and result array created by dpolfit
     
     integer                 :: mode = 0
@@ -112,7 +136,7 @@ type, public    :: EmissionData
     integer                 :: counts(5)  = 0
 end type EmissionData
 
-
+!************************************************************************************
 contains
 
 subroutine cur_dens(this)
@@ -125,6 +149,8 @@ subroutine cur_dens(this)
     real(dp)        :: t1,t2,t3 !timing variables
     real(dp), allocatable :: xtemp(:), Vtemp(:)
     integer         :: i
+    
+    if (.not. readparams) call read_params()
     
     this%ierr = 0
     if (this%W <= 0.d0 .or. this%kT < 0 .or. isnan(this%W) .or. isnan(this%kT)) then 
@@ -627,7 +653,7 @@ subroutine J_num_integ(this)
     integer                             :: j, i, k
 
     if (debug) call cpu_time(t1)
-    if (spectroscopy) then
+    if (spectra) then
         open(fidout,file='spectra.csv')
     endif
     this%Um = -1.d20
@@ -750,7 +776,7 @@ subroutine J_num_integ(this)
         !.5d0 ... term is what remains from insum for ending trapezoid rule
         insum = insum + dE / (1.d0 + exp(G(k)))
         outsum = outsum + integrand
-        if (spectroscopy) then
+        if (spectra) then
             write(fidout,*) Ej,',',integrand,',',integrand/Ej
         endif
         Ej = Ej + dE
@@ -758,7 +784,7 @@ subroutine J_num_integ(this)
 
     this%heat = zs * outsum * dE
     
-    if (spectroscopy) then
+    if (spectra) then
         close(fidout)
     endif
     
@@ -877,11 +903,19 @@ function fitpoly(this)  result(var)
     ww(1) = -1.d0
     eps = epsfit !don't insert module parameter into slatec f77 function
     
-    if ((size(this%Apoly)) /=  (3*size(this%xr) + 3*Nmaxpoly + 3)) then
+    if ((size(this%Apoly)) /=  (3*size(this%xr) + 3*Nmaxpoly + 3) .or. &
+        .not.(allocated(this%Apoly))) then
         if (allocated(this%Apoly)) deallocate(this%Apoly)
         allocate (this%Apoly(3*size(this%xr) + 3*Nmaxpoly + 3))
+        print *, 'reallocated'
     endif
     !make sure that the arrays are allocated properly and have the correct size
+    
+    print *, 'calling dpolfit'
+    print *, size(this%Apoly) , size(this%xr), size(this%Vr)
+    
+    print *, allocated(this%Apoly)
+!    print *, this%Vr
     
     
     call dpolft(size(this%xr), this%xr, this%Vr, ww, Nmaxpoly, this%ndeg, eps,  &
@@ -1011,13 +1045,20 @@ subroutine cur_dens_c(passdata) bind(c)
             !copy pointers to fortran from c
             call c_f_pointer(passdata%Vr, Vr_fptr, [passdata%Nr])
             
-            allocate(this%xr(passdata%Nr), this%Vr(passdata%Nr))!allocate object data
+            allocate(this%xr(passdata%Nr), this%Vr(passdata%Nr))
+                !allocate object data
             this%xr = xr_fptr
             this%Vr = Vr_fptr!copy c input data to object data
         endif
     endif
     
+!    print *, 'this before'
+!    call print_data(this, .true.)
+    
     call cur_dens(this)
+!    print *, 'this after'
+!    call print_data(this, .false.)
+    
     
     passdata%Jem = this%Jem
     passdata%heat = this%heat
@@ -1030,9 +1071,8 @@ subroutine cur_dens_c(passdata) bind(c)
 end subroutine cur_dens_c
 
 
-function fitFNplot(xdata, ydata, params, pmin, pmax, epsfit, Nmaxeval, yshift) result(var)
-
-!    use Levenberg_Marquardt, only: nlinfit, Nmaxval
+function fitFNplot(xdata, ydata, params, pmin, pmax, epsfit, Nmaxeval, yshift) &
+        result(var)
 
     real(dp), intent(in)        :: xdata(:), ydata(:), pmin(5), pmax(5)
     real(dp), intent(inout)     :: params(5)
@@ -1144,6 +1184,70 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, shift, yshift) result(v
     end subroutine fcn
 
 end function nlinfit
+
+subroutine read_params()
+
+    character(len=13)   :: str
+    logical             :: ex
+    integer             :: fid = fidparams
+    character(len=40), parameter   :: error = 'ERROR: not correct order in heatparams'
+    
+    inquire(file=paramfile, exist=ex)
+    if (.not. ex) then
+        print *, 'Parameters input file not found. Continuing with default vallues'
+        return
+    endif
+    
+    if (readparams) return
+    
+    open(fid, file = paramfile, action = 'read')
+    read(fid,'(2A)')
+    
+    read(fid,*) str, xlim
+    if (str(1:4)/='xlim') stop error
+    if (debug)  print *, 'xlim read'
+    
+    read(fid,*) str, nlimfield
+    if (str(1:9)/='nlimfield') stop error
+    if (debug)  print *, 'nlimfield read'
+    
+    read(fid,*) str, nlimthermal
+    if (str(1:11)/='nlimthermal') stop error
+    if (debug)  print *, 'nlimthermal read'
+    
+    read(fid,*) str, nmaxlim
+    if (str(1:7)/='nmaxlim') stop error
+    if (debug)  print *, 'nmaxlim read'
+    
+    read(fid,*) str, gammalim
+    if (str(1:8)/='gammalim') stop error
+    if (debug)  print *, 'gammalim read'
+    
+    read(fid,*) str, Jfitlim
+    if (str(1:7)/='Jfitlim') stop error
+    if (debug)  print *, 'Jfitlim read'
+    
+    read(fid,*) str, varlim
+    if (str(1:6)/='varlim') stop error
+    if (debug)  print *, 'varlim read'
+    
+    read(fid,*) str, epsfit
+    if (str(1:6)/='epsfit') stop error
+    if (debug)  print *, 'epsfit read'
+    
+    read(fid,*) str, Nmaxpoly
+    if (str(1:8)/='Nmaxpoly') stop error
+    if (debug)  print *, 'Nmaxpoly read'
+    
+    read(fid,*) str, spectra
+    if (str(1:7)/='spectra') stop error
+    if (debug)  print *, 'spectra read'
+    
+    close(fid)
+    
+    readparams = .true.
+
+end subroutine read_params
 
 
 end module GeTElEC

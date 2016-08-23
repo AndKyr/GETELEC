@@ -43,13 +43,16 @@ int eval(const char *func, int nArgs, const double **inReal, const double **inIm
 {
     int i, j;
     struct emission pass;
-    double x[nArgs - 1], V[nArgs - 1];
+    double *x, *V;
     
     if (strcmp("getelec", func) != 0) {
         error = "Unknown function";
         printf("%s", error);
         return 0;
     }
+    
+    x = malloc((nArgs - 1) * sizeof(double)) ;
+    V = malloc((nArgs - 1) * sizeof(double));
 
     for (i = 0; i < blockSize; i++) { //loop over blocksize different emission points
         pass.W = inImag[0][i]; //first imaginary Arg is the work function 
@@ -58,17 +61,20 @@ int eval(const char *func, int nArgs, const double **inReal, const double **inIm
             x[j-1] = inReal[j][i];
             V[j-1] = inImag[j][i];
         }
+        
         pass.xr = x;
         pass.Vr = V; 
         pass.mode = -21;
         pass.Nr = nArgs - 1;
         pass.full = 1;
-        
+
         cur_dens_c(&pass);
         
         outReal[i] = pass.Jem;
         outImag[i] = pass.heat;
+        
     }
-    
+    free(x);
+    free(V);    
     return 1;
 }

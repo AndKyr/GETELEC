@@ -9,7 +9,7 @@ MODOBJ = modules/obj/std_mat.o modules/obj/bspline.o \
   
 DEPS  = -lslatec
 FFLAGS = -ffree-line-length-none -fbounds-check -Imod -O3 -fPIC -Llib
-CFLAGS = -O3 -fPIC -Wall -Wextra
+CFLAGS = -fPIC #-Wall -Wextra
 
 LIBSTATIC=lib/libgetelec.a
 LIBDEPS = lib/libslatec.a
@@ -38,6 +38,9 @@ fitFN: bin/fitFNplot.exe
 
 ctest: bin/ctest.out
 	./bin/ctest.out
+	
+cmain: bin/cmain.out
+	./bin/cmain.out
 
 current: bin/current.exe
 	./bin/current.exe 5.0 4.5 800.0 5.0 -21 T

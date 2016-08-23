@@ -15,11 +15,9 @@ int main(){
         R = 5.0, gamma = 10.0, x, V;
     
     double *inReal[nArgs], *inImag[nArgs];
-    double outReal[blockSize], outImag[blockSize];
+    double *outReal, *outImag;
     
-    
-    printf("ok up to here\n");
-    
+       
     for(i=0; i<nArgs; i++){
         inReal[i] = malloc(blockSize * sizeof(double));
         inImag[i] = malloc(blockSize * sizeof(double));
@@ -37,8 +35,9 @@ int main(){
         }
     }
     
-    printf("ok up to here\n");
-    
+    outReal = malloc(blockSize * sizeof(double));
+    outImag = malloc(blockSize  * sizeof(double));
+        
     iflag = eval("getelec", nArgs, inReal, inImag, blockSize, outReal, outImag);
     for(i=0; i<blockSize; i++)
         printf("%d,\tCurrent: %4.7e, heat: %4.7e \n", i, outReal[i], outImag[i]);

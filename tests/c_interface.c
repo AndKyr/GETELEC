@@ -10,7 +10,7 @@ struct emission{
 
 extern void cur_dens_c(struct emission *data);
 
-int libfun(double W, double T, int Nr, double *x, double *V,
+int getelec_interface(double W, double T, int Nr, double *x, double *V,
             double *Jem, double *heat){
     
     struct emission data;
@@ -34,6 +34,5 @@ int libfun(double W, double T, int Nr, double *x, double *V,
     *heat = data.heat;
     return 0;
 }
-
 
 
