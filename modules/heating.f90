@@ -1,5 +1,9 @@
 module heating
 
+!module that connects GETELEC to HELMOD. Being input the potential on the grid, it 
+!gives the heating at each emitting point on a column-like tip. It also solves the
+!heat equation in 1-D.
+
 implicit none
 
 !parameters that are set probably permanently and are not changed by user:
@@ -12,9 +16,9 @@ real(dp), parameter :: Jlimratio = 1.d-4, Flimratio = 0.2d0
 real(dp), parameter :: convergence_criterion = 1.d-15
 !convergence criterion for heat equation in case the steady state is asked
 logical, parameter  :: debug = .false., timings = .false., printheat = .true., &
-                        savedata = .true.
+                        savedata = .true. !choose if heating data will be saved
                         
-integer, parameter  :: Nsavedata = 50
+integer, parameter  :: Nsavedata = 50 !save data every Nsavedata steps
 
 
 

@@ -17,6 +17,9 @@ int main(){
     double *inReal[nArgs], *inImag[nArgs];
     double outReal[blockSize], outImag[blockSize];
     
+    
+    printf("ok up to here\n");
+    
     for(i=0; i<nArgs; i++){
         inReal[i] = malloc(blockSize * sizeof(double));
         inImag[i] = malloc(blockSize * sizeof(double));
@@ -33,6 +36,8 @@ int main(){
             }
         }
     }
+    
+    printf("ok up to here\n");
     
     iflag = eval("getelec", nArgs, inReal, inImag, blockSize, outReal, outImag);
     for(i=0; i<blockSize; i++)

@@ -9,7 +9,7 @@ MODOBJ = modules/obj/std_mat.o modules/obj/bspline.o \
   
 DEPS  = -lslatec
 FFLAGS = -ffree-line-length-none -fbounds-check -Imod -O3 -fPIC -Llib
-CFLAGS = -O3 -fPIC
+CFLAGS = -O3 -fPIC -Wall -Wextra
 
 LIBSTATIC=lib/libgetelec.a
 LIBDEPS = lib/libslatec.a
@@ -47,12 +47,6 @@ main: bin/main.exe
 	
 KXerror: bin/KXerror.exe
 	./bin/KXerror.exe
-	
-surfacepoints: bin/surfacepoints.exe
-	./bin/surfacepoints.exe
-
-spectroscopy: bin/spectroscopy.exe
-	./bin/spectroscopy.exe
 
 $(LIBSHARED): $(CINTERFACE) $(LIBSTATIC) 
 	$(CC) -fPIC -shared -o $@ $^ $(DEPS)    
@@ -76,4 +70,5 @@ modules/obj/%.o : modules/%.f90
 	$(FC) $(FFLAGS) -Jmod -c $< -o $@ 
 
 clean:
-	rm -rf bin/* obj/* lib/* modules/obj/* *.a *.so *.o
+	rm -rf bin/* obj/* lib/*.so lib/libgetelec.a lib/libemission.a modules/obj/* \
+		cobj/*.o 
