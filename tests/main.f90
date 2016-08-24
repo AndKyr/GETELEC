@@ -149,9 +149,9 @@ do j = 1,3
         
 enddo
 
-call plt1%savefig('png/Jplot.png', pyfile='python/Jplot2.py')                    
-call plt2%savefig('png/heatplot.png', pyfile='python/heatplot2.py')
-if (DE) call plt3%savefig('png/DE.png', pyfile='python/DEplot.py')
+call plt1%savefig('png/Jplot.png', pyfile='python/Jplot2.plt.py')                    
+call plt2%savefig('png/heatplot.png', pyfile='python/heatplot2.plt.py')
+if (DE) call plt3%savefig('png/DE.png', pyfile='python/DEplot.plt.py')
 
 
 !call print_data(this)

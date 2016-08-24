@@ -49,7 +49,7 @@ enddo
 
 call plt%add_plot(xdata, ycalc + yshift, label='$fitted$', linestyle='r-', linewidth=2)
 
-call plt%savefig('barrierplot.png', pyfile='barrierplot.py')
+call plt%savefig('barrierplot.png', pyfile='barrierplot.plt.py')
 
 
     contains

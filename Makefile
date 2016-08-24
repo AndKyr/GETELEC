@@ -4,25 +4,24 @@ AR=ar rcs
 LINKLIBS = ar -rcT
 
 MODOBJ = modules/obj/std_mat.o modules/obj/bspline.o \
-  modules/obj/levenberg_marquardt.o modules/obj/pyplot_mod.o modules/obj/getelec.o \
-  modules/obj/heating.o
+  modules/obj/pyplot_mod.o modules/obj/getelec.o
   
 DEPS  = -lslatec
 FFLAGS = -ffree-line-length-none -fbounds-check -Imod -O3 -fPIC -Llib
-CFLAGS = -fPIC #-Wall -Wextra
+CFLAGS = -O3 -fPIC -Imodules#-Wall -Wextra
 
 LIBSTATIC=lib/libgetelec.a
 LIBDEPS = lib/libslatec.a
 LIBSFULL = lib/libemission.a
 LIBSHARED = lib/libgetelec.so
 
-CINTERFACE = cobj/inter_comsol.o
-DIRS = bin cobj lib mod obj modules/obj
+CINTERFACE = modules/cobj/c_interface.o
+DIRS = bin cobj mod obj modules/obj modules/cobj
 	
 .PHONY: ccall current main spectroscopy
 .SECONDARY: *.o #$(MODOBJ)
 
-all: $(DIRS) $(LIBSFULL)
+all: $(DIRS) $(LIBSFULL) $(LIBSHARED)
 
 $(DIRS):
 	mkdir -p $(DIRS)
@@ -50,6 +49,7 @@ main: bin/main.exe
 	
 KXerror: bin/KXerror.exe
 	./bin/KXerror.exe
+	
 
 $(LIBSHARED): $(CINTERFACE) $(LIBSTATIC) 
 	$(CC) -fPIC -shared -o $@ $^ $(DEPS)    
@@ -71,6 +71,9 @@ obj/%.o : $(MODOBJ) tests/%.f90
 
 modules/obj/%.o : modules/%.f90
 	$(FC) $(FFLAGS) -Jmod -c $< -o $@ 
+	
+modules/cobj/%.o : modules/%.c
+	$(CC) $(CFLAGS) $^ -c -o $@ 
 
 clean:
 	rm -rf bin/* obj/* lib/*.so lib/libgetelec.a lib/libemission.a modules/obj/* \

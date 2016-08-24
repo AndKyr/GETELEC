@@ -14,7 +14,7 @@ use std_mat, only: diff2, local_min, linspace
 implicit none
 
 private
-public :: cur_dens, cur_dens_c, print_data, EmissionData, plot_barrier, debug, dp
+public :: cur_dens, C_wrapper, print_data, EmissionData, plot_barrier, debug, dp
 
 !************************************************************************************
 !Global parameters not to be defined by the user
@@ -38,7 +38,7 @@ character(len=14), parameter   :: errorfile = 'GetelecErr.txt', &
                                   paramfile = 'GetelecPar.txt'
 ! names for the error output file and the parameters input file
 
-logical, parameter      :: debug = .true., verbose = .false.
+logical, parameter      :: debug = .false., verbose = .false.
 !if debug, warnings are printed, parts are timed and calls are counted 
 !if debug and verbose all warnings are printed and barrier is plotted
 
@@ -49,7 +49,7 @@ real(dp), save          :: xlim = 0.1d0, gammalim = 1.d3, Jfitlim = 1.d-20, &
                            varlim = 1.d-3, epsfit = 1.d-4, nlimfield = 0.6d0, &
                            nlimthermal = 2.5d0, nmaxlim = 3.d0                           
 integer, save           :: Nmaxpoly = 10
-logical, save           :: spectra= .false. 
+logical, save           :: spectra= .false., firstcall = .false. 
 
 !xlim: limit that determines distinguishing between sharp regime (Numerical integral)
 !and blunt regime where KX approximation is used
@@ -150,7 +150,13 @@ subroutine cur_dens(this)
     real(dp), allocatable :: xtemp(:), Vtemp(:)
     integer         :: i
     
-    if (.not. readparams) call read_params()
+    if (debug) then
+        call cpu_time(t1)
+        print *, 'entering cur_dens'
+        call print_data(this)
+    endif
+    
+    if ((.not. readparams) .and. firstcall) call read_params()
     
     this%ierr = 0
     if (this%W <= 0.d0 .or. this%kT < 0 .or. isnan(this%W) .or. isnan(this%kT)) then 
@@ -164,7 +170,7 @@ subroutine cur_dens(this)
         return
     endif
     
-    if (debug) call cpu_time(t1)
+
     !preparing calculation according to calculation mode
     if (this%mode > 0 .or. this%mode < -1) then
         if (size(this%xr) < 2 .or. size(this%Vr) /= size(this%xr)) then
@@ -199,7 +205,7 @@ subroutine cur_dens(this)
             enddo
         endif
     endif
-    
+      
     if (this%mode < -1) then !fit external data
         
         if (this%mode == -10 .or. this%mode == -11) var = fitpot(this)
@@ -289,7 +295,8 @@ subroutine cur_dens(this)
     if (debug .and. verbose) then
         call plot_barrier(this)
         print '(A10, ES12.4/A10, ES12.4)', 'n =', n, 's =', s
-        print '(A10, ES12.4/A10, ES12.4)', 'Sig(n)', Sigma(n), 'Sig(1/n) =', Sigma(1/n)
+        print '(A10, ES12.4/A10, ES12.4)', 'Sig(n)', Sigma(n), &
+                'Sig(1/n) =', Sigma(1/n)
     endif
     
     if ((isnan(this%Jem) .or. isnan(this%heat) .or.this%Jem<1.d-201)) then
@@ -907,19 +914,12 @@ function fitpoly(this)  result(var)
         .not.(allocated(this%Apoly))) then
         if (allocated(this%Apoly)) deallocate(this%Apoly)
         allocate (this%Apoly(3*size(this%xr) + 3*Nmaxpoly + 3))
-        print *, 'reallocated'
     endif
     !make sure that the arrays are allocated properly and have the correct size
-    
-    print *, 'calling dpolfit'
-    print *, size(this%Apoly) , size(this%xr), size(this%Vr)
-    
-    print *, allocated(this%Apoly)
-!    print *, this%Vr
-    
-    
+    if (debug) print *, 'entering dpolfit. size(Apoly)=', size(this%Apoly) 
     call dpolft(size(this%xr), this%xr, this%Vr, ww, Nmaxpoly, this%ndeg, eps,  &
                 rr, ierr, this%Apoly)
+    if(debug) print *, 'exiting dpolfit' 
     var = eps
     this%mode = -22
     
@@ -946,7 +946,7 @@ subroutine plot_barrier(this)
     
     x = linspace(1.d-4,this%xmax,Nx)
     ixrm = size(this%xr)
-    print *, 'the mode is :' , this%mode
+    if (debug) print *, 'the mode is :' , this%mode
     do i =1, Nx
         Ubar(i) = bar(x(i))
         Ubar(i) = max(Ubar(i),-1.d0) 
@@ -964,7 +964,7 @@ subroutine plot_barrier(this)
         call plt%add_plot(this%xr,Vplot,label='$barrier points$', &
                     linestyle='r*',markersize = 10)
     endif 
-    call plt%savefig('barrierplot.png', pyfile='barrierplot.py')
+    call plt%savefig('barrierplot.png', pyfile='barrierplot.plot.py')
     
 
     contains
@@ -1017,7 +1017,14 @@ subroutine desetroy(this)
     
 end subroutine desetroy
 
-subroutine cur_dens_c(passdata) bind(c)
+subroutine C_wrapper(passdata, ifun) bind(c)
+! a wrapper to be able to call getelec functions from C language
+! passdata is a C struct corresponding to the EmissionData type
+! ifun gives which getelec subroutine will be called on the specific data struct
+! case ifun = 0: cur_dens(), 
+! case ifun = 1: print_data(),
+! case ifun = 2: plot_barrier()   
+
     use iso_c_binding  
                                                   
     type, bind(c)   :: cstruct
@@ -1025,21 +1032,30 @@ subroutine cur_dens_c(passdata) bind(c)
         real(c_double)      :: Jem, heat !ouput parameters
         type(c_ptr)         :: xr, Vr     !input vectors
         character(c_char)   :: regime, sharp  !output chars showing regimes
-        integer(c_int)      :: Nr, full, mode !len of vectors xr, Vr and full
+        integer(c_int)      :: Nr, full, mode, ierr !len of vectors xr, Vr and full
     end type cstruct
 
     type(cstruct), intent(inout)    :: passdata
+    integer(c_int), intent(in), value :: ifun
    
     real(c_double), pointer         :: xr_fptr(:), Vr_fptr(:)
     type(EmissionData)              :: this
     
+    !copy the members of the c struct to the fortran type
     this%F = passdata%F; this%W = passdata%W; this%R = passdata%R; 
     this%kT = kBoltz * passdata%Temp; this%gamma = passdata%gamma; 
     this%mode = passdata%mode; this%full = .not. (passdata%full == 0)
+    this%Jem = passdata%Jem; this%heat = passdata%heat
+    this%ierr = passdata%ierr; this%regime = passdata%regime
+    this%sharpness = passdata%sharp
     
-    if (this%mode /= 0 .or. this%mode /= -1) then
+    
+
+    if (this%mode /= 0 .and. this%mode /= -1) then
         if (passdata%Nr == 0) then
-            stop 'Error: Incompatible mode with length of potential array'
+            print *, 'Nr = ', passdata%Nr
+            call print_data(this)
+            stop 'Error: C_wrapper. Incompatible mode with length of potential array'
         else
             call c_f_pointer(passdata%xr, xr_fptr, [passdata%Nr])
             !copy pointers to fortran from c
@@ -1051,24 +1067,31 @@ subroutine cur_dens_c(passdata) bind(c)
             this%Vr = Vr_fptr!copy c input data to object data
         endif
     endif
-    
-!    print *, 'this before'
-!    call print_data(this, .true.)
-    
-    call cur_dens(this)
-!    print *, 'this after'
-!    call print_data(this, .false.)
-    
-    
-    passdata%Jem = this%Jem
-    passdata%heat = this%heat
-    passdata%regime = this%regime
-    passdata%sharp = this%sharpness
-    if(debug) call print_data(this)
-    
+
+
+    select case (ifun)
+        case (0)
+            call cur_dens(this)
+            passdata%Jem = this%Jem
+            passdata%heat = this%heat
+            passdata%regime = this%regime
+            passdata%sharp = this%sharpness
+            passdata%ierr = this%ierr
+        case (1)
+            call cur_dens(this)
+            call print_data(this)
+        case(2)
+            call cur_dens(this)
+            call plot_barrier(this)
+        case default
+            print *, 'Error: invalid ifun in C_wrapper. ifun = ', ifun
+            return
+    end select
+
+
     if (allocated(this%xr)) deallocate(this%xr, this%Vr)
 
-end subroutine cur_dens_c
+end subroutine C_wrapper
 
 
 function fitFNplot(xdata, ydata, params, pmin, pmax, epsfit, Nmaxeval, yshift) &
@@ -1190,11 +1213,11 @@ subroutine read_params()
     character(len=13)   :: str
     logical             :: ex
     integer             :: fid = fidparams
-    character(len=40), parameter   :: error = 'ERROR: not correct order in heatparams'
+    character(len=40), parameter  :: error = 'ERROR: not correct order in heatparams'
     
     inquire(file=paramfile, exist=ex)
     if (.not. ex) then
-        print *, 'Parameters input file not found. Continuing with default vallues'
+        print *, 'GETELEC: Parameters input file not found. Default values used.'
         return
     endif
     

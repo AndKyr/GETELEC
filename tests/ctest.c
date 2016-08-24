@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "getelec.h"
 
-extern int eval(const char *func, int nArgs, double **inReeal,
-                 double **inImag, int blockSize, double *outReal, 
-                double *outImag);
+//extern int eval(const char *func, int nArgs, double **inReeal,
+                 //double **inImag, int blockSize, double *outReal, 
+                //double *outImag);
 
 int main(){
     const int nArgs = 33, blockSize = 5;
@@ -39,8 +40,19 @@ int main(){
     outImag = malloc(blockSize  * sizeof(double));
         
     iflag = eval("getelec", nArgs, inReal, inImag, blockSize, outReal, outImag);
-    for(i=0; i<blockSize; i++)
+    for(i=0; i<blockSize; i++){
+        printf("Called comsol wrapper from C successfully. Results:\n");
         printf("%d,\tCurrent: %4.7e, heat: %4.7e \n", i, outReal[i], outImag[i]);
+    }
+        
+    for(i=0; i<nArgs; i++){
+        free(inReal[i]);
+        free(inImag[i]);
+    }
+    free(outReal);
+    free(outImag);
+    
+    
     
     return 0;
 }

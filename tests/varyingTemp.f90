@@ -48,6 +48,6 @@ do j = 1,3
 enddo
     
 
-call plt%savefig('png/varytemp.png', pyfile='python/varytemp.py')                    
+call plt%savefig('png/varytemp.png', pyfile='python/varytemp.plt.py')                    
 
 end program

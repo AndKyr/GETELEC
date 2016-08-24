@@ -12,5 +12,5 @@
 *.pyc
 *.a
 *.so
-*.py
+*.plot.py
 

@@ -6,35 +6,7 @@ implicit none
 integer, parameter      ::dp=8
 
 contains
-
-subroutine plot1(xdata,ydata)
-    real(dp), intent(in):: xdata(:),ydata(:)
-
-    integer, parameter:: fidx=2365689,fidy=24685945
-
-    open(fidx,file='xdata.csv')
-    open(fidy,file='ydata.csv')
-    write(fidx,"(es22.15)") xdata
-    write(fidy,"(es22.15)") ydata
-    call system('python plot.py')
-    close(fidx)
-    close(fidy)
-end subroutine
-
-subroutine plot(xdata,ydata)
-    real(dp), intent(in):: xdata(:,:),ydata(:,:)
-
-    integer, parameter:: fidx=2365689,fidy=24685945
-
-    open(fidx,file='xdata.csv')
-    open(fidy,file='ydata.csv')
-    call csvprint(fidx,xdata)
-    call csvprint(fidy,ydata)
-    call system('python ../plot.py')
-    close(fidx)
-    close(fidy)
-end subroutine
-    
+   
 subroutine csvprint(fileunit,dataarr)
     ! write real numbers to a CSV file
     integer, intent(in)     :: fileunit
@@ -65,6 +37,7 @@ subroutine csvread(fileunit,dataarr,rows,cols)
 end subroutine csvread
 
 pure function linspace(a,b,N) result(x)
+    !produces the same as standard linspace function of matlab or numpy
     real(dp), intent(in)    ::a,b
     integer, intent(in)     ::N
     real(dp)                :: dx,x(N)
@@ -77,6 +50,7 @@ pure function linspace(a,b,N) result(x)
 end function linspace
 
 pure function logspace(a,b,N) result(x)
+    !the same as linspace but logarithmic scale
     double precision,intent(in)::a,b
     integer,intent(in) ::N
     double precision :: dlogx,logx(N),x(N)

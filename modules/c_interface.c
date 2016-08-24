@@ -1,6 +1,23 @@
-/* A C interface for interoperability of GeTElEC with COMSOL. The comsol name of the
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include "getelec.h"
+
+//external function from getelec fortran module doing all the connection
+extern void c_wrapper(struct emission * data, int ifun);
+
+//the three basic call subroutines of getelec working on struct emission
+int cur_dens_c(struct emission *data){c_wrapper(data,0); return 0;}
+int print_data_c(struct emission *data){c_wrapper(data,1); return 0;}
+int plot_data_c(struct emission *data){c_wrapper(data,2); return 0;}
+
+
+
+/***********************************************************************************
+ * Comsol interface functions.
+ * Interface for interoperability of GeTElEC with COMSOL. The comsol name of the
  * external function should be "getelec". 
- * 
  * nArgs-1 is the number of potential points given for each emission point. 
  * Each inReal array column contains the x points on the line outside each 
  * emission point (each emission point corresponds to a different column).
@@ -14,34 +31,15 @@
  * the number of columns of the arrays.
  * 
  * On output the blockSize length vectors outReal and outImag contain the resulting
- * current density and nottingham heat correspondingly */
-
-#include <stdio.h>
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
-
-
-struct emission{
-    double F, W, R, gamma, Temp;//input parameters
-    double Jem, heat; //ouptut parameters
-    double *xr, *Vr;// input vectors
-    char regime, sharp; //ouput characters showing regimes
-    int Nr, full, mode; //length of vectors xr ,Vt, and logical for full calculation 
-};
-
-extern void cur_dens_c(struct emission * data);
-              
-static const char *error = NULL;
-
+ * current density and nottingham heat correspondingly 
+ * *********************************************************************************/           
 int init(const char *str) { return 1; }
-
 const char * getLastError() { return error; }
-
+ 
 int eval(const char *func, int nArgs, const double **inReal, const double **inImag,
-            int blockSize, double *outReal, double *outImag)
-{
-    int i, j;
+            int blockSize, double *outReal, double *outImag){
+//Main calling function for comsol
+    int i, j, iout;
     struct emission pass;
     double *x, *V;
     
@@ -78,3 +76,7 @@ int eval(const char *func, int nArgs, const double **inReal, const double **inIm
     free(V);    
     return 1;
 }
+
+
+
+
