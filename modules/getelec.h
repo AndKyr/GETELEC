@@ -13,7 +13,7 @@ extern void c_wrapper(struct emission * , int );
 
 //the three basic call subroutines of getelec working on struct emission
 int cur_dens_c(struct emission *);
-int print_data_c(struct emission *);
+int print_data_c(struct emission *, int);
 int plot_data_c(struct emission *);
 
 //functions needed for comsol          

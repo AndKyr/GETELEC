@@ -9,10 +9,12 @@ extern void c_wrapper(struct emission * data, int ifun);
 
 //the three basic call subroutines of getelec working on struct emission
 int cur_dens_c(struct emission *data){c_wrapper(data,0); return 0;}
-int print_data_c(struct emission *data){c_wrapper(data,1); return 0;}
-int plot_data_c(struct emission *data){c_wrapper(data,2); return 0;}
-
-
+int print_data_c(struct emission *data, int full){
+    if (full) c_wrapper(data,2);//print in full mode
+    else c_wrapper(data,1); //print only scalar data
+    return 0;
+}    
+int plot_data_c(struct emission *data){c_wrapper(data,3); return 0;}
 
 /***********************************************************************************
  * Comsol interface functions.

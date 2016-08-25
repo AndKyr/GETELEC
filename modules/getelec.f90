@@ -1023,7 +1023,8 @@ subroutine C_wrapper(passdata, ifun) bind(c)
 ! ifun gives which getelec subroutine will be called on the specific data struct
 ! case ifun = 0: cur_dens(), 
 ! case ifun = 1: print_data(),
-! case ifun = 2: plot_barrier()   
+! case ifun = 2: print_data(full = .true.)
+! case ifun = 3: plot_barrier()   
 
     use iso_c_binding  
                                                   
@@ -1050,7 +1051,6 @@ subroutine C_wrapper(passdata, ifun) bind(c)
     this%sharpness = passdata%sharp
     
     
-
     if (this%mode /= 0 .and. this%mode /= -1) then
         if (passdata%Nr == 0) then
             print *, 'Nr = ', passdata%Nr
@@ -1067,27 +1067,29 @@ subroutine C_wrapper(passdata, ifun) bind(c)
             this%Vr = Vr_fptr!copy c input data to object data
         endif
     endif
-
+    
+!    call print_data(this,.true.)
+    
+    call cur_dens(this)
+    passdata%Jem = this%Jem
+    passdata%heat = this%heat
+    passdata%regime = this%regime
+    passdata%sharp = this%sharpness
+    passdata%ierr = this%ierr
 
     select case (ifun)
         case (0)
-            call cur_dens(this)
-            passdata%Jem = this%Jem
-            passdata%heat = this%heat
-            passdata%regime = this%regime
-            passdata%sharp = this%sharpness
-            passdata%ierr = this%ierr
+            continue
         case (1)
-            call cur_dens(this)
             call print_data(this)
-        case(2)
-            call cur_dens(this)
+        case (2)
+            call print_data(this,.true.)
+        case (3)
             call plot_barrier(this)
         case default
             print *, 'Error: invalid ifun in C_wrapper. ifun = ', ifun
             return
     end select
-
 
     if (allocated(this%xr)) deallocate(this%xr, this%Vr)
 

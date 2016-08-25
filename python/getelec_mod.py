@@ -1,10 +1,14 @@
 import ctypes as ct
 import numpy as np
+import scipy.optimize as opt
 
 ct.cdll.LoadLibrary("lib/libgetelec.so")
 getelec = ct.CDLL("lib/libgetelec.so")
 
 class Emission(ct.Structure):
+    """This contains all the interchange information for emission calculation
+    with getelec. To create it use the standard constructor. The xr and Vr attributes
+    are passed via a numpy array as np.ctypes.as_ctypes(xr)."""
     _fields_ = [("F", ct.c_double),
                 ("W", ct.c_double),
                 ("R", ct.c_double),
@@ -21,21 +25,52 @@ class Emission(ct.Structure):
                 ("mode", ct.c_int),
                 ("ierr", ct.c_int)
                 ]
-                
+    
     def cur_dens(self):
         return getelec.cur_dens_c(ct.byref(self))
     
-    def print_data(self):
-        return getelec.print_data_c(ct.byref(self))
-        
+    def print_data(self,full = False):#print the data 
+        if (full):
+            return getelec.print_data_c(ct.byref(self),ct.c_int(1))
+        else:
+            return getelec.print_data_c(ct.byref(self),ct.c_int(0))
+    
     def plot_data(self):
-        return getelec.plot_data(ct.byref(self))
+        return getelec.plot_data_c(ct.byref(self))
 
- 
-this = Emission(5.,4.7,5.,10.,500.,0.,0.,None,None,'t','t', 0, 0, 0, 0)
+def emit (F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300.):
+    this =   Emission(F,W,R,gamma,Temp,0.,0.,None,None,'r','r',0,0,0,0)
+    this.cur_dens()
+    if (this.ierr == 0):
+        return (this.Jem, this.heat)
+    else:
+        print 'Error: ierr = ', this.ierr
+        return (1.e-200,1.e-200)
+        
+def MLplot (xfn, beta = 1., W = 4.5, R = 5., gamma = 10., Temp = 300.):
+    yfn = np.empty([len(xfn)])
+    for i in range(len(xfn)):
+        F = beta / xfn[i]
+        out = emit(F,W,R,gamma,Temp)
+        yfn[i] = np.log(out[0])    
+    return yfn
+    
+def fitML (xML, yML, F0 = [1.e-3, 5., 20.], W0 = [2.5, 4.5, 5.5], \
+            R0 = [1., 5., 100.], gamma0 = [2., 10., 100.], \
+            Temp0 = [100., 350., 1200. ]):
+    """ tries to fit xML, yML experimental data to the GETELEC model """
+    meanFmac = np.mean(1./xML)
+    minFmac = min(1./xML)
+    maxFmac = max(1./xML)
+    beta0 = [F0[0]*minFmac, F0[1] * meanFmac, F0[2] * maxFmac]
+    
+    popt,pcov = opt.curve_fit (f = MLplot, xdata = xML, ydata = yML, \
+                p0 =      [beta0[1], W0[1], R0[1], gamma0[1], Temp0[1]], \
+                bounds = ([beta0[0], W0[0], R0[0], gamma0[0], Temp0[0] ], \
+                          [beta0[2], W0[2], R0[2], gamma0[2], Temp0[2] ] ),
+                check_finite = True, method = 'trm')
+    return (popt,pcov)
 
 
 
-this.cur_dens()
-print this.Jem, this.heat
-this.print_data()
+    
