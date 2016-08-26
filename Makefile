@@ -18,10 +18,12 @@ LIBSHARED = lib/libgetelec.so
 CINTERFACE = modules/cobj/c_interface.o
 DIRS = bin cobj mod obj modules/obj modules/cobj
 	
-.PHONY: ccall current main spectroscopy
+.PHONY: tests varyingTemp ctest KXerror
 .SECONDARY: *.o #$(MODOBJ)
 
-all: $(DIRS) $(LIBSFULL) $(LIBSHARED)
+all: $(DIRS) $(LIBSFULL) $(LIBSHARED) bin/main.exe bin/current.exe
+
+tests: varyingTemp ctest KXerror 
 
 $(DIRS):
 	mkdir -p $(DIRS)
@@ -32,20 +34,8 @@ $(LIBSFULL): $(LIBSTATIC)
 varyingTemp: bin/varyingTemp.exe
 	./bin/varyingTemp.exe	
 
-fitFN: bin/fitFNplot.exe
-	./bin/fitFNplot.exe
-
 ctest: bin/ctest.out
 	./bin/ctest.out
-	
-cmain: bin/cmain.out
-	./bin/cmain.out
-
-current: bin/current.exe
-	./bin/current.exe 5.0 4.5 800.0 5.0 -21 T
-
-main: bin/main.exe
-	./bin/main.exe
 	
 KXerror: bin/KXerror.exe
 	./bin/KXerror.exe

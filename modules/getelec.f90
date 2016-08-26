@@ -14,7 +14,8 @@ use std_mat, only: diff2, local_min, linspace
 implicit none
 
 private
-public :: cur_dens, C_wrapper, print_data, EmissionData, plot_barrier, debug, dp
+public :: cur_dens, C_wrapper, print_data, EmissionData, plot_barrier, debug, dp, &
+            kBoltz, gamow_KX, gamow_num
 
 !************************************************************************************
 !Global parameters not to be defined by the user

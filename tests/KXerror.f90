@@ -11,7 +11,7 @@ real(dp), parameter     :: Wconst = 4.5d0, Fconst = 3.d0, Rconst = 10.d0
 real(dp),dimension(Nchi):: chi, Wi, Fi, Ri, GKX, Gnum, Gerr, DKX, Dnum   
 type(pyplot)            :: plt
 type(EmissionData)      :: thisKX, thisnum
-integer                 :: i, j
+integer                 :: i, j, info
 
 character(len=3)        :: lstyle(4)
 
@@ -55,7 +55,7 @@ do j=1, 4
         thisnum%gamma = gamma
         thisnum%mode = 0
         thisKX = thisnum
-        call gamow_KX(thisKX, .false.)
+        info = gamow_KX(thisKX, .false.)
         call gamow_num(thisnum, .true.)
         GKX(i) = thisKX%Gam
         Gnum(i) = thisnum%Gam
@@ -64,15 +64,13 @@ do j=1, 4
     DKX = 1.d0 / (1.d0 + exp(GKX))
     Dnum = 1.d0 / (1.d0 + exp(Gnum))
     
-!    Gerr = log(DKX / Dnum) !/ (-log(Dnum))
     Gerr = 100.d0* abs(Gnum - GKX) / Gnum
             
     call plt%add_plot(chi, Gerr, label='$data$', linestyle=lstyle(j), linewidth=2)
-    print *, 'Calculated error for j =', j
 
 enddo
 
-call plt%savefig('Gerror.png', pyfile='Gerror.py')
+call plt%savefig('png/Gerror.png', pyfile='python/Gerror.py')
 
 end program
 
