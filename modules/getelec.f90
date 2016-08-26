@@ -123,7 +123,7 @@ type, public    :: EmissionData
         ! 1: Mode should give xr, Vr and they are not allocated properly
         ! 2: Wrong input values for xr, Vr are given: non-monotonous
         ! 3: KX approximation giving negative U''(x)
-        ! 4: Unknown error: some NaN appeared
+        ! 4: Unknown error: some NaN appeared or Jem<0
         ! 10+: Some error in dfzero 1st appeared. + gives the ierr of dfzero
         ! 20+: Same as previous but for dfzero 2nd
         ! 30+: Save as previous but for dqage  
@@ -257,11 +257,11 @@ subroutine cur_dens(this)
     
     call gamow_general(this,.true.) !calculate barrier parameters
 
-    if (this%kT * this%maxbeta < nlimf) then!field regime
+    if (this%kT * this%maxbeta < nlimf .and. this%Um > 0.1) then!field regime
         n = 1.d0/(this%kT * this%maxbeta) !standard Jensen parameters
         s = this%Gam
         this%regime = 'F'
-    else if (this%kT * this%minbeta > nlimt) then !thermal regime
+    else if (this%kT * this%minbeta > nlimt.and. this%Um > 0.1) then !thermal regime
         n = 1.d0/(this%kT * this%minbeta) !standard Jensen parameters
         s = this%minbeta * this%Um
         this%regime = 'T'
@@ -273,6 +273,8 @@ subroutine cur_dens(this)
         endif
         this%regime = 'I'
     endif
+    
+    if (debug) print *, 'n = ', n, 's = ', s
     
     if (this%regime /= 'I') then
         if (n > nmaxlim) then !for n>5 use MG expressions. Approximations for Sigma
@@ -345,7 +347,7 @@ subroutine gamow_general(this,full)
     if (this%mode == 0 .or. this%mode == -12 .or. this%mode == -1) then
     
         if (x>0.4d0) then !the second root is far away
-            xmaxallowed = 25.d0
+!            xmaxallowed = 25.d0
             this%xmax = min(this%W * this%gamma / this%F, xmaxallowed)
             !maximum length xmaxallowed
         else  !the second root is close to the standard W/F
@@ -422,11 +424,6 @@ subroutine gamow_num(this,full)
     
     if (full) then ! Um is not initialized
         this%Um = -local_min(x, this%xmax, 1.d-8, 1.d-8, neg_bar, this%xm)
-!        if (this%Um < 0.d0) then !lost barrier
-!            this%Gam = 0.d0
-            
-!            return
-!        endif
 
         if (this%mode == 0 .or. this%mode == -12) then  
             dx = 1.d-2

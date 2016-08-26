@@ -1,9 +1,13 @@
 import ctypes as ct
 import numpy as np
 import scipy.optimize as opt
+import os
 
-ct.cdll.LoadLibrary("lib/libgetelec.so")
-getelec = ct.CDLL("lib/libgetelec.so")
+pythonpath,filename = os.path.split(os.path.realpath(__file__))
+emissionpath,pythonfolder = os.path.split(pythonpath)
+libpath = emissionpath + '/lib/libgetelec.so'
+ct.cdll.LoadLibrary(libpath)
+getelec = ct.CDLL(libpath)
 
 class Emission(ct.Structure):
     """This contains all the interchange information for emission calculation
@@ -39,13 +43,14 @@ class Emission(ct.Structure):
         return getelec.plot_data_c(ct.byref(self))
 
 def emit (F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300.):
-    this =   Emission(F,W,R,gamma,Temp,0.,0.,None,None,'r','r',0,0,0,0)
+    this =   Emission(F,W,R,gamma,Temp,0.,0.,None,None,'r','r',0,1,0,0)
     this.cur_dens()
     if (this.ierr == 0):
         return (this.Jem, this.heat)
     else:
-        print 'Error: ierr = ', this.ierr
-        return (1.e-200,1.e-200)
+        print 'Error:', this.ierr
+        this.print_data()
+        return (this.Jem, this.heat)
         
 def MLplot (xfn, beta = 1., W = 4.5, R = 5., gamma = 10., Temp = 300.):
     yfn = np.empty([len(xfn)])
@@ -54,22 +59,27 @@ def MLplot (xfn, beta = 1., W = 4.5, R = 5., gamma = 10., Temp = 300.):
         out = emit(F,W,R,gamma,Temp)
         yfn[i] = np.log(out[0])    
     return yfn
+
+def MLerror(p, xML, yML):
+    ycalc = MLplot(xML, p[0], p[1], p[2], p[3], p[4])
+    yshift = max(ycalc) - max(yML)
+    return ycalc - yML - yshift
     
-def fitML (xML, yML, F0 = [1.e-3, 5., 20.], W0 = [2.5, 4.5, 5.5], \
-            R0 = [1., 5., 100.], gamma0 = [2., 10., 100.], \
-            Temp0 = [100., 350., 1200. ]):
+def fitML (xML, yML, F0 = [0.05, 5., 18.], W0 = [2.5, 4., 5.5], \
+            R0 = [1., 5., 30.], gamma0 = [2., 10., 100.], \
+            Temp0 = [100., 300., 1080. ]):
     """ tries to fit xML, yML experimental data to the GETELEC model """
     meanFmac = np.mean(1./xML)
     minFmac = min(1./xML)
     maxFmac = max(1./xML)
-    beta0 = [F0[0]*minFmac, F0[1] * meanFmac, F0[2] * maxFmac]
+    beta0 = [F0[0]/minFmac, F0[1] / meanFmac, F0[2] / maxFmac]
     
-    popt,pcov = opt.curve_fit (f = MLplot, xdata = xML, ydata = yML, \
-                p0 =      [beta0[1], W0[1], R0[1], gamma0[1], Temp0[1]], \
-                bounds = ([beta0[0], W0[0], R0[0], gamma0[0], Temp0[0] ], \
-                          [beta0[2], W0[2], R0[2], gamma0[2], Temp0[2] ] ),
-                check_finite = True, method = 'trm')
-    return (popt,pcov)
+    popt = opt.least_squares (fun = MLerror, args = (xML, yML), \
+                x0 =     [beta0[1], W0[1], R0[1], gamma0[1], Temp0[1]], \
+                bounds =([beta0[0], W0[0], R0[0], gamma0[0], Temp0[0]],\
+                        [beta0[2], W0[2], R0[2], gamma0[2], Temp0[2]]), \
+                method = 'trf', jac = '3-point' )
+    return popt
 
 
 
