@@ -157,7 +157,7 @@ subroutine cur_dens(this)
         call print_data(this)
     endif
     
-    if ((.not. readparams) .and. firstcall) call read_params()
+    if (.not. readparams) call read_params()
     
     this%ierr = 0
     if (this%W <= 0.d0 .or. this%kT < 0 .or. isnan(this%W) .or. isnan(this%kT)) then 

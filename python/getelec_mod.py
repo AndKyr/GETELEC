@@ -78,7 +78,7 @@ def fitML (xML, yML, F0 = [0.05, 5., 18.], W0 = [2.5, 4., 5.5], \
                 x0 =     [beta0[1], W0[1], R0[1], gamma0[1], Temp0[1]], \
                 bounds =([beta0[0], W0[0], R0[0], gamma0[0], Temp0[0]],\
                         [beta0[2], W0[2], R0[2], gamma0[2], Temp0[2]]), \
-                method = 'trf', jac = '3-point' )
+                method = 'trf', jac = '3-point',xtol = 1.e-15 )
     return popt
 
 
