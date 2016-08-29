@@ -15,7 +15,7 @@ implicit none
 
 private
 public :: cur_dens, C_wrapper, print_data, EmissionData, plot_barrier, debug, dp, &
-            kBoltz, gamow_KX, gamow_num
+            kBoltz, gamow_KX, gamow_num, gamow_general
 
 !************************************************************************************
 !Global parameters not to be defined by the user
@@ -258,21 +258,23 @@ subroutine cur_dens(this)
     
     call gamow_general(this,.true.) !calculate barrier parameters
 
-    if (this%kT * this%maxbeta < nlimf .and. this%Um > 0.1) then!field regime
+    if (this%kT * this%maxbeta < nlimf .and. &
+            (this%Um > 0.1 .or. (.not. this%full))) then!field regime
         n = 1.d0/(this%kT * this%maxbeta) !standard Jensen parameters
         s = this%Gam
         this%regime = 'F'
-    else if (this%kT * this%minbeta > nlimt.and. this%Um > 0.1) then !thermal regime
+    else if (this%kT * this%minbeta > nlimt .and. &
+                (this%Um > 0.1 .or. (.not. this%full))) then !thermal regime
         n = 1.d0/(this%kT * this%minbeta) !standard Jensen parameters
         s = this%minbeta * this%Um
         this%regime = 'T'
     else  !intermediate regime
+        this%regime = 'I'
         if (this%full) then
             call J_num_integ(this) !Numerical integration over energies
         else
             call GTFinter(this)
         endif
-        this%regime = 'I'
     endif
     
     if (debug) print *, 'n = ', n, 's = ', s
@@ -614,7 +616,14 @@ subroutine GTFinter(this)
     
     polybeta = real([3.*(C_FN+Bq-2.*B_FN), 2.*(3.*B_FN-Bq-2.*C_FN), C_FN-UmaxokT],sp)
     !polynomial describing G(E)
+    if (abs(polybeta(1)) <1.d-2 .and. debug) then
+        print *, 'error: GTF polynomial with negative root'
+        call print_data(this)
+    endif
+    
     call RPQR79(2,polybeta,rt,ierr,work) !finding the roots of the polynomial
+    if (ierr /= 0) call print_data(this)
+    
     zmax=minval(real(rt,dp)) ! take the smaller root
     if (zmax<0) then
         zmax=maxval(real(rt,dp)) !choose the positive root if it is negative

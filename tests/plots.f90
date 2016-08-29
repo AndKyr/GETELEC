@@ -1,13 +1,13 @@
 program main
 
-use GeTElEC, only: gamow_general, EmissionData, print_data, J_num_integ, cur_dens, kBoltz
+use GeTElEC, only: gamow_general, EmissionData, print_data, cur_dens, kBoltz
 use pyplot_mod, only: pyplot
 use std_mat, only: linspace
 
 implicit none
 
-integer,parameter       :: dp=8, Nf=2048, font=40, lw = 3
-real(dp), parameter     :: Fmin=0.4d0, Fmax=18.d0, T = 1000.0
+integer,parameter       :: dp=8, Nf=1024, font=40, lw = 3
+real(dp), parameter     :: Fmin=0.4d0, Fmax=14.d0, T = 1000.0
 
 real(dp), dimension(Nf) :: Fi, Jfs, Jis, Jts, Jfb, Jib, Jtb, &
                            hfs, his, hts, hfb, hib, htb, Japp, happ, &
@@ -15,7 +15,7 @@ real(dp), dimension(Nf) :: Fi, Jfs, Jis, Jts, Jfb, Jib, Jtb, &
 integer                 :: i, j, fs=0, is=0, ts=0, fb=0, ib=0, tb=0
 real(dp)                :: Ri(3)
 
-logical, parameter      :: DE = .true.
+logical, parameter      :: DE = .false.
 
 type(EmissionData)      :: this
 type(pyplot)            :: plt1, plt2, plt3
@@ -38,9 +38,10 @@ if (DE) call plt3%initialize(grid=.true.,xlabel='$1/F \ [nm/V]$', &
 
 this%kT=kBoltz*T
 this%gamma = 15.d0
+!this%W = 4.5d0
 Fi=1.d0/linspace(1.d0/Fmax,1.d0/Fmin,Nf)
 Ri = [1.d0, 8.d0, 200.d0]
-
+this%mode = 0
 
 
 do j = 1,3
@@ -98,7 +99,6 @@ do j = 1,3
         endif
     if (this%R > 0.d0) then
         this%full = .false.
-        this%mode = 0
         call cur_dens(this)
         Japp(i) = this%Jem
         happ(i) = this%heat
@@ -149,10 +149,8 @@ do j = 1,3
         
 enddo
 
-call plt1%savefig('png/Jplot.png', pyfile='python/Jplot2.plt.py')                    
-call plt2%savefig('png/heatplot.png', pyfile='python/heatplot2.plt.py')
+call plt1%savefig('png/Jplot.png', pyfile='python/Jplot2.plot.py')                    
+call plt2%savefig('png/heatplot.png', pyfile='python/heatplot2.plot.py')
 if (DE) call plt3%savefig('png/DE.png', pyfile='python/DEplot.plt.py')
 
-
-!call print_data(this)
 end program

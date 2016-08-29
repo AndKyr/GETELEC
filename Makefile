@@ -21,15 +21,17 @@ DIRS = bin cobj mod obj modules/obj modules/cobj
 .PHONY: tests varyingTemp ctest KXerror
 .SECONDARY: *.o #$(MODOBJ)
 
-all: $(DIRS) $(LIBSFULL) $(LIBSHARED) bin/main.exe bin/current.exe
+all: $(DIRS) $(LIBSFULL) $(LIBSHARED)
 
-tests: varyingTemp ctest KXerror 
+tests: varyingTemp ctest KXerror plots  
 
 $(DIRS):
 	mkdir -p $(DIRS)
 
 $(LIBSFULL): $(LIBSTATIC)
 	$(LINKLIBS) $@ $< $(LIBDEPS)
+
+#tests:
 	
 varyingTemp: bin/varyingTemp.exe
 	./bin/varyingTemp.exe	
@@ -39,6 +41,12 @@ ctest: bin/ctest.out
 	
 KXerror: bin/KXerror.exe
 	./bin/KXerror.exe
+	
+plots: bin/plots.exe
+	./bin/plots.exe
+
+current: bin/current.exe
+	./bin/current.exe 5. 4. 1000. 5. 0 T 10. 
 	
 
 $(LIBSHARED): $(CINTERFACE) $(LIBSTATIC) 

@@ -1,12 +1,12 @@
 program KXerror
 
-use GeTElEc, only: dp, EmissionData, gamow_num, gamow_KX, kBoltz
+use GeTElEc, only: dp, EmissionData, gamow_num, gamow_KX, kBoltz,  cur_dens
 use std_mat, only: linspace
 use pyplot_mod, only: pyplot
 
 integer, parameter      :: fid = 549687, Nmaxeval = 10000, font = 38, Nchi = 256
-real(dp), parameter     :: chimin = 0.09, chimax = 0.11, gammai(2) = [10.d0, 20.d0]
-real(dp), parameter     :: Wconst = 4.5d0, Fconst = 3.d0, Rconst = 10.d0
+real(dp), parameter     :: chimin = 0.05, chimax = 0.15, gammai(2) = [10.d0, 20.d0]
+real(dp), parameter     :: Wconst = 4.5d0, Fconst = 7.d0, Rconst = 10.d0
 
 real(dp),dimension(Nchi):: chi, Wi, Fi, Ri, GKX, Gnum, Gerr, DKX, Dnum   
 type(pyplot)            :: plt
@@ -55,14 +55,13 @@ do j=1, 4
         thisnum%gamma = gamma
         thisnum%mode = 0
         thisKX = thisnum
+        call cur_dens(thisKX)
         info = gamow_KX(thisKX, .false.)
         call gamow_num(thisnum, .true.)
         GKX(i) = thisKX%Gam
         Gnum(i) = thisnum%Gam
+        
     enddo
-    
-    DKX = 1.d0 / (1.d0 + exp(GKX))
-    Dnum = 1.d0 / (1.d0 + exp(Gnum))
     
     Gerr = 100.d0* abs(Gnum - GKX) / Gnum
             
@@ -70,7 +69,7 @@ do j=1, 4
 
 enddo
 
-call plt%savefig('png/Gerror.png', pyfile='python/Gerror.py')
+call plt%savefig('png/Gerror.png', pyfile='python/Gerror.plot.py')
 
 end program
 
