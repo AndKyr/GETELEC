@@ -14,8 +14,8 @@ use std_mat, only: diff2, local_min, linspace
 implicit none
 
 private
-public :: cur_dens, C_wrapper, print_data, EmissionData, plot_barrier, debug, dp, &
-            kBoltz, gamow_KX, gamow_num, gamow_general
+public  ::  cur_dens, C_wrapper, print_data, EmissionData, plot_barrier, &
+            debug, dp, kBoltz, gamow_KX, gamow_num, gamow_general
 
 !************************************************************************************
 !Global parameters not to be defined by the user
@@ -139,6 +139,7 @@ end type EmissionData
 
 !************************************************************************************
 contains
+
 
 subroutine cur_dens(this)
 !Calculates current density, main module function
@@ -350,7 +351,6 @@ subroutine gamow_general(this,full)
     if (this%mode == 0 .or. this%mode == -12 .or. this%mode == -1) then
     
         if (x>0.4d0) then !the second root is far away
-!            xmaxallowed = 25.d0
             this%xmax = min(this%W * this%gamma / this%F, xmaxallowed)
             !maximum length xmaxallowed
         else  !the second root is close to the standard W/F
@@ -402,7 +402,10 @@ subroutine gamow_general(this,full)
     
 end subroutine gamow_general
 
-subroutine gamow_num(this,full)
+
+subroutine gamow_num(this, full)
+    !integrates numerically the barrier and obtains G
+    ! if not full, Um, xm are already found and need not be calculated again
     use bspline, only: db1val
     use std_mat, only: binsearch
 
@@ -421,7 +424,7 @@ subroutine gamow_num(this,full)
         
     real(dp)                            :: G, x = 1.d-5 , x1(2), x2(2), dx
     integer                             :: i, binout(2), indxm, ixrm !
-    !                                       indxm index of xr closest to xm
+                                        ! indxm: index of xr closest to xm
     
     ixrm = size(this%xr)
     
@@ -470,6 +473,7 @@ subroutine gamow_num(this,full)
     this%Gam = gg * G
     
     contains
+    ! barrier functions needed to be passed as externals to dfzero and dqage
     
     function bar(x) result(V)!sphere barrier model
         real(dp), intent(in)    :: x
@@ -518,6 +522,7 @@ subroutine gamow_num(this,full)
     end function sqrt_bar
     
 end subroutine gamow_num
+
 
 function gamow_KX(this, full) result(info) 
     !calculate Gamow parameters using Kyritsakis-Xanthakis approximation
@@ -593,6 +598,7 @@ function gamow_KX(this, full) result(info)
     
 end function gamow_KX
 
+
 subroutine GTFinter(this)
 !Calculates estimation of current according to GTF theory for intermediate regime.
 !It is used when a fast calculation is needed and we don't care about full numerical
@@ -667,7 +673,7 @@ subroutine J_num_integ(this)
     integer                             :: j, i, k
 
     if (debug) call cpu_time(t1)
-    if (spectra) then
+    if (spectra) then !if spectra then j(E) will be printed into a file
         open(fidout,file='spectra.csv')
     endif
     this%Um = -1.d20
@@ -790,7 +796,7 @@ subroutine J_num_integ(this)
         !.5d0 ... term is what remains from insum for ending trapezoid rule
         insum = insum + dE / (1.d0 + exp(G(k)))
         outsum = outsum + integrand
-        if (spectra) then
+        if (spectra) then !write spectroscopy data into the spectroscopy file
             write(fidout,*) Ej,',',integrand,',',integrand/Ej
         endif
         Ej = Ej + dE
@@ -811,6 +817,7 @@ subroutine J_num_integ(this)
     endif
 
     contains
+    
     pure function lFD(E,kT) result(L) !Fermi dirac log function 
         real(dp), intent(in)::E,kT
         real(dp) :: L
@@ -820,7 +827,9 @@ subroutine J_num_integ(this)
             L=log(1.d0+exp(-E/kT))
         endif
     end function lFD
+    
 end subroutine J_num_integ
+
 
 subroutine print_data(this, full, filenum)
     !print the state of the object nicely
@@ -853,22 +862,20 @@ subroutine print_data(this, full, filenum)
                                      'Full:', this%full, &
                                      'Ierr:', this%ierr
     
-    if (present(full) .and. full .and. allocated(this%xr)) then
+    if (present(full) .and. full .and. allocated(this%xr)) then 
+        !choose if V(x) is printed
         write(fid, '(/A15,A15)') 'x', 'V(x)'
         do i = 1, size(this%xr)
             write(fid, '(F15.10,A1,F15.10)') this%xr(i), ',' , this%Vr(i)
         enddo
     endif
     
-    
 end subroutine print_data
 
 
 function fitpot(this)  result(var)
     !Fits V(x) data to F,R,gamma standard potential using L-V
-    !minimization module
-!    use Levenberg_Marquardt, only: nlinfit
-    
+    !minimization algorithm from SLATEC, implemented in the nlinfit subroutine here.
     
     type(EmissionData), intent(inout)   :: this
     
@@ -906,6 +913,7 @@ function fitpot(this)  result(var)
     end function fun
 end function fitpot
 
+
 function fitpoly(this)  result(var)
     !Fits V(x) data to polynomial. Uses dpolfit from slatec.
 
@@ -939,6 +947,8 @@ end function fitpoly
 
 
 subroutine plot_barrier(this)
+    !uses the pyplot module to plot the barrier defined by a specific Emisison object
+    !this is useful mostly in debugging
     use pyplot_mod, only: pyplot
     use bspline, only: db1val
     use std_mat, only: interp1
@@ -976,7 +986,7 @@ subroutine plot_barrier(this)
 
     contains
     
-    function bar(x) result(V)!sphere barrier model
+    function bar(x) result(V)!general barrier model
         real(dp), intent(in)    :: x
         real(dp)                :: V, Vinterp(2)
         integer                 :: iflag, inbvx
@@ -1011,7 +1021,9 @@ subroutine plot_barrier(this)
     end function bar
 end subroutine plot_barrier
 
+
 subroutine desetroy(this)
+!frees all the memory allocated for an Emission type "object"
     type(EmissionData), intent(inout)   :: this
     
     if (this%mode == 2) then
@@ -1023,6 +1035,7 @@ subroutine desetroy(this)
     if (allocated(this%Apoly)) deallocate(this%Apoly)
     
 end subroutine desetroy
+
 
 subroutine C_wrapper(passdata, ifun) bind(c)
 ! a wrapper to be able to call getelec functions from C language
@@ -1075,8 +1088,6 @@ subroutine C_wrapper(passdata, ifun) bind(c)
         endif
     endif
     
-!    call print_data(this,.true.)
-    
     call cur_dens(this)
     passdata%Jem = this%Jem
     passdata%heat = this%heat
@@ -1101,41 +1112,6 @@ subroutine C_wrapper(passdata, ifun) bind(c)
     if (allocated(this%xr)) deallocate(this%xr, this%Vr)
 
 end subroutine C_wrapper
-
-
-function fitFNplot(xdata, ydata, params, pmin, pmax, epsfit, Nmaxeval, yshift) &
-        result(var)
-
-    real(dp), intent(in)        :: xdata(:), ydata(:), pmin(5), pmax(5)
-    real(dp), intent(inout)     :: params(5)
-    integer, intent(in)         :: Nmaxeval
-    real(dp), intent(out)       :: yshift
-    
-    real(dp)                    :: var, epsfit
-    
-!    Nmaxval = Nmaxeval
-    var = nlinfit(fun, xdata, ydata, params, pmin, pmax, epsfit, .true., yshift)
-    
-    contains
-    
-    function fun(x, p) result(y)
-    
-        real(dp), intent(in)    :: x, p(:)
-        real(dp)                :: y, dpmin, dpmax
-        type(EmissionData)          :: this
-         
-        
-        this%F = p(1) / x !F = beta * V  = beta / xdata
-        this%W = p(2) !work function
-        this%R = p(3) !radius
-        this%gamma = p(4)  ! gamma
-        this%kT = kBoltz * p(5) !temperature
-        
-        call cur_dens(this)
-        y = log(this%Jem)
-    end function fun
-         
-end function fitFNplot
 
 
 function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, shift, yshift) result(var)
@@ -1216,6 +1192,7 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, shift, yshift) result(v
     end subroutine fcn
 
 end function nlinfit
+
 
 subroutine read_params()
 

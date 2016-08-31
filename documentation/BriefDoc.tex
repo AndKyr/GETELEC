@@ -1,0 +1,81 @@
+\documentclass[notitlepage
+% aip,
+% jvstb,%
+% amsmath,amssymb,notitlepage,
+%preprint,%
+%reprint,%
+%author-year,%
+%author-numerical,%
+]{revtex4-1}
+
+\usepackage{graphicx}
+\usepackage{dcolumn}
+\usepackage{bm}
+\usepackage[mathlines]{lineno}
+
+
+\begin{document}
+
+\title{Brief documentation for GETELEC}
+
+\author{Andreas Kyritsakis and Flyura Djurabekova}
+
+\affiliation{Deparment of Physics and Helsinki Institute of Physics, University of Helsinki, PO Box 43 (Pietari Kalmin katu 2), 00014 Helsinki, Finland}
+
+\maketitle
+
+
+\section{General instructions for using GETELEC}
+\label{sec:Gen}
+
+\subsection{Requirements, downloading and compiling}
+
+GETELEC whole project can be found as a git repository in the accompanying file "GETELEC.zip". The code will be maintained and updated. Updated versions of the code can be downloaded from !!. Currently it is developed only for Linux systems, but a version that can be compiled in other operating systems will be available in forthcoming updates. After downloading the zip file, the user needs to extract it and in the resulting folder execute "make" (GNU make is required) to compile it and build the GETELEC static and dynamic libraries. For successful building, it is required that in the system it is installed gfortran (version 5 or later) and gcc (version 5 or later). By executing "make tests" some test programs are compiled and executed, outputting some of the plots included in the present paper. For those test to produce correct results, existing installation of python (version 2.7 or later) with the accompanying libraries "numpy" (version 0.13 or later) and "matplotlib" (version 1.3 or later) and "scipy" (version 0.13 or later) is required.
+
+\subsection{Usage as a FORTRAN static library}   
+
+GETELEC consists mainly of a FORTRAN 2003 module ("modules/getelec.f90") which contains all the essential data types and subroutines for the calculations. After the compilation, the user can call GETELEC public data types and subroutines by including the static library "lib/libgetelec.a". The main data type in the module that handles all the emission data and parameters is the "EmissionData". The user mainly has to define the input parameters which are members of this data type. The first member that has to be defined is the "mode" that determines how the barrier will be input. If "mode"=(0 or -1), the barrier will be given in the form of the 3-parameter model of eq. (2) and the user has to specify the three members of the data type:
+\begin{itemize}
+	\item F: Local field in V/nm
+	\item R: Local radius of curvature in nm
+	\item gamma : "enhancement factor" $\gamma$ of eq. (2) 
+\end{itemize} 
+Another two members must always be specified as input are:
+\begin{itemize}
+	\item W: Work function $\phi$ in eV
+	\item kT: $k_BT$ (Boltzmann constant $\times$ temperature) in eV
+\end{itemize}
+If "mode" is set to (1,2,-10,-11,-20,-21) then the barrier has to be input ($x_i,V_i$) vectors, and the user must allocate and give values to the members-vectors "xr, "Vr" correspondingly. Finally, the logical variable member of the data type  "full" must be determined. If it is true, the full calculation is carried out, while if it is false, the integration over energies is done according to the GTF approximations.
+
+When these input parameters are set, the main subroutine "cur\_dens" might be called to calculate the current density and the Nottingham heat. After successful execution, all the output members of the data type will be determined. They are:
+\begin{itemize}
+	\item Jem: The current density $J$ in $A/nm^2$
+	\item heat: The Nottingham heat density $P_N$ in $W/nm^2$
+	\item Gam: The Gamow exponent $G$
+	\item xm: The abcissa where the maximum of the barrier appears in nm
+	\item Um: The value $U_m$ of the maximum of the barrier in eV (with respect to the Fermi energy)
+	\item maxbeta: derivative $-G'( E = 0)$ in $eV^{-1}$
+	\item minbeta: derivative $-G'( E = U_m)$ in $eV^{-1}$
+	\item regime: character indicating the regime of calculation. 'f' for field, 'i' for intermediate and 't' for thermal
+	\item sharpeness: character indicating if the approximate formula ("blunt") or numerical integration ("sharp") where used. 'b' and 's' correspondingly.
+	\item ierr: integer indicating errors in the calculation. If it is 0 the subroutine has been executed successfully. If not, detailed debugging information may be found on the commented code.    
+\end{itemize} 
+
+
+\section{Interface with C - dynamic library}
+\label{sec:C}
+
+GETELEC provides with an interface so that its main functions can be called from the C language.
+
+
+\section{Interface with Python - Fitting algorithm}
+\label{sec:Python}
+
+Once GETELEC can be called from the C language and built into a dynamic library, it is very easy to write an interface also for Python. Especially, such an interface would be very useful, since Python provides with extensive scientific libraries that can be used to manipulate very easily the input and output of GETELEC.
+
+
+
+%\begin{thebibliography}{9}
+%\bibliography{review}
+%\end{thebibliography}
+\end{document}

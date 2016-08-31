@@ -1,5 +1,5 @@
 CC = gcc
-FC = gfortran-5
+FC = gfortran
 AR=ar rcs
 LINKLIBS = ar -rcT
 
@@ -12,7 +12,6 @@ CFLAGS = -O3 -fPIC -Imodules#-Wall -Wextra
 
 LIBSTATIC=lib/libgetelec.a
 LIBDEPS = lib/libslatec.a
-LIBSFULL = lib/libemission.a
 LIBSHARED = lib/libgetelec.so
 
 CINTERFACE = modules/cobj/c_interface.o
@@ -28,11 +27,6 @@ tests: varyingTemp ctest KXerror plots
 $(DIRS):
 	mkdir -p $(DIRS)
 
-$(LIBSFULL): $(LIBSTATIC)
-	$(LINKLIBS) $@ $< $(LIBDEPS)
-
-#tests:
-	
 varyingTemp: bin/varyingTemp.exe
 	./bin/varyingTemp.exe	
 
@@ -49,12 +43,18 @@ current: bin/current.exe
 	./bin/current.exe 5. 4. 1000. 5. 0 T 10. 
 	
 
-$(LIBSHARED): $(CINTERFACE) $(LIBSTATIC) 
-	$(CC) -fPIC -shared -o $@ $^ $(DEPS)    
+$(LIBSHARED): $(CINTERFACE) $(LIBSTATIC)
+	$(CC) -fPIC -shared -Llib -o $@ $^ $(DEPS)    
 	
-$(LIBSTATIC): $(MODOBJ)
+$(LIBSTATIC): $(MODOBJ) $(LIBDEPS)
 	$(AR) $@ -o $(MODOBJ)
 	
+$(LIBDEPS):
+	$(FC) lib/slatecsrc/*.f -c -O3 -fPIC
+	$(AR) $(LIBDEPS) -o *.o
+	$(FC) -fPIC -shared -Llib -o lib/libslatec.so *.o 
+	#rm *.o 
+
 bin/%.out: cobj/%.o $(LIBSHARED)
 	$(CC) -L./lib -Wl,-rpath=./lib -o $@ $^ #-lgetelec
 	
@@ -74,5 +74,5 @@ modules/cobj/%.o : modules/%.c
 	$(CC) $(CFLAGS) $^ -c -o $@ 
 
 clean:
-	rm -rf bin/* obj/* lib/*.so lib/libgetelec.a lib/libemission.a modules/obj/* \
-		cobj/*.o 
+	rm -rf bin/* obj/* lib/libgetelec.so lib/libgetelec.a \
+		lib/libemission.a modules/obj/* cobj/*.o 
