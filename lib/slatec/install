@@ -1,0 +1,142 @@
+#!/usr/bin/env python
+
+"""Script to install libslatec.
+"""
+
+# TODO: do the compilation with Python instead with a Bash script
+
+import os
+import sys
+import tempfile
+import shutil
+from optparse import OptionParser
+
+progUsage = "usage: %prog -p installation path"
+
+fFlags = "-O3 -march=native -fPIC -shared -m64" # Fortran flasgs for 64-bit machines
+
+files1 = ["f90split.f90", "slatec.f90"] # files to be compiled first
+files2 = ["d1mach.f90", "i1mach.f90", "r1mach.f90"] # files to be compiled later
+# all files compiling into objects files depending on missing symbols:
+eraseFiles = "dbvsup.f90 bvsup.f90 dbvpor.f90 bvpor.f90 dbvder.f90 bvder.f90 dexbvp.f90 exbvp.f90 drkfab.f90 rkfab.f90"
+
+# depencies and URLs to get them from (in the same order!):
+dependencies = ["slatec.f90", "f90split.f90", "d1mach.f90", "r1mach.f90", "i1mach.f90"]
+URLdependencies = ["http://people.sc.fsu.edu/~jburkardt/f_src/slatec/slatec.f90",
+                   "http://people.sc.fsu.edu/~jburkardt/f_src/f90split/f90split.f90",
+                   "http://www.nsc.liu.se/~boein/ifip/kyoto/workshop-info/proceedings/einarsson/f90/d1mach.f90",
+                   "http://www.nsc.liu.se/~boein/ifip/kyoto/workshop-info/proceedings/einarsson/f90/r1mach.f90",
+                   "http://www.nsc.liu.se/~boein/ifip/kyoto/workshop-info/proceedings/einarsson/f90/i1mach.f90"]
+
+# bash script for compilation
+compileScript = """
+for file in *.f90
+do
+    echo "Compiling $file"
+    gfortran %s -c $file
+done
+"""%fFlags
+
+scriptDir = os.getcwd()
+
+parser = OptionParser(usage=progUsage)
+
+parser.add_option("-p", "--path", action="store", type="string",
+                  dest="installPath", help="Path to install libslatec to.")
+
+(options, args) = parser.parse_args()
+
+if(not options.installPath):
+    parser.error("You need to specifiy an installation path!\n"\
+                 +"Type ./install --help for more information.")
+    sys.exit(1)
+
+if(not os.path.isdir(options.installPath)):
+    parser.error("'%s' is not a path!"%options.installPath)
+    
+if(not os.access(options.installPath, os.W_OK)):
+    parser.error("Path '%s' cannot be written to!"%options.installPath)
+    
+for fileN in ["libslatec.so.1.0.1", "libslatec.so.1", "libslatec.so"]:
+    if(os.path.exists(options.installPath+"/"+fileN)):
+        print("File '%s' already exists in %s! Delete it first."%(fileN, options.installPath))
+        sys.exit(1)
+if(os.path.isdir(options.installPath+"/pkgconfig")):
+    instPkgConf = True
+    pkgConfPath = options.installPath+"/pkgconfig"
+    pcData = \
+"""libdir=%s
+Name: Slatec
+Description: slatec mathematical library
+Version: 1.0
+Libs: -L${libdir}"""%options.installPath
+else:
+    instPkgConf = False
+
+# check dependencies, if missing: try to download them:
+for i in range(len(dependencies)):
+    if(not os.path.isfile(dependencies[i])):
+        print("File %s is missing. Trying to download it."%dependencies[i])
+        retVal = os.system("wget %s"%URLdependencies[i])
+        if(retVal != 0):
+            print("Could not download '%s'!"%URLdependencies[i])
+            sys.exit(1)
+
+# create build directory
+buildPath = tempfile.mkdtemp()
+
+# copy first set of needed files to temp path:
+print("Copying the tools.")
+for f in files1:
+    shutil.copy(f, buildPath)
+
+# building f90split:
+os.system("gfortran %s/f90split.f90 -o %s/f90split"%(buildPath, buildPath))
+print("Building the tools.")
+# split slatec.f90:
+os.chdir(buildPath)
+os.system("%s/f90split %s/slatec.f90"%(buildPath, buildPath))
+
+print("Erase unwanted files.")
+os.system("rm %s"%eraseFiles)
+os.system("rm slatec.f90 f90split.f90")
+
+print("Copying the tools, part 2.")
+for f in files2:
+    shutil.copy(scriptDir+"/"+f, buildPath)
+
+# compile:
+print("Compiling.")
+# save compile script:
+compScript = open("%s/compile"%buildPath, mode="w")
+compScript.write(compileScript)
+compScript.close()
+# run bash script:
+os.system("bash compile")
+
+print("Linking.")
+# link everything
+os.system("gfortran -shared -o libslatec.so.1.0.1 *.o")
+os.system("ar rcs -o libslatec.a *.o")
+
+
+# copying
+print("Copying library.")
+os.system("cp %s/libslatec.so.1.0.1 %s"%(buildPath, options.installPath))
+os.system("cp %s/libslatec.a %s"%(buildPath, options.installPath))
+print("Creating symbolic links.")
+os.chdir(options.installPath)
+os.system("ln -s libslatec.so.1.0.1 libslatec.so.1")
+os.system("ln -s libslatec.so.1.0.1 libslatec.so")
+
+print("Cleaning up.")
+if(instPkgConf):
+    print("Installing pkg-config data to %s"%pkgConfPath)
+    pkgConfFile = compScript = open("%s/slatec.pc"%pkgConfPath, mode="w")
+    pkgConfFile.write(pcData)
+    pkgConfFile.close()
+
+# erase temporary build dir:
+os.system("rm -rf %s"%buildPath)
+
+print("\nDone.\nYou maybe want to run `ldconfig'.")

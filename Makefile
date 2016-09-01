@@ -7,8 +7,10 @@ MODOBJ = modules/obj/std_mat.o modules/obj/bspline.o \
   modules/obj/pyplot_mod.o modules/obj/getelec.o
   
 DEPS  = -lslatec
-FFLAGS = -ffree-line-length-none -fbounds-check -Imod -O3 -fPIC -Llib
-CFLAGS = -O3 -fPIC -Imodules#-Wall -Wextra
+FFLAGS = -ffree-line-length-none -fbounds-check -Imod -O3 -fPIC -Llib -static
+CFLAGS = -O3 -fPIC -Imodules #-Wall -Wextra
+
+PWD = $(shell pwd)
 
 LIBSTATIC=lib/libgetelec.a
 LIBDEPS = lib/libslatec.a
@@ -43,17 +45,16 @@ current: bin/current.exe
 	./bin/current.exe 5. 4. 1000. 5. 0 T 10. 
 	
 
-$(LIBSHARED): $(CINTERFACE) $(LIBSTATIC)
-	$(CC) -fPIC -shared -Llib -o $@ $^ $(DEPS)    
+$(LIBSHARED): $(CINTERFACE) $(LIBSTATIC) $(LIBDEPS)
+	$(FC) -fPIC -shared -Wl,--whole-archive -o $@ $^ -Wl,--no-whole-archive    
 	
-$(LIBSTATIC): $(MODOBJ) $(LIBDEPS)
+$(LIBSTATIC): $(MODOBJ)
 	$(AR) $@ -o $(MODOBJ)
 	
-$(LIBDEPS):
-	$(FC) lib/slatecsrc/*.f -c -O3 -fPIC
-	$(AR) $(LIBDEPS) -o *.o
-	$(FC) -fPIC -shared -Llib -o lib/libslatec.so *.o 
-	#rm *.o 
+$(LIBDEPS): lib/slatec/install
+	cd lib/slatec/; ./install -p $(PWD) 
+	rm libslatec.so*
+	mv libslatec.a lib/
 
 bin/%.out: cobj/%.o $(LIBSHARED)
 	$(CC) -L./lib -Wl,-rpath=./lib -o $@ $^ #-lgetelec

@@ -13,5 +13,10 @@
 *.a
 *.so
 *.plot.py
-
+*.blg
+*.aux
+*.bbl
+*.log
+*.pdf
+*.gz
 
