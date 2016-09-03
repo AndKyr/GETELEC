@@ -36,7 +36,7 @@ real(dp), parameter     :: pi = acos(-1.d0), b = 6.83089d0, zs = 1.6183d-4, &
 ! all universal constants are in units nm, eV, Α
 
 character(len=14), parameter   :: errorfile = 'GetelecErr.txt', &
-                                  paramfile = 'GetelecPar.txt'
+                                  paramfile = 'GetelecPar.in'
 ! names for the error output file and the parameters input file
 
 logical, parameter      :: debug = .false., verbose = .false.

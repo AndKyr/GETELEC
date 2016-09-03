@@ -30,48 +30,64 @@
 
 \subsection{Requirements, downloading and compiling}
 
-GETELEC whole project can be found as a git repository in the accompanying file "GETELEC.zip". The code will be maintained and updated. Updated versions of the code can be downloaded from !!. Currently it is developed only for Linux systems, but a version that can be compiled in other operating systems will be available in forthcoming updates. After downloading the zip file, the user needs to extract it and in the resulting folder execute "make" (GNU make is required) to compile it and build the GETELEC static and dynamic libraries. For successful building, it is required that in the system it is installed gfortran (version 5 or later) and gcc (version 5 or later). By executing "make tests" some test programs are compiled and executed, outputting some of the plots included in the present paper. For those test to produce correct results, existing installation of python (version 2.7 or later) with the accompanying libraries "numpy" (version 0.13 or later) and "matplotlib" (version 1.3 or later) and "scipy" (version 0.13 or later) is required.
+The GETELEC project can be found as a git repository in the accompanying file "GETELEC.zip". The code will be maintained and updated. Updated versions of the code can be downloaded from !!. Currently it is developed only for Linux systems, but a version that can be compiled in other operating systems will be available in forthcoming updates. After downloading the zip file, the user needs to extract it and in the resulting folder execute "make" (GNU make is required) to compile it and build the GETELEC static and dynamic libraries. For successful building, it is required that in the system there are installed gfortran (version 5 or later) and gcc (version 5 or later). By executing "make tests" some test programs are compiled and executed, outputting some of the plots included in the present paper. For those tests to produce correct results, existing installation of python (version 2.7 or later) with the accompanying libraries "numpy" (version 0.13 or later), "matplotlib" (version 1.3 or later) and "scipy" (version 0.13 or later) is required.
 
 \subsection{Usage as a FORTRAN static library}   
-
-GETELEC consists mainly of a FORTRAN 2003 module ("modules/getelec.f90") which contains all the essential data types and subroutines for the calculations. After the compilation, the user can call GETELEC public data types and subroutines by including the static library "lib/libgetelec.a". The main data type in the module that handles all the emission data and parameters is the "EmissionData". The user mainly has to define the input parameters which are members of this data type. The first member that has to be defined is the "mode" that determines how the barrier will be input. If "mode"=(0 or -1), the barrier will be given in the form of the 3-parameter model of eq. (2) and the user has to specify the three members of the data type:
+\label{fortran}
+GETELEC consists mainly of a FORTRAN 2003 module ("modules/getelec.f90") which contains all the essential data types and subroutines for the calculations. After the compilation, the user can call GETELEC public data types and subroutines by including the static library "lib/libgetelec.a" and the dependency library "lib/libslatec.a". The main data type in the module that handles all the emission data and parameters is the \texttt{EmissionData}. The user mainly has to define the input parameters which are members of this data type. The first member that has to be defined is the texttt{mode} that determines how the barrier will be input. If \texttt{mode}=(0 or -1), the barrier will be given in the form of the 3-parameter model of eq. (2) and the user has to specify the three members of the data type:
 \begin{itemize}
-	\item F: Local field in V/nm
-	\item R: Local radius of curvature in nm
-	\item gamma : "enhancement factor" $\gamma$ of eq. (2) 
+	\item \texttt{F}: Local field in $V/nm$
+	\item \texttt{R}: Local radius of curvature in $nm$
+	\item \texttt{gamma} : "enhancement factor" $\gamma$ of eq. (2) 
 \end{itemize} 
 Another two members must always be specified as input are:
 \begin{itemize}
-	\item W: Work function $\phi$ in eV
-	\item kT: $k_BT$ (Boltzmann constant $\times$ temperature) in eV
+	\item \texttt{W}: Work function $\phi$ in $eV$
+	\item \texttt{kT}: $k_BT$ (Boltzmann constant $\times$ temperature) in $eV$
 \end{itemize}
-If "mode" is set to (1,2,-10,-11,-20,-21) then the barrier has to be input ($x_i,V_i$) vectors, and the user must allocate and give values to the members-vectors "xr, "Vr" correspondingly. Finally, the logical variable member of the data type  "full" must be determined. If it is true, the full calculation is carried out, while if it is false, the integration over energies is done according to the GTF approximations.
+If \texttt{mode} is set to (1,2,-10,-11,-20,-21) then the barrier has to be input ($x_i,V_i$) vectors, and the user must allocate and give values to the members-vectors \texttt{xr}, \texttt{Vr} correspondingly. For more details about the specific modes of calculation see the commented source file. In general, when $(x_i,V_i)$ are available, the recommended mode of calculation is \texttt{mode=0}. Furthermore, the logical variable member of the data type \texttt{full} must be determined. If it is true, the full calculation is carried out, while if it is false, the integration over energies is done according to the GTF approximations for CPU efficiency.
 
-When these input parameters are set, the main subroutine "cur\_dens" might be called to calculate the current density and the Nottingham heat. After successful execution, all the output members of the data type will be determined. They are:
+When these input parameters are set, the main subroutine \texttt{cur\_dens} might be called to calculate the current density and the Nottingham heat. After successful execution, all the output members of the data type will be determined. They are:
 \begin{itemize}
-	\item Jem: The current density $J$ in $A/nm^2$
-	\item heat: The Nottingham heat density $P_N$ in $W/nm^2$
-	\item Gam: The Gamow exponent $G$
-	\item xm: The abcissa where the maximum of the barrier appears in nm
-	\item Um: The value $U_m$ of the maximum of the barrier in eV (with respect to the Fermi energy)
-	\item maxbeta: derivative $-G'( E = 0)$ in $eV^{-1}$
-	\item minbeta: derivative $-G'( E = U_m)$ in $eV^{-1}$
-	\item regime: character indicating the regime of calculation. 'f' for field, 'i' for intermediate and 't' for thermal
-	\item sharpeness: character indicating if the approximate formula ("blunt") or numerical integration ("sharp") where used. 'b' and 's' correspondingly.
-	\item ierr: integer indicating errors in the calculation. If it is 0 the subroutine has been executed successfully. If not, detailed debugging information may be found on the commented code.    
-\end{itemize} 
+	\item \texttt{Jem}: The current density $J$ in $A/nm^2$
+	\item \texttt{heat}: The Nottingham heat density $P_N$ in $W/nm^2$
+	\item \texttt{Gam}: The Gamow exponent $G$
+	\item \texttt{xm}: The abcissa where the maximum of the barrier appears in nm
+	\item \texttt{Um}: The value $U_m$ of the maximum of the barrier in eV (with respect to the Fermi energy)
+	\item \texttt{maxbeta}: derivative $-G'( E = 0)$ in $eV^{-1}$
+	\item \texttt{minbeta}: derivative $-G'( E = U_m)$ in $eV^{-1}$
+	\item \texttt{regime}: character indicating the regime of calculation. \texttt{'f'} for field, \texttt{'i'} for intermediate and \texttt{'t'} for thermal
+	\item \texttt{sharpeness}: character indicating if the approximate formula ("blunt") or numerical integration ("sharp") where used. \texttt{'b'} and \texttt{'s'} correspondingly.
+	\item \texttt{ierr}: integer indicating errors in the calculation. If it is 0 the subroutine has been executed successfully. If not, detailed debugging information may be found on the commented code.    
+\end{itemize}
 
+\subsection{User-defined parameters}
+
+Finally, GETELEC gives the ability to the user to define some global calculation parameters. In order to do that, a text file "GetelecPar.in" must be present in the working directory. Its format must be exactly as specified in the existing example file. If the parameter file does not exist in the directory, the input parameters will take their standard default value. However, if it exists, all values must be specified in the same order. The specified parameters are the following: 
+
+\begin{itemize}
+	\item \texttt{xlim}:  $\chi_{lim}$(Described in the main text).
+	\item \texttt{nlimfield}: $n_{high}$ (Described in the main text).
+	\item \texttt{nlimthermal}: $n_{low}$ (Described in the main text).
+	\item \texttt{nmaxlim}: Maximum limit for the usage of GTF formulas in Field regime. If $n>$\texttt{nmaxlim}, the temperature corrected version of the FN equation is used.
+	\item \texttt{gammalim}: Maximum acceptable $\gamma$. If $\gamma>$ \texttt{gammalim} the approximate analytic expressions are used. 
+	\item \texttt{Jfitlim}: Minimum limit for interpolation with spline. If $J<$ \texttt{Jfitlim} polynomial fitting is forced.
+	\item \texttt{varlim}: Limit of variance for the fitting approximation (has meaning for \texttt{mode}=-2). If the fitting variance is more than \texttt{varlim} the algorithm switches to spline mode.
+	\item \texttt{epsfit}: Requested algorithm for all fittings of the input potential $(x_i, V_i)$
+	\item \texttt{Nmaxpoly}: Maximum degree of the fitted to $(x_i, V_i)$ polynomial.
+	\item \texttt{spectra}: If true, spectroscopy data (Energy distribution of the emitted current) are written to a file "spectra.csv".   
+\end{itemize}
 
 \section{Interface with C - dynamic library}
 \label{sec:C}
 
-GETELEC provides with an interface so that its main functions can be called from the C language.
+GETELEC provides with an interface so that its main functions can be called from the C language. Its communication is done through a C structure that contains all the input-output parameters. The input parameters are: \texttt{F}, \texttt{W}, \texttt{R}, \texttt{Temp} = Temperature in $K$ , \texttt{xr}, \texttt{Vr}, \texttt{mode}, \texttt{full}. The corresponding output are \texttt{Jem}, \texttt{heat}, \texttt{regime}, \texttt{sharp}, \texttt{ierr}. They all have exactly the same meaning and format as their corresponding for the FORTRAN type described in section \ref{fortran}. In order to call GETELEC from C one has to include the header file "modules/getelec.h" and link with the dynamic library "lib/libgetelec.so". Then a data structure with the above parameters has to be created and the interface C function "\texttt{cur\_dens\_c()}" has to be called. 
 
 
 \section{Interface with Python - Fitting algorithm}
 \label{sec:Python}
 
-Once GETELEC can be called from the C language and built into a dynamic library, it is very easy to write an interface also for Python. Especially, such an interface would be very useful, since Python provides with extensive scientific libraries that can be used to manipulate very easily the input and output of GETELEC.
+Once GETELEC can be called from the C language and built into a dynamic library, it is very easy to write an interface also for Python. Especially, such an interface would be very useful, since Python provides with extensive scientific libraries that can be used to manipulate very easily the input and output of GETELEC. It also facilitates the usage of GETLEC for the analysis of experimental $I-V$ data, since the python library scipy provides with the fitting algorithm.
 
 
 

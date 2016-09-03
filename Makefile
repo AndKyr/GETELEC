@@ -60,7 +60,7 @@ bin/%.out: cobj/%.o $(LIBSHARED)
 	$(CC) -L./lib -Wl,-rpath=./lib -o $@ $^ #-lgetelec
 	
 bin/%.exe: obj/%.o $(MODOBJ)
-	$(FC) $(FFLAGS) $^ $(DEPS) -o $@
+	$(FC) $(FFLAGS) -Llib $^ $(DEPS) -o $@
 	
 cobj/%.o : tests/%.c
 	$(CC) $(CFLAGS) $^ -c -o $@ 
