@@ -16,32 +16,34 @@ import getelec_mod as gt
 
 F0 = [1., 5., 14.]
 R0 = [1., 5., 50.]
-gamma0 = [1., 10., 10.00001]
+gamma0 = [1., 10., 100.]
 Temp0 = [299.99, 300., 300.01]
 
-filenames  = ['IV_Guerrera.csv', 'IV_scaling.csv', 'IV_Spindt.csv', 'IV_CERN_2004_S22.csv']
+filenames  = ['IV_Guerrera.csv', 'IV_scaling.csv', \
+            'IV_Spindt.csv', 'IV_CERN_2004_S22.csv']
 Wi =        [4.05,                4.5,               4.35,                4.5]
 markers = ['s', '+', 'd', 'o']
 
 colors = ['b', 'g', 'r', 'k']
                 
 #ploting parameters
-font = 40
-lw = 4
+font = 45
+lw = 5
 mw = 15
-matplotlib.rcParams["font.family"] = "Serif"
+matplotlib.rcParams["font.family"] = 'Times New Roman'
 matplotlib.rcParams["font.size"] = font
 matplotlib.rcParams["axes.labelsize"] = font
 matplotlib.rcParams["xtick.labelsize"] = font
 matplotlib.rcParams["ytick.labelsize"] = font
 matplotlib.rcParams["legend.fontsize"] = font
+matplotlib.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}']
 
 
 fig = plt.figure(figsize=(20,15))
 ax = fig.gca()
 ax.grid()
-ax.set_xlabel(r"$1/F\ [nm/V \ ]$")
-ax.set_ylabel(r"$I \ [nA]$")
+ax.set_xlabel(r"$1/F\ [ \mathrm{nm/V} ]$")
+ax.set_ylabel(r"$I \ [ \mathrm{nA} ]$")
 
 
 i=0                
@@ -70,7 +72,7 @@ for fname in filenames:
 ax.set_ylim([1.e-3, 2.e8])
 ax.legend(loc="best")
 fig.tight_layout()
-fig.savefig('/home/kyritsak/Documents/LaTeX/papers/getelec_paper/eps/figure_fittings.eps')
-fig.savefig('/home/kyritsak/Documents/LaTeX/papers/getelec_paper/png/figure_fittings.png')
+#fig.savefig('/home/kyritsak/Documents/LaTeX/papers/getelec_paper/eps/figure_fittings.eps')
+#fig.savefig('/home/kyritsak/Documents/LaTeX/papers/getelec_paper/png/figure_fittings.png')
 plt.show()
 

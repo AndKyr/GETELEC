@@ -1,6 +1,6 @@
 \documentclass[notitlepage
 % aip,
-% jvstb,%
+ %jvstb,%
 % amsmath,amssymb,notitlepage,
 %preprint,%
 %reprint,%
@@ -34,7 +34,7 @@ The GETELEC project can be found as a git repository in the accompanying file "G
 
 \subsection{Usage as a FORTRAN static library}   
 \label{fortran}
-GETELEC consists mainly of a FORTRAN 2003 module ("modules/getelec.f90") which contains all the essential data types and subroutines for the calculations. After the compilation, the user can call GETELEC public data types and subroutines by including the static library "lib/libgetelec.a" and the dependency library "lib/libslatec.a". The main data type in the module that handles all the emission data and parameters is the \texttt{EmissionData}. The user mainly has to define the input parameters which are members of this data type. The first member that has to be defined is the texttt{mode} that determines how the barrier will be input. If \texttt{mode}=(0 or -1), the barrier will be given in the form of the 3-parameter model of eq. (2) and the user has to specify the three members of the data type:
+GETELEC consists mainly of a FORTRAN 2003 module ("modules/getelec.f90") which contains all the essential data types and subroutines for the calculations. After the compilation, the user can call GETELEC public data types and subroutines by including the static library "lib/libgetelec.a" and the dependency library "lib/libslatec.a". The main data type in the module that handles all the emission data and parameters is the \texttt{EmissionData}. The user mainly has to define the input parameters which are members of this data type. The first member that has to be defined is the \texttt{mode} that determines how the barrier will be input. If \texttt{mode}=(0 or -1), the barrier will be given in the form of the 3-parameter model of eq. (2) and the user has to specify the three members of the data type:
 \begin{itemize}
 	\item \texttt{F}: Local field in $V/nm$
 	\item \texttt{R}: Local radius of curvature in $nm$
@@ -81,16 +81,19 @@ Finally, GETELEC gives the ability to the user to define some global calculation
 \section{Interface with C - dynamic library}
 \label{sec:C}
 
-GETELEC provides with an interface so that its main functions can be called from the C language. Its communication is done through a C structure that contains all the input-output parameters. The input parameters are: \texttt{F}, \texttt{W}, \texttt{R}, \texttt{Temp} = Temperature in $K$ , \texttt{xr}, \texttt{Vr}, \texttt{mode}, \texttt{full}. The corresponding output are \texttt{Jem}, \texttt{heat}, \texttt{regime}, \texttt{sharp}, \texttt{ierr}. They all have exactly the same meaning and format as their corresponding for the FORTRAN type described in section \ref{fortran}. In order to call GETELEC from C one has to include the header file "modules/getelec.h" and link with the dynamic library "lib/libgetelec.so". Then a data structure with the above parameters has to be created and the interface C function "\texttt{cur\_dens\_c()}" has to be called. 
+GETELEC provides with an interface so that its main functions can be called from the C language. Its communication is done through a C structure that contains all the input-output parameters. The input parameters are: \texttt{F}, \texttt{W}, \texttt{R}, \texttt{Temp} = Temperature in $K$ , \texttt{xr}, \texttt{Vr}, \texttt{mode}, \texttt{full}. The corresponding output variables are \texttt{Jem}, \texttt{heat}, \texttt{regime}, \texttt{sharp}, \texttt{ierr}. They all have exactly the same meaning and format as their corresponding for the FORTRAN type described in section \ref{fortran}. In order to call GETELEC from C one has to include the header file "modules/getelec.h" and link with the dynamic library "lib/libgetelec.so". Then a data structure with the above parameters has to be created and the interface C function "\texttt{cur\_dens\_c()}" has to be called. 
 
 
 \section{Interface with Python - Fitting algorithm}
 \label{sec:Python}
 
-Once GETELEC can be called from the C language and built into a dynamic library, it is very easy to write an interface also for Python. Especially, such an interface would be very useful, since Python provides with extensive scientific libraries that can be used to manipulate very easily the input and output of GETELEC. It also facilitates the usage of GETLEC for the analysis of experimental $I-V$ data, since the python library scipy provides with the fitting algorithm.
+Once GETELEC can be called from the C language and built into a dynamic library, it is very easy to write an interface also for Python. Such an interface would be very useful since Python provides with extensive scientific libraries that can be used to manipulate very easily the input and output of GETELEC. It also facilitates the usage of GETELEC for the analysis of experimental $I-V$ data as the python library scipy provides with the fitting algorithm.
 
+The python module "getelec\_mod.py" provides with this interface. It contains all the necessary classes and functions to facilitate this interface. All the communication is done through the class \texttt{Emission}, which has exactly the same data members as the corresponding C structure. An object of the class can be easily created by calling the function \texttt{emission\_create()} and giving the appropriate input. The arrays \texttt{xr,Vr} must be given as numpy arrays. The output object contains both all the input parameters and the output results from GETELEC.
 
+Another important function contained in "getelec\_mod.py" is \texttt{fitML()}. It takes as input two arrays of experimental I-V data in the form of $1/V-\log(I)$ and fits to them the GETELEC parameters that best reproduce them. See section 3.2 of the paper for more details. The other input parameters of the function are lists with 3 elements that contain the minimum value, the initial guess and the maximum value of every fitting parameter.
 
+The simplest way to fit experimental data is putting the $1/V-\log(I)$ data in two columns of a .csv file (text file with comma separated values) and run the script "python/fitdata.py" giving the name of the file as command line argument. The fitting parameters bounds and initial guesses can be changed by modifying the first lines of the script.
 %\begin{thebibliography}{9}
 %\bibliography{review}
 %\end{thebibliography}

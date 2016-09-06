@@ -853,7 +853,7 @@ subroutine print_data(this, full, filenum)
             'A/nm^2', 'NotHeat =', this%heat,'W/nm^2', 'Gamow =', this%Gam
     write (fid,'(/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4,A10)') 'xm =', &
             this%xm, 'nm', 'xmax =', this%xmax, 'nm', 'Um =', this%Um, 'eV'
-    write (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10)') ,'dG/dE@Ef =', this%maxbeta, &
+    write (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10)') 'dG/dE@Ef =', this%maxbeta, &
             '(eV)^-1', 'dG/dE@Um =', this%minbeta, '(eV)^-1'
     write (fid,'(/A10,A12,/A10,A12,/A10,I12,/A10,L12,/A10,I12)') &
                                      'Regime:', this%regime, &
@@ -981,7 +981,7 @@ subroutine plot_barrier(this)
         call plt%add_plot(this%xr,Vplot,label='$barrier points$', &
                     linestyle='r*',markersize = 10)
     endif 
-    call plt%savefig('barrierplot.png', pyfile='barrierplot.plot.py')
+    call plt%savefig('png/barrierplot.png', pyfile='python/barrierplot.plot.py')
     
 
     contains
@@ -1202,7 +1202,7 @@ subroutine read_params()
     character(len=40), parameter  :: error = 'ERROR: not correct order in heatparams'
     
     inquire(file=paramfile, exist=ex)
-    if (.not. ex) then
+    if (.not. ex .and. debug) then
         print *, 'GETELEC: Parameters input file not found. Default values used.'
         return
     endif

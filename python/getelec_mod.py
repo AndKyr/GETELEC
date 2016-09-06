@@ -1,3 +1,7 @@
+"""This module provides with all the interfcace classes and functions to call
+GETELEC software from python and perform electron emissino calculations"""
+
+
 import ctypes as ct
 import numpy as np
 import scipy.optimize as opt
@@ -34,20 +38,38 @@ class Emission(ct.Structure):
                 ]
     
     def cur_dens(self):
+        """Calculate current density"""
         return getelec.cur_dens_c(ct.byref(self))
     
-    def print_data(self,full = False):#print the data 
+    def print_data(self,full = False):#print the data
+        """Calculate current density and print data""" 
         if (full):
             return getelec.print_data_c(ct.byref(self),ct.c_int(1))
         else:
             return getelec.print_data_c(ct.byref(self),ct.c_int(0))
     
     def plot_data(self):
+        """Calculate current density and plot the barrier"""
         return getelec.plot_data_c(ct.byref(self))
+        
+def emission_create(F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300., \
+                Jem = 0., heat = 0., xr = np.array([]), Vr = np.array([]), \
+                regime = 'r', sharp = 'r', full = 1, mode = 0, ierr = 0):
+                    
+    """Creates an Emission class object and calculates everyting. 
+    Input xr ,Vr are given as numpy arrays."""
+    x_c = xr.ctypes.data_as(ct.POINTER(ct.c_double))
+    V_c = Vr.ctypes.data_as(ct.POINTER(ct.c_double))
+    Nr = xr.size
+    assert (Vr.size == Nr),"Check sizes of xr and Vr"
+    this = Emission(F,W,R,gamma,Temp,Jem,heat,x_c,V_c,regime,sharp,Nr,1,0,0)
+    this.cur_dens()
+    return this
 
 def emit (F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300.):
-    this =   Emission(F,W,R,gamma,Temp,0.,0.,None,None,'r','r',0,1,0,0)
-    this.cur_dens()
+    """Calculate the current density and the Nottingham heating for specific set
+    of input parameters"""
+    this =   emission_create(F,W,R,gamma,Temp)
     if (this.ierr == 0):
         return (this.Jem, this.heat)
     else:
@@ -56,6 +78,8 @@ def emit (F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300.):
         return (this.Jem, this.heat)
         
 def MLplot (xfn, beta = 1., W = 4.5, R = 5., gamma = 10., Temp = 300.):
+    """Take input data xfn=1/V (x axis of FN plot) and calculate the current density
+    for a specific set of parameters and F = beta * V. Output in logarithmic scale """
     yfn = np.empty([len(xfn)])
     for i in range(len(xfn)):
         F = beta / xfn[i]
@@ -64,6 +88,7 @@ def MLplot (xfn, beta = 1., W = 4.5, R = 5., gamma = 10., Temp = 300.):
     return yfn
 
 def MLerror(p, xML, yML):
+    """calculate the y-shift between theoretical and experimental"""
     ycalc = MLplot(xML, p[0], p[1], p[2], p[3], p[4])
     yshift = max(ycalc) - max(yML)
     return ycalc - yML - yshift
