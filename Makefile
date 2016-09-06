@@ -17,7 +17,7 @@ LIBDEPS = lib/libslatec.a
 LIBSHARED = lib/libgetelec.so
 
 CINTERFACE = modules/cobj/c_interface.o
-DIRS = bin cobj mod obj modules/obj modules/cobj
+DIRS = bin cobj mod obj modules/obj modules/cobj png
 	
 .PHONY: tests varyingTemp ctest KXerror
 .SECONDARY: *.o #$(MODOBJ)
