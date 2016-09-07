@@ -93,7 +93,7 @@ The python module "getelec\_mod.py" provides with this interface. It contains al
 
 Another important function contained in "getelec\_mod.py" is \texttt{fitML()}. It takes as input two arrays of experimental I-V data in the form of $1/V-\log(I)$ and fits to them the GETELEC parameters that best reproduce them. See section 3.2 of the paper for more details. The other input parameters of the function are lists with 3 elements that contain the minimum value, the initial guess and the maximum value of every fitting parameter.
 
-The simplest way to fit experimental data is putting the $1/V-\log(I)$ data in two columns of a .csv file (text file with comma separated values) and run the script "python/fitdata.py" giving the name of the file as command line argument. The fitting parameters bounds and initial guesses can be changed by modifying the first lines of the script.
+The simplest way to fit experimental data is putting the $V-I$ data in two columns of a .csv file (text file with comma separated values) and run the script "python/fitdata.py" giving the name of the file as command line argument. The fitting parameters bounds and initial guesses can be changed by modifying the first lines of the script.
 %\begin{thebibliography}{9}
 %\bibliography{review}
 %\end{thebibliography}

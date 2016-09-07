@@ -1199,11 +1199,13 @@ subroutine read_params()
     character(len=13)   :: str
     logical             :: ex
     integer             :: fid = fidparams
-    character(len=40), parameter  :: error = 'ERROR: not correct order in heatparams'
+    character(len=40), parameter  :: error = &
+        'ERROR: GetelecPar.in is not structured properly. Please check input file.'
     
     inquire(file=paramfile, exist=ex)
-    if (.not. ex .and. debug) then
-        print *, 'GETELEC: Parameters input file not found. Default values used.'
+    if (.not. ex) then
+        if (debug) &
+            print *, 'GETELEC: Parameters input file not found. Default values used.'
         return
     endif
     

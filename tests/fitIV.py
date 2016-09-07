@@ -39,7 +39,7 @@ colors = {'Guerrera': 'b', 'ETH_scaling': 'g', 'Spindt': 'r', 'CERN_2004': 'k'}
 #ploting parameters
 font = 45
 lw = 5
-mw = 15
+mw = 18
 matplotlib.rcParams["font.family"] = 'Times New Roman'
 matplotlib.rcParams["font.size"] = font
 matplotlib.rcParams["axes.labelsize"] = font
@@ -81,9 +81,10 @@ for key in data.keys():
     ax.semilogy(xth / popt[0],yth,c=colors[key], linewidth = lw, label = None)
 
 ax.set_ylim([1.e-3, 2.e8])
+ax.set_yticks([1.e8, 1.e6, 1.e4, 1.e2, 1.e0, 1.e-2])
 ax.legend(loc="best")
 fig.tight_layout()
-#fig.savefig('/home/kyritsak/Documents/LaTeX/papers/getelec_paper/eps/figure_fittings.eps')
-#fig.savefig('/home/kyritsak/Documents/LaTeX/papers/getelec_paper/png/figure_fittings.png')
+fig.savefig('/home/kyritsak/Documents/LaTeX/papers/getelec_paper/eps/figure_fittings.eps')
+fig.savefig('/home/kyritsak/Documents/LaTeX/papers/getelec_paper/png/figure_fittings.png')
 plt.show()
 
