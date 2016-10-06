@@ -62,7 +62,7 @@ def emission_create(F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300., \
     V_c = Vr.ctypes.data_as(ct.POINTER(ct.c_double))
     Nr = xr.size
     assert (Vr.size == Nr),"Check sizes of xr and Vr"
-    this = Emission(F,W,R,gamma,Temp,Jem,heat,x_c,V_c,regime,sharp,Nr,1,0,0)
+    this = Emission(F,W,R,gamma,Temp,Jem,heat,x_c,V_c,regime,sharp,Nr,full,mode,ierr)
     this.cur_dens()
     return this
 

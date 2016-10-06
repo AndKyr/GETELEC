@@ -32,6 +32,9 @@ $(DIRS):
 varyingTemp: bin/varyingTemp.exe
 	./bin/varyingTemp.exe	
 
+errortest: bin/errortest.exe
+	./bin/errortest.exe
+
 ctest: bin/ctest.out
 	./bin/ctest.out
 	

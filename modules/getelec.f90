@@ -150,7 +150,7 @@ subroutine cur_dens(this)
     real(dp)        :: nlimf, nlimt   !limits for n to distinguish regimes
     real(dp)        :: t1,t2,t3 !timing variables
     real(dp), allocatable :: xtemp(:), Vtemp(:)
-    integer         :: i
+    integer         :: i, GTFerr
     
     if (debug) then
         call cpu_time(t1)
@@ -161,6 +161,8 @@ subroutine cur_dens(this)
     if (.not. readparams) call read_params()
     
     this%ierr = 0
+    GTFerr = 0
+    
     if (this%W <= 0.d0 .or. this%kT < 0 .or. isnan(this%W) .or. isnan(this%kT)) then 
         !check input validity
         this%ierr = -1
@@ -274,8 +276,10 @@ subroutine cur_dens(this)
         if (this%full) then
             call J_num_integ(this) !Numerical integration over energies
         else
-            call GTFinter(this)
+            GTFerr = GTFinter(this)
         endif
+        if (GTFerr/=0) call J_num_integ(this)  !if GTF return with error, do full
+        
     endif
     
     if (debug) print *, 'n = ', n, 's = ', s
@@ -315,8 +319,8 @@ subroutine cur_dens(this)
     contains
 
     pure function Sigma(x) result(Sig)!Jensen's sigma
-        double precision, intent(in) :: x
-        double precision:: Sig
+        real(dp), intent(in)    :: x
+        real(dp)                :: Sig
         Sig = (1.d0+x**2)/(1.d0-x**2)-.3551d0*x**2-0.1059d0*x**4-0.039*x**6
     end function Sigma
     
@@ -344,11 +348,12 @@ subroutine gamow_general(this,full)
     integer                                 :: iflag , info
     real(dp)                                :: t1, t2 !timing
     
-    xmaxallowed = 1.d3
+    xmaxallowed = 1.d2
     x = this%W / (this%F * this%R)!length of barrier indicator
     dw = 1.d-2
     
-    if (this%mode == 0 .or. this%mode == -12 .or. this%mode == -1) then
+    if (this%mode == 0 .or. this%mode == -12 .or. this%mode == -1 .or. &
+        this%mode == -22) then
     
         if (x>0.4d0) then !the second root is far away
             this%xmax = min(this%W * this%gamma / this%F, xmaxallowed)
@@ -599,7 +604,7 @@ function gamow_KX(this, full) result(info)
 end function gamow_KX
 
 
-subroutine GTFinter(this)
+function GTFinter(this) result(error)
 !Calculates estimation of current according to GTF theory for intermediate regime.
 !It is used when a fast calculation is needed and we don't care about full numerical
 !calculation for all energies in the intermediate regime.
@@ -610,7 +615,7 @@ subroutine GTFinter(this)
     ! supports only sp
     real(sp)            ::  polybeta(3), work(8)
     complex(sp)         :: rt(2)
-    integer             :: ierr
+    integer             :: ierr, error
     real(dp)            :: zmax, Em, Gm, s, C_FN, Bq, B_FN, UmaxokT
     real(dp)            :: t1, t2 !timing variables
     
@@ -628,9 +633,14 @@ subroutine GTFinter(this)
     endif
     
     call RPQR79(2,polybeta,rt,ierr,work) !finding the roots of the polynomial
-    if (ierr /= 0) call print_data(this)
+    if (ierr /= 0) then
+        print *,'polynomial root finder in GTFinter encounter error. printing data:'
+        call print_data(this)
+    endif
+    
     
     zmax=minval(real(rt,dp)) ! take the smaller root
+    if (debug) print *, 'Polynomial roots in GTFinter: rt = ', rt
     if (zmax<0) then
         zmax=maxval(real(rt,dp)) !choose the positive root if it is negative
     endif
@@ -638,6 +648,11 @@ subroutine GTFinter(this)
     Em = this%Um * zmax !E where max integrant occurs according to Jensen
     Gm = -(C_FN+Bq-2.*B_FN) * zmax**3 - (3.*B_FN-Bq-2.*C_FN) * zmax**2 &
             -C_FN * zmax + B_FN ! G at the maximum
+    if (Gm<0.d0 .or. Gm > B_FN) then
+        error = 1
+        return
+    endif
+    
     s = Em / this%kT + Gm
     if (Gm < 0.d0 .and. debug) then
         print *, 'zmax = ', zmax, 'Gm = ', Gm
@@ -652,7 +667,7 @@ subroutine GTFinter(this)
         this%counts(5) = this%counts(5) + 1
     endif
 
-end subroutine GTFinter
+end function GTFinter
 
 
 subroutine J_num_integ(this)
@@ -844,8 +859,8 @@ subroutine print_data(this, full, filenum)
         fid=filenum
     endif
 
-    
-    write (fid,'(//A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4)') 'F =', this%F, &
+    write (fid,'(A32/)') '================================'
+    write (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4)') 'F =', this%F, &
             'V/nm', 'R =', this%R, 'nm', 'gamma =', this%gamma
     write (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10)') 'W =', this%W, 'eV', &
             'kT =', this%kT, 'eV'
@@ -870,6 +885,7 @@ subroutine print_data(this, full, filenum)
         enddo
     endif
     
+    write (fid,'(A32/)') '--------------------------------'
 end subroutine print_data
 
 
@@ -963,7 +979,6 @@ subroutine plot_barrier(this)
     
     x = linspace(1.d-4,this%xmax,Nx)
     ixrm = size(this%xr)
-    if (debug) print *, 'the mode is :' , this%mode
     do i =1, Nx
         Ubar(i) = bar(x(i))
         Ubar(i) = max(Ubar(i),-1.d0) 
@@ -1152,8 +1167,8 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, shift, yshift) result(v
     call DNLS1E(fcn, iopt, m, n, p0, fvec, tol, nprint,  info, iwa, wa, lwa)
     var = sum(sqrt(fvec)/abs(ydata))/m
     
-    print *, 'fit info:', info, 'tol = ', tol
-    print *, 'Nvals = ', Nvals
+    if (debug) print *, 'fit info:', info, 'tol = ', tol, 'Nvals = ', Nvals
+
     if (present(yshift)) yshift = yshiftloc
     
     contains
