@@ -309,8 +309,10 @@ subroutine cur_dens(this)
                 'Sig(1/n) =', Sigma(1/n)
     endif
     
-    if ((isnan(this%Jem) .or. isnan(this%heat) .or.this%Jem<1.d-201)) then
-        if (this%ierr == 0) this%ierr = 4
+    if ((isnan(this%Jem) .or. isnan(this%heat) .or. this%Jem < 1.d-201)  &
+        .and. this%ierr == 0) this%ierr = 4
+    
+    if (this%ierr /= 0) then 
         open(fiderr, file = errorfile, action = 'write', access = 'append')
         call print_data(this, .true., fiderr)
         close(fiderr)
