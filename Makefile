@@ -7,7 +7,7 @@ MODOBJ = modules/obj/std_mat.o modules/obj/bspline.o \
   modules/obj/pyplot_mod.o modules/obj/getelec.o
   
 DEPS  = -lslatec
-FFLAGS = -ffree-line-length-none -fbounds-check -Imod -O3 -fPIC -Llib -static
+FFLAGS = -ffree-line-length-none -fbounds-check -Imod -O3 -fPIC -Llib
 CFLAGS = -O3 -fPIC -Imodules #-Wall -Wextra
 
 PWD = $(shell pwd)
@@ -63,7 +63,7 @@ $(LIBDEPS): lib/slatec/install
 	mv libslatec.a lib/
 
 bin/%.out: cobj/%.o $(LIBSHARED)
-	$(CC) -L./lib -Wl,-rpath=./lib -o $@ $^ #-lgetelec
+	$(CC) -L./lib -o $@ $^ #-lgetelec
 	
 bin/%.exe: obj/%.o $(MODOBJ)
 	$(FC) $(FFLAGS) -Llib $^ $(DEPS) -o $@
