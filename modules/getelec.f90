@@ -39,7 +39,7 @@ character(len=14), parameter   :: errorfile = 'GetelecErr.txt', &
                                   paramfile = 'GetelecPar.in'
 ! names for the error output file and the parameters input file
 
-logical, parameter      :: debug = .false., verbose = .false.
+logical, parameter      :: debug = .true., verbose = .true.
 !if debug, warnings are printed, parts are timed and calls are counted 
 !if debug and verbose all warnings are printed and barrier is plotted
 
@@ -402,7 +402,9 @@ subroutine gamow_general(this,full)
         if (info == -2) this%ierr = 3
     endif
     
-    if (isnan(this%Gam) .or. isnan(new%Gam)) then
+    if ((isnan(this%Gam) .or. isnan(new%Gam)) .and. debug ) then
+        print *, 'Gam takes NaN in gamow_general. this ='
+        call print_data(this)
         print *, 'new ='
         call print_data(new)
     endif
@@ -466,14 +468,35 @@ subroutine gamow_num(this, full)
     x2 = [this%xm, this%xmax] !interval for search of second root
     
     call dfzero(bar,x1(1),x1(2),x1(1),RtolRoot,AtolRoot,IFLAG) !first root
-    if (IFLAG /= 1) this%ierr = 10 + IFLAG
+    if (IFLAG /= 1) then !if something went wrong
+        this%ierr = 10 + IFLAG !set error flag
+        if (debug .and. verbose) then ! print error messages
+            print *, 'Error occured in dfzero1. IFLAG =', IFLAG
+            print *, 'x1=', x1, '|| x2=', x2
+        endif
+    endif
     
     call dfzero(bar,x2(1),x2(2),x2(1),RtolRoot,AtolRoot,IFLAG) !second root
-    if (IFLAG /= 1) this%ierr = 20 + IFLAG
+    if (IFLAG /= 1) then !if something went wrong
+        this%ierr = 10 + IFLAG !set error flag
+        if (debug .and. verbose) then ! print error messages
+            print *, 'Error occured in dfzero1. IFLAG =', IFLAG
+            print *, 'x1=', x1, '|| x2=', x2
+        endif
+    endif
     
-    call dqage(sqrt_bar,maxval(x1),minval(x2),AtolInt,RtolInt,2,maxint,G,ABSERR, &
-    NEVAL,IER,ALIST,BLIST,RLIST,ELIST,IORD,LAST) !integrate
-    if (IER /= 0) this%ierr = 30 + IER
+    call dqage(sqrt_bar, maxval(x1), minval(x2), AtolInt,RtolInt, 2, maxint, &
+                G, ABSERR, NEVAL, IER, ALIST, BLIST, RLIST, ELIST, IORD, LAST)
+                !integrate
+    if (IER /= 0) then
+        this%ierr = 30 + IER
+        if (debug .and. verbose) then
+            print *, 'Error occured in dqage. IER =', IER
+            print *, 'limits = [', x1, '|| ', x2, ']'
+            print *, 'Lvals  = [', bar(x1(1)), bar(x1(2)), '||', bar(x2(1)), bar(x2(2)), ']'
+            print *,  'Neval =', NEVAL, '| ABSERR =', ABSERR, '| LAST=', LAST 
+        endif
+    endif
     !caution in the interval limits. x1, x2 are not necessarily returned from dfzero
     !in increasing order. Use maxval, minval!!!
     
@@ -501,8 +524,11 @@ subroutine gamow_num(this, full)
                 if (x<= this%xr(ixrm)) then
                     call dp1vlu(this%Ndeg, 0, x, Vinterp(1), Vinterp(2:), this%Apoly)
                 else !out of bounds. Polynomial misbehaves. Use extrapolation
-                    Vinterp(1) = this%Vr(ixrm) + (x - this%xr(ixrm)) * &
-                    (this%Vr(ixrm)-this%Vr(ixrm-1)) / (this%xr(ixrm)-this%xr(ixrm-1))
+                    call dp1vlu(this%Ndeg, 1, this%xr(ixrm), & !polyval + der in xrm
+                            Vinterp(1), Vinterp(2:), this%Apoly)
+                    Vinterp(1) = Vinterp(1) + Vinterp(2) * (x - this%xr(ixrm))
+                    !linear extrapolation using the derivative of the polynomial
+                    Vinterp(1) = Vinterp(1)
                 endif
                 V = this%W - Vinterp(1) - Q / (x + ( 0.5d0 * (x**2)) / this%R)
             case (0,-12)
