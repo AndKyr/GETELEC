@@ -24,7 +24,7 @@ DIRS = bin cobj mod obj modules/obj modules/cobj png
 
 all: $(DIRS) $(LIBSFULL) $(LIBSHARED)
 
-tests: varyingTemp ctest KXerror plots  
+tests: varyingTemp ctest KXerror plots fitIV  
 
 $(DIRS):
 	mkdir -p $(DIRS)
@@ -45,11 +45,14 @@ plots: bin/plots.exe
 	./bin/plots.exe
 
 current: bin/current.exe
-	./bin/current.exe 5. 4. 1000. 5. 0 T 10. 
+	./bin/current.exe 5. 4. 1000. 5. 0 T 10.
+	
+fitIV: tests/fitIV.py
+	./tests/fitIV.py
 	
 
 $(LIBSHARED): $(CINTERFACE) $(LIBSTATIC) $(LIBDEPS)
-	$(FC) -fPIC -shared -Wl,--whole-archive -o $@ $^ -Wl,--no-whole-archive    
+	$(FC) -fPIC -shared -o $@ $^   
 	
 $(LIBSTATIC): $(MODOBJ)
 	$(AR) $@ $(MODOBJ)
