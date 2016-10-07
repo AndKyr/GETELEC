@@ -117,7 +117,7 @@ os.system("bash compile")
 print("Linking.")
 # link everything
 os.system("gfortran -shared -o libslatec.so.1.0.1 *.o")
-os.system("ar rcs -o libslatec.a *.o")
+os.system("ar rcs libslatec.a *.o")
 
 
 # copying

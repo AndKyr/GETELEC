@@ -52,7 +52,7 @@ $(LIBSHARED): $(CINTERFACE) $(LIBSTATIC) $(LIBDEPS)
 	$(FC) -fPIC -shared -Wl,--whole-archive -o $@ $^ -Wl,--no-whole-archive    
 	
 $(LIBSTATIC): $(MODOBJ)
-	$(AR) $@ -o $(MODOBJ)
+	$(AR) $@ $(MODOBJ)
 	
 $(LIBDEPS): lib/slatec/install
 	cd lib/slatec/; ./install -p $(PWD) 

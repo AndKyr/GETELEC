@@ -39,7 +39,7 @@ character(len=14), parameter   :: errorfile = 'GetelecErr.txt', &
                                   paramfile = 'GetelecPar.in'
 ! names for the error output file and the parameters input file
 
-logical, parameter      :: debug = .true., verbose = .true.
+logical, parameter      :: debug = .false., verbose = .false.
 !if debug, warnings are printed, parts are timed and calls are counted 
 !if debug and verbose all warnings are printed and barrier is plotted
 
@@ -649,6 +649,7 @@ function GTFinter(this) result(error)
     real(dp)            :: zmax, Em, Gm, s, C_FN, Bq, B_FN, UmaxokT
     real(dp)            :: t1, t2 !timing variables
     
+    error = 0    
     if (debug) call cpu_time(t1)
     C_FN = this%maxbeta * this%Um
     Bq = this%minbeta * this%Um
@@ -679,6 +680,7 @@ function GTFinter(this) result(error)
     Gm = -(C_FN+Bq-2.*B_FN) * zmax**3 - (3.*B_FN-Bq-2.*C_FN) * zmax**2 &
             -C_FN * zmax + B_FN ! G at the maximum
     if (Gm<0.d0 .or. Gm > B_FN) then
+        print *, 'Error in GTFinter, Gm =', Gm
         error = 1
         return
     endif
