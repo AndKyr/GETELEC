@@ -357,11 +357,11 @@ subroutine gamow_general(this,full)
     if (this%mode == 0 .or. this%mode == -12 .or. this%mode == -1 .or. &
         this%mode == -22) then
     
-        if (x>0.4d0) then !the second root is far away
+        if (x > 0.4d0 .and. this%gamma > 1.05d0) then !the second root is far away
             this%xmax = min(this%W * this%gamma / this%F, xmaxallowed)
             !maximum length xmaxallowed
         else  !the second root is close to the standard W/F
-            this%xmax = 2.d0 * this%W / this%F
+            this%xmax = 2.5d0 * this%W / this%F
         endif
     else
         this%xmax = this%xr(size(this%xr))
@@ -453,7 +453,7 @@ subroutine gamow_num(this, full)
             endif
         endif
         this%minbeta = 22.761d0 / sqrt(abs(diff2(bar,this%xm,dx)))
-        if (isnan(this%minbeta)) print *, 'indxm=', indxm, 'dx=', dx, &
+        if (isnan(this%minbeta) .and. debug) print *, 'indxm=', indxm, 'dx=', dx, &
                 'U(xm+dx)=', bar(this%xm+dx), 'U(xm-dx)=', bar(this%xm-dx)
         if (this%Um < 1.d-2) then !lost barrier
             this%Gam = this%minbeta * this%Um
@@ -470,19 +470,22 @@ subroutine gamow_num(this, full)
     call dfzero(bar,x1(1),x1(2),x1(1),RtolRoot,AtolRoot,IFLAG) !first root
     if (IFLAG /= 1) then !if something went wrong
         this%ierr = 10 + IFLAG !set error flag
-        if (debug .and. verbose) then ! print error messages
-            print *, 'Error occured in dfzero1. IFLAG =', IFLAG
-            print *, 'x1=', x1, '|| x2=', x2
-        endif
+        if (debug) &
+            print *, 'Error occured in dfzero1. IFLAG =', IFLAG! print error messages
     endif
     
     call dfzero(bar,x2(1),x2(2),x2(1),RtolRoot,AtolRoot,IFLAG) !second root
     if (IFLAG /= 1) then !if something went wrong
-        this%ierr = 10 + IFLAG !set error flag
-        if (debug .and. verbose) then ! print error messages
-            print *, 'Error occured in dfzero1. IFLAG =', IFLAG
-            print *, 'x1=', x1, '|| x2=', x2
-        endif
+        this%ierr = 20 + IFLAG !set error flag
+        if (debug)  &! print error messages
+            print *, 'Error occured in dfzero2. IFLAG =', IFLAG
+    endif
+    
+    if (this%ierr > 10 .and. debug .and. verbose) then
+        print *, 'xm =', this%xm, '|| xmax =', this%xmax
+        print *, 'x1=', x1, '|| x2=', x2
+        print *, 'bar(x1)=', bar(x1(1)), bar(x1(2)), &
+                    '|| bar(x2)=', bar(x2(1)), bar(x2(2))
     endif
     
     call dqage(sqrt_bar, maxval(x1), minval(x2), AtolInt,RtolInt, 2, maxint, &
@@ -493,7 +496,6 @@ subroutine gamow_num(this, full)
         if (debug .and. verbose) then
             print *, 'Error occured in dqage. IER =', IER
             print *, 'limits = [', x1, '|| ', x2, ']'
-            print *, 'Lvals  = [', bar(x1(1)), bar(x1(2)), '||', bar(x2(1)), bar(x2(2)), ']'
             print *,  'Neval =', NEVAL, '| ABSERR =', ABSERR, '| LAST=', LAST 
         endif
     endif
