@@ -1033,13 +1033,13 @@ subroutine plot_barrier(this)
 
     contains
     
-    function bar(x) result(V)!general barrier model
+    function bar(x) result(V)!sphere barrier model
         real(dp), intent(in)    :: x
         real(dp)                :: V, Vinterp(2)
         integer                 :: iflag, inbvx
         
         select case (this%mode)
-            case (2)
+            case (2) !interpolation mode.. Use splines
                 inbvx = 1
                 call db1val(x, idx, this%tx, size(this%Vr), knotx, &
                         this%bcoef, Vinterp(1), iflag, inbvx)
@@ -1048,15 +1048,18 @@ subroutine plot_barrier(this)
                     (this%Vr(ixrm)-this%Vr(ixrm-1)) / (this%xr(ixrm)-this%xr(ixrm-1))
                 endif
                 V = this%W - Vinterp(1) - Q / (x + ( 0.5d0 * (x**2)) / this%R)
-            case (-22)
+            case (-22) ! fitted polynomial mode. Evaluate fitted polynomial
                 if (x<= this%xr(ixrm)) then
                     call dp1vlu(this%Ndeg, 0, x, Vinterp(1), Vinterp(2:), this%Apoly)
-                else
-                    Vinterp(1) = this%Vr(ixrm) + (x - this%xr(ixrm)) * &
-                    (this%Vr(ixrm)-this%Vr(ixrm-1)) / (this%xr(ixrm)-this%xr(ixrm-1))
+                else !out of bounds. Polynomial misbehaves. Use extrapolation
+                    call dp1vlu(this%Ndeg, 1, this%xr(ixrm), & !polyval + der in xrm
+                            Vinterp(1), Vinterp(2:), this%Apoly)
+                    Vinterp(1) = Vinterp(1) + Vinterp(2) * (x - this%xr(ixrm))
+                    !linear extrapolation using the derivative of the polynomial
+                    Vinterp(1) = Vinterp(1)
                 endif
                 V = this%W - Vinterp(1) - Q / (x + ( 0.5d0 * (x**2)) / this%R)
-            case (0,-12, -1)
+            case (0,-12)
             !use standard F,R,gamma model for the electrostatic potential
                 V = this%W - (this%F * this%R * x*(this%gamma - 1.d0)  &
                 + this%F * x**2) / (this%gamma * x + this%R * (this%gamma - 1.d0)) &
