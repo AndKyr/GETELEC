@@ -239,6 +239,8 @@ subroutine cur_dens(this)
 
     
     if (this%gamma < 0.d0 .or. this%gamma > gammalim) then !force KX
+        this%R = 1.d4
+        this%gamma = 1.1d0
         this%mode = -1
         if (debug .and. verbose) print *, 'Warning: weird gamma found. KX forced'
     endif
