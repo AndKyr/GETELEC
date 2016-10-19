@@ -5,8 +5,11 @@ module GeTElEC
 !This module aims to calculate field emission current density and Nottingham effect 
 !heating. The input has to be given in the EmissionData type structure. The output
 !is also collected from there. All the theory behind this module can be found in 
+!A. Kyritsakis, F. Djurabekova, https://arxiv.org/pdf/1609.02364.pdf
+!Background theory can be found in
 !A. Kyritsakis, J. Xanthakis, J. Appl. Phys. 119, 045303 (2016); 
 !http://dx.doi.org/10.1063/1.4940721
+! 
 !************************************************************************************
 
 use std_mat, only: diff2, local_min, linspace
@@ -39,7 +42,7 @@ character(len=14), parameter   :: errorfile = 'GetelecErr.txt', &
                                   paramfile = 'GetelecPar.in'
 ! names for the error output file and the parameters input file
 
-logical, parameter      :: debug = .false., verbose = .false.
+logical, parameter      :: debug = .true., verbose = .true.
 !if debug, warnings are printed, parts are timed and calls are counted 
 !if debug and verbose all warnings are printed and barrier is plotted
 
@@ -237,13 +240,17 @@ subroutine cur_dens(this)
         this%counts(1) = this%counts(1) + 1
     endif
 
-    
     if (this%gamma < 0.d0 .or. this%gamma > gammalim) then !force KX
-        this%R = 1.d4
-        this%gamma = 1.1d0
-        this%mode = -1
-        if (debug .and. verbose) print *, 'Warning: weird gamma found. KX forced'
+        if (debug) print *, 'Warning: weird gamma found', this%gamma
+        this%gamma = gammalim
     endif
+    
+!    if (this%gamma < 0.d0 .or. this%gamma > gammalim) then !force KX
+!        this%R = 1.d4
+!        this%gamma = 1.1d0
+!        this%mode = -1
+!        if (debug .and. verbose) print *, 'Warning: weird gamma found. KX forced'
+!    endif
     
     if (this%R < 0.1d0) then
         this%R = 0.1d0
@@ -535,7 +542,7 @@ subroutine gamow_num(this, full)
                     Vinterp(1) = Vinterp(1)
                 endif
                 V = this%W - Vinterp(1) - Q / (x + ( 0.5d0 * (x**2)) / this%R)
-            case (0,-12)
+            case (0,-12, -1)
             !use standard F,R,gamma model for the electrostatic potential
                 V = this%W - (this%F * this%R * x*(this%gamma - 1.d0)  &
                 + this%F * x**2) / (this%gamma * x + this%R * (this%gamma - 1.d0)) &
@@ -682,7 +689,7 @@ function GTFinter(this) result(error)
     Gm = -(C_FN+Bq-2.*B_FN) * zmax**3 - (3.*B_FN-Bq-2.*C_FN) * zmax**2 &
             -C_FN * zmax + B_FN ! G at the maximum
     if (Gm<0.d0 .or. Gm > B_FN) then
-        print *, 'Error in GTFinter, Gm =', Gm
+        if (debug) print *, 'Error in GTFinter, Gm =', Gm
         error = 1
         return
     endif
@@ -1061,7 +1068,7 @@ subroutine plot_barrier(this)
                     Vinterp(1) = Vinterp(1)
                 endif
                 V = this%W - Vinterp(1) - Q / (x + ( 0.5d0 * (x**2)) / this%R)
-            case (0,-12)
+            case (0,-12, -1)
             !use standard F,R,gamma model for the electrostatic potential
                 V = this%W - (this%F * this%R * x*(this%gamma - 1.d0)  &
                 + this%F * x**2) / (this%gamma * x + this%R * (this%gamma - 1.d0)) &
@@ -1183,7 +1190,7 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, shift, yshift) result(v
     interface                               !user provided function to be fit
         function fun(x,p) result(y)
             implicit none
-            integer,parameter :: dp = selected_real_kind(12,60)
+            integer,parameter    :: dp = 8
             real(dp), intent(in) :: x
             real(dp), intent(in) :: p(:)
             real(dp)             :: y
@@ -1202,7 +1209,13 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, shift, yshift) result(v
     nprint = 0
     
     call DNLS1E(fcn, iopt, m, n, p0, fvec, tol, nprint,  info, iwa, wa, lwa)
-    var = sum(sqrt(fvec)/abs(ydata))/m
+    if (info > 3) then
+        print *, 'Fitting with L-V went wrong. info =', info
+        var = 1.d10
+    else
+        var = sum(sqrt(fvec)/abs(ydata))/m
+    endif
+
     
     if (debug) print *, 'fit info:', info, 'tol = ', tol, 'Nvals = ', Nvals
 
@@ -1268,43 +1281,43 @@ subroutine read_params()
     
     read(fid,*) str, xlim
     if (str(1:4)/='xlim') stop error
-    if (debug)  print *, 'xlim read'
+    if (debug)  print *, 'xlim read', xlim
     
     read(fid,*) str, nlimfield
     if (str(1:9)/='nlimfield') stop error
-    if (debug)  print *, 'nlimfield read'
+    if (debug)  print *, 'nlimfield read', nlimfield
     
     read(fid,*) str, nlimthermal
     if (str(1:11)/='nlimthermal') stop error
-    if (debug)  print *, 'nlimthermal read'
+    if (debug)  print *, 'nlimthermal read', nlimthermal
     
     read(fid,*) str, nmaxlim
     if (str(1:7)/='nmaxlim') stop error
-    if (debug)  print *, 'nmaxlim read'
+    if (debug)  print *, 'nmaxlim read', nmaxlim
     
     read(fid,*) str, gammalim
     if (str(1:8)/='gammalim') stop error
-    if (debug)  print *, 'gammalim read'
+    if (debug)  print *, 'gammalim read', gammalim
     
     read(fid,*) str, Jfitlim
     if (str(1:7)/='Jfitlim') stop error
-    if (debug)  print *, 'Jfitlim read'
+    if (debug)  print *, 'Jfitlim read' , Jfitlim
     
     read(fid,*) str, varlim
     if (str(1:6)/='varlim') stop error
-    if (debug)  print *, 'varlim read'
+    if (debug)  print *, 'varlim read', varlim
     
     read(fid,*) str, epsfit
     if (str(1:6)/='epsfit') stop error
-    if (debug)  print *, 'epsfit read'
+    if (debug)  print *, 'epsfit read', epsfit
     
     read(fid,*) str, Nmaxpoly
     if (str(1:8)/='Nmaxpoly') stop error
-    if (debug)  print *, 'Nmaxpoly read'
+    if (debug)  print *, 'Nmaxpoly read', Nmaxpoly
     
     read(fid,*) str, spectra
-    if (str(1:7)/='spectra') stop error
-    if (debug)  print *, 'spectra read'
+    if (str(1:7)/='spectra') stop error 
+    if (debug)  print *, 'spectra read', spectra
     
     close(fid)
     
