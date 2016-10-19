@@ -112,9 +112,9 @@ type, public    :: EmissionData
 
         !-1 : Barrier model, but force 'Blunt KX approximation'. "Bad" barrier.
 
-        !-10: Fitting external data to (F,R,gamma)
-        !-11 : Fit to (F,R,gamma). If fitting not satisfactory, use interpolation
-        !-12 : Fit to (F,R,gamma). Fitting is already done
+        !-10: Fitting external data to (F,R,gamma). If unsatisfactory turn to
+        !-11 : Fit to (F,R,gamma). If unsatisfactory, use interpolation
+        !-12 : Fit to (F,R,gamma). Fitting is already done successfully
         
         !-20 : fit to polynomial
         !-21 : fit to polynomial. If fitting not satisfactory, use interpolation
@@ -171,9 +171,7 @@ subroutine cur_dens(this)
         this%ierr = -1
         this%Jem = 0.d0
         this%heat = 0.d0
-        open(fiderr, file = errorfile, action ='write', access ='append')
-        call print_data(this, .true., fiderr)
-        close(fiderr)
+        call error_msg(this,'Unknown NaN encountered')
         return
     endif
     
@@ -181,20 +179,12 @@ subroutine cur_dens(this)
     !preparing calculation according to calculation mode
     if (this%mode > 0 .or. this%mode < -1) then
         if (size(this%xr) < 2 .or. size(this%Vr) /= size(this%xr)) then
-            print *, 'Error: xr and Vr not proper sizes'
-            open(fiderr, file = errorfile, action = 'write', access = 'append')
-            call print_data(this, .true., fiderr)
-            close(fiderr)
+            call error_msg(this,'xr,Vr not properly allocated')
             this%ierr = 1
             return
-        else
-            do i = 2,size(this%xr)
+        else !everything ok with sizes of xr, Vr
+            do i = 2,size(this%xr) !iterate over xr,Vr to check if monotonous
                 if (this%xr(i) < this%xr(i-1) .or. this%Vr(i) < this%Vr(i-1)) then
-                    this%ierr = 2
-                    print *, 'Error: non monotonously increasing xr or Vr. i =', i
-                    open(fiderr, file = errorfile, action ='write', access ='append')
-                    call print_data(this, .true., fiderr)
-                    close(fiderr)
                     if (this%Vr(i) > this%W) then !if length enough to cover barrier
                         allocate(xtemp(i-1), Vtemp(i-1))
                         xtemp = this%xr(1:i-1)
@@ -206,6 +196,8 @@ subroutine cur_dens(this)
                         this%ierr = 0 !return to normal execution
                         exit
                     else
+                        this%ierr = 2
+                        call error_msg(this, 'Non-monotonous xr,Vr. Not recovered')
                         return
                     endif
                 endif
@@ -219,7 +211,7 @@ subroutine cur_dens(this)
         if (this%mode == -20 .or. this%mode == -21) var = fitpoly(this)
         !do the fitting
         
-        if ( (this%mode == 11 .or. this%mode == 21) &!mode that checks fitting 
+        if ( (this%mode == -12 .or. this%mode == -22) &!mode that checks fitting 
             .and. (this%Jem > Jfitlim) &! and current density is worth calculating 
             .and. (var > varlim .or. isnan(var)) ) & ! and fitting not satisfactory
                 this%mode = 1 !switch to interpolation mode
@@ -269,6 +261,11 @@ subroutine cur_dens(this)
     this%xm = -1.d20
     
     call gamow_general(this,.true.) !calculate barrier parameters
+    
+    if (this%ierr /= 0) then 
+        call error_msg(this,'Error after first gamow_general.')
+        return
+    endif
 
     if (this%kT * this%maxbeta < nlimf .and. &
             (this%Um > 0.1 .or. (.not. this%full))) then!field regime
@@ -322,9 +319,7 @@ subroutine cur_dens(this)
         .and. this%ierr == 0) this%ierr = 4
     
     if (this%ierr /= 0) then 
-        open(fiderr, file = errorfile, action = 'write', access = 'append')
-        call print_data(this, .true., fiderr)
-        close(fiderr)
+        call error_msg(this,'Error in the end of execution.')
     endif
     
     contains
@@ -449,11 +444,14 @@ subroutine gamow_num(this, full)
     if (full) then ! Um is not initialized
         this%Um = -local_min(x, this%xmax, 1.d-8, 1.d-8, neg_bar, this%xm)
 
-        if (this%mode == 0 .or. this%mode == -12) then  
-            dx = 1.d-2
+        if (this%mode <= 0) then  ! if model or polynomial
+            dx = 1.d-2  !dx : the differentiation dx used for minbeta
         else !if interpolation choose big dx for diff2. Αvoid num instabillity
-            binout = binsearch(this%xr,this%xm)
-            if (binout(2) /= 0) stop 'xr not sorted or xm out of bounds'
+            binout = binsearch(this%xr,this%xm)  !
+            if (binout(2) /= 0) then !'xr not sorted or xm out of bounds'
+                this%ierr = 5
+                return
+            endif
             indxm = binout(1)
             if (indxm == 1) then  !avoid segfault
                 dx  =  this%xr(2)-this%xr(1)
@@ -938,7 +936,7 @@ function fitpot(this)  result(var)
     
     real(dp)                :: p(3), F2, Fend, var, pmin(3), pmax(3)
     
-    integer                 :: Nstart=3,i
+    integer                 :: Nstart=3, i, fitinfo
     
     pmin = [0.d0, 1.d-5, 1.d0]
     pmax = [30.d0, 1.d4, 1.d5]
@@ -952,12 +950,22 @@ function fitpot(this)  result(var)
     p(2) = abs(2.d0 / ((F2-p(1)) / (this%xr(Nstart) - this%xr(Nstart - 1))))
     !estimation for R
     p(3) = p(1) / Fend !estimation for gamma
-    var = nlinfit(fun, this%xr, this%Vr, p, pmin, pmax, epsfit)
+    var = nlinfit(fun, this%xr, this%Vr, p, pmin, pmax, epsfit, info)
     this%F = p(1)
     this%R = p(2)
     this%gamma = p(3)
     
-    this%mode = -12 !set mode to show that fitting is done
+    if (fitinfo >= 1 .or. fitinfo <= 3) then !fitting exited succesfully
+        if (var < varlim) then
+            this%mode = -12
+        else
+            this%mode = 
+    else
+        
+        
+    
+    
+!    this%mode = -12 !set mode to show that fitting is done
 
     contains
 
@@ -993,11 +1001,11 @@ function fitpoly(this)  result(var)
                 rr, ierr, this%Apoly)
     if(debug) print *, 'exiting dpolfit' 
     var = eps
-    this%mode = -22
+!    this%mode = -22
     
     if (debug .and. verbose) print *, 'done poilynomial fitting. ndeg=', this%ndeg
     
-    if (ierr /= 1 .and. ierr /= 3) print *, &
+    if (debug .and. ierr /= 1 .and. ierr /= 3) print *, &
         'error in polynomial fitting with ierr = ', ierr
             
 end function fitpoly
@@ -1173,7 +1181,8 @@ subroutine C_wrapper(passdata, ifun) bind(c)
 end subroutine C_wrapper
 
 
-function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, shift, yshift) result(var)
+function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, info) result(var)
+ 
 !Fit data to arbitrary function by using the Levenberg-Marquardt algorithm
 !implemented in the dnls1e function in slatec. This implementation gives the option
 !to give extreme values for the fitted parameters and introduce a y-shift to match
@@ -1183,22 +1192,20 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, shift, yshift) result(v
     real(dp), intent(in)        :: xdata(:), ydata(:), pmin(:), pmax(:), tol 
     !input x, y data, vectors with min and max params, tolerance
     real(dp), intent(inout)     :: p0(:)    !in: initial guess, out:result
-    
-    logical, intent(in), optional   :: shift !logical showing if y-shift is used
-    real(dp), intent(out), optional :: yshift !output the y-shift introduced.
+    integer, intent(out)        :: info
     
     interface                               !user provided function to be fit
         function fun(x,p) result(y)
             implicit none
             integer,parameter    :: dp = 8
-            real(dp), intent(in) :: x
-            real(dp), intent(in) :: p(:)
+            real(8), intent(in) :: x
+            real(8), intent(in) :: p(:)
             real(dp)             :: y
         end function fun
     end interface
 
     real(dp)                    :: var, fvec(size(xdata)), yshiftloc
-    integer                     :: i, m, n, info, iwa(size(p0)), lwa, iopt, nprint
+    integer                     :: i, m, n, iwa(size(p0)), lwa, iopt, nprint
     integer, save               :: Nvals = 0
     real(dp)                    :: wa(size(p0) * (size(xdata) + 5) + size(xdata))
     
@@ -1209,17 +1216,14 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, shift, yshift) result(v
     nprint = 0
     
     call DNLS1E(fcn, iopt, m, n, p0, fvec, tol, nprint,  info, iwa, wa, lwa)
-    if (info > 3) then
-        print *, 'Fitting with L-V went wrong. info =', info
+    if (info > 3 .or. info == 0) then
         var = 1.d10
     else
         var = sum(sqrt(fvec)/abs(ydata))/m
     endif
 
-    
-    if (debug) print *, 'fit info:', info, 'tol = ', tol, 'Nvals = ', Nvals
-
-    if (present(yshift)) yshift = yshiftloc
+    if (debug) print *, 'Model fitting completed. info =', &
+                info, 'tol = ', tol, 'Nvals = ', Nvals
     
     contains
 
@@ -1241,12 +1245,7 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, shift, yshift) result(v
         multiplier  = sum(abs(peval - p))
         do i = 1, m
             funeval = fun(xdata(i), peval)
-            if (i==1 .and. present(shift) .and. shift) then
-                yshiftloc = ydata(i) - funeval !local variable for yshift
-            else
-                yshiftloc = 0.d0
-            endif
-            fvec(i) = abs(funeval - ydata(i) + yshiftloc)
+            fvec(i) = abs(funeval - ydata(i))
         enddo
 
         if (multiplier > 1.d-10) &
@@ -1324,6 +1323,19 @@ subroutine read_params()
     readparams = .true.
 
 end subroutine read_params
+
+subroutine error_msg(this, msg)
+    ! prints error message to the error file
+    type(Emission), intent(in)  :: this
+    character(len=128)          :: msg
+    
+    open(fiderr, file = errorfile, action ='write', access ='append')
+    call print_data(this, .true., fiderr)
+    write(fiderr,*) msg
+    close(fiderr)
+end subroutine error_msg
+
+    
 
 
 end module GeTElEC
