@@ -42,18 +42,15 @@ character(len=14), parameter   :: errorfile = 'GetelecErr.txt', &
                                   paramfile = 'GetelecPar.in'
 ! names for the error output file and the parameters input file
 
-logical, parameter      :: debug = .true., verbose = .true.
-!if debug, warnings are printed, parts are timed and calls are counted 
-!if debug and verbose all warnings are printed and barrier is plotted
-
 !************************************************************************************
 !Global parameters that are defined by the user from the params.txt file 
 
-real(dp), save          :: xlim = 0.1d0, gammalim = 1.d3, Jfitlim = 1.d-20, &
-                           varlim = 1.d-3, epsfit = 1.d-4, nlimfield = 0.6d0, &
+real(dp), save          :: xlim = 0.1d0, gammalim = 1.d3,  varlim = 1.d-3, &
+                           epsfit = 1.d-4, nlimfield = 0.6d0, &
                            nlimthermal = 2.5d0, nmaxlim = 3.d0                           
 integer, save           :: Nmaxpoly = 10
-logical, save           :: spectra= .false., firstcall = .false. 
+logical, save           :: spectra= .false., firstcall = .false., &
+                            debug = .false., verbose = .false.
 
 !xlim: limit that determines distinguishing between sharp regime (Numerical integral)
 !and blunt regime where KX approximation is used
@@ -62,15 +59,15 @@ logical, save           :: spectra= .false., firstcall = .false.
 !temperature corrected FN formula is used
 
 !gammalim : maximum acceptable gamma. above it KX is forced
-!Jfitlim : limit of current approximation above which interpolation is allowed
-!if J<Jfitlim fitting is forced
 
 !epsfit : accuracy required in fittings
 !varlim : limit of variance for the fitting approximation (has meaning for mode==-2)
 !if the fitting variance is more than varlim we switch to spline mode
 
 !Nmxpoly: max degree of the fitted polynomial
-!spectra: set to true if you want to output spectroscopy data  
+!spectra: set to true if you want to output spectroscopy data 
+!if debug, warnings are printed, parts are timed and calls are counted 
+!if debug and verbose all warnings are printed and barrier is plotted 
 
 !************************************************************************************
 logical, save          :: readparams = .false.
@@ -106,19 +103,20 @@ type, public    :: EmissionData
     integer                 :: mode = 0
         !Mode of barrier calculation:  
         !0 : Barrier model (F,R,gamma)
-
-        !1: Interpolation of Vr(xr), 
-        !2: interpolation and db1ink has been set up
-
+        
+        !1: Interpolation of Vr(xr). 
+        !2: Interpolation and db1ink has been set up.
+        
+        
         !-1 : Barrier model, but force 'Blunt KX approximation'. "Bad" barrier.
-
-        !-10: Fitting external data to (F,R,gamma). If unsatisfactory turn to
+    
+        !-10: Fitting external data to (F,R,gamma). If unsatisfactory turn to mode=3
         !-11 : Fit to (F,R,gamma). If unsatisfactory, use interpolation
         !-12 : Fit to (F,R,gamma). Fitting is already done successfully
         
-        !-20 : fit to polynomial
-        !-21 : fit to polynomial. If fitting not satisfactory, use interpolation
-        !-22 : fit to polynomial and fitting has already been done, Apoly is ready
+        !-20 : Fit to polynomial. If unsatisfactory turn to mode=3.
+        !-21 : Fit to polynomial. If fitting not satisfactory, use interpolation.
+        !-22 : Fit to polynomial and fitting has already been done, Apoly is ready.
         
     integer                 :: ierr = 0
         ! Integer to store error information.
@@ -206,15 +204,22 @@ subroutine cur_dens(this)
     endif
       
     if (this%mode < -1) then !fit external data
+        if (this%mode == -10 .or. this%mode == -11) then
+            var = fitpot(this) ! fit to (F,R,gamma) model
+        elseif (this%mode == -20 .or. this%mode == -21) then
+            var = fitpoly(this) ! fit to polynomial
+        endif
         
-        if (this%mode == -10 .or. this%mode == -11) var = fitpot(this)
-        if (this%mode == -20 .or. this%mode == -21) var = fitpoly(this)
-        !do the fitting
-        
-        if ( (this%mode == -12 .or. this%mode == -22) &!mode that checks fitting 
-            .and. (this%Jem > Jfitlim) &! and current density is worth calculating 
-            .and. (var > varlim .or. isnan(var)) ) & ! and fitting not satisfactory
-                this%mode = 1 !switch to interpolation mode
+        if ( var < varlim .and. (.not. isnan(var))) then
+            this%mode = (this%mode / 10) * 10 - 2 ! set to -22 or -12
+        elseif (mod(this%mode, 10) == -1 .and. this%Vr(size(this%Vr)) > this%W) then
+            this%mode = 1 !switch to interpolation
+        else ! mode = -10/20 or Vr(xr) not covering barrier, turn to error catching
+            call error_msg(this,'Warning: Fitting failed. Rough FN approximation')
+            this%mode = -1
+            this%R = 1.d4
+            this%gamma = 1.d0
+        endif
     endif
     
     if (this%mode == 1 .or. this%mode == -22) then        
@@ -232,21 +237,17 @@ subroutine cur_dens(this)
         this%counts(1) = this%counts(1) + 1
     endif
 
-    if (this%gamma < 0.d0 .or. this%gamma > gammalim) then !force KX
-        if (debug) print *, 'Warning: weird gamma found', this%gamma
+    if (this%gamma < 0.d0) then !check if gamma is unacceptable
+        this%gamma = 1.1d0
+        call error_msg(this, 'Negative gamma found. Error recovered with gamma=1.1')
+    elseif (this%gamma > gammalim) then 
         this%gamma = gammalim
+        call error_msg(this, 'Too high gamma found. Recovered with gamma=gammalim')
     endif
     
-!    if (this%gamma < 0.d0 .or. this%gamma > gammalim) then !force KX
-!        this%R = 1.d4
-!        this%gamma = 1.1d0
-!        this%mode = -1
-!        if (debug .and. verbose) print *, 'Warning: weird gamma found. KX forced'
-!    endif
-    
     if (this%R < 0.1d0) then
+        if (debug) print *, 'R < 0.1d0 was inputted. Recovered with R = 0.1'
         this%R = 0.1d0
-        if (debug .and. verbose) print *, 'Warning: R < 0.1 inputed'
     endif
     
     if (this%full) then !if full calculation expand borders of regimes
@@ -375,7 +376,11 @@ subroutine gamow_general(this,full)
     if (x > xlim .and. this%mode /= -1) then !not x<<1, use numerical integration
         if (this%mode == 1) then    !setup spline interpolation
             if (debug) call cpu_time(t1)
-            allocate(this%tx(size(this%Vr) + knotx), this%bcoef(size(this%Vr)))
+            if (size(this%tx) /= size(this%Vr) + knotx) then
+                if (allocated(this%tx)) deallocate(this%tx)
+                if (allocated(this%bcoef)) deallocate(this%bcoef)
+                allocate(this%tx(size(this%Vr) + knotx), this%bcoef(size(this%Vr)))
+            endif
             call db1ink(this%xr, size(this%xr), this%Vr, knotx, iknot, &
                         this%tx, this%bcoef, iflag)
             if (iflag/=0) print *, 'error in spline setup, iflag = ', iflag
@@ -898,7 +903,7 @@ subroutine print_data(this, full, filenum)
         fid=filenum
     endif
 
-    write (fid,'(A32/)') '================================'
+    write (fid,'(/A32)') '================================'
     write (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4)') 'F =', this%F, &
             'V/nm', 'R =', this%R, 'nm', 'gamma =', this%gamma
     write (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10)') 'W =', this%W, 'eV', &
@@ -924,7 +929,7 @@ subroutine print_data(this, full, filenum)
         enddo
     endif
     
-    write (fid,'(A32/)') '--------------------------------'
+    write (fid,'(A32)') '--------------------------------'
 end subroutine print_data
 
 
@@ -937,6 +942,7 @@ function fitpot(this)  result(var)
     real(dp)                :: p(3), F2, Fend, var, pmin(3), pmax(3)
     
     integer                 :: Nstart=3, i, fitinfo
+    character(len=100)      :: Errormsg
     
     pmin = [0.d0, 1.d-5, 1.d0]
     pmax = [30.d0, 1.d4, 1.d5]
@@ -950,22 +956,16 @@ function fitpot(this)  result(var)
     p(2) = abs(2.d0 / ((F2-p(1)) / (this%xr(Nstart) - this%xr(Nstart - 1))))
     !estimation for R
     p(3) = p(1) / Fend !estimation for gamma
-    var = nlinfit(fun, this%xr, this%Vr, p, pmin, pmax, epsfit, info)
+    var = nlinfit(fun, this%xr, this%Vr, p, pmin, pmax, epsfit, fitinfo)
     this%F = p(1)
     this%R = p(2)
     this%gamma = p(3)
     
-    if (fitinfo >= 1 .or. fitinfo <= 3) then !fitting exited succesfully
-        if (var < varlim) then
-            this%mode = -12
-        else
-            this%mode = 
-    else
-        
-        
-    
-    
-!    this%mode = -12 !set mode to show that fitting is done
+    if (fitinfo == 0) call error_msg(this,'Wrong fitting input')
+    if (fitinfo > 4) then
+        write(Errormsg,*) 'Error in L-V fitting. INFO =', fitinfo
+        call error_msg(this,Errormsg)
+    endif
 
     contains
 
@@ -1001,7 +1001,6 @@ function fitpoly(this)  result(var)
                 rr, ierr, this%Apoly)
     if(debug) print *, 'exiting dpolfit' 
     var = eps
-!    this%mode = -22
     
     if (debug .and. verbose) print *, 'done poilynomial fitting. ndeg=', this%ndeg
     
@@ -1217,7 +1216,7 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, info) result(var)
     
     call DNLS1E(fcn, iopt, m, n, p0, fvec, tol, nprint,  info, iwa, wa, lwa)
     if (info > 3 .or. info == 0) then
-        var = 1.d10
+        var = 1.d100
     else
         var = sum(sqrt(fvec)/abs(ydata))/m
     endif
@@ -1264,7 +1263,7 @@ subroutine read_params()
     logical             :: ex
     integer             :: fid = fidparams
     character(len=40), parameter  :: error = &
-        'ERROR: GetelecPar.in is not structured properly. Please check input file.'
+        'ERROR: GetelecPar.in is not correct.'
     
     inquire(file=paramfile, exist=ex)
     if (.not. ex) then
@@ -1278,45 +1277,49 @@ subroutine read_params()
     open(fid, file = paramfile, action = 'read')
     read(fid,'(2A)')
     
+    read(fid,*) str, debug
+    if (str(1:5)/='debug') stop error 
+    if (debug .and. verbose)  print *, 'debug read', debug
+    
+    read(fid,*) str, verbose
+    if (str(1:7)/='verbose') stop error 
+    if (debug .and. verbose)  print *, 'verbose read', verbose
+    
     read(fid,*) str, xlim
     if (str(1:4)/='xlim') stop error
-    if (debug)  print *, 'xlim read', xlim
+    if (debug .and. verbose)  print *, 'xlim read', xlim
     
     read(fid,*) str, nlimfield
     if (str(1:9)/='nlimfield') stop error
-    if (debug)  print *, 'nlimfield read', nlimfield
+    if (debug .and. verbose)  print *, 'nlimfield read', nlimfield
     
     read(fid,*) str, nlimthermal
     if (str(1:11)/='nlimthermal') stop error
-    if (debug)  print *, 'nlimthermal read', nlimthermal
+    if (debug .and. verbose)  print *, 'nlimthermal read', nlimthermal
     
     read(fid,*) str, nmaxlim
     if (str(1:7)/='nmaxlim') stop error
-    if (debug)  print *, 'nmaxlim read', nmaxlim
+    if (debug .and. verbose)  print *, 'nmaxlim read', nmaxlim
     
     read(fid,*) str, gammalim
     if (str(1:8)/='gammalim') stop error
-    if (debug)  print *, 'gammalim read', gammalim
-    
-    read(fid,*) str, Jfitlim
-    if (str(1:7)/='Jfitlim') stop error
-    if (debug)  print *, 'Jfitlim read' , Jfitlim
+    if (debug .and. verbose)  print *, 'gammalim read', gammalim
     
     read(fid,*) str, varlim
     if (str(1:6)/='varlim') stop error
-    if (debug)  print *, 'varlim read', varlim
+    if (debug .and. verbose)  print *, 'varlim read', varlim
     
     read(fid,*) str, epsfit
     if (str(1:6)/='epsfit') stop error
-    if (debug)  print *, 'epsfit read', epsfit
+    if (debug .and. verbose)  print *, 'epsfit read', epsfit
     
     read(fid,*) str, Nmaxpoly
     if (str(1:8)/='Nmaxpoly') stop error
-    if (debug)  print *, 'Nmaxpoly read', Nmaxpoly
+    if (debug .and. verbose)  print *, 'Nmaxpoly read', Nmaxpoly
     
     read(fid,*) str, spectra
     if (str(1:7)/='spectra') stop error 
-    if (debug)  print *, 'spectra read', spectra
+    if (debug .and. verbose)  print *, 'spectra read', spectra
     
     close(fid)
     
@@ -1326,12 +1329,12 @@ end subroutine read_params
 
 subroutine error_msg(this, msg)
     ! prints error message to the error file
-    type(Emission), intent(in)  :: this
-    character(len=128)          :: msg
+    type(EmissionData), intent(in)  :: this
+    character(len=*)          :: msg
     
     open(fiderr, file = errorfile, action ='write', access ='append')
     call print_data(this, .true., fiderr)
-    write(fiderr,*) msg
+    write(fiderr,*) trim(msg)
     close(fiderr)
 end subroutine error_msg
 
