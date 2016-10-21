@@ -67,7 +67,6 @@ Finally, GETELEC gives the ability to the user to define some global calculation
 	\item \texttt{nlimthermal}: $n_{low}$ (Described in the main text).
 	\item \texttt{nmaxlim}: Maximum limit for the usage of GTF formulas in Field regime. If $n>$\texttt{nmaxlim}, the temperature corrected version of the FN equation is used.
 	\item \texttt{gammalim}: Maximum acceptable $\gamma$. If $\gamma>$ \texttt{gammalim} the approximate analytic expressions are used. 
-	\item \texttt{Jfitlim}: Minimum limit for interpolation with spline. If $J<$ \texttt{Jfitlim} polynomial fitting is forced.
 	\item \texttt{varlim}: Limit of variance for the fitting approximation (has meaning for \texttt{mode}=-2). If the fitting variance is more than \texttt{varlim} the algorithm switches to spline mode.
 	\item \texttt{epsfit}: Requested algorithm for all fittings of the input potential $(x_i, V_i)$
 	\item \texttt{Nmaxpoly}: Maximum degree of the fitted to $(x_i, V_i)$ polynomial.
