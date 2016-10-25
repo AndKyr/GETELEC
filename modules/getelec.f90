@@ -1214,15 +1214,15 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, info) result(var)
     iopt = 1
     nprint = 0
     
-    call DNLS1E(fcn, iopt, m, n, p0, fvec, tol, nprint,  info, iwa, wa, lwa)
+    call DNLS1E(fcn, iopt, m, n, p0, fvec, tol, nprint, info, iwa, wa, lwa)
     if (info > 3 .or. info == 0) then
         var = 1.d100
     else
-        var = sum(sqrt(fvec)/abs(ydata))/m
+        var = sum(fvec) / sum(abs(ydata)) !relative error (mean error/mean |values|)
     endif
 
     if (debug) print *, 'Model fitting completed. info =', &
-                info, 'tol = ', tol, 'Nvals = ', Nvals
+                info, 'tol = ', tol, 'Nvals = ', Nvals, 'var =', var
     
     contains
 
