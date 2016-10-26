@@ -263,6 +263,10 @@ subroutine cur_dens(this)
     
     call gamow_general(this,.true.) !calculate barrier parameters
     
+    if (debug .and. verbose) then
+        call plot_barrier(this)
+    endif
+    
     if (this%ierr /= 0) then 
         call error_msg(this,'Error after first gamow_general.')
         return
@@ -289,7 +293,8 @@ subroutine cur_dens(this)
         
     endif
     
-    if (debug) print *, 'n = ', n, 's = ', s
+    if (debug) print '(A10, ES12.4/A10, ES12.4/A10, ES12.4/A10, ES12.4)', &
+                'n =', n, 's =', s, 'Sig(n) =', Sigma(n), 'Sig(1/n) =', Sigma(1/n) 
     
     if (this%regime /= 'I') then
         if (n > nmaxlim) then !for n>5 use MG expressions. Approximations for Sigma
@@ -308,13 +313,6 @@ subroutine cur_dens(this)
     endif
     
     this%heat = - this%heat !convention: consider deposited heat (+ for heating) 
-    
-    if (debug .and. verbose) then
-        call plot_barrier(this)
-        print '(A10, ES12.4/A10, ES12.4)', 'n =', n, 's =', s
-        print '(A10, ES12.4/A10, ES12.4)', 'Sig(n)', Sigma(n), &
-                'Sig(1/n) =', Sigma(1/n)
-    endif
     
     if ((isnan(this%Jem) .or. isnan(this%heat) .or. this%Jem < 1.d-201)  &
         .and. this%ierr == 0) this%ierr = 4
@@ -359,9 +357,7 @@ subroutine gamow_general(this,full)
     x = this%W / (this%F * this%R)!length of barrier indicator
     dw = 1.d-2
     
-    if (this%mode == 0 .or. this%mode == -12 .or. this%mode == -1 .or. &
-        this%mode == -22) then
-    
+    if (this%mode == 0 .or. this%mode == -12 .or. this%mode == -1) then
         if (x > 0.4d0 .and. this%gamma > 1.05d0) then !the second root is far away
             this%xmax = min(this%W * this%gamma / this%F, xmaxallowed)
             !maximum length xmaxallowed
@@ -614,7 +610,6 @@ function gamow_KX(this, full) result(info)
         info = 0
     endif
 
-    
     if (full) then
         this%Um = this%W - 2.d0*sqrt(this%F * Q) + 1.5d0 * Q / this%R
         this%xm = sqrt(Q / this%F) + Q / (this%F * this%R)
@@ -642,7 +637,6 @@ function gamow_KX(this, full) result(info)
         info = 2
     endif
 
-    
 end function gamow_KX
 
 
@@ -1002,7 +996,7 @@ function fitpoly(this)  result(var)
     if(debug) print *, 'exiting dpolfit' 
     var = eps
     
-    if (debug .and. verbose) print *, 'done poilynomial fitting. ndeg=', this%ndeg
+    if (debug) print *, 'done polynomial fitting. ndeg=', this%ndeg, 'var =', var
     
     if (debug .and. ierr /= 1 .and. ierr /= 3) print *, &
         'error in polynomial fitting with ierr = ', ierr
@@ -1327,6 +1321,7 @@ subroutine read_params()
 
 end subroutine read_params
 
+
 subroutine error_msg(this, msg)
     ! prints error message to the error file
     type(EmissionData), intent(in)  :: this
@@ -1339,6 +1334,4 @@ subroutine error_msg(this, msg)
 end subroutine error_msg
 
     
-
-
 end module GeTElEC
