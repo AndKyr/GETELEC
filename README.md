@@ -1,7 +1,7 @@
 # GETELEC
 General Tool for Electron Emission Calculations - A computational tool for calculating electron emission current and Nottingham effect heat for metallic emitters.
 
-GETELEC is a scientific software for calculating electron emission currents and the Nottingham effect heat. For details see a forthcoming scientific publication.
+GETELEC is a scientific software for calculating electron emission currents and the Nottingham effect heat. For details, see the associated publication  https://arxiv.org/pdf/1609.02364 (soon to be published in Computational Material Science). If you use the code, please cite this paper.
 
 Currently it is developed for Linux and OSX systems. A version that can be compiled in Windows operating systems will be available in forthcoming updates.
 
