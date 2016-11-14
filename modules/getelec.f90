@@ -152,6 +152,7 @@ subroutine cur_dens(this)
     real(dp)        :: t1,t2,t3 !timing variables
     real(dp), allocatable :: xtemp(:), Vtemp(:)
     integer         :: i, GTFerr
+    character(len = 50) :: msgerr
     
     if (debug) then
         call cpu_time(t1)
@@ -195,7 +196,9 @@ subroutine cur_dens(this)
                         exit
                     else
                         this%ierr = 2
-                        call error_msg(this, 'Non-monotonous xr,Vr. Not recovered')
+                        write(msgerr, &
+                            '("Non-monotonous xr,Vr at i=",i4,". Not recovered")') i
+                        call error_msg(this, trim(msgerr))
                         return
                     endif
                 endif

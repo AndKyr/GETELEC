@@ -63,7 +63,7 @@ pure function logspace(a,b,N) result(x)
     x=exp(logx)
 end function logspace
 
-pure function lininterp(yi,a,b,x) result(y)
+ function lininterp(yi,a,b,x) result(y)
 !simple linear interpolation function
 !appropriate for uniform linspace
     real(dp), intent(in)    :: a, b, x, yi(:) 
@@ -81,8 +81,10 @@ pure function lininterp(yi,a,b,x) result(y)
     xnear=a+(Nnear-1)*dx
     if (x>xnear) then
         dy=yi(Nnear+1)-yi(Nnear)
-    else
+    elseif (x<xnear) then
         dy=yi(Nnear)-yi(Nnear-1)
+    else
+        dy = 0.d0
     endif
     y=yi(Nnear)+(dy/dx)*(x-xnear)
 end function lininterp
