@@ -6,17 +6,19 @@ program errortest
 
 use GeTElEC, only: EmissionData, dp, cur_dens, print_data, plot_barrier, debug
 
+implicit none
+
 type(EmissionData)      :: this
 real(dp)                :: x(512), V(512)
 character               :: dash
 character(len=32)       :: line, str
-integer                 :: Nr, fid
+integer                 :: fid, i,j, Nr
 
     open(fid, file = 'errors.txt', action = 'read')
     
     read (fid,'(A32/)') line
-    read (fid,'(A10,ES12.4,A10/,A10,ES12.4,A10,/A10,ES12.4)') str, this%F, str, str, &
-                this%R, str, str, this%gamma
+    read (fid,'(A10,ES12.4,A10/,A10,ES12.4,A10,/A10,ES12.4)') str, this%F, str, &
+            str, this%R, str, str, this%gamma
     read (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10)') str, this%W, str,str, this%kT
     read (fid,'(/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4)') str, this%Jem, str, &
             str, this%heat, str, str, this%Gam
@@ -29,10 +31,12 @@ integer                 :: Nr, fid
             
     read(fid, '(/A32)')  str
     
+    print *, 'here'
+    
     do i = 1, 512
         read (fid,'(A32)') line
         if ( line(1:2) == '--') exit
-        read(line,'(F15.10,A1,F15.10)') x(i),str,V(i)
+        read(line,'(i3,ES14.4,ES15.5)') j, x(i), V(i)
     enddo
     
     close(fid)

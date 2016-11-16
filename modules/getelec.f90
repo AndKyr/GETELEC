@@ -217,6 +217,7 @@ subroutine cur_dens(this)
             this%mode = (this%mode / 10) * 10 - 2 ! set to -22 or -12
         elseif (mod(this%mode, 10) == -1 .and. this%Vr(size(this%Vr)) > this%W) then
             this%mode = 1 !switch to interpolation
+            if (debug) print *, 'var =', var,'varlim =',varlim,'Switched to interpolation.'
         else ! mode = -10/20 or Vr(xr) not covering barrier, turn to error catching
             call error_msg(this,'Warning: Fitting failed. Rough FN approximation')
             this%mode = -1
@@ -920,9 +921,9 @@ subroutine print_data(this, full, filenum)
     
     if (present(full) .and. full .and. allocated(this%xr)) then 
         !choose if V(x) is printed
-        write(fid, '(/A15,A15)') 'x', 'V(x)'
+        write(fid, '(/A32)') '  i        x_i          V(x_i)  '
         do i = 1, size(this%xr)
-            write(fid, '(F15.10,A1,F15.10)') this%xr(i), ',' , this%Vr(i)
+            write(fid, '(i3,ES14.4,ES15.5)') i, this%xr(i) , this%Vr(i)
         enddo
     endif
     
