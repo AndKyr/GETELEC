@@ -274,7 +274,7 @@ subroutine cur_dens(this)
         call plot_barrier(this)
     endif
     
-    if (this%ierr /= 0) then 
+    if (this%ierr > 0) then 
         call error_msg(this,'Error after first gamow_general.')
         return
     endif
@@ -324,7 +324,7 @@ subroutine cur_dens(this)
     if ((isnan(this%Jem) .or. isnan(this%heat) .or. this%Jem < 1.d-201)  &
         .and. this%ierr == 0) this%ierr = 4
     
-    if (this%ierr /= 0) then 
+    if (this%ierr > 0) then 
         call error_msg(this,'Error in the end of execution.')
     endif
     
@@ -965,9 +965,12 @@ function fitpot(this)  result(var)
     
     if (debug .and. verbose) print *, 'calling nlinfit. p =', p
     var = nlinfit(fun, this%xr, this%Vr, p, pmin, pmax, epsfit, fitinfo)
-    this%F = p(1)
-    this%R = p(2)
-    this%gamma = p(3)
+    
+    if (fitinfo > 0 .and. fitinfo <=4 .and. var < varlim) then
+        this%F = p(1)
+        this%R = p(2)
+        this%gamma = p(3)
+    endif
     
     if (fitinfo == 0) call error_msg(this,'Wrong fitting input')
     if (fitinfo > 4) then

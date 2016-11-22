@@ -63,7 +63,7 @@ pure function logspace(a,b,N) result(x)
     x=exp(logx)
 end function logspace
 
- function lininterp(yi,a,b,x) result(y)
+pure function lininterp(yi,a,b,x) result(y)
 !simple linear interpolation function
 !appropriate for uniform linspace
     real(dp), intent(in)    :: a, b, x, yi(:) 
@@ -72,11 +72,25 @@ end function logspace
     real(dp)                :: y, dx, dy, xnear
     
     if (x<a .or. x>b) then
-        y=1.d200
+        y=1.d308
+!        print *, 'Error. std_mat::lininterp. Interpolation out of bounds'
+!        print '("a =",es12.5,"b =",es12.5,"x =",es12.5)', a, b, x
+        return
+    elseif (a >= b) then
+        y = 2.d307
+!        print *, 'Error. std_mat::lininterp. Wrong order in limits a, b'
+!        print '("a =",es12.5,"b =",es12.5,"x =",es12.5)', a, b, x
         return
     endif
+        
     N=size(yi)
     Nnear=nint((x-a)*(N-1)/(b-a))+1
+    if (Nnear > N .or. Nnear < 1) then
+        y = 2.d306
+!        print *, 'Error. std_mat::lininterp. Nnear = ', Nnear, 'N =', N, 'yi =', yi
+        return
+    endif
+    
     dx=(b-a)/dfloat(N-1)
     xnear=a+(Nnear-1)*dx
     if (x>xnear) then
