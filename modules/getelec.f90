@@ -110,11 +110,11 @@ type, public    :: EmissionData
         
         !-1 : Barrier model, but force 'Blunt KX approximation'. "Bad" barrier.
     
-        !-10: Fitting external data to (F,R,gamma). If unsatisfactory turn to mode=3
+        !-10: Fitting external data to (F,R,gamma). If unsatisfactory turn to FN
         !-11 : Fit to (F,R,gamma). If unsatisfactory, use interpolation
         !-12 : Fit to (F,R,gamma). Fitting is already done successfully
         
-        !-20 : Fit to polynomial. If unsatisfactory turn to mode=3.
+        !-20 : Fit to polynomial. If unsatisfactory turn to FN.
         !-21 : Fit to polynomial. If fitting not satisfactory, use interpolation.
         !-22 : Fit to polynomial and fitting has already been done, Apoly is ready.
         
@@ -128,7 +128,8 @@ type, public    :: EmissionData
         ! 4: Unknown error: some NaN appeared or Jem<0
         ! 10+: Some error in dfzero 1st appeared. + gives the ierr of dfzero
         ! 20+: Same as previous but for dfzero 2nd
-        ! 30+: Save as previous but for dqage  
+        ! 30+: Save as previous but for dqage
+        ! -2: Model fitting failed. Rough FN approximation  
         
     real(dp)                :: timings(5) = 0.d0
     !timing variables for cpu cost profiling
@@ -157,7 +158,6 @@ subroutine cur_dens(this)
     if (debug) then
         call cpu_time(t1)
         print *, 'entering cur_dens'
-        call print_data(this)
     endif
     
     if (.not. readparams) call read_params()
@@ -170,11 +170,10 @@ subroutine cur_dens(this)
         this%ierr = -1
         this%Jem = 0.d0
         this%heat = 0.d0
-        call error_msg(this,'Unknown NaN encountered')
+        call error_msg(this,'Wrong input data.')
         return
     endif
     
-
     !preparing calculation according to calculation mode
     if (this%mode > 0 .or. this%mode < -1) then
         if (size(this%xr) < 2 .or. size(this%Vr) /= size(this%xr)) then
@@ -205,6 +204,7 @@ subroutine cur_dens(this)
             enddo
         endif
     endif
+    
       
     if (this%mode < -1) then !fit external data
         if (this%mode == -10 .or. this%mode == -11) then
@@ -217,14 +217,17 @@ subroutine cur_dens(this)
             this%mode = (this%mode / 10) * 10 - 2 ! set to -22 or -12
         elseif (mod(this%mode, 10) == -1 .and. this%Vr(size(this%Vr)) > this%W) then
             this%mode = 1 !switch to interpolation
-            if (debug) print *, 'var =', var,'varlim =',varlim,'Switched to interpolation.'
+            if (debug) &
+                print *, 'var =', var,'varlim =',varlim, 'Switched to interpolation.'
         else ! mode = -10/20 or Vr(xr) not covering barrier, turn to error catching
-            call error_msg(this,'Warning: Fitting failed. Rough FN approximation')
             this%mode = -1
+            this%ierr = -2
             this%R = 1.d4
             this%gamma = 1.d0
+            call error_msg(this,'Warning: Fitting failed. Rough FN approximation') 
         endif
     endif
+    
     
     if (this%mode == 1 .or. this%mode == -22) then        
         this%F = ( this%Vr(2) - this%Vr(1) ) / ( this%xr(2) - this%xr(1) )
@@ -942,7 +945,7 @@ function fitpot(this)  result(var)
     integer                 :: Nstart=3, i, fitinfo
     character(len=100)      :: Errormsg
     
-    pmin = [0.d0, 1.d-5, 1.d0]
+    pmin = [0.d0, 1.d-5, 1.00001d0]
     pmax = [30.d0, 1.d4, 1.d5]
     
     p(1) = (this%Vr(Nstart) - this%Vr(Nstart-1)) &
@@ -954,6 +957,13 @@ function fitpot(this)  result(var)
     p(2) = abs(2.d0 / ((F2-p(1)) / (this%xr(Nstart) - this%xr(Nstart - 1))))
     !estimation for R
     p(3) = p(1) / Fend !estimation for gamma
+    
+    do i = 1, 3
+        p(i) = min(p(i), pmax(i))
+        p(i) = max(p(i), pmin(i))
+    enddo
+    
+    if (debug .and. verbose) print *, 'calling nlinfit. p =', p
     var = nlinfit(fun, this%xr, this%Vr, p, pmin, pmax, epsfit, fitinfo)
     this%F = p(1)
     this%R = p(2)
@@ -1212,6 +1222,8 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, info) result(var)
     iopt = 1
     nprint = 0
     
+    if (debug .and. verbose) print *, 'Calling dnlse1'
+
     call DNLS1E(fcn, iopt, m, n, p0, fvec, tol, nprint, info, iwa, wa, lwa)
     if (info > 3 .or. info == 0) then
         var = 1.d100

@@ -31,8 +31,6 @@ integer                 :: fid, i,j, Nr
             
     read(fid, '(/A32)')  str
     
-    print *, 'here'
-    
     do i = 1, 512
         read (fid,'(A32)') line
         if ( line(1:2) == '--') exit
