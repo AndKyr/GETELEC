@@ -6,6 +6,7 @@ implicit none
 integer, parameter      ::dp=8
 
 contains
+
    
 subroutine csvprint(fileunit,dataarr)
     ! write real numbers to a CSV file
@@ -25,6 +26,7 @@ subroutine csvprint(fileunit,dataarr)
     end do
 end subroutine csvprint
 
+
 subroutine csvread(fileunit,dataarr,rows,cols)
     ! read real numbers from a CSV file
     integer, intent(in)           :: fileunit,rows,cols
@@ -35,6 +37,7 @@ subroutine csvread(fileunit,dataarr,rows,cols)
         read(fileunit,*) dataarr(i,:)
     end do
 end subroutine csvread
+
 
 pure function linspace(a,b,N) result(x)
     !produces the same as standard linspace function of matlab or numpy
@@ -48,6 +51,7 @@ pure function linspace(a,b,N) result(x)
         x(i)=a+(i-1)*dx
     enddo
 end function linspace
+
 
 pure function logspace(a,b,N) result(x)
     !the same as linspace but logarithmic scale
@@ -63,7 +67,8 @@ pure function logspace(a,b,N) result(x)
     x=exp(logx)
 end function logspace
 
-pure function lininterp(yi,a,b,x) result(y)
+
+pure function lininterp(yi, a, b, x) result(y)
 !simple linear interpolation function
 !appropriate for uniform linspace
     real(dp), intent(in)    :: a, b, x, yi(:) 
@@ -71,39 +76,44 @@ pure function lininterp(yi,a,b,x) result(y)
     integer                 :: Nnear, N
     real(dp)                :: y, dx, dy, xnear
     
-    if (x<a .or. x>b) then
-        y=1.d308
-!        print *, 'Error. std_mat::lininterp. Interpolation out of bounds'
-!        print '("a =",es12.5,"b =",es12.5,"x =",es12.5)', a, b, x
+    if (x < a .or. x > b) then
+        y = 1.d308
         return
     elseif (a >= b) then
         y = 2.d307
-!        print *, 'Error. std_mat::lininterp. Wrong order in limits a, b'
-!        print '("a =",es12.5,"b =",es12.5,"x =",es12.5)', a, b, x
         return
     endif
         
-    N=size(yi)
-    Nnear=nint((x-a)*(N-1)/(b-a))+1
+    N = size(yi)
+    Nnear = nint((x-a) * (N-1) / (b-a)) + 1
     if (Nnear > N .or. Nnear < 1) then
         y = 2.d306
-!        print *, 'Error. std_mat::lininterp. Nnear = ', Nnear, 'N =', N, 'yi =', yi
         return
     endif
     
-    dx=(b-a)/dfloat(N-1)
-    xnear=a+(Nnear-1)*dx
-    if (x>xnear) then
-        dy=yi(Nnear+1)-yi(Nnear)
-    elseif (x<xnear) then
-        dy=yi(Nnear)-yi(Nnear-1)
+    dx = (b-a) / dfloat(N-1)
+    
+    if (Nnear == N) then
+        xnear = b
+    elseif (Nnear == 1) then
+        xnear = a
+    else
+        xnear=a + (Nnear-1) * dx
+    endif
+    
+    if (x > xnear) then
+        dy = yi(Nnear + 1) - yi(Nnear)
+    elseif (x < xnear) then
+        dy = yi(Nnear) - yi(Nnear - 1)
     else
         dy = 0.d0
     endif
-    y=yi(Nnear)+(dy/dx)*(x-xnear)
+    y = yi(Nnear) + (dy/dx) * (x - xnear)
+    
 end function lininterp
 
-pure function interp1(xi,yi,x) result(y)
+
+pure function interp1(xi, yi ,x) result(y)
 !simple linear interpolation function (same as interp1 of matlab)
 !appropriate for non-uniform linspace
 
@@ -111,8 +121,8 @@ pure function interp1(xi,yi,x) result(y)
     real(dp)                :: y(2) ! 1: output, 2: flag
     integer                 :: dN, Nclose, binout(2)
     
-    binout = binsearch(xi,x) !find closest xi to x
-    y(2) = real(binout(2),dp)
+    binout = binsearch(xi, x) !find closest xi to x
+    y(2) = real(binout(2), dp)
     if (binout(2) /= 0) return
     dN = 1
     Nclose = binout(1)
@@ -121,6 +131,7 @@ pure function interp1(xi,yi,x) result(y)
         ((yi(Nclose + dN) - yi(Nclose)) / (xi(Nclose + dN) - xi(Nclose)))
     
 end function interp1
+
 
 pure function binsearch(x, x0)  result(ind)
 !binary search in sorted vector x for x(i) closest to x
@@ -157,12 +168,14 @@ pure function binsearch(x, x0)  result(ind)
     
 end function binsearch
 
-function diff2(f,x,dx) result(y)!second derivative of a function f at point x
+function diff2(f, x, dx) result(y)
+!second derivative of a function f at point x
     real(dp), intent(in)    :: x, dx
     real(dp), external      :: f
-    real(dp)                ::y
+    real(dp)                :: y
 
-    y=(f(x+dx)+f(x-dx)-2.d0*f(x))/(dx*dx)
+    y = (f(x+dx) + f(x-dx) - 2.d0*f(x)) / (dx*dx)
+    
 end function diff2
 
 function local_min ( a, b, eps, t, f, x )
