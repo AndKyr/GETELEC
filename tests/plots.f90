@@ -6,8 +6,8 @@ use std_mat, only: linspace
 
 implicit none
 
-integer,parameter       :: dp=8, Nf=1024, font=40, lw = 3
-real(dp), parameter     :: Fmin=0.4d0, Fmax=14.d0, T = 1000.0
+integer,parameter       :: dp=8, Nf=512, font=40, lw = 3
+real(dp), parameter     :: Fmin=0.4d0, Fmax=14.d0, T = 2000.0
 
 real(dp), dimension(Nf) :: Fi, Jfs, Jis, Jts, Jfb, Jib, Jtb, &
                            hfs, his, hts, hfb, hib, htb, Japp, happ, &
@@ -40,8 +40,10 @@ this%kT=kBoltz*T
 this%gamma = 15.d0
 !this%W = 4.5d0
 Fi=1.d0/linspace(1.d0/Fmax,1.d0/Fmin,Nf)
-Ri = [1.d0, 8.d0, 200.d0]
+Ri = [1.d0, 5.d0, 200.d0]
 this%mode = 0
+
+
 
 
 do j = 1,3

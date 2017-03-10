@@ -3,9 +3,9 @@ Keep format and params order unchanged. The number should start at 14th column. 
 debug=       F # if true some error messages are printed
 verbose=     F # if true with debug, a lot of error messages and barrier plot
 xlim=        0.1 # limit for the usage of KX approximations
-nlimfield=   0.6 # limit in 1/n for field regime
-nlimthermal= 2.5 # limit for 1/n to go to thermal regime
-nmaxlim=     3.0  #maximum acceptable gamma. above it KX is forced
+nlimfield=   0.4 # limit in 1/n for field regime
+nlimthermal= 2. # limit for 1/n to go to thermal regime
+nmaxlim=     2.  # for n>5 use MG expressions.
 gammalim=    1.e4 # maximum acceptable gamma. above it KX is forced    
 varlim=      0.01 #limit of variance for the fitting approximation (has meaning for mode==-2). If the fitting variance is more than varlim we switch to spline mode
 epsfit=      1.e-4 #  accuracy required in fittings

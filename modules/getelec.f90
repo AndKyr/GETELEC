@@ -47,7 +47,7 @@ character(len=14), parameter   :: errorfile = 'GetelecErr.txt', &
 
 real(dp), save          :: xlim = 0.1d0, gammalim = 1.d3,  varlim = 1.d-3, &
                            epsfit = 1.d-4, nlimfield = 0.6d0, &
-                           nlimthermal = 2.5d0, nmaxlim = 3.d0                           
+                           nlimthermal = 2.5d0, nmaxlim = 1.5d0                           
 integer, save           :: Nmaxpoly = 10
 logical, save           :: spectra= .false., firstcall = .false., &
                             debug = .false., verbose = .false.
@@ -481,6 +481,11 @@ subroutine gamow_num(this, full)
 
     x1 = [0.01d0, this%xm] !interval for search of first root
     x2 = [this%xm, this%xmax] !interval for search of second root
+    
+    if (bar(this%xmax)  > 0.d0) then
+        this%Gam = 1.d20
+        return
+    endif
     
     call dfzero(bar,x1(1),x1(2),x1(1),RtolRoot,AtolRoot,IFLAG) !first root
     if (IFLAG /= 1) then !if something went wrong
