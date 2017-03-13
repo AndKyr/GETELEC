@@ -108,6 +108,33 @@ def fitML (xML, yML, F0 = [0.05, 5., 18.], W0 = [2.5, 4., 5.5], \
                         [beta0[2], W0[2], R0[2], gamma0[2], Temp0[2]]), \
                 method = 'trf', jac = '3-point',xtol = 1.e-15 )
     return popt
+    
+
+def theta_SC(J,V,F):
+    
+    k = 1.904e5
+    z = k * V**0.5 * J / F**2
+    out = 1. - 1.33333 * z + 3. * z**2 - 8 * z**3
+    return min(max(out,0.01), 1.)
+
+def emit_SC(F = 10., W = 4.5, R = 5., gamma = 10., Temp = 300., V_appl = 5.e3):
+    """Calculate the current density and the Nottingham heating for specific set
+    of input parameters, taking into account the space_charge effect"""
+    this = emission_create(F,W,R,gamma,Temp)
+    F_p = F
+    theta_old = 1.
+    for i in range(100):
+        this.F = F_p
+        this.cur_dens()
+        J_p = this.Jem
+        theta_new = theta_SC(J_p, V_appl, F_p)
+        error =  (theta_new - theta_old)
+        theta_new = theta_old + error * 0.01
+        if (abs(error) < 1.e-3): break 
+        theta_old = theta_new 
+        F_p = F * theta_new
+        print "F = %f, J = %e " %(F_p, J_p)
+    return J_p,theta_new
 
 
 
