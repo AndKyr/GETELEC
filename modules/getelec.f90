@@ -451,6 +451,9 @@ subroutine gamow_num(this, full)
     
     if (full) then ! Um is not initialized
         this%Um = -local_min(x, this%xmax, 1.d-8, 1.d-8, neg_bar, this%xm)
+        !Catch the case global minimum not found
+        if (this%Um < 0.d0 .or. this%Um < bar(.5d0 * this%xm)) &
+            this%Um = -local_min(x, this%xm-1.d-3, 1.d-8, 1.d-8, neg_bar, this%xm)
 
         if (this%mode <= 0) then  ! if model or polynomial
             dx = 1.d-2  !dx : the differentiation dx used for minbeta
