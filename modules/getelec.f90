@@ -917,10 +917,12 @@ subroutine print_data(this, full, filenum)
             'V/nm', 'R =', this%R, 'nm', 'gamma =', this%gamma
     write (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10)') 'W =', this%W, 'eV', &
             'kT =', this%kT, 'eV'
-    write (fid,'(/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4)') 'Jem =', this%Jem, &
-            'A/nm^2', 'NotHeat =', this%heat,'W/nm^2', 'Gamow =', this%Gam
-    write (fid,'(/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4,A10)') 'xm =', &
-            this%xm, 'nm', 'xmax =', this%xmax, 'nm', 'Um =', this%Um, 'eV'
+    write (fid,'(/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4,A10)') &
+        'Jem =', this%Jem, 'A/nm^2', 'NotHeat =', this%heat,'W/nm^2', &
+        '<DE> =', this%heat / this%Jem, 'eV'
+    write (fid,'(/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4)') &
+        'xm =', this%xm, 'nm', 'xmax =', this%xmax, 'nm', &
+        'Um =', this%Um, 'eV', 'Gamow =', this%Gam
     write (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10)') 'dG/dE@Ef =', this%maxbeta, &
             '(eV)^-1', 'dG/dE@Um =', this%minbeta, '(eV)^-1'
     write (fid,'(/A10,A12,/A10,A12,/A10,I12,/A10,L12,/A10,I12)') &
