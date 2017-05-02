@@ -15,7 +15,7 @@ real(dp), dimension(Nf) :: Fi, Jfs, Jis, Jts, Jfb, Jib, Jtb, &
 integer                 :: i, j, fs=0, is=0, ts=0, fb=0, ib=0, tb=0
 real(dp)                :: Ri(3)
 
-logical, parameter      :: DE = .false.
+logical, parameter      :: DE = .true.
 
 type(EmissionData)      :: this
 type(pyplot)            :: plt1, plt2, plt3
@@ -153,6 +153,6 @@ enddo
 
 call plt1%savefig('png/Jplot.png', pyfile='python/Jplot2.plot.py')                    
 call plt2%savefig('png/heatplot.png', pyfile='python/heatplot2.plot.py')
-if (DE) call plt3%savefig('png/DE.png', pyfile='python/DEplot.plt.py')
+if (DE) call plt3%savefig('png/DE.png', pyfile='python/DEplot.plot.py')
 
 end program
