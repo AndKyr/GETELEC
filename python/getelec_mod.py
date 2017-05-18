@@ -121,25 +121,26 @@ def emit_SC(F = 10., W = 4.5, R = 5., gamma = 10., Temp = 300., \
                 V_appl = 5.e3, err_fact = 0.2):
     """Calculate the current density and the Nottingham heating for specific set
     of input parameters, taking into account the space_charge effect"""
-    F_p = 12.
+    F_p = F
     this = emission_create(F_p,W,R,gamma,Temp)
     theta_old = F_p / F
-    i = 19
     
-    while i == 19:
+    for j in range(20):
         for i in range(20):
             this.F = F_p
             this.cur_dens()
             J_p = this.Jem
+            if (i == 0 and j==0): J0 = J_p
             theta_new = theta_SC(J_p, V_appl, F_p)
             error =  (theta_new - theta_old)
             theta_new = theta_old + error * err_fact
-            if (abs(error) < 1.e-3): break 
+            if (abs(error) < 1.e-5): break 
             theta_old = theta_new 
-            print "F = %f, J = %e, theta = %e" %(F_p, J_p, theta_new)
+            #print "F = %f, J = %e, theta = %e" %(F_p, J_p, theta_new)
             F_p = F * theta_new
         err_fact = err_fact * 0.5
-        print i
+    
+    #print 'J0 = %e, Jfinal = %e, reduction = %f' %(J0, J_p, J_p/J0)
     return J_p,theta_new
 
 
