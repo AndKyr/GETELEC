@@ -113,9 +113,14 @@ def fitML (xML, yML, F0 = [0.05, 5., 18.], W0 = [2.5, 4., 5.5], \
 def theta_SC(J,V,F):
     
     k = 1.904e5
+    if (F<=0.01): return 1.
     z = k * V**0.5 * J / F**2
-    out = 1. - 1.33333 * z + 3. * z**2 - 8 * z**3
-    return min(max(out,0.01), 1.)
+    poly = np.array([9.*z**2, -3., -4.*z+3.])
+    #print "poly = ", poly
+    rts = np.roots(poly)
+    rdist = abs(rts - (2./3))
+    print rts, rdist
+    return rts[np.argmin(rdist)]
 
 def emit_SC(F = 10., W = 4.5, R = 5., gamma = 10., Temp = 300., \
                 V_appl = 5.e3, err_fact = 0.2):
@@ -136,12 +141,37 @@ def emit_SC(F = 10., W = 4.5, R = 5., gamma = 10., Temp = 300., \
             theta_new = theta_old + error * err_fact
             if (abs(error) < 1.e-5): break 
             theta_old = theta_new 
-            #print "F = %f, J = %e, theta = %e" %(F_p, J_p, theta_new)
+            print "F = %f, J = %e, theta = %e" %(F_p, J_p, theta_new)
             F_p = F * theta_new
         err_fact = err_fact * 0.5
     
     #print 'J0 = %e, Jfinal = %e, reduction = %f' %(J0, J_p, J_p/J0)
     return J_p,theta_new
+    
+def theta_approx(J,V,F):
+    
+    k = 1.904e5
+    if (F<=0.01): return 1.
+    z = k * V**0.5 * J / F**2
+
+    out = 1. - 1.33333 * z + 3. * z**2 - 8 * z**3
+    if (out > 0 and out <= 1.):
+        return out
+    else:
+        return 1.
+        
+def thetaroots(z):
+    poly = np.array([9.*z**2, -3., -4.*z+3.])
+    #print "poly = ", poly
+    out = np.zeros(2)
+    rts = np.roots(poly)
+    if len(rts == 2):
+        return rts
+    else:
+        out[:] = rts[0]
+        return out
+        
+
 
 
 
