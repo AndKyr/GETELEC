@@ -126,7 +126,7 @@ def emit_SC(F = 10., W = 4.5, R = 5., gamma = 10., Temp = 300., \
                 V_appl = 5.e3, err_fact = 0.2):
     """Calculate the current density and the Nottingham heating for specific set
     of input parameters, taking into account the space_charge effect"""
-    F_p = F
+    F_p = min(F, 15.)
     this = emission_create(F_p,W,R,gamma,Temp)
     theta_old = F_p / F
     
