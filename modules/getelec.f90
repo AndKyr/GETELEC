@@ -48,9 +48,8 @@ character(len=14), parameter   :: errorfile = 'GetelecErr.txt', &
 real(dp), save          :: xlim = 0.1d0, gammalim = 1.d3,  varlim = 1.d-3, &
                            epsfit = 1.d-4, nlimfield = 0.6d0, &
                            nlimthermal = 2.5d0, nmaxlim = 1.5d0                           
-integer, save           :: Nmaxpoly = 10
-logical, save           :: spectra= .false., firstcall = .false., &
-                            debug = .false., verbose = .false.
+integer, save           :: Nmaxpoly = 10, debug = 1
+logical, save           :: spectra= .false., firstcall = .false.
 
 !xlim: limit that determines distinguishing between sharp regime (Numerical integral)
 !and blunt regime where KX approximation is used
@@ -66,8 +65,9 @@ logical, save           :: spectra= .false., firstcall = .false., &
 
 !Nmxpoly: max degree of the fitted polynomial
 !spectra: set to true if you want to output spectroscopy data 
-!if debug, warnings are printed, parts are timed and calls are counted 
-!if debug and verbose all warnings are printed and barrier is plotted 
+!if debug == 0, everything is silent. debug==1, error file is printed, 
+! debug == 2 also some warning printed, parts are timed and calls are counted,
+!if debug == 3 all warnings are printed and barrier is plotted 
 
 !************************************************************************************
 logical, save          :: readparams = .false.
@@ -126,6 +126,7 @@ type, public    :: EmissionData
         ! 2: Wrong input values for xr, Vr are given: non-monotonous
         ! 3: KX approximation giving negative U''(x)
         ! 4: Unknown error: some NaN appeared or Jem<0
+        ! 5: NaN values over the energies more than 20%
         ! 10+: Some error in dfzero 1st appeared. + gives the ierr of dfzero
         ! 20+: Same as previous but for dfzero 2nd
         ! 30+: Save as previous but for dqage
@@ -155,7 +156,7 @@ subroutine cur_dens(this)
     integer         :: i, GTFerr
     character(len = 50) :: msgerr
     
-    if (debug) then
+    if (debug > 1) then
         call cpu_time(t1)
         print *, 'entering cur_dens'
     endif
@@ -217,7 +218,7 @@ subroutine cur_dens(this)
             this%mode = (this%mode / 10) * 10 - 2 ! set to -22 or -12
         elseif (mod(this%mode, 10) == -1 .and. this%Vr(size(this%Vr)) > this%W) then
             this%mode = 1 !switch to interpolation
-            if (debug) &
+            if (debug > 1) &
                 print *, 'var =', var,'varlim =',varlim, 'Switched to interpolation.'
         else ! mode = -10/20 or Vr(xr) not covering barrier, turn to error catching
             this%mode = -1
@@ -238,7 +239,7 @@ subroutine cur_dens(this)
         this%gamma = this%F / Fend
     endif
     
-    if (debug) then !calculate preparation time
+    if (debug > 1) then !calculate preparation time
         call cpu_time(t2)
         this%timings(1) = this%timings(1) + t2 -t1
         this%counts(1) = this%counts(1) + 1
@@ -253,7 +254,7 @@ subroutine cur_dens(this)
     endif
     
     if (this%R < 0.1d0) then
-        if (debug) print *, 'R < 0.1d0 was inputted. Recovered with R = 0.1'
+        if (debug > 1) print *, 'R < 0.1d0 was inputted. Recovered with R = 0.1'
         this%R = 0.1d0
     endif
     
@@ -270,7 +271,7 @@ subroutine cur_dens(this)
     
     call gamow_general(this,.true.) !calculate barrier parameters
     
-    if (debug .and. verbose) then
+    if (debug > 2.) then
         call plot_barrier(this)
     endif
     
@@ -300,7 +301,7 @@ subroutine cur_dens(this)
         
     endif
     
-    if (debug) print '(A10, ES12.4/A10, ES12.4/A10, ES12.4/A10, ES12.4)', &
+    if (debug > 1) print '(A10, ES12.4/A10, ES12.4/A10, ES12.4/A10, ES12.4)', &
                 'n =', n, 's =', s, 'Sig(n) =', Sigma(n), 'Sig(1/n) =', Sigma(1/n) 
     
     if (this%regime /= 'I') then
@@ -378,7 +379,7 @@ subroutine gamow_general(this,full)
     
     if (x > xlim .and. this%mode /= -1) then !not x<<1, use numerical integration
         if (this%mode == 1) then    !setup spline interpolation
-            if (debug) call cpu_time(t1)
+            if (debug > 1) call cpu_time(t1)
             if (size(this%tx) /= size(this%Vr) + knotx) then
                 if (allocated(this%tx)) deallocate(this%tx)
                 if (allocated(this%bcoef)) deallocate(this%bcoef)
@@ -389,7 +390,7 @@ subroutine gamow_general(this,full)
             if (iflag/=0) print *, 'error in spline setup, iflag = ', iflag
             this%mode = 2 !change mode so no need to call db1ink again
             
-            if (debug) then
+            if (debug > 1) then
                 call cpu_time(t2)
                 this%timings(2) = this%timings(2) + t2 - t1
                 this%counts(2) = this%counts(2) + 1
@@ -414,7 +415,7 @@ subroutine gamow_general(this,full)
         if (info == -2) this%ierr = 3
     endif
     
-    if ((isnan(this%Gam) .or. isnan(new%Gam)) .and. debug ) then
+    if ((isnan(this%Gam) .or. isnan(new%Gam)) .and. debug > 1 ) then
         print *, 'Gam takes NaN in gamow_general. this ='
         call print_data(this)
         print *, 'new ='
@@ -471,8 +472,8 @@ subroutine gamow_num(this, full)
             endif
         endif
         this%minbeta = 22.761d0 / sqrt(abs(diff2(bar,this%xm,dx)))
-        if (isnan(this%minbeta) .and. debug) print *, 'indxm=', indxm, 'dx=', dx, &
-                'U(xm+dx)=', bar(this%xm+dx), 'U(xm-dx)=', bar(this%xm-dx)
+        if (isnan(this%minbeta) .and. debug > 1) print *, 'indxm=', indxm, &
+                'dx=', dx, 'U(xm+dx)=', bar(this%xm+dx), 'U(xm-dx)=', bar(this%xm-dx)
         if (this%Um < 1.d-2) then !lost barrier
             this%Gam = this%minbeta * this%Um
             this%maxbeta = this%minbeta        
@@ -493,18 +494,18 @@ subroutine gamow_num(this, full)
     call dfzero(bar,x1(1),x1(2),x1(1),RtolRoot,AtolRoot,IFLAG) !first root
     if (IFLAG /= 1) then !if something went wrong
         this%ierr = 10 + IFLAG !set error flag
-        if (debug) &
+        if (debug > 1) &
             print *, 'Error occured in dfzero1. IFLAG =', IFLAG! print error messages
     endif
     
     call dfzero(bar,x2(1),x2(2),x2(1),RtolRoot,AtolRoot,IFLAG) !second root
     if (IFLAG /= 1) then !if something went wrong
         this%ierr = 20 + IFLAG !set error flag
-        if (debug)  &! print error messages
+        if (debug > 1)  &! print error messages
             print *, 'Error occured in dfzero2. IFLAG =', IFLAG
     endif
     
-    if (this%ierr > 10 .and. debug .and. verbose) then
+    if (this%ierr > 10 .and. debug  > 2) then
         print *, 'xm =', this%xm, '|| xmax =', this%xmax
         print *, 'x1=', x1, '|| x2=', x2
         print *, 'bar(x1)=', bar(x1(1)), bar(x1(2)), &
@@ -516,7 +517,7 @@ subroutine gamow_num(this, full)
                 !integrate
     if (IER /= 0) then
         this%ierr = 30 + IER
-        if (debug .and. verbose) then
+        if (debug > 2) then
             print *, 'Error occured in dqage. IER =', IER
             print *, 'limits = [', x1, '|| ', x2, ']'
             print *,  'Neval =', NEVAL, '| ABSERR =', ABSERR, '| LAST=', LAST 
@@ -630,7 +631,7 @@ function gamow_KX(this, full) result(info)
         this%xm = sqrt(Q / this%F) + Q / (this%F * this%R)
         temp =  (this%F**1.5d0) / sqrt(Q) - 4.d0 * this%F / this%R
         if (temp < 0.d0) then
-            if(debug .and. verbose) print *, 'Warning: minbeta goes to negative root'
+            if(debug > 2) print *, 'Warning: minbeta goes to negative root'
             temp  =  1.d-10  !make sure that sqrt is positive, avoid NaNs
             info = -2
         endif
@@ -671,7 +672,7 @@ function GTFinter(this) result(error)
     real(dp)            :: t1, t2 !timing variables
     
     error = 0    
-    if (debug) call cpu_time(t1)
+    if (debug > 1) call cpu_time(t1)
     C_FN = this%maxbeta * this%Um
     Bq = this%minbeta * this%Um
     B_FN = this%Gam
@@ -679,7 +680,7 @@ function GTFinter(this) result(error)
     
     polybeta = real([3.*(C_FN+Bq-2.*B_FN), 2.*(3.*B_FN-Bq-2.*C_FN), C_FN-UmaxokT],sp)
     !polynomial describing G(E)
-    if (abs(polybeta(1)) <1.d-2 .and. debug) then
+    if (abs(polybeta(1)) <1.d-2 .and. debug > 1) then
         print *, 'error: GTF polynomial with negative root'
         call print_data(this)
     endif
@@ -692,7 +693,7 @@ function GTFinter(this) result(error)
     
     
     zmax=minval(real(rt,dp)) ! take the smaller root
-    if (debug) print *, 'Polynomial roots in GTFinter: rt = ', rt
+    if (debug > 1) print *, 'Polynomial roots in GTFinter: rt = ', rt
     if (zmax<0) then
         zmax=maxval(real(rt,dp)) !choose the positive root if it is negative
     endif
@@ -701,20 +702,20 @@ function GTFinter(this) result(error)
     Gm = -(C_FN+Bq-2.*B_FN) * zmax**3 - (3.*B_FN-Bq-2.*C_FN) * zmax**2 &
             -C_FN * zmax + B_FN ! G at the maximum
     if (Gm<0.d0 .or. Gm > B_FN) then
-        if (debug) print *, 'Error in GTFinter, Gm =', Gm
+        if (debug > 1) print *, 'Error in GTFinter, Gm =', Gm
         error = 1
         return
     endif
     
     s = Em / this%kT + Gm
-    if (Gm < 0.d0 .and. debug) then
+    if (Gm < 0.d0 .and. debug > 1) then
         print *, 'zmax = ', zmax, 'Gm = ', Gm
         call print_data(this)
     endif
     
     this%heat = zs*(this%kT**3)*exp(-s) * (s + 1.d0 + .5d0*s**2)
     this%Jem = zs * (this%kT**2) * exp(-s) * (s + 1.d0)
-    if (debug) then
+    if (debug > 1) then
         call cpu_time(t2)
         this%timings(5) = this%timings(5) + t2 -t1
         this%counts(5) = this%counts(5) + 1
@@ -738,9 +739,9 @@ subroutine J_num_integ(this)
     real(dp)                            :: insum, Jsum, Jcur, Umax, Emax, Emin, E0
     real(dp)                            :: Gup(2*Nvals), Gdown(2*Nvals), fj, fmax
     real(dp)                            :: integrand, outsum, t2, t1
-    integer                             :: j, i, k
+    integer                             :: j, i, k, NaNs
 
-    if (debug) call cpu_time(t1)
+    if (debug > 1) call cpu_time(t1)
     if (spectra) then !if spectra then j(E) will be printed into a file
         open(fidout,file='spectra.csv')
     endif
@@ -789,6 +790,7 @@ subroutine J_num_integ(this)
     insum = 0.d0
     outsum = 0.d0
     fmax = 0.d0
+    NaNs = 0
     
     do j = 1, 2*Nvals !integrate over high energies
         Ej = E0 + (j-1) * dE
@@ -803,7 +805,9 @@ subroutine J_num_integ(this)
             Gj = this%minbeta * Umax
         endif
         if (isnan(Gj)) then
-            print *, 'warning: NaN in Gj'
+            NaNs = NaNs + 1
+            if (debug > 1) print *, 'warning: NaN in Gj for Ej  = ', Ej
+            if (debug > 2) call error_msg(this,'NaN in Gj')
             if (j==1) then
                 Gup = this%Gam
             else
@@ -835,7 +839,9 @@ subroutine J_num_integ(this)
             Gj = this%minbeta * Umax
         endif
         if (isnan(Gj)) then
-            print *, 'warning: NaN in Gj'
+            NaNs = NaNs + 1
+            if (debug > 1) print *, 'warning: NaN in Gj for Ej  = ', Ej
+            if (debug > 2) call error_msg(this,'NaN in Gj')
             if (i==1) then
                 Gdown = this%Gam
             else
@@ -853,11 +859,19 @@ subroutine J_num_integ(this)
         endif
         Jsum = Jsum + fj
     enddo
+    
+    if (NaNs > (i+j) / 5) then ! if too many NaNs appeared, the result is wrong
+        this%ierr = 5
+        this%heat = 0.d0
+        this%Jem = 0.d0
+        return
+    endif
+    
     this%Jem = Jsum * zs * this%kT * dE
     if (i>2*Nvals) i = 2*Nvals
 
     G(1:i+j) = [Gdown(i:1:-1),Gup(1:j)]!bring G vectors together and in correct order
-    
+
     do k=1,i+j!integrate for nottingham effect
         integrand = Ej * (insum + .5d0*dE / (1.d0 + exp(G(k)))) & 
                     / (1.d0 + exp(Ej/this%kT))
@@ -876,7 +890,7 @@ subroutine J_num_integ(this)
         close(fidout)
     endif
     
-    if (debug) then
+    if (debug > 1) then
         call cpu_time(t2)
         i = 3
         if (this%mode > 0) i = 4 !check if interpolation or barrier model
@@ -973,7 +987,7 @@ function fitpot(this)  result(var)
         p(i) = max(p(i), pmin(i))
     enddo
     
-    if (debug .and. verbose) print *, 'calling nlinfit. p =', p
+    if (debug > 2) print *, 'calling nlinfit. p =', p
     var = nlinfit(fun, this%xr, this%Vr, p, pmin, pmax, epsfit, fitinfo)
     
     if (fitinfo > 0 .and. fitinfo <=4 .and. var < varlim) then
@@ -1017,15 +1031,15 @@ function fitpoly(this)  result(var)
         allocate (this%Apoly(3*size(this%xr) + 3*Nmaxpoly + 3))
     endif
     !make sure that the arrays are allocated properly and have the correct size
-    if (debug) print *, 'entering dpolfit. size(Apoly)=', size(this%Apoly) 
+    if (debug > 1) print *, 'entering dpolfit. size(Apoly)=', size(this%Apoly) 
     call dpolft(size(this%xr), this%xr, this%Vr, ww, Nmaxpoly, this%ndeg, eps,  &
                 rr, ierr, this%Apoly)
-    if(debug) print *, 'exiting dpolfit' 
+    if(debug > 1) print *, 'exiting dpolfit' 
     var = eps
     
-    if (debug) print *, 'done polynomial fitting. ndeg=', this%ndeg, 'var =', var
+    if (debug > 1) print *, 'done polynomial fitting. ndeg=', this%ndeg, 'var =', var
     
-    if (debug .and. ierr /= 1 .and. ierr /= 3) print *, &
+    if (debug > 1 .and. ierr /= 1 .and. ierr /= 3) print *, &
         'error in polynomial fitting with ierr = ', ierr
             
 end function fitpoly
@@ -1235,7 +1249,7 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, info) result(var)
     iopt = 1
     nprint = 0
     
-    if (debug .and. verbose) print *, 'Calling dnlse1'
+    if (debug > 2) print *, 'Calling dnlse1'
 
     call DNLS1E(fcn, iopt, m, n, p0, fvec, tol, nprint, info, iwa, wa, lwa)
     if (info > 3 .or. info == 0) then
@@ -1244,7 +1258,7 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, info) result(var)
         var = sum(fvec) / sum(abs(ydata)) !relative error (mean error/mean |values|)
     endif
 
-    if (debug) print *, 'Model fitting completed. info =', &
+    if (debug > 1) print *, 'Model fitting completed. info =', &
                 info, 'tol = ', tol, 'Nvals = ', Nvals, 'var =', var
     
     contains
@@ -1290,7 +1304,7 @@ subroutine read_params()
     
     inquire(file=paramfile, exist=ex)
     if (.not. ex) then
-        if (debug) &
+        if (debug > 1) &
             print *, 'GETELEC: Parameters input file not found. Default values used.'
         return
     endif
@@ -1302,47 +1316,43 @@ subroutine read_params()
     
     read(fid,*) str, debug
     if (str(1:5)/='debug') stop error 
-    if (debug .and. verbose)  print *, 'debug read', debug
-    
-    read(fid,*) str, verbose
-    if (str(1:7)/='verbose') stop error 
-    if (debug .and. verbose)  print *, 'verbose read', verbose
-    
+    if (debug > 2)  print *, 'debug read', debug
+
     read(fid,*) str, xlim
     if (str(1:4)/='xlim') stop error
-    if (debug .and. verbose)  print *, 'xlim read', xlim
+    if (debug > 2)  print *, 'xlim read', xlim
     
     read(fid,*) str, nlimfield
     if (str(1:9)/='nlimfield') stop error
-    if (debug .and. verbose)  print *, 'nlimfield read', nlimfield
+    if (debug > 2)  print *, 'nlimfield read', nlimfield
     
     read(fid,*) str, nlimthermal
     if (str(1:11)/='nlimthermal') stop error
-    if (debug .and. verbose)  print *, 'nlimthermal read', nlimthermal
+    if (debug > 2)  print *, 'nlimthermal read', nlimthermal
     
     read(fid,*) str, nmaxlim
     if (str(1:7)/='nmaxlim') stop error
-    if (debug .and. verbose)  print *, 'nmaxlim read', nmaxlim
+    if (debug > 2)  print *, 'nmaxlim read', nmaxlim
     
     read(fid,*) str, gammalim
     if (str(1:8)/='gammalim') stop error
-    if (debug .and. verbose)  print *, 'gammalim read', gammalim
+    if (debug > 2)  print *, 'gammalim read', gammalim
     
     read(fid,*) str, varlim
     if (str(1:6)/='varlim') stop error
-    if (debug .and. verbose)  print *, 'varlim read', varlim
+    if (debug > 2)  print *, 'varlim read', varlim
     
     read(fid,*) str, epsfit
     if (str(1:6)/='epsfit') stop error
-    if (debug .and. verbose)  print *, 'epsfit read', epsfit
+    if (debug > 2)  print *, 'epsfit read', epsfit
     
     read(fid,*) str, Nmaxpoly
     if (str(1:8)/='Nmaxpoly') stop error
-    if (debug .and. verbose)  print *, 'Nmaxpoly read', Nmaxpoly
+    if (debug > 2)  print *, 'Nmaxpoly read', Nmaxpoly
     
     read(fid,*) str, spectra
     if (str(1:7)/='spectra') stop error 
-    if (debug .and. verbose)  print *, 'spectra read', spectra
+    if (debug > 2)  print *, 'spectra read', spectra
     
     close(fid)
     
@@ -1355,6 +1365,8 @@ subroutine error_msg(this, msg)
     ! prints error message to the error file
     type(EmissionData), intent(in)  :: this
     character(len=*)          :: msg
+    
+    if (debug == 0) return
     
     open(fiderr, file = errorfile, action ='write', access ='append')
     call print_data(this, .true., fiderr)

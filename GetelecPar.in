@@ -1,7 +1,6 @@
 Keep format and params order unchanged. The number should start at 14th column. Don't put spaces at the recognizing string.  The first two lines are always ignored. After the number put a space and the rest is ignored.
 
-debug=       F # if true some error messages are printed
-verbose=     F # if true with debug, a lot of error messages and barrier plot
+debug=       1 # if true some error messages are printed
 xlim=        0.1 # limit for the usage of KX approximations
 nlimfield=   0.4 # limit in 1/n for field regime
 nlimthermal= 2. # limit for 1/n to go to thermal regime
