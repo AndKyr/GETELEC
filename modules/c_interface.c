@@ -66,7 +66,7 @@ int eval(const char *func, int nArgs, const double **inReal, const double **inIm
         pass.Vr = V; 
         pass.mode = -21;
         pass.Nr = nArgs - 1;
-        pass.full = 1;
+        pass.approx = 1;
 
         cur_dens_c(&pass);
         

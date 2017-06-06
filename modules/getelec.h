@@ -3,7 +3,7 @@ struct emission{//struct for interoperability with fortran module getelec
     double Jem, heat; //ouptut parameters
     double *xr, *Vr;// input vectors
     char regime, sharp; //ouput characters showing regimes
-    int Nr, full, mode, ierr; //Nr: length of vectors xr ,Vt
+    int Nr, approx, mode, ierr; //Nr: length of vectors xr ,Vt
                              //full: logical for full calculation
                              //mode, ierr: ints for defining mode and outputing error 
 };

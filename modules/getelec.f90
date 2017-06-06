@@ -88,10 +88,10 @@ type, public    :: EmissionData
     character   :: regime ='F', sharpness = 'B'
         !'f' for field, 'i' for intermediate, 't' for thermal regimes
         !'s' for sharp tip (numerical integration) and 'b' for blunt (KX approx)
-    logical     :: full = .false. !full calculation if true, else GTF approximation
     
     real(dp), allocatable   :: xr(:), Vr(:)     !xr(nx), Vr(nx)
         !electrostatic potential externally defined as Vr(xr)
+        
         
     real(dp), allocatable   :: tx(:), bcoef(:)  !tx(nx + kx), bcoef(nx)
         !bspline related parameters
@@ -117,6 +117,12 @@ type, public    :: EmissionData
         !-20 : Fit to polynomial. If unsatisfactory turn to FN.
         !-21 : Fit to polynomial. If fitting not satisfactory, use interpolation.
         !-22 : Fit to polynomial and fitting has already been done, Apoly is ready.
+        
+    integer                 :: approx = 0
+    !1: full calculation
+    !0: GTF approximation
+    !-1: FN approximation (Miller - Good version)
+    !-2: RLD approximation
         
     integer                 :: ierr = 0
         ! Integer to store error information.
@@ -258,7 +264,7 @@ subroutine cur_dens(this)
         this%R = 0.1d0
     endif
     
-    if (this%full) then !if full calculation expand borders of regimes
+    if (this%approx == 1) then !if full calculation expand borders of regimes
         nlimf = nlimfield
         nlimt = nlimthermal
     else !if only GTF equation standard limit = 1
@@ -279,46 +285,59 @@ subroutine cur_dens(this)
         call error_msg(this,'Error after first gamow_general.')
         return
     endif
-
-    if (this%kT * this%maxbeta < nlimf .and. &
-            (this%Um > 0.1 .or. (.not. this%full))) then!field regime
-        n = 1.d0/(this%kT * this%maxbeta) !standard Jensen parameters
-        s = this%Gam
-        this%regime = 'F'
-    else if (this%kT * this%minbeta > nlimt .and. &
-                (this%Um > 0.1 .or. (.not. this%full))) then !thermal regime
-        n = 1.d0/(this%kT * this%minbeta) !standard Jensen parameters
-        s = this%minbeta * this%Um
-        this%regime = 'T'
-    else  !intermediate regime
-        this%regime = 'I'
-        if (this%full) then
-            call J_num_integ(this) !Numerical integration over energies
-        else
-            GTFerr = GTFinter(this)
+    
+    if (this%approx >= 0) then !full calculation or GTF approximation
+        if (this%kT * this%maxbeta < nlimf .and. &
+                (this%Um > 0.1 .or. (this%approx == 0))) then!field regime
+            n = 1.d0/(this%kT * this%maxbeta) !standard Jensen parameters
+            s = this%Gam
+            this%regime = 'F'
+        else if (this%kT * this%minbeta > nlimt .and. &
+                    (this%Um > 0.1 .or. (this%approx == 0))) then !thermal regime
+            n = 1.d0/(this%kT * this%minbeta) !standard Jensen parameters
+            s = this%minbeta * this%Um
+            this%regime = 'T'
+        else  !intermediate regime
+            this%regime = 'I'
+            if (this%approx == 1) then
+                call J_num_integ(this) !Numerical integration over energies
+            else
+                GTFerr = GTFinter(this)
+            endif
+            if (GTFerr/=0) call J_num_integ(this)  !if GTF return with error, do full
         endif
-        if (GTFerr/=0) call J_num_integ(this)  !if GTF return with error, do full
         
-    endif
-    
-    if (debug > 1) print '(A10, ES12.4/A10, ES12.4/A10, ES12.4/A10, ES12.4)', &
+        if (debug > 1) print '(A10, ES12.4/A10, ES12.4/A10, ES12.4/A10, ES12.4)', &
                 'n =', n, 's =', s, 'Sig(n) =', Sigma(n), 'Sig(1/n) =', Sigma(1/n) 
-    
-    if (this%regime /= 'I') then
-        if (n > nmaxlim) then !for n>5 use MG expressions. Approximations for Sigma
-                           ! misbehave  
-            this%Jem = zs*pi* this%kT * exp(-this%Gam) & !Murphy-Good version of FN
-                / (this%maxbeta * sin(pi * this%maxbeta * this%kT))
-            this%heat = -zs*(pi**2) * (this%kT**2) * & !Nottingham at F regime
-                exp(-this%Gam)*cos(pi* this%maxbeta * this%kT)  &
-                / (this%maxbeta * (sin(pi * this%maxbeta * this%kT )**2))
-        else !
-            this%heat = zs * (this%kT**3) * ( ( (n*s + 1.d0) * Sigma(n) &
-                - DSigma(n)) * exp(-n*s) + (n**3) * DSigma(1.d0/n) * exp(-s))
-            this%Jem = zs * (this%kT**2) * ((n**2) * Sigma(1.d0/n) * exp(-s) &
-                + exp(-n*s) * Sigma(n))
+        
+        if (this%regime /= 'I') then
+            if (n > nmaxlim) then !for n>5 use MG expressions. Approximations for 
+                               ! Sigma misbehave  
+                this%Jem = zs*pi* this%kT * exp(-this%Gam) & !Murphy-Good version FN
+                    / (this%maxbeta * sin(pi * this%maxbeta * this%kT))
+                this%heat = -zs*(pi**2) * (this%kT**2) * & !Nottingham at F regime
+                    exp(-this%Gam)*cos(pi* this%maxbeta * this%kT)  &
+                    / (this%maxbeta * (sin(pi * this%maxbeta * this%kT )**2))
+            else !
+                this%heat = zs * (this%kT**3) * ( ( (n*s + 1.d0) * Sigma(n) &
+                    - DSigma(n)) * exp(-n*s) + (n**3) * DSigma(1.d0/n) * exp(-s))
+                this%Jem = zs * (this%kT**2) * ((n**2) * Sigma(1.d0/n) * exp(-s) &
+                    + exp(-n*s) * Sigma(n))
+            endif
         endif
+    elseif (this%approx == -1) then !Murphy-Good version FN
+        this%Jem = zs * (this%maxbeta**(-2)) * exp(-this%Gam) * &
+                (1.+ (pi * this%maxbeta * this%kT)**2 / 6.)
+        this%heat = -zs * (this%maxbeta**(-3)) * exp(-this%Gam) * &
+                (1. - (pi * this%maxbeta * this%kT)**2 / 6.)
+    elseif (this%approx == -2) then ! RLD equation
+        this%Jem = zs * (this%kT**2) * exp(-this%Um/this%kT)
+        this%heat = (this%kT + this%Um) * this%Jem
+    else
+        print *, 'Wrong approx value. this%approx = ', this%approx
+        stop
     endif
+        
     
     this%heat = - this%heat !convention: consider deposited heat (+ for heating) 
     
@@ -939,11 +958,11 @@ subroutine print_data(this, full, filenum)
         'Um =', this%Um, 'eV', 'Gamow =', this%Gam
     write (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10)') 'dG/dE@Ef =', this%maxbeta, &
             '(eV)^-1', 'dG/dE@Um =', this%minbeta, '(eV)^-1'
-    write (fid,'(/A10,A12,/A10,A12,/A10,I12,/A10,L12,/A10,I12)') &
+    write (fid,'(/A10,A12,/A10,A12,/A10,I12,/A10,I12,/A10,I12)') &
                                      'Regime:', this%regime, &
                                      'Sharpness:', this%sharpness,  &
                                      'Mode:', this%mode, &
-                                     'Full:', this%full, &
+                                     'Full:', this%approx, &
                                      'Ierr:', this%ierr
     
     if (present(full) .and. full .and. allocated(this%xr)) then 
@@ -1154,7 +1173,7 @@ subroutine C_wrapper(passdata, ifun) bind(c)
         real(c_double)      :: Jem, heat !ouput parameters
         type(c_ptr)         :: xr, Vr     !input vectors
         character(c_char)   :: regime, sharp  !output chars showing regimes
-        integer(c_int)      :: Nr, full, mode, ierr !len of vectors xr, Vr and full
+        integer(c_int)      :: Nr, approx, mode, ierr !len of vectors xr, Vr and full
     end type cstruct
 
     type(cstruct), intent(inout)    :: passdata
@@ -1166,7 +1185,7 @@ subroutine C_wrapper(passdata, ifun) bind(c)
     !copy the members of the c struct to the fortran type
     this%F = passdata%F; this%W = passdata%W; this%R = passdata%R; 
     this%kT = kBoltz * passdata%Temp; this%gamma = passdata%gamma; 
-    this%mode = passdata%mode; this%full = .not. (passdata%full == 0)
+    this%mode = passdata%mode; this%approx = passdata%approx
     this%Jem = passdata%Jem; this%heat = passdata%heat
     this%ierr = passdata%ierr; this%regime = passdata%regime
     this%sharpness = passdata%sharp

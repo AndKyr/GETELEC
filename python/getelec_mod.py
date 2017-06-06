@@ -32,7 +32,7 @@ class Emission(ct.Structure):
                 ("regime", ct.c_char),
                 ("sharp", ct.c_char),
                 ("Nr", ct.c_int),
-                ("full", ct.c_int),
+                ("approx", ct.c_int),
                 ("mode", ct.c_int),
                 ("ierr", ct.c_int)
                 ]
@@ -54,7 +54,7 @@ class Emission(ct.Structure):
         
 def emission_create(F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300., \
                 Jem = 0., heat = 0., xr = np.array([]), Vr = np.array([]), \
-                regime = 'r', sharp = 'r', full = 1, mode = 0, ierr = 0):
+                regime = 'r', sharp = 'r', approx = 1, mode = 0, ierr = 0):
                     
     """Creates an Emission class object and calculates everyting. 
     Input xr ,Vr are given as numpy arrays."""
@@ -62,7 +62,7 @@ def emission_create(F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300., \
     V_c = Vr.ctypes.data_as(ct.POINTER(ct.c_double))
     Nr = xr.size
     assert (Vr.size == Nr),"Check sizes of xr and Vr"
-    this = Emission(F,W,R,gamma,Temp,Jem,heat,x_c,V_c,regime,sharp,Nr,full,mode,ierr)
+    this = Emission(F,W,R,gamma,Temp,Jem,heat,x_c,V_c,regime,sharp,Nr,approx,mode,ierr)
     this.cur_dens()
     return this
 
