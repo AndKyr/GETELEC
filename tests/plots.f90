@@ -58,7 +58,7 @@ do j = 1,3
 
         
         this%F= Fi(i)
-        this%full = .true.
+        this%approx = 1
         this%mode = 0
         call cur_dens(this)
         
@@ -100,7 +100,7 @@ do j = 1,3
             endif
         endif
     if (this%R > 0.d0) then
-        this%full = .false.
+        this%approx = 0
         call cur_dens(this)
         Japp(i) = this%Jem
         happ(i) = this%heat

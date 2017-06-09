@@ -29,7 +29,7 @@ this%gamma = 15.d0
 
 Fi = [4.d0, 6.d0, 8.d0]
 ls = ['b-','g-','r-']
-this%full = .false.
+this%approx = 0
 this%R = 1.d2
 this%mode = 0
 
