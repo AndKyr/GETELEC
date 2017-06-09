@@ -46,9 +46,9 @@ endif
 if (i >= 6) then
     call getarg(6, arg)
     if (arg == 'T' .or. arg == 't') then
-        this%full = .true.
+        this%approx = 1
     else
-        this%full = .false.
+        this%approx = 0
     endif
 endif
 if (i >= 7) then
@@ -68,7 +68,7 @@ call cpu_time(t1)
 call cur_dens(this)
 call cpu_time(t2)
 call print_data(this,.true.)
-if (debug) then
+if (debug > 0) then
     print *, 'Timings: ', this%timings
     print *, 'total elapsed time:', t2-t1
 endif
