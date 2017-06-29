@@ -23,13 +23,14 @@ public  ::  cur_dens, C_wrapper, print_data, EmissionData, plot_barrier, &
 !************************************************************************************
 !Global parameters not to be defined by the user
 
-integer, parameter      :: Ny = 200, dp = 8, sp = 4, fiderr = 987465, &
-                          iknot = 0, idx = 0, knotx = 4 , fidparams = 812327
+integer, parameter      :: Ny = 200, dp = 8, sp = 4, fiderr = 987465, iknot = 0, &
+                            idx = 0, knotx = 4 , fidparams = 812327
 !Ny: length of special functions array
 !knotx: No of bspline knots.
 !idx, iknot: spline module parameters to bee kept 0
 !dp, sp: double and single precision parameters
-!fiderr: file id number for outputing error file 
+!fiderr: file id number for outputing error file
+!above==0, the Transmission coefficient above Um is considered 1, above==1 Kemble 
 real(dp), parameter     :: pi = acos(-1.d0), b = 6.83089d0, zs = 1.6183d-4, &
                            gg = 10.246d0, Q = 0.35999d0, kBoltz = 8.6173324d-5
 !b, gg: exponential constants for Gamow
@@ -47,8 +48,8 @@ character(len=14), parameter   :: errorfile = 'GetelecErr.txt', &
 
 real(dp), save          :: xlim = 0.1d0, gammalim = 1.d3,  varlim = 1.d-3, &
                            epsfit = 1.d-4, nlimfield = 0.6d0, &
-                           nlimthermal = 2.5d0, nmaxlim = 1.5d0                           
-integer, save           :: Nmaxpoly = 10, debug = 1
+                           nlimthermal = 2.5d0, nmaxlim = 10.d0                           
+integer, save           :: Nmaxpoly = 10, debug = 1, above = 1
 logical, save           :: spectra= .false., firstcall = .false.
 
 !xlim: limit that determines distinguishing between sharp regime (Numerical integral)
@@ -288,12 +289,12 @@ subroutine cur_dens(this)
     
     if (this%approx >= 0) then !full calculation or GTF approximation
         if (this%kT * this%maxbeta < nlimf .and. &
-                (this%Um > 0.1 .or. (this%approx == 0))) then!field regime
+                (this%Um > 2.5 .or. (this%approx == 0))) then!field regime
             n = 1.d0/(this%kT * this%maxbeta) !standard Jensen parameters
             s = this%Gam
             this%regime = 'F'
         else if (this%kT * this%minbeta > nlimt .and. &
-                    (this%Um > 0.1 .or. (this%approx == 0))) then !thermal regime
+                    (this%Um > 2.5 .or. (this%approx == 0))) then !thermal regime
             n = 1.d0/(this%kT * this%minbeta) !standard Jensen parameters
             s = this%minbeta * this%Um
             this%regime = 'T'
@@ -353,7 +354,11 @@ subroutine cur_dens(this)
     pure function Sigma(x) result(Sig)!Jensen's sigma
         real(dp), intent(in)    :: x
         real(dp)                :: Sig
-        Sig = (1.d0+x**2)/(1.d0-x**2)-.3551d0*x**2-0.1059d0*x**4-0.039*x**6
+        if (x > 3.d0) then 
+            Sig = 0.d0
+        else
+            Sig = (1.d0+x**2)/(1.d0-x**2)-.3551d0*x**2-0.1059d0*x**4-0.039*x**6
+        endif
     end function Sigma
     
     pure function DSigma(x) result(ds) !Jensen's sigma'
@@ -749,9 +754,9 @@ subroutine J_num_integ(this)
     type(EmissionData), intent(inout)   :: this
     type(EmissionData)                  :: new
     
-    real(dp), parameter                 :: cutoff=1.d-4 
+    real(dp), parameter                 :: cutoff=1.d-3 
             !cutoff of the exponentially decreasing
-    integer, parameter                  :: Nvals=256, fidout=1953
+    integer, parameter                  :: Nvals=512, fidout=1953
             !no of intervals for integration and fidout for spectroscopy
             
     real(dp)                            :: Gj, G(4*Nvals), Ej, dE, Ea, Eb
@@ -776,7 +781,7 @@ subroutine J_num_integ(this)
 
     if (this%kT * this%maxbeta < 1.05d0) then!field regime, max is close to Ef
         Emax = abs(log(cutoff)) / (1.d0 / this%kT - .7 * this%maxbeta)
-        Emin = -abs(log(cutoff)) / this%maxbeta
+        Emin = - abs(log(cutoff)) / this%maxbeta
         E0 = 0.d0
     else if (this%kT * this%minbeta > .95d0) then!thermal regime, max is close to Um
         Emax = this%Um + abs(log(cutoff)) * this%kT
@@ -820,8 +825,10 @@ subroutine J_num_integ(this)
             new%W = this%W - Ej
             call gamow_general(new,.false.) !fastly calculate only G 
             Gj = new%Gam
-        else
+        elseif (above /= 0) then
             Gj = this%minbeta * Umax
+        else
+            Gj = -200.d0
         endif
         if (isnan(Gj)) then
             NaNs = NaNs + 1
@@ -836,12 +843,8 @@ subroutine J_num_integ(this)
             Gup(j) = Gj
         endif
         fj=lFD(Ej,this%kT)/(1.d0+exp(Gup(j)))
-        if (fj>fmax) then
-            fmax=fj
-        endif
-        if (abs(fj/fmax)<cutoff)  then
-            exit
-        endif
+        if (fj > fmax) fmax = fj
+        if (abs(fj/fmax) < cutoff) exit
         Jsum = Jsum + fj
     enddo
     if (j>2*Nvals) j = 2*Nvals
@@ -854,8 +857,10 @@ subroutine J_num_integ(this)
             new%Um = Umax
             call gamow_general(new,.false.)
             Gj = new%Gam
-        else
+        elseif (above /= 0) then
             Gj = this%minbeta * Umax
+        else
+            Gj = -200.d0
         endif
         if (isnan(Gj)) then
             NaNs = NaNs + 1
@@ -870,12 +875,8 @@ subroutine J_num_integ(this)
             Gdown(i) = Gj
         endif
         fj=lFD(Ej,this%kT)/(1.d0+exp(Gdown(i)))
-        if (fj>fmax) then
-            fmax=fj
-        endif
-        if (abs(fj/fmax)<cutoff)  then
-            exit
-        endif
+        if (fj>fmax) fmax=fj
+        if (abs(fj/fmax) < cutoff) exit
         Jsum = Jsum + fj
     enddo
     
@@ -892,6 +893,7 @@ subroutine J_num_integ(this)
     G(1:i+j) = [Gdown(i:1:-1),Gup(1:j)]!bring G vectors together and in correct order
 
     do k=1,i+j!integrate for nottingham effect
+        if (above == 0 .and. Ej > this%Um) G(k) = -100.d0
         integrand = Ej * (insum + .5d0*dE / (1.d0 + exp(G(k)))) & 
                     / (1.d0 + exp(Ej/this%kT))
         !.5d0 ... term is what remains from insum for ending trapezoid rule
@@ -1373,7 +1375,13 @@ subroutine read_params()
     if (str(1:7)/='spectra') stop error 
     if (debug > 2)  print *, 'spectra read', spectra
     
+    read(fid,*) str, above
+    if (str(1:7)/='aboveUm') stop error 
+    if (debug > 2)  print *, 'aboveUm read', above
+    
     close(fid)
+    
+    if (debug > 2)  print *, "Parameters read"
     
     readparams = .true.
 

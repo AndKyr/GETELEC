@@ -12,8 +12,9 @@ i = iargc()
 if (i < 3) then
     print *, 'Give at least 3 floats. Field in V/nm, work function  in eV &
     and temperature in degrees Kelvin'
-    print *, 'Optionally give afterwards R, mode, full calculation option (T or F)&
+    print *, 'Optionally give afterwards R, mode, approximation type &
     and gamma'
+    print *, "Approximation types are: 1: Full, 0: GTF, -1: FN, -2: RLD "
     stop
 endif
 
@@ -45,11 +46,7 @@ endif
 
 if (i >= 6) then
     call getarg(6, arg)
-    if (arg == 'T' .or. arg == 't') then
-        this%approx = 1
-    else
-        this%approx = 0
-    endif
+    read(arg,*) this%approx
 endif
 if (i >= 7) then
     call getarg(7, arg)

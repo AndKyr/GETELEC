@@ -28,6 +28,10 @@ tests: varyingTemp ctest KXerror plots fitIV
 
 $(DIRS):
 	mkdir -p $(DIRS)
+	
+
+highFtest: bin/highFtest.exe
+	./bin/highFtest.exe
 
 varyingTemp: bin/varyingTemp.exe
 	./bin/varyingTemp.exe	
@@ -45,7 +49,7 @@ plots: bin/plots.exe
 	./bin/plots.exe
 
 current: bin/current.exe
-	./bin/current.exe 5. 4. 1000. 5. 0 T 10.
+	./bin/current.exe 5. 4. 1000.
 	
 fitIV: tests/fitIV.py
 	./tests/fitIV.py

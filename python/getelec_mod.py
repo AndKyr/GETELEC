@@ -66,11 +66,12 @@ def emission_create(F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300., \
     this.cur_dens()
     return this
 
-def emit (F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300.):
+def emit (F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300., verbose = False):
     """Calculate the current density and the Nottingham heating for specific set
     of input parameters"""
     this =   emission_create(F,W,R,gamma,Temp)
-    if (this.ierr == 0):
+    if (this.ierr == 0 or isnan(this.Jem) or isnan(this.heat) ):
+        if (verbose): this.print_data()
         return (this.Jem, this.heat)
     else:
         print 'Error:', this.ierr
@@ -119,7 +120,6 @@ def theta_SC(J,V,F):
     #print "poly = ", poly
     rts = np.roots(poly)
     rdist = abs(rts - (2./3))
-    print rts, rdist
     return rts[np.argmin(rdist)]
 
 def emit_SC(F = 10., W = 4.5, R = 5., gamma = 10., Temp = 300., \
