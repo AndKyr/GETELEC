@@ -4,7 +4,7 @@ AR=ar rcs
 LINKLIBS = ar -rcT
 
 MODOBJ = modules/obj/std_mat.o modules/obj/bspline.o \
-  modules/obj/pyplot_mod.o modules/obj/getelec.o
+  modules/obj/pyplot_mod.o modules/obj/getelec.o modules/cobj/c_interface.o
   
 DEPS  = -lslatec
 FFLAGS = -ffree-line-length-none -fbounds-check -Imod -O3 -fPIC -Llib
