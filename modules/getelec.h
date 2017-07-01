@@ -1,6 +1,10 @@
 #ifndef GETELEC_H_
 #define GETELEC_H_
 
+#ifdef __cplusplus 
+extern "C" {
+#endif
+
 struct emission{//struct for interoperability with fortran module getelec
     double F, W, R, gamma, Temp;//input parameters
     double Jem, heat; //ouptut parameters
@@ -25,5 +29,9 @@ int init(const char *);
 const char * getLastError(void);
 int eval(const char *, int , const double **, const double **,
         int , double *, double *);//main function that comsol calls
+        
+#ifdef __cplusplus
+}
+#endif
         
 #endif /* GETELEC_H_ */
