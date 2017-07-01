@@ -119,7 +119,7 @@ type, public    :: EmissionData
         !-21 : Fit to polynomial. If fitting not satisfactory, use interpolation.
         !-22 : Fit to polynomial and fitting has already been done, Apoly is ready.
         
-    integer                 :: approx = 0
+    integer                 :: approx = 1
     !1: full calculation
     !0: GTF approximation
     !-1: FN approximation (Miller - Good version)
@@ -354,6 +354,7 @@ subroutine cur_dens(this)
     pure function Sigma(x) result(Sig)!Jensen's sigma
         real(dp), intent(in)    :: x
         real(dp)                :: Sig
+        
         if (x > 3.d0) then 
             Sig = 0.d0
         else
@@ -364,8 +365,13 @@ subroutine cur_dens(this)
     pure function DSigma(x) result(ds) !Jensen's sigma'
         real(dp), intent(in):: x
         real(dp):: ds
-        ds = (-1.d0 + 3.6449 * x**2 + 1.3925d0 * x**4 + 0.0853d0 * x**6 + &
-            0.0723d0 * x**8 - 0.195d0 * x**10)/((-1.d0 + x**2)**2)
+        
+        if (x > 3.d0) then
+            ds = 0.d0
+        else
+            ds = (-1.d0 + 3.6449 * x**2 + 1.3925d0 * x**4 + 0.0853d0 * x**6 + &
+                0.0723d0 * x**8 - 0.195d0 * x**10)/((-1.d0 + x**2)**2)
+        endif
     end function DSigma
 
 end subroutine cur_dens 
@@ -900,7 +906,8 @@ subroutine J_num_integ(this)
         insum = insum + dE / (1.d0 + exp(G(k)))
         outsum = outsum + integrand
         if (spectra) then !write spectroscopy data into the spectroscopy file
-            write(fidout,*) Ej,',',integrand,',',integrand/Ej
+            fj=lFD(Ej,this%kT)/(1.d0+exp(G(k)))
+            write(fidout,*) Ej, ',', integrand, ',', integrand/Ej, ',', fj, ',', G(k)
         endif
         Ej = Ej + dE
     enddo
