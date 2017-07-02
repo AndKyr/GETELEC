@@ -16,20 +16,20 @@ integer                 :: fid, i,j, Nr
 
     open(fid, file = 'errors.txt', action = 'read')
     
-    read (fid,'(A32/)') line
+    read (fid,'(A32)') line
     read (fid,'(A10,ES12.4,A10/,A10,ES12.4,A10,/A10,ES12.4)') str, this%F, str, &
             str, this%R, str, str, this%gamma
     read (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10)') str, this%W, str,str, this%kT
-    read (fid,'(/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4)') str, this%Jem, str, &
-            str, this%heat, str, str, this%Gam
+    read (fid,'(/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,A10,A10)') str, this%Jem, str, &
+            str, this%heat, str, str, str, str
     read (fid,'(/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4,A10)') str, this%xm, &
             str, str, this%xmax, str, str,  this%Um, str
-    read (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10)') str, this%maxbeta, str, str, &
-            this%minbeta, str
-    read (fid,'(/A21,A1,/A21,A1,/A10,I12,/A10,L12,/A10,I12)') str, this%regime, &
-            str, this%sharpness, str, this%mode, str, this%full, str, this%ierr
-            
-    read(fid, '(/A32)')  str
+    read (fid,'(A10,ES12.4,/A10,ES12.4,A10,/A10,ES12.4,A10)') str, this%Gam, str, &
+            this%maxbeta, str, str, this%minbeta, str               
+    read (fid,'(//A21,A1,/A21,A1,/A10,I12,/A10,I12,/A10,I12)') str, this%regime, &
+            str, this%sharpness, str, this%mode, str, this%approx, str, this%ierr
+      
+    read(fid, '(A32)')  str
     
     do i = 1, 512
         read (fid,'(A32)') line

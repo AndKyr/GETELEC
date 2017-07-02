@@ -244,6 +244,11 @@ subroutine cur_dens(this)
                 ( this%xr(size(this%xr)) - this%xr(size(this%xr)-3) )
         this%R= abs(this%F/((F2-this%F)/(this%xr(3)-this%xr(1))))
         this%gamma = this%F / Fend
+        
+        if (debug > 1) then
+            print *, "Parameters were guessed:"
+            call print_data(this)
+        endif
     endif
     
     if (debug > 1) then !calculate preparation time
@@ -289,12 +294,12 @@ subroutine cur_dens(this)
     
     if (this%approx >= 0) then !full calculation or GTF approximation
         if (this%kT * this%maxbeta < nlimf .and. &
-                (this%Um > 2.5 .or. (this%approx == 0))) then!field regime
+                (this%Um > 0.5 .or. (this%approx == 0))) then!field regime
             n = 1.d0/(this%kT * this%maxbeta) !standard Jensen parameters
             s = this%Gam
             this%regime = 'F'
         else if (this%kT * this%minbeta > nlimt .and. &
-                    (this%Um > 2.5 .or. (this%approx == 0))) then !thermal regime
+                    (this%Um > 0.5 .or. (this%approx == 0))) then !thermal regime
             n = 1.d0/(this%kT * this%minbeta) !standard Jensen parameters
             s = this%minbeta * this%Um
             this%regime = 'T'
@@ -415,9 +420,17 @@ subroutine gamow_general(this,full)
                 if (allocated(this%bcoef)) deallocate(this%bcoef)
                 allocate(this%tx(size(this%Vr) + knotx), this%bcoef(size(this%Vr)))
             endif
+            if (debug > 1) then
+                print *, 'setting spline interpolation sizes :: tx = ', size(this%tx)
+                print *, 'bcoeff:', size(this%bcoef)
+                print *, 'printing data:'
+                call print_data(this, .true.)
+            endif
             call db1ink(this%xr, size(this%xr), this%Vr, knotx, iknot, &
                         this%tx, this%bcoef, iflag)
             if (iflag/=0) print *, 'error in spline setup, iflag = ', iflag
+            
+            if (debug > 1) print *, 'spline interpolation is set'
             this%mode = 2 !change mode so no need to call db1ink again
             
             if (debug > 1) then
@@ -440,6 +453,7 @@ subroutine gamow_general(this,full)
             this%maxbeta = abs(new%Gam - this%Gam) / dw !derivative
         endif
     else !large radius, KX approximation usable
+        
         info = gamow_KX(this,full)
         this%sharpness='B'
         if (info == -2) this%ierr = 3
@@ -1091,15 +1105,6 @@ subroutine plot_barrier(this)
     x = linspace(1.d-4,this%xmax,Nx)
     ixrm = size(this%xr)
     
-    if (this%mode == 1) then
-        call db1ink(this%xr, size(this%xr), this%Vr, knotx, iknot, &
-                        this%tx, this%bcoef, iflag)
-            if (iflag/=0) print *, 'error in spline setup, iflag = ', iflag
-        this%mode = 2 !change mode so no need to call db1ink again
-    endif
-    
-    
-    
     do i =1, Nx
         Ubar(i) = bar(x(i))
         Ubar(i) = max(Ubar(i),-1.d0) 
@@ -1202,6 +1207,7 @@ subroutine C_wrapper(passdata, ifun) bind(c)
    
     real(c_double), pointer         :: xr_fptr(:), Vr_fptr(:)
     type(EmissionData)              :: this
+
     
     !copy the members of the c struct to the fortran type
     this%F = passdata%F; this%W = passdata%W; this%R = passdata%R; 
@@ -1228,8 +1234,11 @@ subroutine C_wrapper(passdata, ifun) bind(c)
             this%Vr = Vr_fptr!copy c input data to object data
         endif
     endif
+
     
     call cur_dens(this)
+
+    
     passdata%Jem = this%Jem
     passdata%heat = this%heat
     passdata%regime = this%regime
