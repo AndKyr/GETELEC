@@ -1077,7 +1077,7 @@ subroutine plot_barrier(this)
     !uses the pyplot module to plot the barrier defined by a specific Emisison object
     !this is useful mostly in debugging
     use pyplot_mod, only: pyplot
-    use bspline, only: db1val
+    use bspline, only: db1val, db1ink
     use std_mat, only: interp1
     
     integer, parameter      :: font = 32 , Nx = 512
