@@ -1082,14 +1082,24 @@ subroutine plot_barrier(this)
     
     integer, parameter      :: font = 32 , Nx = 512
     
-    type (EmissionData), intent(in)     :: this
+    type (EmissionData), intent(inout)     :: this
     type (pyplot)           :: plt
     real(dp)                :: x(Nx), Ubar(Nx)
     real(dp)                :: Vplot(size(this%xr))
-    integer                 :: ixrm, i
+    integer                 :: ixrm, i, iflag
     
     x = linspace(1.d-4,this%xmax,Nx)
     ixrm = size(this%xr)
+    
+    if (this%mode == 1) then
+        call db1ink(this%xr, size(this%xr), this%Vr, knotx, iknot, &
+                        this%tx, this%bcoef, iflag)
+            if (iflag/=0) print *, 'error in spline setup, iflag = ', iflag
+        this%mode = 2 !change mode so no need to call db1ink again
+    endif
+    
+    
+    
     do i =1, Nx
         Ubar(i) = bar(x(i))
         Ubar(i) = max(Ubar(i),-1.d0) 
@@ -1106,7 +1116,9 @@ subroutine plot_barrier(this)
         where (Vplot < -1.d0) Vplot = -1.d0
         call plt%add_plot(this%xr,Vplot,label='$barrier points$', &
                     linestyle='r*',markersize = 10)
-    endif 
+    endif
+    
+    call system("mkdir -p png python") 
     call plt%savefig('png/barrierplot.png', pyfile='python/barrierplot.plot.py')
     
 
