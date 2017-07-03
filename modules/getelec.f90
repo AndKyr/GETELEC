@@ -789,7 +789,7 @@ subroutine J_num_integ(this)
 
     if (debug > 1) call cpu_time(t1)
     if (spectra) then !if spectra then j(E) will be printed into a file
-        open(fidout,file=trim(outfolder)//'spectra.csv')
+        open(fidout,file=trim(outfolder)//'/spectra.csv')
     endif
     this%Um = -1.d20
     this%xm = -1.d20
