@@ -416,18 +416,13 @@ subroutine gamow_general(this,full)
     if (x > xlim .and. this%mode /= -1) then !not x<<1, use numerical integration
         if (this%mode == 1) then    !setup spline interpolation
             if (debug > 1) call cpu_time(t1)
-            if (size(this%tx) /= size(this%Vr) + knotx) then
+            if (.not. allocated(this%tx) .or. .not. allocated(this%bcoef) .or. &
+                    size(this%tx) /= size(this%Vr) + knotx) then
                 if (allocated(this%tx)) deallocate(this%tx)
                 if (allocated(this%bcoef)) deallocate(this%bcoef)
                 allocate(this%tx(size(this%Vr) + knotx), this%bcoef(size(this%Vr)))
             endif
-            if (debug > 1) then
-                print *, 'setting spline interpolation sizes :: tx = ', size(this%tx)
-                print *, 'bcoeff:', size(this%bcoef)
-                print *, 'printing data:'
-                call print_data(this, .true.)
-                print *, 'Calling interpolation ... '
-            endif
+            
             call db1ink(this%xr, size(this%xr), this%Vr, knotx, iknot, &
                         this%tx, this%bcoef, iflag)
             if (iflag/=0) print *, 'error in spline setup, iflag = ', iflag
@@ -1102,10 +1097,20 @@ subroutine plot_barrier(this)
     type (pyplot)           :: plt
     real(dp)                :: x(Nx), Ubar(Nx)
     real(dp)                :: Vplot(size(this%xr))
-    integer                 :: ixrm, i, iflag
+    integer                 :: ixrm, i, iflag, tempmode
+    
+    if (debug > 1) print *, "Entering plot_barrier"
     
     x = linspace(1.d-4,this%xmax,Nx)
     ixrm = size(this%xr)
+    tempmode = this%mode
+    
+    
+        
+    if (this%mode == 1 .and. this%sharpness == 'B') then
+        print *, 'changing mode'
+        this%mode = 0
+    endif
     
     do i =1, Nx
         Ubar(i) = bar(x(i))
@@ -1113,8 +1118,7 @@ subroutine plot_barrier(this)
     enddo
     
     call system("mkdir -p "//trim(outfolder))
-    call system("mkdir -p "//trim(outfolder)//"/png "//trim(outfolder)//"/python") 
-
+    call system("mkdir -p "//trim(outfolder)//"/png "//trim(outfolder)//"/python")
 
     call plt%initialize(grid=.true.,xlabel='$x(nm)$',ylabel='$U(eV)$', &
             figsize=[20,15], font_size=font, title='FN-plot test', &
@@ -1131,6 +1135,8 @@ subroutine plot_barrier(this)
     
     call plt%savefig(trim(outfolder)//'/png/barrierplot.png', &
             pyfile=trim(outfolder)//'/python/barrierplot.plot.py')
+    
+    this%mode = tempmode
     
 
     contains
@@ -1236,8 +1242,6 @@ subroutine C_wrapper(passdata, ifun) bind(c)
             call c_f_pointer(passdata%Vr, Vr_fptr, [passdata%Nr])
             
             allocate(this%xr(passdata%Nr), this%Vr(passdata%Nr))
-                !allocate object data
-            print *, size(xr_fptr), size(Vr_fptr)
             
             do i = 1, passdata%Nr  !copy c input data to object data
                 this%xr(i) = xr_fptr(i)
@@ -1439,7 +1443,8 @@ subroutine error_msg(this, msg)
     
     if (debug == 0) return
     
-    open(fiderr, file = trim(outfolder)//errorfile, action ='write', access ='append')
+    open(fiderr, file = trim(outfolder)//'/'//errorfile, action ='write', &
+                    access ='append')
     call print_data(this, .true., fiderr)
     write(fiderr,*) trim(msg)
     close(fiderr)
