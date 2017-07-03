@@ -56,7 +56,7 @@ fitIV: tests/fitIV.py
 	
 
 $(LIBSHARED): $(CINTERFACE) $(LIBSTATIC) $(LIBDEPS)
-	$(FC) -fPIC -shared -o $@ $^   
+	mkdir -p lib/dynamic/; $(FC) -fPIC -shared -o $@ $^   
 	
 $(LIBSTATIC): $(MODOBJ)
 	$(AR) $@ $(MODOBJ)
