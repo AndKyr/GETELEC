@@ -9,7 +9,7 @@ import os
 
 pythonpath,filename = os.path.split(os.path.realpath(__file__))
 emissionpath,pythonfolder = os.path.split(pythonpath)
-libpath = emissionpath + '/lib/libgetelec.so'
+libpath = emissionpath + '/lib/dynamic/libgetelec.so'
 #libslatecpath = emissionpath + '/lib/libslatec.so'
 #ct.cdll.LoadLibrary(libslatecpath)
 print libpath

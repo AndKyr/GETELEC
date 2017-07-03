@@ -1213,6 +1213,7 @@ subroutine C_wrapper(passdata, ifun) bind(c)
    
     real(c_double), pointer         :: xr_fptr(:), Vr_fptr(:)
     type(EmissionData)              :: this
+    integer                         :: i
 
     
     !copy the members of the c struct to the fortran type
@@ -1236,15 +1237,18 @@ subroutine C_wrapper(passdata, ifun) bind(c)
             
             allocate(this%xr(passdata%Nr), this%Vr(passdata%Nr))
                 !allocate object data
-            this%xr = xr_fptr
-            this%Vr = Vr_fptr!copy c input data to object data
+            print *, size(xr_fptr), size(Vr_fptr)
+            
+            do i = 1, passdata%Nr  !copy c input data to object data
+                this%xr(i) = xr_fptr(i)
+                this%Vr(i) = Vr_fptr(i)
+            enddo
         endif
     endif
 
     
     call cur_dens(this)
 
-    
     passdata%Jem = this%Jem
     passdata%heat = this%heat
     passdata%regime = this%regime
@@ -1265,7 +1269,7 @@ subroutine C_wrapper(passdata, ifun) bind(c)
             return
     end select
 
-    if (allocated(this%xr)) deallocate(this%xr, this%Vr)
+    call desetroy(this)
 
 end subroutine C_wrapper
 
