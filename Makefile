@@ -86,4 +86,4 @@ modules/cobj/%.o : modules/%.c
 
 clean:
 	rm -rf bin/* obj/* cobj/* lib/libgetelec.so lib/libgetelec.a \
-		lib/libemission.a modules/obj/* modules/cobj/* cobj/*.o 
+		lib/libemission.a modules/obj/* modules/cobj/* cobj/*.o libslat* 
