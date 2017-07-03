@@ -426,6 +426,7 @@ subroutine gamow_general(this,full)
                 print *, 'bcoeff:', size(this%bcoef)
                 print *, 'printing data:'
                 call print_data(this, .true.)
+                print *, 'Calling interpolation ... '
             endif
             call db1ink(this%xr, size(this%xr), this%Vr, knotx, iknot, &
                         this%tx, this%bcoef, iflag)

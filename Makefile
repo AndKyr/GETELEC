@@ -8,7 +8,7 @@ MODOBJ = modules/obj/std_mat.o modules/obj/bspline.o \
   
 DEPS  = -lslatec
 FFLAGS = -ffree-line-length-none -fcheck=all -Imod -O3 -fPIC -Llib
-CFLAGS = -O3 -fPIC -Imodules #-Wall -Wextra
+CFLAGS = -fbounds-check -O3 -fPIC -Imodules #-Wall -Wextra
 
 PWD = $(shell pwd)
 
@@ -85,5 +85,5 @@ modules/cobj/%.o : modules/%.c
 	$(CC) $(CFLAGS) $^ -c -o $@ 
 
 clean:
-	rm -rf bin/* obj/* lib/libgetelec.so lib/libgetelec.a \
-		lib/libemission.a modules/obj/* cobj/*.o 
+	rm -rf bin/* obj/* cobj/* lib/libgetelec.so lib/libgetelec.a \
+		lib/libemission.a modules/obj/* modules/cobj/* cobj/*.o 
