@@ -39,8 +39,8 @@ real(dp), parameter     :: pi = acos(-1.d0), b = 6.83089d0, zs = 1.6183d-4, &
 ! Q image potential constant
 ! all universal constants are in units nm, eV, Α
 
-character(len=14), parameter   :: errorfile = 'GetelecErr.txt', &
-                                  paramfile = 'GetelecPar.in'
+character(len=20), parameter   :: errorfile = trim('GetelecErr.txt'), &
+                                  paramfile = trim('in/GetelecPar.in')
 ! names for the error output file and the parameters input file
 
 !************************************************************************************
@@ -51,6 +51,7 @@ real(dp), save          :: xlim = 0.1d0, gammalim = 1.d3,  varlim = 1.d-3, &
                            nlimthermal = 2.5d0, nmaxlim = 10.d0                           
 integer, save           :: Nmaxpoly = 10, debug = 1, above = 1
 logical, save           :: spectra= .false., firstcall = .false.
+character(len=50), save :: outfolder = "."
 
 !xlim: limit that determines distinguishing between sharp regime (Numerical integral)
 !and blunt regime where KX approximation is used
@@ -787,7 +788,7 @@ subroutine J_num_integ(this)
 
     if (debug > 1) call cpu_time(t1)
     if (spectra) then !if spectra then j(E) will be printed into a file
-        open(fidout,file='spectra.csv')
+        open(fidout,file=trim(outfolder)//'spectra.csv')
     endif
     this%Um = -1.d20
     this%xm = -1.d20
@@ -1109,6 +1110,10 @@ subroutine plot_barrier(this)
         Ubar(i) = bar(x(i))
         Ubar(i) = max(Ubar(i),-1.d0) 
     enddo
+    
+    call system("mkdir -p "//trim(outfolder))
+    call system("mkdir -p "//trim(outfolder)//"/png "//trim(outfolder)//"/python") 
+
 
     call plt%initialize(grid=.true.,xlabel='$x(nm)$',ylabel='$U(eV)$', &
             figsize=[20,15], font_size=font, title='FN-plot test', &
@@ -1123,8 +1128,8 @@ subroutine plot_barrier(this)
                     linestyle='r*',markersize = 10)
     endif
     
-    call system("mkdir -p png python") 
-    call plt%savefig('png/barrierplot.png', pyfile='python/barrierplot.plot.py')
+    call plt%savefig(trim(outfolder)//'/png/barrierplot.png', &
+            pyfile=trim(outfolder)//'/python/barrierplot.plot.py')
     
 
     contains
@@ -1407,6 +1412,12 @@ subroutine read_params()
     if (str(1:7)/='aboveUm') stop error 
     if (debug > 2)  print *, 'aboveUm read', above
     
+    
+    read(fid,*) str, outfolder
+    if (str(1:6)/='output') stop error
+    outfolder = trim(outfolder) 
+    if (debug > 2)  print *, 'outfolder read', outfolder
+    
     close(fid)
     
     if (debug > 2)  print *, "Parameters read"
@@ -1423,7 +1434,7 @@ subroutine error_msg(this, msg)
     
     if (debug == 0) return
     
-    open(fiderr, file = errorfile, action ='write', access ='append')
+    open(fiderr, file = trim(outfolder)//errorfile, action ='write', access ='append')
     call print_data(this, .true., fiderr)
     write(fiderr,*) trim(msg)
     close(fiderr)

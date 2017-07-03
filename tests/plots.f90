@@ -8,6 +8,7 @@ implicit none
 
 integer,parameter       :: dp=8, Nf=512, font=40, lw = 3
 real(dp), parameter     :: Fmin=0.4d0, Fmax=14.d0, T = 2000.0
+character(len=20)       :: outfolder = "output"
 
 real(dp), dimension(Nf) :: Fi, Jfs, Jis, Jts, Jfb, Jib, Jtb, &
                            hfs, his, hts, hfb, hib, htb, Japp, happ, &
@@ -150,6 +151,9 @@ do j = 1,3
         
         
 enddo
+
+call system("mkdir -p "//trim(outfolder))
+call system("mkdir -p "//trim(outfolder)//"/png "//trim(outfolder)//"/python") 
 
 call plt1%savefig('png/Jplot.png', pyfile='python/Jplot2.plot.py')                    
 call plt2%savefig('png/heatplot.png', pyfile='python/heatplot2.plot.py')
