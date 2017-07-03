@@ -1367,8 +1367,7 @@ subroutine read_params()
     
     inquire(file=paramfile, exist=ex)
     if (.not. ex) then
-        if (debug > 1) &
-            print *, 'GETELEC: Parameters input file not found. Default values used.'
+        print *, 'GETELEC: Parameters input file not found. Default values used.'
         return
     endif
     
@@ -1379,53 +1378,52 @@ subroutine read_params()
     
     read(fid,*) str, debug
     if (str(1:5)/='debug') stop error 
-    if (debug > 2)  print *, 'debug read', debug
+    if (debug > 1)  print *, 'debug read', debug
 
     read(fid,*) str, xlim
     if (str(1:4)/='xlim') stop error
-    if (debug > 2)  print *, 'xlim read', xlim
+    if (debug > 1)  print *, 'xlim read', xlim
     
     read(fid,*) str, nlimfield
     if (str(1:9)/='nlimfield') stop error
-    if (debug > 2)  print *, 'nlimfield read', nlimfield
+    if (debug > 1)  print *, 'nlimfield read', nlimfield
     
     read(fid,*) str, nlimthermal
     if (str(1:11)/='nlimthermal') stop error
-    if (debug > 2)  print *, 'nlimthermal read', nlimthermal
+    if (debug > 1)  print *, 'nlimthermal read', nlimthermal
     
     read(fid,*) str, nmaxlim
     if (str(1:7)/='nmaxlim') stop error
-    if (debug > 2)  print *, 'nmaxlim read', nmaxlim
+    if (debug > 1)  print *, 'nmaxlim read', nmaxlim
     
     read(fid,*) str, gammalim
     if (str(1:8)/='gammalim') stop error
-    if (debug > 2)  print *, 'gammalim read', gammalim
+    if (debug > 1)  print *, 'gammalim read', gammalim
     
     read(fid,*) str, varlim
     if (str(1:6)/='varlim') stop error
-    if (debug > 2)  print *, 'varlim read', varlim
+    if (debug > 1)  print *, 'varlim read', varlim
     
     read(fid,*) str, epsfit
     if (str(1:6)/='epsfit') stop error
-    if (debug > 2)  print *, 'epsfit read', epsfit
+    if (debug > 1)  print *, 'epsfit read', epsfit
     
     read(fid,*) str, Nmaxpoly
     if (str(1:8)/='Nmaxpoly') stop error
-    if (debug > 2)  print *, 'Nmaxpoly read', Nmaxpoly
+    if (debug > 1)  print *, 'Nmaxpoly read', Nmaxpoly
     
     read(fid,*) str, spectra
     if (str(1:7)/='spectra') stop error 
-    if (debug > 2)  print *, 'spectra read', spectra
+    if (debug > 1)  print *, 'spectra read', spectra
     
     read(fid,*) str, above
     if (str(1:7)/='aboveUm') stop error 
-    if (debug > 2)  print *, 'aboveUm read', above
-    
+    if (debug > 1)  print *, 'aboveUm read', above
     
     read(fid,*) str, outfolder
     if (str(1:6)/='output') stop error
     outfolder = trim(outfolder) 
-    if (debug > 2)  print *, 'outfolder read', outfolder
+    if (debug > 1)  print *, 'outfolder read', outfolder
     
     close(fid)
     

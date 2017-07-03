@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
-"""This plots the spectra as outputed in spectra.csv from getelec.""" 
+"""This plots the spectra as outputed in spectra.csv from getelec. Spectra has to be 
+T in the GetelecPar.in""" 
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -35,19 +36,23 @@ fields = [6., 8., 10.]
 colors = ['b', 'r', 'g', 'k', 'm']
 
 
+temp = 500.
+
+kT = 8.6173324e-5 * temp
 
 for i in range(len(fields)):
     field = fields[i]
-    appstr = os.popen('./bin/current.exe %f 4.5 300. | grep "Gamow\|@Ef" '%field).read().split()
+    appstr = os.popen('./bin/current.exe %f 4.5 %f | grep "Gamow\|@Ef" '%(field, temp)).read().split()
+    #os.system('./bin/current.exe %f 4.5 3000.'%field)
     Gam = float(appstr[2])
     dGam = float(appstr[-2])
-    E,JE,J,fj,G = np.loadtxt("spectra.csv", delimiter = ',' ,unpack=True)
+    E,JE,J,fj,G = np.loadtxt("output/spectra.csv", delimiter = ',' ,unpack=True)
     maxJ = max(fj)
     Eplot = E[fj > maxJ * 0.01]
     Jplot = fj[fj > maxJ * 0.01]
     Gplot = G[fj > maxJ * 0.01]
     Gapprox = -Eplot * dGam + Gam
-    Japprox = np.log(1. + np.exp(-Eplot/0.0258)) / (1. + np.exp(Gapprox))
+    Japprox = np.log(1. + np.exp(-Eplot/kT)) / (1. + np.exp(Gapprox))
 
     ax1.plot(Eplot, Jplot, colors[i]+'-', label = "F=%3.2f, full"%field)
     ax1.plot(Eplot, Japprox,  colors[i]+'--', label = "F=%3.2f, approx"%field)
