@@ -29,8 +29,8 @@ class Emission(ct.Structure):
                 ("heat", ct.c_double),
                 ("xr", ct.POINTER(ct.c_double)),
                 ("Vr", ct.POINTER(ct.c_double)),
-                ("regime", ct.c_char),
-                ("sharp", ct.c_char),
+                ("regime", ct.c_int),
+                ("sharp", ct.c_int),
                 ("Nr", ct.c_int),
                 ("approx", ct.c_int),
                 ("mode", ct.c_int),
@@ -48,13 +48,16 @@ class Emission(ct.Structure):
         else:
             return getelec.print_data_c(ct.byref(self),ct.c_int(0))
     
+    def print_C_data(self):
+        return getelec.print_C_data(ct.byref(self))
+    
     def plot_data(self):
         """Calculate current density and plot the barrier"""
         return getelec.plot_data_c(ct.byref(self))
         
 def emission_create(F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300., \
                 Jem = 0., heat = 0., xr = np.array([]), Vr = np.array([]), \
-                regime = 'r', sharp = 'r', approx = 1, mode = 0, ierr = 0):
+                regime = 0, sharp = 1, approx = 1, mode = 0, ierr = 0):
                     
     """Creates an Emission class object and calculates everyting. 
     Input xr ,Vr are given as numpy arrays."""

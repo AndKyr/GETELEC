@@ -16,6 +16,30 @@ int print_data_c(struct emission *data, int full){
 }    
 int plot_data_c(struct emission *data){c_wrapper(data,3); return 0;}
 
+
+int print_C_data(struct emission *this){
+    printf("F = %f\n", this->F);
+    printf("W = %f\n", this->W);
+    printf("R = %f\n", this->R);
+    printf("gamma = %f\n", this->gamma);
+    printf("Temp = %f\n", this->Temp);
+    printf("Jem = %g\n", this->Jem);
+    printf("heat = %g\n", this->heat);
+    printf("regime = %d\n", this->regime);
+    printf("sharp = %d\n", this->sharp);
+    printf("Nr = %d\n", this->Nr);
+    printf("approx = %d\n", this->approx);
+    printf("mode = %d\n", this->mode);
+    printf("ierr = %d\n", this->ierr);
+    
+    printf("   i\t   xr\t  Vr\n");
+    
+    for (int i = 0; i < this->Nr; ++i)
+        printf("%d,  %g,  %g\n", i, this->xr[i], this->Vr[i]);
+
+    return 0;
+}
+
 /***********************************************************************************
  * Comsol interface functions.
  * Interface for interoperability of GeTElEC with COMSOL. The comsol name of the

@@ -9,7 +9,7 @@ struct emission{//struct for interoperability with fortran module getelec
     double F, W, R, gamma, Temp;//input parameters
     double Jem, heat; //ouptut parameters
     double *xr, *Vr;// input vectors
-    char regime, sharp; //ouput characters showing regimes
+    int regime, sharp; //ouput characters showing regimes
     int Nr, approx, mode, ierr; //Nr: length of vectors xr ,Vt
                              //full: logical for full calculation
                              //mode, ierr: ints for defining mode and outputing error 
@@ -22,6 +22,7 @@ extern void c_wrapper(struct emission * , int );
 int cur_dens_c(struct emission *);
 int print_data_c(struct emission *, int);
 int plot_data_c(struct emission *);
+int print_C_data(struct emission *);
 
 //functions needed for comsol          
 static const char *error = NULL; 

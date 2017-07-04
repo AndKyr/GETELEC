@@ -1,3 +1,5 @@
+#! /usr/bin/python
+
 import numpy as np
 import sys
 import os
@@ -17,4 +19,5 @@ x = np.linspace(0.,3.,32)
 V = 5*x - 0.1 * x**2
 
 this = gt.emission_create(xr = x, Vr = V, mode = -10)
-this.plot_data()
+this.print_C_data()
+this.print_data(True)

@@ -3,11 +3,12 @@ FC = gfortran
 AR=ar rcs
 LINKLIBS = ar -rcT
 
-MODOBJ = modules/obj/std_mat.o modules/obj/bspline.o \
-  modules/obj/pyplot_mod.o modules/obj/getelec.o modules/cobj/c_interface.o
+MODOBJ = modules/obj/std_mat.o modules/obj/ellfuns_tabulated.o \
+  modules/obj/bspline.o modules/obj/pyplot_mod.o modules/obj/getelec.o \
+  modules/cobj/c_interface.o
   
 DEPS  = -lslatec
-FFLAGS = -ffree-line-length-none -fcheck=all -Imod -O3 -fPIC -Llib
+FFLAGS = -fcheck=all -Imod -O3 -fPIC -Llib
 CFLAGS = -fbounds-check -O3 -fPIC -Imodules #-Wall -Wextra
 
 PWD = $(shell pwd)
