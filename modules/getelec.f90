@@ -1389,7 +1389,7 @@ subroutine read_params()
     inquire(file=paramfile, exist=ex)
     if (.not. ex) then
         print *, 'GETELEC: Parameters input file not found. Default values used.'
-        return
+        readparams = .true.
     endif
     
     if (readparams) return
