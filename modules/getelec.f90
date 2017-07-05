@@ -313,7 +313,7 @@ subroutine cur_dens(this)
             this%regime = THERMAL
         else  !intermediate regime
             this%regime = INTER
-            if (this%approx == 1) then
+            if (this%approx >= 1) then
                 call J_num_integ(this) !Numerical integration over energies
             else
                 GTFerr = GTFinter(this)
