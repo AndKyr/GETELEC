@@ -1,7 +1,7 @@
 Keep format and params order unchanged. The number should start at 14th column. Don't put spaces at the recognizing string.  The first two lines are always ignored. After the number put a space and the rest is ignored.
 
 debug=       0 # if true some error messages are printed
-xlim=        0.1 # limit for the usage of KX approximations
+xlim=        0.0001 # limit for the usage of KX approximations
 nlimfield=   .6 # limit in 1/n for field regime
 nlimthermal= 2.3 # limit for 1/n to go to thermal regime
 nmaxlim=     100.  # for n>5 use MG expressions.

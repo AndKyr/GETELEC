@@ -86,10 +86,12 @@ type, public    :: EmissionData
         !Materical Characteristics: Work funciton,Temperature
     real(dp)    :: Jem=1.d-200, heat=1.d-200, Gam=1.d10 
         !Calculated results: Current density and Nott. heat
-    real(dp)    :: xm=-1.d20, Um=-1.d20, maxbeta=0.d0, minbeta=0.d0, xmax = 2.d0
+    real(dp)    :: xm=-1.d20, Um=-1.d20, maxbeta=0.d0, minbeta=0.d0, xmax = 2.d0, &
+                    barlength = 1.d0
         !Barrier characteristics: xm=x point where barrier is max,
         ! Um=maximum barrier value, maxbeta=dG/dE @Fermi, minbeta=dG/dE @Um
         !xmax: estimation for maximum extent of the barrier
+        !barlength: accurate barrier length between roots
     integer   :: regime = 1, sharpness = 0
         !1 for field, 0 for intermediate, -1 for thermal regimes
         !1 for sharp tip (numerical integration) and 0 for blunt (KX approx)
@@ -576,6 +578,8 @@ subroutine gamow_num(this, full)
     
     this%Gam = gg * G
     
+    this%barlength = x2(1) - x1(2)
+    
     contains
     ! barrier functions needed to be passed as externals to dfzero and dqage
     
@@ -639,7 +643,7 @@ function gamow_KX(this, full) result(info)
     type(EmissionData), intent(inout)   :: this
     logical, intent(in)                 :: full !if F, only Gamow is calculated
     
-    real(dp)                            :: yf, t, ps, v, omeg, temp
+    real(dp)                            :: yf, t, ps, v, omeg, temp, chi
     integer                             :: info
     !info : information integer showing different extreme cases
     !1: yf>1. Linear extrapolation used
@@ -649,6 +653,7 @@ function gamow_KX(this, full) result(info)
     !-2: U''(x) is negative. The approximation is invalid. Switch to numerical 
 
     yf = 1.44d0 * this%F / (this%W ** 2)
+    chi = this%W / (this%F * this%R)
     if (yf>1.d0) then
         t = tt(Ny) + (yf - 1.d0) * (tt(Ny) - tt(Ny-1))*(Ny - 1.d0)
         ps = psi(Ny) + (yf - 1.d0) * (psi(Ny) - psi(Ny-1))*(Ny - 1.d0)
@@ -691,6 +696,8 @@ function gamow_KX(this, full) result(info)
     if (this%Um > 0.d0) then
         this%Gam = (2*gg/3)*((this%W **1.5d0) / this%F) &
             * (v+omeg*(this%W / (this%F * this%R)))
+        this%barlength = (this%W / this%F)  * &
+                    (sqrt(1-yf) + chi * (1.d0 - .625*yf)/sqrt(1-yf))
     else
         this%Gam = this%minbeta * this%Um
         info = 2
@@ -997,6 +1004,8 @@ subroutine print_data(this, full, filenum)
     write (fid,'(/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4)') &
         'xm =', this%xm, 'nm', 'xmax =', this%xmax, 'nm', &
         'Um =', this%Um, 'eV', 'Gamow =', this%Gam
+    write (fid,'(/A10,ES12.4,A10,/A10,ES12.4)') 'L =', this%barlength, 'nm', &
+            'ShapeFac =', this%Gam / (gg * sqrt(this%Um * this%barlength))
     write (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10)') 'dG/dE@Ef =', this%maxbeta, &
             '(eV)^-1', 'dG/dE@Um =', this%minbeta, '(eV)^-1'
     write (fid,'(/A15,A20,/A15,A20,/A15,I20,/A15,A20,/A15,I20)') &
