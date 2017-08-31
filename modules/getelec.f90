@@ -191,8 +191,8 @@ subroutine cur_dens(this)
     
     !preparing calculation according to calculation mode
     if (this%mode > 0 .or. this%mode < -1) then
-        if (size(this%xr) < 2 .or. size(this%Vr) /= size(this%xr) .or. 
-            .not. (allocated(this%xr) .and. allocated(this%Vr))) then
+        if (size(this%xr) < 2 .or. size(this%Vr) /= size(this%xr) .or. & 
+                    .not. (allocated(this%xr) .and. allocated(this%Vr))) then
             call error_msg(this,'xr,Vr not properly allocated')
             this%ierr = 1
             return
