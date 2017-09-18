@@ -1090,10 +1090,12 @@ function fitpoly(this)  result(var)
     type(EmissionData), intent(inout)   :: this
     real(dp), dimension(size(this%xr))  :: ww, rr
     real(dp)                            :: var, eps
-    integer                             :: ierr 
+    integer                             :: ierr, N 
     
     ww(1) = -1.d0
     eps = epsfit !don't insert module parameter into slatec f77 function
+    
+    N = size(this%xr)
     
     if ((size(this%Apoly)) /=  (3*size(this%xr) + 3*Nmaxpoly + 3) .or. &
         .not.(allocated(this%Apoly))) then
@@ -1101,7 +1103,17 @@ function fitpoly(this)  result(var)
         allocate (this%Apoly(3*size(this%xr) + 3*Nmaxpoly + 3))
     endif
     !make sure that the arrays are allocated properly and have the correct size
-    if (debug > 1) print *, 'entering dpolfit. size(Apoly)=', size(this%Apoly) 
+    if (debug > 1) print *, 'entering dpolfit. size(Apoly)=', size(this%Apoly)
+    
+    
+    
+    if (N<1 .or. Nmaxpoly > (N-1) .or. ww(1) /= -1.d0 ) then
+        print *, 'Error in polynomial fit. N = ', N
+        var = 1.d20
+        return
+    endif
+    
+     
     call dpolft(size(this%xr), this%xr, this%Vr, ww, Nmaxpoly, this%ndeg, eps,  &
                 rr, ierr, this%Apoly)
     if(debug > 1) print *, 'exiting dpolfit' 
