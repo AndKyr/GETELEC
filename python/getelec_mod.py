@@ -126,11 +126,11 @@ def theta_SC(J,V,F):
     return rts[np.argmin(rdist)]
 
 def emit_SC(F = 10., W = 4.5, R = 5., gamma = 10., Temp = 300., \
-                V_appl = 5.e3, err_fact = 0.2):
+                V_appl = 5.e3, err_fact = 0.2, approx = 1):
     """Calculate the current density and the Nottingham heating for specific set
     of input parameters, taking into account the space_charge effect"""
     F_p = min(F, 15.)
-    this = emission_create(F_p,W,R,gamma,Temp)
+    this = emission_create(F_p,W,R,gamma,Temp, approx = approx)
     theta_old = F_p / F
     
     for j in range(20):
@@ -144,7 +144,7 @@ def emit_SC(F = 10., W = 4.5, R = 5., gamma = 10., Temp = 300., \
             theta_new = theta_old + error * err_fact
             if (abs(error) < 1.e-5): break 
             theta_old = theta_new 
-            print "F = %f, J = %e, theta = %e" %(F_p, J_p, theta_new)
+            #print "F = %f, J = %e, theta = %e" %(F_p, J_p, theta_new)
             F_p = F * theta_new
         err_fact = err_fact * 0.5
     
