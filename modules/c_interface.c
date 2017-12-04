@@ -7,6 +7,7 @@
 //external function from getelec fortran module doing all the connection
 extern void c_wrapper(struct emission * data, int ifun);
 
+
 //the three basic call subroutines of getelec working on struct emission
 int cur_dens_c(struct emission *data){c_wrapper(data,0); return 0;}
 int print_data_c(struct emission *data, int full){
@@ -101,6 +102,17 @@ int eval(const char *func, int nArgs, const double **inReal, const double **inIm
     free(x);
     free(V);    
     return 1;
+}
+
+
+double theta_SC(double J, double V, double F){
+    struct emission pass;
+    pass.F = J;
+    pass.W = V;
+    pass.R = F;
+    
+    c_wrapper(&pass, 4);
+    return pass.Temp;
 }
 
 

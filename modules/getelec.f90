@@ -1127,6 +1127,44 @@ function fitpoly(this)  result(var)
 end function fitpoly
 
 
+
+!> Calculates the space charge reduction factor theta
+function theta_SC(J, V, F) result(thetout)
+    real(dp), parameter     :: k = 1.904e5
+    real(dp), intent(in)    :: J, V, F !< Current density, total Voltage, local Field
+    real(dp)                :: z, theta(2), thetout
+    real(sp)                :: poly(3), work(8)
+    complex(sp)             :: rt(2)
+    integer                 :: ierr 
+    
+    z = k * sqrt(V) * J / F**2
+    
+    if (z < 1.e-3) then ! if z is too small the polynomial solution with sp fails
+        thetout = 1.d0 - 4.d0 * z / 3.d0 + 3.d0 * z**2 !use asymptotic approximation
+        !print *, 'zeta= ', z, 'theta= ', thetout
+        return
+    endif
+    
+    poly =  real([9. * z**2, -3.d0, -4. * z + 3.], sp)
+    call RPQR79(2, poly, rt, ierr, work)
+    
+    if (ierr /= 0) then
+        print *,'polynomial root finder in theta_SC returned error.'
+        print *, 'poly = ', poly
+    endif
+    
+    theta = real(rt,dp)
+    
+    if (abs(theta(1) - 2./3.) < abs(theta(2) - 2./3.)) then
+        thetout = theta(1)
+    else
+        thetout = theta(2)
+    endif
+    !print *, 'zeta= ', z, 'theta= ', thetout
+
+end function theta_SC
+
+
 subroutine plot_barrier(this)
     !uses the pyplot module to plot the barrier defined by a specific Emisison object
     !this is useful mostly in debugging
@@ -1263,6 +1301,11 @@ subroutine C_wrapper(passdata, ifun) bind(c)
     real(c_double), pointer         :: xr_fptr(:), Vr_fptr(:)
     type(EmissionData)              :: this
     integer                         :: i
+    
+    if (ifun == 4) then
+        passdata%Temp = theta_SC(passdata%F, passdata%W, passdata%R)
+        return
+    endif
 
     
     !copy the members of the c struct to the fortran type

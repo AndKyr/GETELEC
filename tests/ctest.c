@@ -51,6 +51,9 @@ int main(){
     }
     free(outReal);
     free(outImag);
+
+    
+    printf("theta_SC = %e\n", theta_SC(1.e-5, 1.e3, 10.));
     
     
     
