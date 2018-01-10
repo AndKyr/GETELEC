@@ -22,10 +22,14 @@ read (fid,'(A10,ES12.4,A10/,A10,ES12.4,A10,/A10,ES12.4)') str, this%F, str, &
 read (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10)') str, this%W, str,str, this%kT
 read (fid,'(/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,A10,A10)') str, this%Jem, str, &
         str, this%heat, str, str, str, str
-read (fid,'(/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4,A10)') str, this%xm, &
-        str, str, this%xmax, str, str,  this%Um, str
-read (fid,'(A10,ES12.4,/A10,ES12.4,A10,/A10,ES12.4,A10)') str, this%Gam, str, &
-        this%maxbeta, str, str, this%minbeta, str               
+read (fid,'(/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4)') str, &
+    this%xm, str, str, this%xmax, str, str,  this%Um, str, str, this%Gam
+
+read (fid, '(/A10,ES12.4,A10/A32)') str, this%barlength, str, str
+
+read (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10)') str, this%maxbeta, str, str, & 
+        this%minbeta, str 
+
 read (fid,'(/A15,A20,/A15,A20,/A15,I20,/A15,A20,/A15,I20)') str, reg_str, str, &
         sharp_str,  str, this%mode, str, approx_str,    str, this%ierr
 

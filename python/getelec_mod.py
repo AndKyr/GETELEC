@@ -123,7 +123,9 @@ def theta_SC(J,V,F):
     #print "poly = ", poly
     rts = np.roots(poly)
     rdist = abs(rts - (2./3))
-    return rts[np.argmin(rdist)]
+    theta = rts[np.argmin(rdist)]
+    print "zeta = %e, theta = %e"%(z, theta)
+    return theta
 
 def emit_SC(F = 10., W = 4.5, R = 5., gamma = 10., Temp = 300., \
                 V_appl = 5.e3, err_fact = 0.2, approx = 1):
@@ -144,7 +146,7 @@ def emit_SC(F = 10., W = 4.5, R = 5., gamma = 10., Temp = 300., \
             theta_new = theta_old + error * err_fact
             if (abs(error) < 1.e-5): break 
             theta_old = theta_new 
-            #print "F = %f, J = %e, theta = %e" %(F_p, J_p, theta_new)
+            print "F = %f, J = %e, theta = %e" %(F_p, J_p, theta_new)
             F_p = F * theta_new
         err_fact = err_fact * 0.5
     
@@ -173,6 +175,12 @@ def thetaroots(z):
     else:
         out[:] = rts[0]
         return out
+        
+def J_ChildL(V,beta):
+    kappa = 1.904e5
+    return (4./9) * beta**2 * V**1.5 / kappa
+    
+    
         
 
 
