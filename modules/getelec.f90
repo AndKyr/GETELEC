@@ -317,7 +317,7 @@ subroutine cur_dens(this)
         else  !intermediate regime
             this%regime = INTER
             if (this%approx >= 1) then
-                call J_num_integ(this) !Numerical integration over energies
+				call J_num_integ(this) !Numerical integration over energies
             else
                 GTFerr = GTFinter(this)
             endif
@@ -354,6 +354,8 @@ subroutine cur_dens(this)
         print *, 'Wrong approx value. this%approx = ', this%approx
         stop
     endif
+    
+    if (debug > 1) call print_data(this)
         
     
     this%heat = - this%heat !convention: consider deposited heat (+ for heating) 
