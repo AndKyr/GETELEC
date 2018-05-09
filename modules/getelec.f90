@@ -51,7 +51,7 @@ character(len=20), parameter   :: errorfile = trim('GetelecErr.txt'), &
 
 real(dp), save          :: xlim = 0.1d0, gammalim = 1.d3,  varlim = 1.d-3, &
                            epsfit = 1.d-4, nlimfield = 0.6d0, &
-                           nlimthermal = 2.5d0, nmaxlim = 10.d0                           
+                           nlimthermal = 2.5d0, nmaxlim = 2.5d0                           
 integer, save           :: Nmaxpoly = 10, debug = 1, above = 1
 logical, save           :: spectra= .false., firstcall = .false.
 character(len=50), save :: outfolder = "."
