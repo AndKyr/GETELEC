@@ -4,7 +4,7 @@ debug=       0 # if true some error messages are printed
 xlim=        0.1 # limit for the usage of KX approximations
 nlimfield=   .6 # limit in 1/n for field regime
 nlimthermal= 2.3 # limit for 1/n to go to thermal regime
-nmaxlim=     100.  # for n>5 use MG expressions.
+nmaxlim=     2.5  # for n>nmaxlim use MG expressions.
 gammalim=    1.e4 # maximum acceptable gamma. above it KX is forced    
 varlim=      0.05 #limit of variance for the fitting approximation (has meaning for mode==-2). If the fitting variance is more than varlim we switch to spline mode
 epsfit=      1.e-4 #  accuracy required in fittings

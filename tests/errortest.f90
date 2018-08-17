@@ -19,22 +19,26 @@ open(fid, file = 'errors.txt', action = 'read')
 read (fid,'(A32)') line
 read (fid,'(A10,ES12.4,A10/,A10,ES12.4,A10,/A10,ES12.4)') str, this%F, str, &
         str, this%R, str, str, this%gamma
+print *, "read line"
 read (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10)') str, this%W, str,str, this%kT
+print *, "read line"
 read (fid,'(/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,A10,A10)') str, this%Jem, str, &
         str, this%heat, str, str, str, str
+print *, "read line"
 read (fid,'(/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4)') str, &
     this%xm, str, str, this%xmax, str, str,  this%Um, str, str, this%Gam
-
+print *, "read line"
 read (fid, '(/A10,ES12.4,A10/A32)') str, this%barlength, str, str
-
+print *, "read line"
 read (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10)') str, this%maxbeta, str, str, & 
         this%minbeta, str 
-
+print *, "read line"
 read (fid,'(/A15,A20,/A15,A20,/A15,I20,/A15,A20,/A15,I20)') str, reg_str, str, &
         sharp_str,  str, this%mode, str, approx_str,    str, this%ierr
-
+print *, "read line"
 read (fid,'(A32)') line
-
+print *, "read line", line
+i = 1
 if ( line(1:2) /= '--') then
     read (fid,'(A32)') line
     do i = 1, 512
@@ -43,6 +47,8 @@ if ( line(1:2) /= '--') then
         read(line,'(i3,ES14.4,ES15.5)') j, x(i), V(i)
     enddo
 endif
+
+print *, "closing file"
 
 close(fid)
 
@@ -61,9 +67,12 @@ if (trim(approx_str) == 'Automatic selection') this%approx = 1
 if (trim(approx_str) == 'Full integration') this%approx = 2
 
 Nr = i-1
-allocate(this%xr(Nr),this%Vr(Nr))
-this%xr = x(:Nr)
-this%Vr = V(:Nr)
+
+if (Nr > 0) then
+    allocate(this%xr(Nr),this%Vr(Nr))
+    this%xr = x(:Nr)
+    this%Vr = V(:Nr)
+endif
 
 print *, 'Read the following emission data:'
 print *, 'Nr = ', Nr
