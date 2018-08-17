@@ -9,12 +9,17 @@ extern void c_wrapper(struct emission * data, int ifun);
 
 
 //the three basic call subroutines of getelec working on struct emission
-int cur_dens_c(struct emission *data){c_wrapper(data,0); return 0;}
+int cur_dens_c(struct emission *data){
+    c_wrapper(data,0); 
+    return 0;
+}
+
 int print_data_c(struct emission *data, int full){
     if (full) c_wrapper(data,2);//print in full mode
     else c_wrapper(data,1); //print only scalar data
     return 0;
-}    
+}
+    
 int plot_data_c(struct emission *data){c_wrapper(data,3); return 0;}
 
 
@@ -108,11 +113,18 @@ int eval(const char *func, int nArgs, const double **inReal, const double **inIm
 double theta_SC(double J, double V, double F){
     struct emission pass;
     pass.F = J;
-    pass.W = V;
+    pass.voltage = V;
     pass.R = F;
     
     c_wrapper(&pass, 4);
     return pass.Temp;
+}
+
+
+int cur_dens_SC(struct emission * pass, double voltage){
+    pass->voltage = voltage;
+    c_wrapper(pass, 5); 
+    return 0;    
 }
 
 

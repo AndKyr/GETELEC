@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 struct emission{//struct for interoperability with fortran module getelec
-    double F, W, R, gamma, Temp;//input parameters
+    double F, W, R, gamma, Temp, voltage;//input parameters
     double Jem, heat; //ouptut parameters
     double *xr, *Vr;// input vectors
     int regime, sharp; //ouput characters showing regimes
@@ -23,6 +23,7 @@ int cur_dens_c(struct emission *);
 int print_data_c(struct emission *, int);
 int plot_data_c(struct emission *);
 int print_C_data(struct emission *);
+int cur_dens_SC(struct emission *, double voltage);
  
 //functions needed for comsol          
 static const char *error = NULL; 
@@ -33,6 +34,7 @@ int eval(const char *, int , const double **, const double **,
         
         
 double theta_SC(double J, double V, double F);
+int cur_dens_SC(struct emission *, double voltage);
         
 #ifdef __cplusplus
 }

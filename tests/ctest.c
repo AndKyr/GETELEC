@@ -51,6 +51,20 @@ int main(){
     }
     free(outReal);
     free(outImag);
+    
+    
+    struct emission pass;
+    pass.F = 10.;
+    pass.W = 4.5;
+    pass.R = 500.;
+    pass.Temp = 300.;
+    pass.gamma = 1.1;
+    pass.mode = 0;
+    pass.approx = 0;
+    
+    cur_dens_SC(&pass, 500.);
+    
+    print_data_c(&pass, 1);
 
     
     printf("theta_SC = %e\n", theta_SC(1.e-5, 1.e3, 10.));

@@ -18,7 +18,7 @@ implicit none
 
 private
 public  ::  cur_dens, C_wrapper, print_data, EmissionData, plot_barrier, &
-            debug, dp, kBoltz, gamow_KX, gamow_num, gamow_general
+            debug, dp, kBoltz, gamow_KX, gamow_num, gamow_general, cur_dens_SC
 
 !************************************************************************************
 !Global parameters not to be defined by the user
@@ -86,6 +86,8 @@ type, public    :: EmissionData
         !Materical Characteristics: Work funciton,Temperature
     real(dp)    :: Jem=1.d-200, heat=1.d-200, Gam=1.d10 
         !Calculated results: Current density and Nott. heat
+    real(dp)    :: theta = 1.d0
+        !Space Charge field reduction factor
     real(dp)    :: xm=-1.d20, Um=-1.d20, maxbeta=0.d0, minbeta=0.d0, xmax = 2.d0, &
                     barlength = 1.d0
         !Barrier characteristics: xm=x point where barrier is max,
@@ -393,6 +395,40 @@ subroutine cur_dens(this)
     end function DSigma
 
 end subroutine cur_dens 
+
+
+subroutine cur_dens_SC(this, Voltage)
+!calculates the current density taking into account the space charge
+! the planar diode model is used with voltage as external parameter
+    type(EmissionData), intent(inout)       :: this !main data handling structure
+    real(dp), intent(in)                    :: Voltage
+    !voltage of the diode and previous guess for the theta factor
+    
+    integer     :: i
+    real(dp)    :: theta_new, error
+    
+    
+    do i = 1, 50
+        if (debug > 0) print *, "SC cycle = ", i, "voltage = ", Voltage
+        
+        !multiply multiply field by theta and calculate current density
+        this%F = this%F * this%theta
+        if (allocated(this%Vr)) this%Vr = this%Vr * this%theta
+        call cur_dens(this)
+        if (debug > 0) call print_data(this)
+        
+        !restore electrostatics
+        this%F = this%F / this%theta
+        if (allocated(this%Vr)) this%Vr = this%Vr / this%theta
+        
+        !calculate new reduction factor
+        theta_new = theta_SC(this%Jem, Voltage, this%F)
+        error =  (theta_new - this%theta)
+        if (abs(error) < 1.e-5) exit
+        this%theta = 0.5 * (theta_new + this%theta) 
+    enddo
+
+end subroutine cur_dens_SC
 
 
 subroutine gamow_general(this,full)
@@ -997,8 +1033,9 @@ subroutine print_data(this, full, filenum)
     endif
 
     write (fid,'(/A32)') '================================'
-    write (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4)') 'F =', this%F, &
-            'V/nm', 'R =', this%R, 'nm', 'gamma =', this%gamma
+    write (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4,/A10,ES12.4)') 'F =', &
+        this%F, 'V/nm', 'R =', this%R, 'nm', 'gamma =', this%gamma, 'theta_SC = ', &
+        this%theta
     write (fid,'(A10,ES12.4,A10,/A10,ES12.4,A10)') 'W =', this%W, 'eV', &
             'kT =', this%kT, 'eV'
     write (fid,'(/A10,ES12.4,A10,/A10,ES12.4,A10,/A10,ES12.4,A10)') &
@@ -1167,6 +1204,8 @@ function theta_SC(J, V, F) result(thetout)
 end function theta_SC
 
 
+
+
 subroutine plot_barrier(this)
     !uses the pyplot module to plot the barrier defined by a specific Emisison object
     !this is useful mostly in debugging
@@ -1285,12 +1324,14 @@ subroutine C_wrapper(passdata, ifun) bind(c)
 ! case ifun = 0: cur_dens(), 
 ! case ifun = 1: print_data(),
 ! case ifun = 2: print_data(full = .true.)
-! case ifun = 3: plot_barrier()   
+! case ifun = 3: plot_barrier() 
+! case ifun = 4: theta_SC()
+! case ifun = 5: cur_dens_SC()   
 
     use iso_c_binding  
                                                   
     type, bind(c)   :: cstruct
-        real(c_double)      :: F, W, R, gamma, Temp !input parameters
+        real(c_double)      :: F, W, R, gamma, Temp, voltage !input parameters
         real(c_double)      :: Jem, heat !ouput parameters
         type(c_ptr)         :: xr, Vr     !input vectors
         integer(c_int)      :: regime, sharp  !output chars showing regimes
@@ -1305,7 +1346,7 @@ subroutine C_wrapper(passdata, ifun) bind(c)
     integer                         :: i
     
     if (ifun == 4) then
-        passdata%Temp = theta_SC(passdata%F, passdata%W, passdata%R)
+        passdata%Temp = theta_SC(passdata%F, passdata%voltage, passdata%R)
         return
     endif
 
@@ -1338,8 +1379,11 @@ subroutine C_wrapper(passdata, ifun) bind(c)
         endif
     endif
 
-    
-    call cur_dens(this)
+    if (ifun < 5) then
+        call cur_dens_SC(this, passdata%voltage)
+    else
+        call cur_dens(this)
+    endif
 
     passdata%Jem = this%Jem
     passdata%heat = this%heat
