@@ -6,13 +6,14 @@ extern "C" {
 #endif
 
 struct emission{//struct for interoperability with fortran module getelec
-    double F, W, R, gamma, Temp, voltage;//input parameters
+    double F, W, R, gamma, Temp;//input parameters
     double Jem, heat; //ouptut parameters
     double *xr, *Vr;// input vectors
     int regime, sharp; //ouput characters showing regimes
     int Nr, approx, mode, ierr; //Nr: length of vectors xr ,Vt
                              //full: logical for full calculation
-                             //mode, ierr: ints for defining mode and outputing error 
+                             //mode, ierr: ints for defining mode and outputing error  .
+    double voltage;
 };
 
 //external function from getelec fortran module doing all the connection

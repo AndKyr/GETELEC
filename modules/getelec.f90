@@ -18,7 +18,7 @@ implicit none
 
 private
 public  ::  cur_dens, C_wrapper, print_data, EmissionData, plot_barrier, &
-            debug, dp, kBoltz, gamow_KX, gamow_num, gamow_general, cur_dens_SC
+            debug, dp, kBoltz, gamow_KX, gamow_num, gamow_general, cur_dens_SC, theta_SC
 
 !************************************************************************************
 !Global parameters not to be defined by the user
@@ -409,7 +409,7 @@ subroutine cur_dens_SC(this, Voltage)
     
     
     do i = 1, 50
-        if (debug > 0) print *, "SC cycle = ", i, "voltage = ", Voltage
+        if (debug > 0) print *, "SC cycle = ", i, "Voltage = ", Voltage
         
         !multiply multiply field by theta and calculate current density
         this%F = this%F * this%theta
@@ -417,14 +417,17 @@ subroutine cur_dens_SC(this, Voltage)
         call cur_dens(this)
         if (debug > 0) call print_data(this)
         
+        theta_new = theta_SC(this%Jem, Voltage, this%F)
+        error =  (theta_new - this%theta)
+        if (debug > 0) print *, 'theta_new = ', theta_new, 'SC error = ', error
+        
         !restore electrostatics
         this%F = this%F / this%theta
         if (allocated(this%Vr)) this%Vr = this%Vr / this%theta
         
         !calculate new reduction factor
-        theta_new = theta_SC(this%Jem, Voltage, this%F)
-        error =  (theta_new - this%theta)
-        if (abs(error) < 1.e-5) exit
+ 
+        if (abs(error) < 1.e-5) return
         this%theta = 0.5 * (theta_new + this%theta) 
     enddo
 
@@ -1331,11 +1334,12 @@ subroutine C_wrapper(passdata, ifun) bind(c)
     use iso_c_binding  
                                                   
     type, bind(c)   :: cstruct
-        real(c_double)      :: F, W, R, gamma, Temp, voltage !input parameters
+        real(c_double)      :: F, W, R, gamma, Temp !input parameters
         real(c_double)      :: Jem, heat !ouput parameters
         type(c_ptr)         :: xr, Vr     !input vectors
         integer(c_int)      :: regime, sharp  !output chars showing regimes
         integer(c_int)      :: Nr, approx, mode, ierr !len of vectors xr, Vr and full
+        real(c_double)      :: voltage
     end type cstruct
 
     type(cstruct), intent(inout)    :: passdata
@@ -1379,7 +1383,7 @@ subroutine C_wrapper(passdata, ifun) bind(c)
         endif
     endif
 
-    if (ifun < 5) then
+    if (ifun >= 5) then
         call cur_dens_SC(this, passdata%voltage)
     else
         call cur_dens(this)
@@ -1401,7 +1405,6 @@ subroutine C_wrapper(passdata, ifun) bind(c)
         case (3)
             call plot_barrier(this)
         case default
-            print *, 'Error: invalid ifun in C_wrapper. ifun = ', ifun
             return
     end select
 

@@ -34,12 +34,17 @@ class Emission(ct.Structure):
                 ("Nr", ct.c_int),
                 ("approx", ct.c_int),
                 ("mode", ct.c_int),
-                ("ierr", ct.c_int)
+                ("ierr", ct.c_int),
+                ("voltage", ct.c_double)
                 ]
     
     def cur_dens(self):
         """Calculate current density"""
         return getelec.cur_dens_c(ct.byref(self))
+        
+    def cur_dens_SC(self):
+        return getelec.cur_dens_SC(ct.byref(self))
+        
     
     def print_data(self,full = False):#print the data
         """Calculate current density and print data""" 
@@ -54,18 +59,30 @@ class Emission(ct.Structure):
     def plot_data(self):
         """Calculate current density and plot the barrier"""
         return getelec.plot_data_c(ct.byref(self))
+    
+    def print_data(self,full = False):#print the data
+        """Calculate current density and print data""" 
+        if (full):
+            return getelec.print_data_c(ct.byref(self),ct.c_int(1))
+        else:
+            return getelec.print_data_c(ct.byref(self),ct.c_int(0))
+    
+    def print_C_data(self):
+        return getelec.print_C_data(ct.byref(self))
+    
         
 def emission_create(F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300., \
                 Jem = 0., heat = 0., xr = np.array([]), Vr = np.array([]), \
-                regime = 0, sharp = 1, approx = 1, mode = 0, ierr = 0):
+                regime = 0, sharp = 1, approx = 1, mode = 0, ierr = 0, voltage = 500):
                     
     """Creates an Emission class object and calculates everyting. 
     Input xr ,Vr are given as numpy arrays."""
     x_c = xr.ctypes.data_as(ct.POINTER(ct.c_double))
     V_c = Vr.ctypes.data_as(ct.POINTER(ct.c_double))
-    Nr = xr.size
+    Nr = len(xr)
     assert (Vr.size == Nr),"Check sizes of xr and Vr"
-    this = Emission(F,W,R,gamma,Temp,Jem,heat,x_c,V_c,regime,sharp,Nr,approx,mode,ierr)
+    this = Emission(F,W,R,gamma,Temp,Jem,heat,x_c,V_c,regime,sharp,Nr, \
+            approx,mode,ierr, voltage)
     this.cur_dens()
     return this
 
@@ -127,7 +144,7 @@ def theta_SC(J,V,F):
 #    print "zeta = %e, theta = %e"%(z, theta)
     return theta
 
-def emit_SC(F = 10., W = 4.5, R = 5., gamma = 10., Temp = 300., \
+def emit_SC(F = 10., W = 4.5, R = 500., gamma = 10., Temp = 300., \
                 V_appl = 5.e3, err_fact = 0.5, approx = 1):
     """Calculate the current density and the Nottingham heating for specific set
     of input parameters, taking into account the space_charge effect"""
@@ -142,11 +159,12 @@ def emit_SC(F = 10., W = 4.5, R = 5., gamma = 10., Temp = 300., \
         if (j==0): 
             J0 = J_p
         theta_new = theta_SC(J_p, V_appl, F_p)
+        print "F = %f, J = %e, theta = %e" %(F_p, J_p, theta_new)
         error =  (theta_new - theta_old)
         theta_new = theta_old + error * err_fact
-        if (abs(error) < 1.e-5): break 
+        if (abs(error) < 1.e-6): break 
         theta_old = theta_new 
-#        print "F = %f, J = %e, theta = %e" %(F_p, J_p, theta_new)
+
         F_p = F * theta_new
     
     #print 'J0 = %e, Jfinal = %e, reduction = %f' %(J0, J_p, J_p/J0)

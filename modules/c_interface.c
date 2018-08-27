@@ -37,11 +37,14 @@ int print_C_data(struct emission *this){
     printf("approx = %d\n", this->approx);
     printf("mode = %d\n", this->mode);
     printf("ierr = %d\n", this->ierr);
+    printf("voltage = %e\n", this->voltage);
     
-    printf("   i\t   xr\t  Vr\n");
+    if (this->Nr){
+        printf("   i\t   xr\t  Vr\n");
     
-    for (int i = 0; i < this->Nr; ++i)
-        printf("%d,  %g,  %g\n", i, this->xr[i], this->Vr[i]);
+        for (int i = 0; i < this->Nr; ++i)
+            printf("%d,  %g,  %g\n", i, this->xr[i], this->Vr[i]);
+    }
 
     return 0;
 }

@@ -55,6 +55,9 @@ current: bin/current.exe
 fitIV: tests/fitIV.py
 	./tests/fitIV.py
 	
+thetaSC: bin/thetaSC.exe
+	./bin/theta.exe 1.e-6, 10, 500
+	
 
 $(LIBSHARED): $(CINTERFACE) $(LIBSTATIC) $(LIBDEPS)
 	mkdir -p lib/dynamic/; $(FC) -fPIC -shared -o $@ $^   
