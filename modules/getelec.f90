@@ -15,7 +15,7 @@ module GeTElEC
 use std_mat, only: diff2, local_min, linspace
 
 implicit none
-
+                                                                    
 private
 public  ::  cur_dens, C_wrapper, print_data, EmissionData, plot_barrier, &
             debug, dp, kBoltz, gamow_KX, gamow_num, gamow_general, cur_dens_SC, theta_SC
@@ -52,7 +52,7 @@ character(len=20), parameter   :: errorfile = trim('GetelecErr.txt'), &
 real(dp), save          :: xlim = 0.1d0, gammalim = 1.d3,  varlim = 1.d-3, &
                            epsfit = 1.d-4, nlimfield = 0.6d0, &
                            nlimthermal = 2.5d0, nmaxlim = 2.5d0                           
-integer, save           :: Nmaxpoly = 10, debug = 1, above = 1
+integer, save           :: Nmaxpoly = 10, debug = 0, above = 1
 logical, save           :: spectra= .false., firstcall = .false.
 character(len=50), save :: outfolder = "."
 
