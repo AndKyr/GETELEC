@@ -1339,7 +1339,7 @@ subroutine C_wrapper(passdata, ifun) bind(c)
         type(c_ptr)         :: xr, Vr     !input vectors
         integer(c_int)      :: regime, sharp  !output chars showing regimes
         integer(c_int)      :: Nr, approx, mode, ierr !len of vectors xr, Vr and full
-        real(c_double)      :: voltage
+        real(c_double)      :: voltage, theta
     end type cstruct
 
     type(cstruct), intent(inout)    :: passdata
@@ -1394,6 +1394,7 @@ subroutine C_wrapper(passdata, ifun) bind(c)
     passdata%regime = this%regime
     passdata%sharp = this%sharpness
     passdata%ierr = this%ierr
+    passdata%theta = this%theta
 
     select case (ifun)
         case (0)

@@ -13,7 +13,7 @@ struct emission{//struct for interoperability with fortran module getelec
     int Nr, approx, mode, ierr; //Nr: length of vectors xr ,Vt
                              //full: logical for full calculation
                              //mode, ierr: ints for defining mode and outputing error  .
-    double voltage;
+    double voltage, theta; //data related to SC
 };
 
 //external function from getelec fortran module doing all the connection
