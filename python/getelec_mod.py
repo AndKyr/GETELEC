@@ -35,7 +35,8 @@ class Emission(ct.Structure):
                 ("approx", ct.c_int),
                 ("mode", ct.c_int),
                 ("ierr", ct.c_int),
-                ("voltage", ct.c_double)
+                ("voltage", ct.c_double),
+                ("theta", ct.c_double)
                 ]
     
     def cur_dens(self):
