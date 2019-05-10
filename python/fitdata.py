@@ -1,11 +1,11 @@
 #! /usr/bin/python
 
 #fitting parameters: minimum, initial guess and maximum values
-F0 = [1., 5., 14.]
-R0 = [1., 5., 50.]
-gamma0 = [1., 10., 100.]
-Temp0 = [250., 300., 900.]
-W0 = [3., 4.5, 5.5]
+F0 = [1., 5., 10.]
+R0 = [5., 20., 50.]
+gamma0 = [1., 10., 10.]
+Temp0 = [299., 300., 300.]
+W0 = [4.49999, 4.5, 4.5]
 
 
 #ploting parameters
@@ -44,7 +44,7 @@ ax.set_xlabel(r"$1/F\ [ \mathrm{nm/V} ]$")
 ax.set_ylabel(r"$I \ [ \mathrm{nA} ]$")
 
 
-Vdata, Idata =  np.loadtxt(filename,delimiter=',',unpack=True)
+Vdata, Idata =  np.loadtxt(filename,unpack=True)
 xdata = 1./Vdata
 ydata = np.log(Idata)
 

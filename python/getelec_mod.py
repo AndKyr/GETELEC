@@ -103,10 +103,12 @@ def MLplot (xfn, beta = 1., W = 4.5, R = 5., gamma = 10., Temp = 300.):
     """Take input data xfn=1/V (x axis of FN plot) and calculate the current density
     for a specific set of parameters and F = beta * V. Output in logarithmic scale """
     yfn = np.empty([len(xfn)])
+    this = emission_create(5,W,R,gamma,Temp)
+    
     for i in range(len(xfn)):
-        F = beta / xfn[i]
-        out = emit(F,W,R,gamma,Temp)
-        yfn[i] = np.log(out[0])    
+        this.F = beta / xfn[i]
+        this.cur_dens()
+        yfn[i] = np.log(this.Jem)    
     return yfn
 
 def MLerror(p, xML, yML):

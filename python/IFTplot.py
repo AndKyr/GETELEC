@@ -109,7 +109,7 @@ ax2.set_ylabel(r"$T[K]$")
 ax2.set_title(r"Fowler-Nordheim")
 
 # Plot the surface.
-cs = ax2.contour(F,T,Jfn,50, vmin = 1.e-18, vmax=1.e-6, locator=mb.ticker.LogLocator(numticks = Ncontours),  cmap = cMap)
+cs = ax2.contourf(F,T,Jfn,50, vmin = 1.e-18, vmax=1.e-6, locator=mb.ticker.LogLocator(numticks = Ncontours),  cmap = cMap)
 
 ax2.set_xscale('log')
 ax2.set_yscale('log')
@@ -143,4 +143,6 @@ cbar3 = fig3.colorbar(cs)
 cbar3.set_label(r"$J [A/nm^2]$")
 fig3.savefig('R-L-D.png')
 
-#plt.show()
+plt.show()
+
+"""
