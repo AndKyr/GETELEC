@@ -5,6 +5,7 @@ GETELEC software from python and perform electron emissino calculations"""
 import ctypes as ct
 import numpy as np
 import scipy.optimize as opt
+import scipy.integrate as ig
 import os
 
 pythonpath,filename = os.path.split(os.path.realpath(__file__))
@@ -70,9 +71,10 @@ class Emission(ct.Structure):
     
     def print_C_data(self):
         return getelec.print_C_data(ct.byref(self))
-    
         
-def emission_create(F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300., \
+         
+    
+def emission_create(F = 5., W = 4.5, R = 5000., gamma = 1., Temp = 300., \
                 Jem = 0., heat = 0., xr = np.array([]), Vr = np.array([]), \
                 regime = 0, sharp = 1, approx = 1, mode = 0, ierr = 0, voltage = 500):
                     
@@ -86,6 +88,96 @@ def emission_create(F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300., \
             approx,mode,ierr, voltage)
     this.cur_dens()
     return this
+
+    # ode system for planar geometry    
+def planar(y, x, kJ):
+    dy = y[1]
+    ddy = kJ / np.sqrt(y[0])
+    return np.array([dy, ddy])
+
+#ode system for cylindrical geometry    
+def cylindrical(y, x, kJ):
+    dy = y[1]
+    ddy = (kJ * y[0]**(-0.5)- y[1]) / x
+    return np.array([dy, ddy])
+    
+#ode system for spherical geometry
+def spherical(y, x, kJ):
+    dy = y[1]
+    ddy = (kJ * y[0]**(-0.5)- y[1] * x) / x**2
+    return np.array([dy, ddy])
+    
+""" This class accommodates all 1D space charge calculations"""        
+class SpaceCharge():
+    kappa = 1.904e5
+        
+    #initializes the class
+    def __init__(self, Voltage = 100, Distance = 10, geo = "plane", 
+                Npoints = 256, emitter = None, Radius = 1.):
+        if (emitter == None):
+            print "SpaceCharge class created with default emitter"
+            self.emitter = emission_create()
+        else:
+            self.emitter =  emitter
+        
+        self.voltage = Voltage
+        self.distance = Distance
+        self.geometry = geo
+        self.radius = Radius
+                                                                                  
+        if (self.geometry == "plane"):
+            self.system = planar
+            self.Radius = 0.
+            self.beta = 1. / self.distance
+        elif(self.geometry == "cylinder"):
+            self.system = cylindrical
+            self.beta = 1. / (self.radius * np.log(1 + self.distance / self.radius))
+        elif (self.geometry == "sphere"):
+            self.system = spherical
+            self.beta = (self.radius + self.distance) / (self.radius * self.distance)
+        else:
+            print "Error: Wrong geometry. Should be either, plane, cylinder or sphere"
+        
+        self.Np = Npoints
+        
+        
+        
+    # solves the ode initial value problem with cathode field F and finds potential at d
+    def Vanode(self, F):
+        ## calculate current density for given cathode field F
+        self.emitter.F = F
+        self.emitter.cur_dens()
+        self.Jc = self.emitter.Jem
+        
+        ## solve ode and calculate V(d)
+        xs = np.linspace(self.radius, self.radius + self.distance, self.Np)
+        y = ig.odeint(self.system, np.array([1.e-10,F]), xs, (self.kappa * self.Jc,))
+        return y[-1, 0]
+        
+    # uses the bisection method to calculate F(V, d)    
+    def calcJF(self, V):
+        rtol = 1.e-4
+        Fmin = 0.
+        
+        Fmax = self.beta * V
+        for i in range(50):
+            Fi = .5 * (Fmax + Fmin)
+            Vi = self.Vanode(Fi)
+            if (Vi < (1 - rtol) * V):
+                Fmin = Fi
+            elif((Vi > (1 + rtol) * V)):
+                Fmax = Fi
+            else:
+                break
+            
+            print "Fi = %.3f, Vi = %.3f, Ji = %e"%(Fi, Vi, self.Jc)
+        
+        return Fi
+
+        
+            
+            
+    
 
 def emit (F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300., verbose = False):
     """Calculate the current density and the Nottingham heating for specific set
