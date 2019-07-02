@@ -98,13 +98,13 @@ def planar(y, x, kJ):
 #ode system for cylindrical geometry    
 def cylindrical(y, x, kJ):
     dy = y[1]
-    ddy = (kJ * y[0]**(-0.5)- y[1]) / x
+    ddy = (kJ / np.sqrt(y[0]) - y[1]) / x
     return np.array([dy, ddy])
     
 #ode system for spherical geometry
 def spherical(y, x, kJ):
     dy = y[1]
-    ddy = (kJ * y[0]**(-0.5)- y[1] * x) / x**2
+    ddy = (kJ / np.sqrt(y[0]) - 2 * y[1] * x) / x**2
     return np.array([dy, ddy])
     
 """ This class accommodates all 1D space charge calculations"""        
@@ -127,7 +127,7 @@ class SpaceCharge():
                                                                                   
         if (self.geometry == "plane"):
             self.system = planar
-            self.Radius = 0.
+            self.Radius = 1.
             self.beta = 1. / self.distance
         elif(self.geometry == "cylinder"):
             self.system = cylindrical
@@ -149,9 +149,16 @@ class SpaceCharge():
         self.emitter.cur_dens()
         self.Jc = self.emitter.Jem
         
+        if (self.geometry == "plane"):
+            factor = self.Jc * self.kappa
+        elif (self.geometry == "sphere"):
+            factor = self.kappa * self.Jc * self.radius**2
+        elif (self.geometry == "cylinder"):
+            factor = self.kappa * self.Jc * self.radius
+        
         ## solve ode and calculate V(d)
         xs = np.linspace(self.radius, self.radius + self.distance, self.Np)
-        y = ig.odeint(self.system, np.array([1.e-10,F]), xs, (self.kappa * self.Jc,))
+        y = ig.odeint(self.system, np.array([1.e-10,F]), xs, (factor,))
         return y[-1, 0]
         
     # uses the bisection method to calculate F(V, d)    
