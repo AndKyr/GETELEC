@@ -124,8 +124,7 @@ double theta_SC(double J, double V, double F){
 }
 
 
-int cur_dens_SC(struct emission * pass, double voltage){
-    pass->voltage = voltage;
+int cur_dens_SC(struct emission * pass){
     c_wrapper(pass, 5); 
     return 0;    
 }

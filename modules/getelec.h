@@ -24,7 +24,7 @@ int cur_dens_c(struct emission *);
 int print_data_c(struct emission *, int);
 int plot_data_c(struct emission *);
 int print_C_data(struct emission *);
-int cur_dens_SC(struct emission *, double voltage);
+int cur_dens_SC(struct emission *);
  
 //functions needed for comsol          
 static const char *error = NULL; 
@@ -35,7 +35,6 @@ int eval(const char *, int , const double **, const double **,
         
         
 double theta_SC(double J, double V, double F);
-int cur_dens_SC(struct emission *, double voltage);
         
 #ifdef __cplusplus
 }
