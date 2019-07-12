@@ -120,10 +120,10 @@ class SpaceCharge():
         else:
             self.emitter =  emitter
         
-        self.voltage = Voltage
-        self.distance = Distance
+        self.voltage = float(Voltage)
+        self.distance = float(Distance)
         self.geometry = geo
-        self.radius = Radius
+        self.radius = float(Radius)
                                                                                   
         if (self.geometry == "plane"):
             self.system = planar
@@ -143,11 +143,14 @@ class SpaceCharge():
         
         
     # solves the ode initial value problem with cathode field F and finds potential at d
-    def Vanode(self, F):
+    def Vanode(self, F, J = None):
         ## calculate current density for given cathode field F
-        self.emitter.F = F
-        self.emitter.cur_dens()
-        self.Jc = self.emitter.Jem
+        if (J == None):
+            self.emitter.F = F
+            self.emitter.cur_dens()
+            self.Jc = self.emitter.Jem
+        else:
+            self.Jc = J
         
         if (self.geometry == "plane"):
             factor = self.Jc * self.kappa
@@ -177,9 +180,26 @@ class SpaceCharge():
             else:
                 break
             
-            print "Fi = %.3f, Vi = %.3f, Ji = %e"%(Fi, Vi, self.Jc)
+            # print "Fi = %.3f, Vi = %.3f, Ji = %e"%(Fi, Vi, self.Jc)
         
         return Fi
+        
+    def Vanode_cl(self, J = None):
+        ## calculate current density for given cathode field F
+        if (J != None):
+            self.Jc = J
+        
+        if (self.geometry == "plane"):
+            factor = self.Jc * self.kappa
+        elif (self.geometry == "sphere"):
+            factor = self.kappa * self.Jc * self.radius**2
+        elif (self.geometry == "cylinder"):
+            factor = self.kappa * self.Jc * self.radius
+        
+        ## solve ode and calculate V(d)
+        xs = np.linspace(self.radius, self.radius + self.distance, self.Np)
+        y = ig.odeint(self.system, np.array([1.e-7,0.]), xs, (factor,))
+        return y[-1, 0]
 
         
             

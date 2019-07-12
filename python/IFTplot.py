@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mb
 
 font = 30
-mb.rcParams["font.family"] = "Serif"
+# mb.rcParams["font.family"] = "Serif"
 mb.rcParams["font.size"] = font
 mb.rcParams["axes.labelsize"] = font
 mb.rcParams["xtick.labelsize"] = font
@@ -18,18 +18,18 @@ fsize = (18,10)
 
 cMaphot = mb.colors.ListedColormap(['white', 'red'])
 cMapcold = mb.colors.ListedColormap(['white', 'blue'])
-#cMap = plt.cm.gist_heat
-cMap = plt.cm.copper
-Npoints = 200
+cMap = plt.cm.plasma
+# cMap = plt.cm.copper
+Npoints = 128
 Ncontours = 20
 Jmin = 1.e-26
-Fticks = np.array([1.,2.,3.,4.,5.,6.,8.,10.])
+Fticks = np.array([0.7,1.,2.,3.,4.,5.,6.,8.,10.])
 Tticks = np.array([300.,500.,1000.,2000.,4000,6000, 10000])
 good_lim = 1.2
 #Jlevels = np.array([1.e-6, 1.e-8, 1.e-10, 1.e-12, 1.e-14, 1.e-16])
 
 t = np.logspace(np.log10(300.), np.log10(10000.), Npoints)
-f = np.logspace(np.log10(1.), np.log10(11.), Npoints)
+f = np.logspace(np.log10(0.7), np.log10(11.), Npoints)
 
 #t = np.linspace(300, 5000., 50)
 #f = np.linspace(0.5, 12., 50)
@@ -41,14 +41,14 @@ Jfn = np.copy(Jem)
 good_rld = np.copy(Jrld)
 good_fn = np.copy(Jrld)
 
-this = gt.emission_create(R = 500.)
+this = gt.emission_create(R = 5000.)
 
 for i in range(len(t)):
     for j in range(len(f)):
         this.Temp = T[i,j]
         this.F = F[i,j]
         
-        this.approx = 1
+        this.approx = 2
         this.cur_dens()
         Jem[i,j] = this.Jem
         
@@ -78,27 +78,29 @@ ax1 = fig1.gca()
 
 ax1.set_xlabel(r"$F[GV/m]$")
 ax1.set_ylabel(r"$T[K]$")
-ax1.set_title(r"Full numerical")
+# ax1.set_title(r"Full numerical")
 
 # Plot the surface.
 
-cs = ax1.contour(F,T,Jem,50, locator=mb.ticker.LogLocator(numticks = Ncontours), cmap = cMap)
+cs = ax1.contourf(F,T,Jem,50, locator=mb.ticker.LogLocator(numticks = Ncontours), cmap = cMap)
 
 ax1.set_xscale('log')
 ax1.set_yscale('log')
-ax1.xaxis.set_major_formatter(mb.ticker.FormatStrFormatter('%0.0f'))
+ax1.xaxis.set_major_formatter(mb.ticker.FormatStrFormatter('%0.0g'))
 ax1.yaxis.set_major_formatter(mb.ticker.FormatStrFormatter('%0.0f'))
 ax1.xaxis.set_ticks(Fticks)
 ax1.yaxis.set_ticks(Tticks)
 ax1.grid()
 cbar1 = fig1.colorbar(cs)
 cbar1.set_label(r"$J [A/nm^2]$")
+fig1.savefig('numerical.svg')
 fig1.savefig('numerical.png')
-ax1.contourf(F,T,good_fn,levels = np.array([-100., good_lim]), cmap = cMapcold)
-ax1.contourf(F,T,good_rld,levels = np.array([-100., good_lim]), cmap = cMaphot)
+ax1.contour(F,T,good_fn,levels = np.array([-100., good_lim]), cmap = cMapcold, linestyle = "--")
+ax1.contour(F,T,good_rld,levels = np.array([-100., good_lim]), cmap = cMaphot, linestyle = "--")
 ax1.annotate('Cold FE regime', xy = (4,600))
-ax1.annotate('Thermionic RLD regime', xy = (1.01,8000))
+ax1.annotate('Thermionic regime', xy = (1.01,8000))
 ax1.annotate('Intermediate regime', xy = (1.5,1500))
+fig1.savefig('numerical_regions.svg')
 fig1.savefig('numerical_regions.png')
 
 fig2 = plt.figure(figsize=fsize)
@@ -120,6 +122,7 @@ ax2.yaxis.set_ticks(Tticks)
 ax2.grid()
 cbar2 = fig2.colorbar(cs)
 cbar2.set_label(r"$J [A/nm^2]$")
+fig2.savefig('F-N.svg')
 fig2.savefig('F-N.png')
 
 fig3 = plt.figure(figsize = fsize)
@@ -130,7 +133,7 @@ ax3.set_ylabel(r"$T[K]$")
 ax3.set_title(r"RLD")
 
 # Plot the surface.
-cs = ax3.contour(F,T,Jrld,50, locator=mb.ticker.LogLocator(numticks = Ncontours),  cmap = cMap)
+cs = ax3.contourf(F,T,Jrld,50, locator=mb.ticker.LogLocator(numticks = Ncontours),  cmap = cMap)
 
 ax3.set_xscale('log')
 ax3.set_yscale('log')
@@ -141,8 +144,7 @@ ax3.yaxis.set_ticks(Tticks)
 ax3.grid()
 cbar3 = fig3.colorbar(cs)
 cbar3.set_label(r"$J [A/nm^2]$")
+fig3.savefig('R-L-D.svg')
 fig3.savefig('R-L-D.png')
 
 plt.show()
-
-"""

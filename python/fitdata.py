@@ -1,11 +1,11 @@
 #! /usr/bin/python
 
 #fitting parameters: minimum, initial guess and maximum values
-F0 = [1., 5., 10.]
-R0 = [5., 20., 50.]
-gamma0 = [1., 10., 10.]
+F0 = [0.1, 0.51, 2.]
+R0 = [100., 101., 102.]
+gamma0 = [1., 1.2, 1.3]
 Temp0 = [299., 300., 300.]
-W0 = [4.49999, 4.5, 4.5]
+W0 = [5.2, 5.21, 5.22]
 
 
 #ploting parameters
