@@ -995,6 +995,8 @@ subroutine J_num_integ(this)
         real(dp) :: L
         if (E>10.d0*kT) then
             L=exp(-E/kT)
+        else if (E < -10.d0 * kT)  then
+            L = - E / kT
         else
             L=log(1.d0+exp(-E/kT))
         endif
