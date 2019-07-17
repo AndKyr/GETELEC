@@ -822,7 +822,7 @@ subroutine J_num_integ(this)
     type(EmissionData), intent(inout)   :: this
     type(EmissionData)                  :: new
     
-    real(dp), parameter                 :: cutoff=1.d-3 
+    real(dp), parameter                 :: cutoff=1.d-4 
             !cutoff of the exponentially decreasing
     integer, parameter                  :: Nvals=512, fidout=1953
             !no of intervals for integration and fidout for spectroscopy

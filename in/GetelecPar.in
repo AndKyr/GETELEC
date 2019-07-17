@@ -10,5 +10,5 @@ varlim=      0.05 #limit of variance for the fitting approximation (has meaning 
 epsfit=      1.e-4 #  accuracy required in fittings
 Nmaxpoly=    10 #    max degree of the fitted polynomial
 spectra=     T #  set to true if you want to output spectroscopy data (T or F)
-aboveUm=     0 # set how Transmission coefficient above barrier is considered. 0: T(E>Um)=1, 1: T(E>Um) = Kemble linear approximation
+aboveUm=     1 # set how Transmission coefficient above barrier is considered. 0: T(E>Um)=1, 1: T(E>Um) = Kemble linear approximation
 output=      output
