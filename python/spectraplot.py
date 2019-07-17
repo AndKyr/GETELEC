@@ -55,16 +55,12 @@ for i in range(len(F)):
     
     if (plotG):
         ax2.plot(E, 1./(1. + np.exp(G)), c = colors[i], label = 'T = %.0f K, F = %.0f V/nm'%(T[i], F[i]))
-    # ax.loglog(F,Jfn, c = colors[i], linestyle = '--', label = 'T = %.0f K, F-N'%T[i])
-    # ax.loglog(F,Jrld,c = colors[i], linestyle = ':', label = 'T = %.0f K, R-L-D'%T[i])
 
     ax.set_xlabel(r"$E-E_F$ [eV]")
     ax.set_ylabel(r"j [% of max]")
-    # ax.xaxis.set_major_formatter(mb.ticker.FormatStrFormatter('%0.0g'))
     ax.set_xlim([-2.,0.5])
     ax.grid()
 
-    # ax.legend()
     fig.savefig("spectra_%.3d.png"%i)
     plt.close()
 

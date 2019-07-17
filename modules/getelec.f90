@@ -131,7 +131,7 @@ type, public    :: EmissionData
     !2: full calculation, force full integration. No GTF approximation for any regime
     !1: full calculation
     !0: GTF approximation
-    !-1: FN approximation (Miller - Good version)
+    !-1: FN approximation (Murphy - Good version)
     !-2: RLD approximation
         
     integer                 :: ierr = 0
@@ -1020,7 +1020,7 @@ subroutine print_data(this, full, filenum)
                                                 'N/A  ']
                                             
     character(len=20)   :: approx_str(-2:2) = [ 'Richardson-Dushman  ', &
-                                                'Miller-Good         ', &
+                                                'Murphy-Good         ', &
                                                 'General T-F (Jensen)', &
                                                 'Automatic selection ', &
                                                 'Full integration    ' ]
