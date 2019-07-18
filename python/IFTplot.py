@@ -20,12 +20,12 @@ cMaphot = mb.colors.ListedColormap(['white', 'red'])
 cMapcold = mb.colors.ListedColormap(['white', 'blue'])
 cMap = plt.cm.plasma
 # cMap = plt.cm.copper
-Npoints = 128
+Npoints = 256
 Ncontours = 20
 Jmin = 1.e-26
 Fticks = np.array([0.7,1.,2.,3.,4.,5.,6.,8.,10.])
 Tticks = np.array([300.,500.,1000.,2000.,4000,6000, 10000])
-good_lim = 1.2
+good_lim = 1.1
 #Jlevels = np.array([1.e-6, 1.e-8, 1.e-10, 1.e-12, 1.e-14, 1.e-16])
 
 t = np.logspace(np.log10(300.), np.log10(10000.), Npoints)
@@ -86,7 +86,7 @@ cs = ax1.contourf(F,T,Jem,50, locator=mb.ticker.LogLocator(numticks = Ncontours)
 
 ax1.set_xscale('log')
 ax1.set_yscale('log')
-ax1.xaxis.set_major_formatter(mb.ticker.FormatStrFormatter('%0.0g'))
+ax1.xaxis.set_major_formatter(mb.ticker.FormatStrFormatter('%g'))
 ax1.yaxis.set_major_formatter(mb.ticker.FormatStrFormatter('%0.0f'))
 ax1.xaxis.set_ticks(Fticks)
 ax1.yaxis.set_ticks(Tticks)
@@ -95,8 +95,8 @@ cbar1 = fig1.colorbar(cs)
 cbar1.set_label(r"$J [A/nm^2]$")
 fig1.savefig('numerical.svg')
 fig1.savefig('numerical.png')
-ax1.contour(F,T,good_fn,levels = np.array([-100., good_lim]), cmap = cMapcold, linestyle = "--")
-ax1.contour(F,T,good_rld,levels = np.array([-100., good_lim]), cmap = cMaphot, linestyle = "--")
+ax1.contour(F,T,good_fn,levels = np.array([-100., good_lim]), cmap = cMapcold)
+ax1.contour(F,T,good_rld,levels = np.array([-100., good_lim]), cmap = cMaphot)
 ax1.annotate('Cold FE regime', xy = (4,600))
 ax1.annotate('Thermionic regime', xy = (1.01,8000))
 ax1.annotate('Intermediate regime', xy = (1.5,1500))
@@ -111,11 +111,11 @@ ax2.set_ylabel(r"$T[K]$")
 ax2.set_title(r"Fowler-Nordheim")
 
 # Plot the surface.
-cs = ax2.contourf(F,T,Jfn,50, vmin = 1.e-18, vmax=1.e-6, locator=mb.ticker.LogLocator(numticks = Ncontours),  cmap = cMap)
+cs = ax2.contourf(F,T,Jfn,50, locator=mb.ticker.LogLocator(numticks = Ncontours),  cmap = cMap)
 
 ax2.set_xscale('log')
 ax2.set_yscale('log')
-ax2.xaxis.set_major_formatter(mb.ticker.FormatStrFormatter('%0.0f'))
+ax2.xaxis.set_major_formatter(mb.ticker.FormatStrFormatter('%g'))
 ax2.yaxis.set_major_formatter(mb.ticker.FormatStrFormatter('%0.0f'))
 ax2.xaxis.set_ticks(Fticks)
 ax2.yaxis.set_ticks(Tticks)
@@ -137,7 +137,7 @@ cs = ax3.contourf(F,T,Jrld,50, locator=mb.ticker.LogLocator(numticks = Ncontours
 
 ax3.set_xscale('log')
 ax3.set_yscale('log')
-ax3.xaxis.set_major_formatter(mb.ticker.FormatStrFormatter('%0.0f'))
+ax3.xaxis.set_major_formatter(mb.ticker.FormatStrFormatter('%g'))
 ax3.yaxis.set_major_formatter(mb.ticker.FormatStrFormatter('%0.0f'))
 ax3.xaxis.set_ticks(Fticks)
 ax3.yaxis.set_ticks(Tticks)

@@ -350,7 +350,8 @@ subroutine cur_dens(this)
         this%heat = -zs * (this%maxbeta**(-3)) * exp(-this%Gam) * &
                 (1. - (pi * this%maxbeta * this%kT)**2 / 6.)
     elseif (this%approx == -2) then ! RLD equation
-        this%Jem = zs * (this%kT**2) * exp(-this%Um/this%kT)
+        this%Jem = zs * (this%kT**2) * exp(-this%Um/this%kT) * &
+                (1. + (pi * this%minbeta * this%kT)**(-2) / 6.) 
         this%heat = (this%kT + this%Um) * this%Jem
     else
         print *, 'Wrong approx value. this%approx = ', this%approx
