@@ -1,53 +1,65 @@
 #!/usr/bin/python
 
 """This tests plots the behaviour of the emission current density for high fields
-    according to three different approximations. The FN approximation (Miller-Good)
-    Version of the FN equation, the GTF approximation (Jensen) and the full
-    calculation by GETELEC"""
+    according to three different calculations. The FN equation (Murphy-Good)
+    the Child Langmuir-Limit, and the full self-consistent calculation GETELEC"""
 import numpy as np
 import getelec_mod as gt
 
+from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import matplotlib as mb
 
 font = 30
-mb.rcParams["font.family"] = "Serif"
+# mb.rcParams["font.family"] = "Serif"
 mb.rcParams["font.size"] = font
 mb.rcParams["axes.labelsize"] = font
 mb.rcParams["xtick.labelsize"] = font
 mb.rcParams["ytick.labelsize"] = font
 mb.rcParams["legend.fontsize"] = font
-mb.rcParams["lines.linewidth"] = 2.
-
-Npoints = 32
-
-F = np.logspace(np.log10(5.), np.log10(25.), Npoints)
-J_SC = np.copy(F)
-F_p = np.copy(F)
-
-fig1 = plt.figure()
-ax1 = fig1.gca()
-fig2 = plt.figure()
-ax2 = fig2.gca()
+mb.rcParams["lines.linewidth"] = 2.5
+fsize = (18,10)
 
 
+Npoints = 128
+# Fticks = np.array([.7, 1.,2.,3.,5.,8.])
 
-for i in range(len(F)):
-    J_SC[i], theta = gt.emit_SC(F[i], 4.5, approx = 2)
-    F_p[i] = theta * F[i]
+F = np.logspace(np.log10(5.), np.log10(20.), Npoints)
 
+Jfn = np.copy(F)
+Jsc = np.copy(F)
 
+Vappl = 10000
 
+this = gt.emission_create(R = 5000., voltage = Vappl, approx = -1)
 
-ax1.set_xlabel(r"$F[GV/m]$")
-ax2.set_xlabel(r"$F[GV/m]$")
-ax1.set_ylabel(r"$J[A/nm^2]$")
-ax1.set_yscale('log')
-ax1.plot(F,J_SC)
+colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
-ax2.set_ylabel(r"$F_p[GV/m]$")
+fig = plt.figure(figsize=fsize)
+ax = fig.gca()
 
-ax2.plot(F,F_p)
+for j in range(len(F)):
+    this.F = F[j]
+    
+    this.cur_dens()
+    Jfn[j] = this.Jem
+    
+
+    this.cur_dens_SC()
+    Jsc[j] = this.Jem
+    
+
+    
+ax.semilogy(1/F, Jfn, '--', label = 'FN')#label = 'T = %.0f K, Full Numerical'%T[i])
+ax.semilogy(1/F, Jsc, label = 'Self consistent')#label = 'T = %.0f K, Full Numerical'%T[i])
+ax.semilogy(1/F,gt.J_ChildL(Vappl, F / Vappl), '--', label = 'CL') #linestyle = '--', label = 'T = %.0f K, F-N'%T[i])
+
+ax.grid()
+ax.set_xlabel(r"$1/F[nm/V]$")
+ax.set_ylabel(r"$J[A/nm^2]$")
+ax.legend()
+
+plt.savefig('/media/sf_VM-shared/SC_comparison.png')
 
 plt.show()
 
