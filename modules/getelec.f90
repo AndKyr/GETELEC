@@ -837,6 +837,9 @@ subroutine J_num_integ(this)
     if (debug > 1) call cpu_time(t1)
     if (spectra) then !if spectra then j(E) will be printed into a file
         open(fidout,file=trim(outfolder)//'/spectra.csv')
+        write(fidout,*) "#E-E_F [eV], Nottingham integrand dEtot [W/(nm**2 eV)]" // &
+                        ", J integrand dEtot [A/(nm**2 eV)], "// &
+                        "J integrand dEz [A/(nm**2 eV)], Gamow exponent"
     endif
     this%Um = -1.d20
     this%xm = -1.d20
@@ -970,7 +973,7 @@ subroutine J_num_integ(this)
         outsum = outsum + integrand
         if (spectra) then !write spectroscopy data into the spectroscopy file
             fj=lFD(Ej,this%kT)/(1.d0+exp(G(k)))
-            write(fidout,*) Ej, ',', integrand, ',', integrand/Ej, ',', fj, ',', G(k)
+            write(fidout,*) Ej, ',', zs * integrand, ',', zs * integrand/Ej, ',', zs * fj * this%kT, ',', G(k)
         endif
         Ej = Ej + dE
     enddo
@@ -1562,7 +1565,7 @@ subroutine read_params()
     read(fid,*) str, outfolder
     if (str(1:6)/='output') stop error
     outfolder = trim(outfolder) 
-    if (debug > 1)  print *, 'outfolder read', outfolder
+    if (debug > 1)  print *, 'outfolder read ', outfolder
     
     close(fid)
     

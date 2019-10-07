@@ -222,7 +222,7 @@ def MLplot (xfn, beta = 1., W = 4.5, R = 5., gamma = 10., Temp = 300.):
     """Take input data xfn=1/V (x axis of FN plot) and calculate the current density
     for a specific set of parameters and F = beta * V. Output in logarithmic scale """
     yfn = np.empty([len(xfn)])
-    this = emission_create(5,W,R,gamma,Temp)
+    this = emission_create(5,W,R,gamma,Temp, approx = 0)
     
     for i in range(len(xfn)):
         this.F = beta / xfn[i]
@@ -250,7 +250,34 @@ def fitML (xML, yML, F0 = [0.05, 5., 18.], W0 = [2.5, 4., 5.5], \
                 bounds =([beta0[0], W0[0], R0[0], gamma0[0], Temp0[0]],\
                         [beta0[2], W0[2], R0[2], gamma0[2], Temp0[2]]), \
                 method = 'trf', jac = '3-point',xtol = 1.e-15 )
+    
     return popt
+
+#fit experimental data, and nicely plot the result
+#Vexp: voltage in V
+#Iexp: current in Amps
+#workfunc in eV
+#temperature in K    
+# def fit_exp_data(Vexp, Iexp, workfunc, temperature):
+    
+    # xML = 1./Vexp
+    # yML = np.log(Iexp)
+    
+    # popt = gt.fitML(xML, yML, F0 = [2.,5.,8.],     \
+        # W0 = [workfunc * 0.99999, workfunc, workfunc * 1.000001], \ 
+        # R0 = [3.,5.,20.], gamma0=[2., 10., 100],  \
+        # Temp0 = [temperature * 0.99999, temperature, temperature * 1.00001])
+    
+    # beta = popt.x[0]
+    # Radius = popt.x[2]
+    # gamma = popt.x[3]
+    
+    # yth = MLplot(xML,  beta, workfunc, Radius, gamma, temperature)
+    
+    
+    
+    
+
     
 
 def theta_SC(J,V,F):

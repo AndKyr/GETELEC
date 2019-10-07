@@ -1,19 +1,19 @@
 #! /usr/bin/python
 
 #fitting parameters: minimum, initial guess and maximum values
-F0 = [0.1, 0.51, 2.]
-R0 = [100., 101., 102.]
-gamma0 = [1., 1.2, 1.3]
-Temp0 = [299., 300., 300.]
-W0 = [5.2, 5.21, 5.22]
+F0 = [1., 5., 10.]
+R0 = [2., 5., 10.]
+gamma0 = [2., 10., 100.]
+Temp0 = [50., 50.1, 50.2]
+W0 = [4.5, 4.51, 4.52]
 
 
 #ploting parameters
-markers = 'o'
+markers = '.'
 colors = 'b'
-font = 45
-lw = 5
-mw = 15
+font = 30
+lw = 2
+mw = 2
 
 import numpy as np
 import sys
@@ -28,7 +28,7 @@ pythonpath = emissionpath + '/python'
 sys.path.append(pythonpath)
 import getelec_mod as gt
 
-matplotlib.rcParams["font.family"] = 'Times New Roman'
+# matplotlib.rcParams["font.family"] = 'Times New Roman'
 matplotlib.rcParams["font.size"] = font
 matplotlib.rcParams["axes.labelsize"] = font
 matplotlib.rcParams["xtick.labelsize"] = font
@@ -53,7 +53,7 @@ popt = fit.x
 yopt = gt.MLplot(xdata, popt[0], popt[1], popt[2], popt[3], popt[4])
 yshift = max(yopt) - max(ydata)
     
-print 'beta = %10.3e, W = %10.3f, R = %10.3f, gamma = %10.3f, Temp = %10.3f, sigmaAeff = %10.3e' \
+print 'beta = %10.3e, W = %10.3f, R = %10.3f, gamma = %10.3f, Temp = %10.3f, sigmaAeff = %10.2e' \
         % (popt[0], popt[1],  popt[2], popt[3], popt[4], 1e-9*np.exp(-yshift))
                 
 xth = np.linspace(min(xdata),max(xdata),100)
