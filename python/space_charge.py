@@ -1,5 +1,5 @@
 """This module facilitates space charge calculations for spherical, cylindrical
-and planar diodes"""
+and planar diodes."""
 
 
 import numpy as np
@@ -31,7 +31,9 @@ def spherical(y, x, kJ):
     dy = y[1]
     ddy = (kJ / np.sqrt(y[0]))/x**2 - 2. * y[1] /x 
     return np.array([dy, ddy])
-    
+
+
+# systems for the "reduced" variable u = 2/3 V^1.5 / sqrt(kJ)
 def spherical_u(y, x, Radius):
     dy = y[1]
     ddy = Radius**2 / (3 * y[0] * x**2) - 2 * y[1] / x - y[1]**2 / (3. * y[0])

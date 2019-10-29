@@ -311,7 +311,8 @@ subroutine cur_dens(this)
             n = 1.d0/(this%kT * this%maxbeta) !standard Jensen parameters
             s = this%Gam
             this%regime = FIELD
-        else if (this%kT * this%minbeta > nlimt .and. &
+            
+        else if ((this%kT * this%minbeta > nlimt .or. this%maxbeta > 1.d10 ).and. &
                     (this%Um > 0.5 .or. (this%approx == 0))) then !thermal regime
             n = 1.d0/(this%kT * this%minbeta) !standard Jensen parameters
             s = this%minbeta * this%Um
@@ -363,7 +364,7 @@ subroutine cur_dens(this)
     
     this%heat = - this%heat !convention: consider deposited heat (+ for heating) 
     
-    if ((isnan(this%Jem) .or. isnan(this%heat) .or. this%Jem < 1.d-201)  &
+    if ((isnan(this%Jem) .or. isnan(this%heat) .or. this%Jem < -1.d-201)  &
         .and. this%ierr == 0) this%ierr = 4
     
     if (this%ierr > 0) then 
