@@ -7,6 +7,7 @@ import numpy as np
 import scipy.optimize as opt
 import scipy.integrate as ig
 import os
+import matplotlib.pyplot as plt
 
 pythonpath,filename = os.path.split(os.path.realpath(__file__))
 emissionpath,pythonfolder = os.path.split(pythonpath)
@@ -72,8 +73,29 @@ class Emission(ct.Structure):
     def print_C_data(self):
         return getelec.print_C_data(ct.byref(self))
         
-         
     
+    #calculates the total current, assuming a spherical tip, where the field falls as F(theta = 0)(cos(kappa * theta))
+    def total_current(self, kappa):
+        theta = np.linspace(0,np.pi/2, 45)
+        Fi = self.F * np.cos(kappa * theta)
+        Ji = np.copy(Fi)
+        
+        for i in range(len(Fi)):
+            self.F = Fi[i]
+            self.cur_dens()
+            Ji[i] = self.Jem
+        
+        self.F = Fi[0]
+        
+        # plt.plot(theta, Ji)
+        # plt.plot(theta, 2 * np.pi * self.R**2 * np.sin(theta) * Ji)
+        # plt.show()
+        
+        I = np.trapz(2 * np.pi * self.R**2 * np.sin(theta) * Ji, theta)
+        Area = I / Ji[0]
+        
+        return I, Area
+        
 def emission_create(F = 5., W = 4.5, R = 5000., gamma = 1., Temp = 300., \
                 Jem = 0., heat = 0., xr = np.array([]), Vr = np.array([]), \
                 regime = 0, sharp = 1, approx = 1, mode = 0, ierr = 0, voltage = 500):
@@ -88,6 +110,93 @@ def emission_create(F = 5., W = 4.5, R = 5000., gamma = 1., Temp = 300., \
             approx,mode,ierr, voltage)
     this.cur_dens()
     return this
+
+
+
+
+class MultiEmitter():
+    
+    def __init__(self, em = emission_create(), N = 1, mu_h = 100., std_h = 10., \
+                    mu_r = 10., std_r = 1.):
+        self.emitter = em
+        self.N_emitters = N
+        self.mu_height = mu_h
+        self.sigma_height = std_h
+        self.mu_radii = mu_r
+        self.sigma_radii = std_r
+        
+        
+    def get_emitters(self):
+        mu = np.log(self.mu_height**2/np.sqrt(self.sigma_height**2 + self.mu_height**2))
+        sigma = np.sqrt(np.log(1+self.sigma_height**2/self.mu_height**2))
+        
+        self.heights = np.random.lognormal(mu, sigma, self.N_emitters)
+        
+        mu = np.log(self.mu_radii**2/np.sqrt(self.sigma_radii**2 + self.mu_radii**2))
+        sigma = np.sqrt(np.log(1+self.sigma_radii**2/self.mu_radii**2))
+        self.radii = np.random.lognormal(mu, sigma, self.N_emitters)
+        self.betas = self.heights / self.radii
+        self.currents = np.copy(self.betas) * 0.
+        
+           
+    def emit(self, Ffar):
+        for i in range(len(self.betas)):
+            self.emitter.F = self.betas[i] * Ffar
+            self.emitter.R = self.radii[i]
+            self.currents[i] =  self.emitter.total_current(0.5)[0]
+            
+        return sum(self.currents)    
+        
+        
+    def plot_histograms(self):
+        
+        plt.figure()
+        plt.hist(self.radii, 100)
+        plt.xlabel("Radii")
+        plt.ylabel("count")
+        
+        plt.figure()
+        plt.hist(self.heights, 100)
+        plt.xlabel("Heights")
+        plt.ylabel("count")
+        
+        plt.figure()
+        plt.hist(self.betas, 100)
+        plt.xlabel(r"$\beta$")
+        plt.ylabel("count")
+        
+        
+        plt.figure()
+        counts,Iedges = np.histogram(np.log(self.currents), 20, range = (np.log(1.e-9), np.log(max(self.currents))))
+        
+        print counts
+        print Iedges
+        Ibins = .5*(np.exp(Iedges[1:]) + np.exp(Iedges[:-1]))
+        plt.semilogx(Ibins, counts * Ibins)
+        plt.xlabel(r"I [Amps])")
+        plt.ylabel("current contribution")
+        plt.show()
+        
+    
+    def print_data_out(self):
+        
+        # for i in range(len(betas)):
+            # print heights[i], radii[i], betas[i]
+            
+        print "heights = %.3g +- %.3g"%(np.mean(self.heights), np.std(self.heights))
+        print "radii = %.3g +- %.3g", np.mean(self.radii), "std<radii> =  ", np.std(self.radii)
+        print "betas = %.3g +- %.3g"%(np.mean(self.betas),np.std(self.betas))
+        print "maxbeta = %g"%(np.max(betas))
+        
+
+        
+  
+ 
+        
+        
+        
+        
+        
 
 
 def emit (F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300., verbose = False):
@@ -135,6 +244,40 @@ def fitML (xML, yML, F0 = [0.05, 5., 18.], W0 = [2.5, 4., 5.5], \
                         [beta0[2], W0[2], R0[2], gamma0[2], Temp0[2]]), \
                 method = 'trf', jac = '3-point',xtol = 1.e-15 )
     return popt
+    
+def IFplot(xfn, beta = 1., W = 4.5, R = 5., gamma = 10., Temp = 300., kappa = 0.5):
+    """Take input data xfn=1/V (x axis of FN plot) and calculate the current 
+        for a specific set of parameters and F = beta * V. Output in logarithmic scale """
+    yfn = np.empty([len(xfn)])
+    this = emission_create(5,W,R,gamma,Temp)
+    
+    for i in range(len(xfn)):
+        this.F = beta / xfn[i]
+        yfn[i] = np.log(this.total_current(kappa)[0])    
+    return yfn  
+    
+    
+def IFerror(p, xML, yML):
+    """calculate the y-shift between theoretical and experimental"""
+    ycalc = IFplot(xML, p[0], p[1], p[2], p[3], p[4], p[5])
+    yshift = max(ycalc) - max(yML)
+    return ycalc - yML - yshift
+    
+def fit_IFplot (xML, yML, F0 = [0.05, 5., 18.], W0 = [2.5, 4., 5.5], \
+            R0 = [1., 5., 30.], gamma0 = [2., 10., 100.], \
+            Temp0 = [100., 300., 1080. ], kappa = [0.4, 0.5, 0.6]):
+    """ tries to fit xML, yML experimental data to the GETELEC model """
+    meanFmac = np.mean(1./xML)
+    minFmac = min(1./xML)
+    maxFmac = max(1./xML)
+    beta0 = [F0[0]/minFmac, F0[1] / meanFmac, F0[2] / maxFmac]
+    
+    popt = opt.least_squares (fun = IFerror, args = (xML, yML), \
+                x0 =     [beta0[1], W0[1], R0[1], gamma0[1], Temp0[1], kappa[1]], \
+                bounds =([beta0[0], W0[0], R0[0], gamma0[0], Temp0[0], kappa[0]],\
+                        [beta0[2], W0[2], R0[2], gamma0[2], Temp0[2], kappa[2]]), \
+                method = 'trf', jac = '3-point',xtol = 1.e-15 )
+    return popt    
     
 
 def theta_SC(J,V,F):
