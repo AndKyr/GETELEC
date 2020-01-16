@@ -8,6 +8,10 @@ import scipy.optimize as opt
 import scipy.integrate as ig
 import os
 import matplotlib.pyplot as plt
+import scipy.interpolate as intrp
+
+from io import StringIO 
+import sys
 
 pythonpath,filename = os.path.split(os.path.realpath(__file__))
 emissionpath,pythonfolder = os.path.split(pythonpath)
@@ -17,6 +21,17 @@ libpath = emissionpath + '/lib/dynamic/libgetelec.so'
 print libpath
 ct.cdll.LoadLibrary(libpath)
 getelec = ct.CDLL(libpath)
+
+class Capturing(list):
+    def __enter__(self):
+        self._stdout = sys.stdout
+        sys.stdout = self._stringio = StringIO()
+        return self
+    def __exit__(self, *args):
+        self.extend(self._stringio.getvalue().splitlines())
+        del self._stringio    # free up some memory
+        sys.stdout = self._stdout
+
 
 class Emission(ct.Structure):
     """This contains all the interchange information for emission calculation
@@ -51,10 +66,13 @@ class Emission(ct.Structure):
     
     def print_data(self,full = False):#print the data
         """Calculate current density and print data""" 
-        if (full):
-            return getelec.print_data_c(ct.byref(self),ct.c_int(1))
-        else:
-            return getelec.print_data_c(ct.byref(self),ct.c_int(0))
+        with Capturing() as output:
+            if (full):
+                getelec.print_data_c(ct.byref(self),ct.c_int(1))
+            else:
+                getelec.print_data_c(ct.byref(self),ct.c_int(0))
+        print "output = ", output
+        return output
     
     def print_C_data(self):
         return getelec.print_C_data(ct.byref(self))
@@ -76,7 +94,7 @@ class Emission(ct.Structure):
     
     #calculates the total current, assuming a spherical tip, where the field falls as F(theta = 0)(cos(kappa * theta))
     def total_current(self, kappa):
-        theta = np.linspace(0,np.pi/2, 45)
+        theta = np.linspace(0,np.pi/2, 64)
         Fi = self.F * np.cos(kappa * theta)
         Ji = np.copy(Fi)
         
@@ -110,9 +128,96 @@ def emission_create(F = 5., W = 4.5, R = 5000., gamma = 1., Temp = 300., \
             approx,mode,ierr, voltage)
     this.cur_dens()
     return this
+    
 
+    
+class Tabulator():
+    
+    def __init__(self, emitter, Nf = 256, Nr = 256):
+        self.emitter = emitter
+        if (self.check_tabulated()):
+            print "loading data from files"
+            self.load()
+        else:
+            print "tabulating J, F, R"
+            self.tabulate_JFR(Nf, Nr)
 
+    def tabulate_JFR(self, Nf = 256, Nr = 256):
+        self.Finv = np.linspace(1./20., 1., Nf)
+        self.Rinv = np.linspace(1/100., 2., Nr)
+        
+        self.Jmesh = np.zeros((Nr, Nf))
+        
+        for i in range(Nr):
+            self.emitter.R = 1./self.Rinv[i]
+            for j in range(Nf):
+                self.emitter.F = 1./self.Finv[j]
+                self.emitter.Voltage = self.emitter.F * self.emitter.R
+                self.emitter.cur_dens_SC()
+                self.Jmesh[i,j] = self.emitter.Jem
+                if (self.emitter.Jem <= 0.):
+                    self.emitter.print_data()
+        try:
+            os.mkdir("tabulated")
+        except:
+            pass
+            
+        np.save("tabulated/current_density", self.Jmesh)
+        np.save("tabulated/Finv", self.Finv)
+        np.save("tabulated/Rinv", self.Rinv)
+        np.save("tabulated/checkcase",np.array([1./self.Finv[0], 1./self.Rinv[0], self.Jmesh[0,0]]))
+        self.finterp = intrp.interp2d(self.Finv, self.Rinv, np.log(self.Jmesh))
+    
+    def check_tabulated(self):
+        print "checking tabulation"
+        try:
+            checks = np.load("tabulated/checkcase.npy")
+        except(IOError):
+            print "tabulation check file not found"
+            return False
+            
+        self.emitter.F = checks[0]
+        self.emitter.R = checks[1]
+        
+        self.emitter.Voltage = self.emitter.F * self.emitter.R
+        self.emitter.cur_dens_SC()
+        
+        print "read F, R, J = ", checks
+        print "recalculated J = ", self.emitter.Jem
+        
+        return self.emitter.Jem == checks[2]
+        
+    def load(self):
+        self.Jmesh = np.load("tabulated/current_density.npy")
+        self.Finv = np.load("tabulated/Finv.npy")
+        self.Rinv = np.load("tabulated/Rinv.npy")
+        self.finterp = intrp.interp2d(self.Finv, self.Rinv, np.log(self.Jmesh))
+        
+    def get_cur_dens(self, F, R):
+        # assert (np.shape(F) == np.shape(R)), "F and R do not have the same shapes"
+        
+        Rcopy = np.copy(R)
+        Fcopy = np.copy(F)
+        
+        Rcopy[Rcopy > 1./self.Rinv[0]] = 1./self.Rinv[0] 
+        Rcopy[Rcopy < 1./self.Rinv[-1]] = 1./self.Rinv[-1]
 
+        Fcopy[Fcopy > 1./self.Finv[0]] = 1./self.Finv[0]
+        Fcopy[Fcopy < 1./self.Finv[-1]] = 1./self.Finv[-1]
+        
+        return np.exp(self.finterp(1./Fcopy, 1./Rcopy))
+        
+    #calculates the total current, assuming a spherical tip, where the field falls as F(theta = 0)(cos(kappa * theta))
+    def total_current(self, kappa):
+        theta = np.linspace(0,np.pi/2, 64)
+        Fi = self.emitter.F * np.cos(kappa * theta)
+        
+        Ji = self.get_cur_dens(Fi, self.emitter.R)
+               
+        I = 2 * np.pi * self.emitter.R**2 * np.trapz(np.sin(theta) * Ji, theta)
+        Area = I / Ji[0]
+        
+        return I, Area
 
 class MultiEmitter():
     
@@ -124,18 +229,42 @@ class MultiEmitter():
         self.sigma_height = std_h
         self.mu_radii = mu_r
         self.sigma_radii = std_r
+        self.tb = Tabulator(self.emitter, 256, 128)
         
         
-    def get_emitters(self):
-        mu = np.log(self.mu_height**2/np.sqrt(self.sigma_height**2 + self.mu_height**2))
-        sigma = np.sqrt(np.log(1+self.sigma_height**2/self.mu_height**2))
+    def get_emitters(self, max_beta = 1.e50, min_beta = 1., h_dist = 'normal', r_dist = 'lognormal'):
         
-        self.heights = np.random.lognormal(mu, sigma, self.N_emitters)
+        if (h_dist == 'lognormal'):
+            mu = np.log(self.mu_height**2/np.sqrt(self.sigma_height**2 + self.mu_height**2))
+            sigma = np.sqrt(np.log(1+self.sigma_height**2/self.mu_height**2))
+            heights = np.random.lognormal(mu, sigma, self.N_emitters)
+        elif(h_dist == 'normal'):
+            mu = self.mu_height
+            sigma = self.sigma_height
+            heights = np.random.normal(mu, sigma, self.N_emitters)
+        else:
+            print "wrong distribution for heights"
         
-        mu = np.log(self.mu_radii**2/np.sqrt(self.sigma_radii**2 + self.mu_radii**2))
-        sigma = np.sqrt(np.log(1+self.sigma_radii**2/self.mu_radii**2))
-        self.radii = np.random.lognormal(mu, sigma, self.N_emitters)
-        self.betas = self.heights / self.radii
+        if (r_dist == "lognormal"):
+            mu = np.log(self.mu_radii**2/np.sqrt(self.sigma_radii**2 + self.mu_radii**2))
+            sigma = np.sqrt(np.log(1+self.sigma_radii**2/self.mu_radii**2))
+            radii = np.random.lognormal(mu, sigma, self.N_emitters)
+        elif(r_dist == 'normal'):
+            mu = self.mu_radii
+            sigma = self.sigma_radii
+            radii = np.random.normal(mu, sigma, self.N_emitters)
+        else:
+            print "wrong distribution for radii"    
+            
+        betas = heights / radii
+        
+        isgood = np.where(np.logical_and(betas < max_beta, betas > min_beta))
+        
+        self.radii = radii[isgood]
+        self.heights = heights[isgood]
+        self.betas = betas[isgood]
+        self.N_emitters = len(self.betas)
+        
         self.currents = np.copy(self.betas) * 0.
         
            
@@ -145,7 +274,15 @@ class MultiEmitter():
             self.emitter.R = self.radii[i]
             self.currents[i] =  self.emitter.total_current(0.5)[0]
             
-        return sum(self.currents)    
+        return sum(self.currents)   
+        
+    def emit_tab(self, Ffar):        
+        for i in range(len(self.betas)):
+            self.tb.emitter.F = self.betas[i] * Ffar
+            self.tb.emitter.R = self.radii[i]
+            self.currents[i] =  self.tb.total_current(0.5)[0]
+            
+        return sum(self.currents)
         
         
     def plot_histograms(self):
@@ -167,15 +304,15 @@ class MultiEmitter():
         
         
         plt.figure()
-        counts,Iedges = np.histogram(np.log(self.currents), 20, range = (np.log(1.e-9), np.log(max(self.currents))))
+        # counts,Iedges = np.histogram(np.log(self.currents), 20, range = (np.log(1.e-9), np.log(max(self.currents))))
         
-        print counts
-        print Iedges
-        Ibins = .5*(np.exp(Iedges[1:]) + np.exp(Iedges[:-1]))
-        plt.semilogx(Ibins, counts * Ibins)
-        plt.xlabel(r"I [Amps])")
-        plt.ylabel("current contribution")
-        plt.show()
+        # print counts
+        # print Iedges
+        # Ibins = .5*(np.exp(Iedges[1:]) + np.exp(Iedges[:-1]))
+        # plt.semilogx(Ibins, counts * Ibins)
+        # plt.xlabel(r"I [Amps])")
+        # plt.ylabel("current contribution")
+        # plt.show()
         
     
     def print_data_out(self):
