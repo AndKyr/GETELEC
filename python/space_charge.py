@@ -162,7 +162,7 @@ class SpaceCharge():
         y = ig.odeint(self.system, np.array([V0,0.]), xs, (factor,), rtol = tol, tcrit = np.array([0]))
         return y[-1, 0]
         
-    def pot_solution(self, F, J = None):
+    def pot_solution(self, F, J = None, xin = None):
         ## calculate current density for given cathode field F
         if (J == None):
             self.emitter.F = F
@@ -179,7 +179,10 @@ class SpaceCharge():
             factor = self.kappa * self.Jc * self.radius
         
         ## solve ode and calculate V(d)
-        xs = np.linspace(self.radius, self.radius + self.distance, self.Np)
+        if (xin==None or len(xin) == 0):
+            xs = np.linspace(self.radius, self.radius + self.distance, self.Np)
+        else:
+            xs = xin
         y = ig.odeint(self.system, np.array([V0,F]), xs, (factor,), rtol = tol, tcrit = np.array([0]))
         return xs, y[:,0], y[:,1]
         

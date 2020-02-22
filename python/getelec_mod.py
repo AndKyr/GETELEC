@@ -152,7 +152,7 @@ class Tabulator():
             self.emitter.R = 1./self.Rinv[i]
             for j in range(Nf):
                 self.emitter.F = 1./self.Finv[j]
-                self.emitter.Voltage = self.emitter.F * self.emitter.R
+                self.emitter.Voltage = self.emitter.F * self.emitter.R * 0.2
                 self.emitter.cur_dens_SC()
                 self.Jmesh[i,j] = self.emitter.Jem
                 if (self.emitter.Jem <= 0.):
@@ -179,7 +179,7 @@ class Tabulator():
         self.emitter.F = checks[0]
         self.emitter.R = checks[1]
         
-        self.emitter.Voltage = self.emitter.F * self.emitter.R
+        self.emitter.Voltage = self.emitter.F * self.emitter.R * 0.2
         self.emitter.cur_dens_SC()
         
         print "read F, R, J = ", checks
@@ -232,7 +232,32 @@ class MultiEmitter():
         self.tb = Tabulator(self.emitter, 256, 128)
         
         
-    def get_emitters(self, max_beta = 1.e50, min_beta = 1., h_dist = 'normal', r_dist = 'lognormal'):
+    def set_emitters(self, radii, heights = np.array([]), betas = np.array([])):
+        self.radii = radii
+        
+        if(not heights.any()):
+            self.betas = betas
+            self.heights = betas * radii
+        else:
+            self.betas = heights / radii
+            self.heights = heights
+        
+        self.N_emitters = len(self.betas)
+        
+        self.currents = np.copy(self.betas) * 0.
+        self.areas = np.copy(self.currents)
+        
+        
+    def load_emitters(self, filename):
+        data =  np.loadtxt(filename, unpack=True)
+        self.heights = data[:,0]
+        self.radii = data[:,1]
+        self.betas = self.heights / self.radii
+        
+        self.currents = np.copy(self.betas) * 0.
+        self.areas = np.copy(self.currents)
+        
+    def get_emitters(self, max_beta = 1.e50, min_beta = 1., h_dist = 'normal', r_dist = 'lognormal', addmax = True):
         
         if (h_dist == 'lognormal'):
             mu = np.log(self.mu_height**2/np.sqrt(self.sigma_height**2 + self.mu_height**2))
@@ -242,6 +267,12 @@ class MultiEmitter():
             mu = self.mu_height
             sigma = self.sigma_height
             heights = np.random.normal(mu, sigma, self.N_emitters)
+        elif(h_dist == 'uniform'):
+            low = self.mu_height - np.sqrt(12) * self.sigma_height * 0.5
+            high = self.mu_height + np.sqrt(12) * self.sigma_height * 0.5
+            heights = np.random.uniform(low, high, self.N_emitters)
+        elif(h_dist == 'exponential'):
+            heights = np.random.exponential(self.mu_height, self.N_emitters)
         else:
             print "wrong distribution for heights"
         
@@ -253,6 +284,13 @@ class MultiEmitter():
             mu = self.mu_radii
             sigma = self.sigma_radii
             radii = np.random.normal(mu, sigma, self.N_emitters)
+        elif(r_dist == 'uniform'):
+            low = self.mu_radii - np.sqrt(12) * self.sigma_radii * 0.5
+            high = self.mu_radii + np.sqrt(12) * self.sigma_radii * 0.5
+            radii = np.random.uniform(low, high, self.N_emitters)
+        elif(r_dist == 'exponential'):
+            curvatures = np.random.exponential(1./self.mu_radii, self.N_emitters)
+            radii = 1./curvatures
         else:
             print "wrong distribution for radii"    
             
@@ -260,28 +298,71 @@ class MultiEmitter():
         
         isgood = np.where(np.logical_and(betas < max_beta, betas > min_beta))
         
+        
         self.radii = radii[isgood]
         self.heights = heights[isgood]
         self.betas = betas[isgood]
         self.N_emitters = len(self.betas)
         
+        if (addmax):
+            self.betas = np.append(self.betas, max_beta)
+            self.radii = np.append(self.radii, min(self.radii))
+            self.heights = np.append(self.heights, self.betas[-1] * self.radii[-1])
+            self.N_emitters += 1
+            
+        
         self.currents = np.copy(self.betas) * 0.
+        self.areas = np.copy(self.currents)
+        
+        
+    def get_emitters_beta(self, min_beta = 50, max_beta = 150, beta_dist = 'uniform', r_dist = 'lognormal'):
+
+        if(beta_dist == 'normal'):
+            mu = 0.5 * (min_beta + max_beta)
+            sigma = (max_beta - min_beta) * 0.25
+            self.betas = np.random.normal(mu, sigma, self.N_emitters)
+        elif(beta_dist == 'uniform'):
+            low = self.mu_height - np.sqrt(12) * self.sigma_height * 0.5
+            high = self.mu_height + np.sqrt(12) * self.sigma_height * 0.5
+            self.betas = np.random.uniform(min_beta, max_beta, self.N_emitters)
+        else:
+            print "wrong distribution for betas" 
+            
+        if (r_dist == "lognormal"):
+            mu = np.log(self.mu_radii**2/np.sqrt(self.sigma_radii**2 + self.mu_radii**2))
+            sigma = np.sqrt(np.log(1+self.sigma_radii**2/self.mu_radii**2))
+            self.radii = np.random.lognormal(mu, sigma, self.N_emitters)
+        elif(r_dist == 'normal'):
+            mu = self.mu_radii
+            sigma = self.sigma_radii
+            self.radii = np.random.normal(mu, sigma, self.N_emitters)
+        elif(r_dist == 'uniform'):
+            low = self.mu_radii - np.sqrt(12) * self.sigma_radii * 0.5
+            high = self.mu_radii + np.sqrt(12) * self.sigma_radii * 0.5
+            self.radii = np.random.uniform(low, high, self.N_emitters)
+        else:
+            print "wrong distribution for radii" 
+            
+        self.heights = self.betas * self.radii
+        self.currents = np.copy(self.betas) * 0.
+        self.areas = np.copy(self.currents)
         
            
     def emit(self, Ffar):
         for i in range(len(self.betas)):
             self.emitter.F = self.betas[i] * Ffar
             self.emitter.R = self.radii[i]
-            self.currents[i] =  self.emitter.total_current(0.5)[0]
+            self.currents[i], self.areas[i] =  self.emitter.total_current(0.5)
             
+        self.current_densities = self.currents / self.areas
         return sum(self.currents)   
         
     def emit_tab(self, Ffar):        
         for i in range(len(self.betas)):
             self.tb.emitter.F = self.betas[i] * Ffar
             self.tb.emitter.R = self.radii[i]
-            self.currents[i] =  self.tb.total_current(0.5)[0]
-            
+            self.currents[i], self.areas[i] =  self.tb.total_current(0.5)
+        self.current_densities = self.currents / self.areas
         return sum(self.currents)
         
         
