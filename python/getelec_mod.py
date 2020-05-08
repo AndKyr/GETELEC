@@ -18,7 +18,7 @@ emissionpath,pythonfolder = os.path.split(pythonpath)
 libpath = emissionpath + '/lib/dynamic/libgetelec.so'
 #libslatecpath = emissionpath + '/lib/libslatec.so'
 #ct.cdll.LoadLibrary(libslatecpath)
-print libpath
+print(libpath)
 ct.cdll.LoadLibrary(libpath)
 getelec = ct.CDLL(libpath)
 
@@ -71,7 +71,7 @@ class Emission(ct.Structure):
                 getelec.print_data_c(ct.byref(self),ct.c_int(1))
             else:
                 getelec.print_data_c(ct.byref(self),ct.c_int(0))
-        print "output = ", output
+        print ("output = ", output)
         return output
     
     def print_C_data(self):
@@ -136,10 +136,10 @@ class Tabulator():
     def __init__(self, emitter, Nf = 256, Nr = 256):
         self.emitter = emitter
         if (self.check_tabulated()):
-            print "loading data from files"
+            print ("loading data from files")
             self.load()
         else:
-            print "tabulating J, F, R"
+            print ("tabulating J, F, R")
             self.tabulate_JFR(Nf, Nr)
 
     def tabulate_JFR(self, Nf = 256, Nr = 256):
@@ -169,11 +169,11 @@ class Tabulator():
         self.finterp = intrp.interp2d(self.Finv, self.Rinv, np.log(self.Jmesh))
     
     def check_tabulated(self):
-        print "checking tabulation"
+        print ("checking tabulation")
         try:
             checks = np.load("tabulated/checkcase.npy")
         except(IOError):
-            print "tabulation check file not found"
+            print ("tabulation check file not found")
             return False
             
         self.emitter.F = checks[0]
@@ -182,8 +182,8 @@ class Tabulator():
         self.emitter.Voltage = self.emitter.F * self.emitter.R * 0.2
         self.emitter.cur_dens_SC()
         
-        print "read F, R, J = ", checks
-        print "recalculated J = ", self.emitter.Jem
+        print ("read F, R, J = ", checks)
+        print ("recalculated J = ", self.emitter.Jem)
         
         return self.emitter.Jem == checks[2]
         
@@ -274,7 +274,7 @@ class MultiEmitter():
         elif(h_dist == 'exponential'):
             heights = np.random.exponential(self.mu_height, self.N_emitters)
         else:
-            print "wrong distribution for heights"
+            print ("wrong distribution for heights")
         
         if (r_dist == "lognormal"):
             mu = np.log(self.mu_radii**2/np.sqrt(self.sigma_radii**2 + self.mu_radii**2))
@@ -292,7 +292,7 @@ class MultiEmitter():
             curvatures = np.random.exponential(1./self.mu_radii, self.N_emitters)
             radii = 1./curvatures
         else:
-            print "wrong distribution for radii"    
+            print ("wrong distribution for radii"    )
             
         betas = heights / radii
         
@@ -326,7 +326,7 @@ class MultiEmitter():
             high = self.mu_height + np.sqrt(12) * self.sigma_height * 0.5
             self.betas = np.random.uniform(min_beta, max_beta, self.N_emitters)
         else:
-            print "wrong distribution for betas" 
+            print ("wrong distribution for betas")
             
         if (r_dist == "lognormal"):
             mu = np.log(self.mu_radii**2/np.sqrt(self.sigma_radii**2 + self.mu_radii**2))
@@ -341,7 +341,7 @@ class MultiEmitter():
             high = self.mu_radii + np.sqrt(12) * self.sigma_radii * 0.5
             self.radii = np.random.uniform(low, high, self.N_emitters)
         else:
-            print "wrong distribution for radii" 
+            print ("wrong distribution for radii")
             
         self.heights = self.betas * self.radii
         self.currents = np.copy(self.betas) * 0.
@@ -401,18 +401,10 @@ class MultiEmitter():
         # for i in range(len(betas)):
             # print heights[i], radii[i], betas[i]
             
-        print "heights = %.3g +- %.3g"%(np.mean(self.heights), np.std(self.heights))
-        print "radii = %.3g +- %.3g", np.mean(self.radii), "std<radii> =  ", np.std(self.radii)
-        print "betas = %.3g +- %.3g"%(np.mean(self.betas),np.std(self.betas))
-        print "maxbeta = %g"%(np.max(betas))
-        
-
-        
-  
- 
-        
-        
-        
+        print ("heights = %.3g +- %.3g"%(np.mean(self.heights), np.std(self.heights)))
+        print ("radii = %.3g +- %.3g", np.mean(self.radii), "std<radii> =  ", np.std(self.radii))
+        print ("betas = %.3g +- %.3g"%(np.mean(self.betas),np.std(self.betas)))
+        print ("maxbeta = %g"%(np.max(betas)))
         
         
 
@@ -425,7 +417,7 @@ def emit (F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300., verbose = False):
         if (verbose): this.print_data()
         return (this.Jem, this.heat)
     else:
-        print 'Error:', this.ierr
+        print ('Error:', this.ierr)
         this.print_data()
         return (this.Jem, this.heat)
         
@@ -526,7 +518,7 @@ def emit_SC(F = 10., W = 4.5, R = 500., gamma = 10., Temp = 300., \
         if (j==0): 
             J0 = J_p
         theta_new = theta_SC(J_p, V_appl, F_p)
-        print "F = %f, J = %e, theta = %e" %(F_p, J_p, theta_new)
+        print ("F = %f, J = %e, theta = %e" %(F_p, J_p, theta_new))
         error =  (theta_new - theta_old)
         theta_new = theta_old + error * err_fact
         if (abs(error) < 1.e-6): break 
