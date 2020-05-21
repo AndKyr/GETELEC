@@ -504,7 +504,7 @@ def theta_SC(J,V,F):
     return theta
 
 def emit_SC(F = 10., W = 4.5, R = 500., gamma = 10., Temp = 300., \
-                V_appl = 5.e3, err_fact = 0.5, approx = 1):
+                V_appl = 5.e3, err_fact = 0.5, approx = 1, prefactor = 1.):
     """Calculate the current density and the Nottingham heating for specific set
     of input parameters, taking into account the space_charge effect"""
     F_p = min(F, 15.)
@@ -514,11 +514,9 @@ def emit_SC(F = 10., W = 4.5, R = 500., gamma = 10., Temp = 300., \
     for j in range(50):
         this.F = F_p
         this.cur_dens()
-        J_p = this.Jem
-        if (j==0): 
-            J0 = J_p
+        J_p = this.Jem * prefactor
         theta_new = theta_SC(J_p, V_appl, F_p)
-        print ("F = %f, J = %e, theta = %e" %(F_p, J_p, theta_new))
+        # print ("F = %f, J = %e, theta = %e" %(F_p, J_p, theta_new))
         error =  (theta_new - theta_old)
         theta_new = theta_old + error * err_fact
         if (abs(error) < 1.e-6): break 
