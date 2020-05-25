@@ -404,7 +404,7 @@ class MultiEmitter():
         print ("heights = %.3g +- %.3g"%(np.mean(self.heights), np.std(self.heights)))
         print ("radii = %.3g +- %.3g", np.mean(self.radii), "std<radii> =  ", np.std(self.radii))
         print ("betas = %.3g +- %.3g"%(np.mean(self.betas),np.std(self.betas)))
-        print ("maxbeta = %g"%(np.max(betas)))
+        print ("maxbeta = %g"%(np.max(self.betas)))
         
         
 
@@ -413,7 +413,7 @@ def emit (F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300., verbose = False):
     """Calculate the current density and the Nottingham heating for specific set
     of input parameters"""
     this =   emission_create(F,W,R,gamma,Temp)
-    if (this.ierr == 0 or isnan(this.Jem) or isnan(this.heat) ):
+    if (this.ierr == 0 or np.isnan(this.Jem) or np.isnan(this.heat) ):
         if (verbose): this.print_data()
         return (this.Jem, this.heat)
     else:

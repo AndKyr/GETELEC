@@ -3,10 +3,8 @@ and planar diodes."""
 
 
 import numpy as np
-import scipy.optimize as opt
 import scipy.integrate as ig
 import sys
-import os
 sys.path.append("/home/kyritsak/Code/GETELEC/python")
 import getelec_mod as gt
 
@@ -56,8 +54,8 @@ class SpaceCharge():
     def __init__(self, Voltage = 100, Distance = 10, geo = "plane", 
                 Npoints = 1024, emitter = None, Radius = 1.):
         if (emitter == None):
-            print "SpaceCharge class created with default emitter"
-            self.emitter = emission_create()
+            print("SpaceCharge class created with default emitter")
+            self.emitter = gt.emission_create()
         else:
             self.emitter =  emitter
         
@@ -79,7 +77,7 @@ class SpaceCharge():
             self.system_u = spherical_u
             self.beta = (self.radius + self.distance) / (self.radius * self.distance)
         else:
-            print "Error: Wrong geometry. Should be either, plane, cylinder or sphere"
+            print("Error: Wrong geometry. Should be either, plane, cylinder or sphere")
         
         self.Np = Npoints
         
@@ -91,7 +89,7 @@ class SpaceCharge():
         elif (self.geometry == "sphere"):
             return (self.radius * x) / (self.radius + x)
         else:
-            print "Error: Wrong geometry. Should be either, plane, cylinder or sphere"
+            print("Error: Wrong geometry. Should be either, plane, cylinder or sphere")
         
         
         
@@ -143,7 +141,7 @@ class SpaceCharge():
             
             # print "Fi = %.3f, Vi = %.3f, Ji = %e"%(Fi, Vi, self.Jc)
         
-        return Fi
+        return Fi, self.Jc
         
     def Vanode_cl(self, J = None):
         ## calculate current density for given cathode field F
