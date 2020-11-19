@@ -11,6 +11,10 @@ DEPS  = -lslatec
 FFLAGS = -fcheck=all -Imod -O3 -fPIC -Llib
 CFLAGS = -fbounds-check -O3 -fPIC -Imodules #-Wall -Wextra
 
+# Get list of object files, with paths
+SLATEC_SRC := $(shell find lib/slatec/ -name '*.f')
+SLATEC_OBJ := $(SLATEC_SRC:%.f=%.o)
+
 PWD = $(shell pwd)
 
 LIBSTATIC=lib/libgetelec.a
@@ -65,10 +69,12 @@ $(LIBSHARED): $(CINTERFACE) $(LIBSTATIC) $(LIBDEPS)
 $(LIBSTATIC): $(MODOBJ)
 	$(AR) $@ $(MODOBJ)
 	
-$(LIBDEPS): lib/slatec/install
-	cd lib/slatec/; ./install -p $(PWD) 
-	rm libslatec.so*
-	mv libslatec.a lib/
+lib/libslatec.a: $(SLATEC_OBJ)
+	$(AR) $@ $(SLATEC_OBJ)
+	
+lib/slatec/obj/*.o: lib/slatec/src/*.f
+	$(FC) $(FFLAGS) -c $< -o $@ 
+
 
 bin/%.out: cobj/%.o $(LIBSHARED)
 	$(CC) -L./lib -o $@ $^ #-lgetelec
