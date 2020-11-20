@@ -13,7 +13,7 @@ CFLAGS = -fbounds-check -O3 -fPIC -Imodules #-Wall -Wextra
 
 # Get list of object files, with paths
 SLATEC_SRC := $(shell find lib/slatec/ -name '*.f')
-SLATEC_OBJ := $(SLATEC_SRC:%.f=%.o)
+SLATEC_OBJ := $(SLATEC_SRC:lib/slatec/src/%.f=lib/slatec/obj/%.o)
 
 PWD = $(shell pwd)
 
@@ -70,11 +70,10 @@ $(LIBSTATIC): $(MODOBJ)
 	$(AR) $@ $(MODOBJ)
 	
 lib/libslatec.a: $(SLATEC_OBJ)
-	$(AR) $@ $(SLATEC_OBJ)
+	$(AR) $@ lib/slatec/obj/*.o
 	
-lib/slatec/obj/*.o: lib/slatec/src/*.f
-	$(FC) $(FFLAGS) -c $< -o $@ 
-
+lib/slatec/obj/%.o: lib/slatec/src/%.f
+	$(FC) -O3 -w -c $< -o $@ 
 
 bin/%.out: cobj/%.o $(LIBSHARED)
 	$(CC) -L./lib -o $@ $^ #-lgetelec
@@ -96,4 +95,10 @@ modules/cobj/%.o : modules/%.c
 
 clean:
 	rm -rf bin/* obj/* cobj/* lib/libgetelec.so lib/libgetelec.a \
-		lib/libemission.a modules/obj/* modules/cobj/* cobj/*.o libslat* 
+		modules/obj/* modules/cobj/* cobj/*.o libslat*
+
+clean-all:
+	rm -rf bin/* obj/* cobj/* lib/libgetelec.so lib/libgetelec.a \
+		modules/obj/* modules/cobj/* cobj/*.o libslat* lib/libslat* \
+		lib/slatec/obj/*
+	
