@@ -4,8 +4,8 @@ AR=ar rcs
 LINKLIBS = ar -rcT
 
 MODOBJ = modules/obj/std_mat.o modules/obj/ellfuns_tabulated.o \
-  modules/obj/bspline.o modules/obj/pyplot_mod.o modules/obj/getelec.o \
-  modules/cobj/c_interface.o
+  modules/obj/bspline.o modules/obj/pyplot_mod.o modules/cobj/c_interface.o
+
   
 DEPS  = -lslatec
 FFLAGS = -fcheck=all -Imod -O3 -fPIC -Llib
@@ -66,8 +66,8 @@ thetaSC: bin/thetaSC.exe
 $(LIBSHARED): $(CINTERFACE) $(LIBSTATIC) $(LIBDEPS)
 	mkdir -p lib/dynamic/; $(FC) -fPIC -shared -o $@ $^   
 	
-$(LIBSTATIC): $(MODOBJ)
-	$(AR) $@ $(MODOBJ)
+$(LIBSTATIC): obj/getelec.o $(MODOBJ)
+	$(AR) $@ $< $(MODOBJ)
 	
 lib/libslatec.a: $(SLATEC_OBJ)
 	$(AR) $@ lib/slatec/obj/*.o
@@ -78,11 +78,14 @@ lib/slatec/obj/%.o: lib/slatec/src/%.f
 bin/%.out: cobj/%.o $(LIBSHARED)
 	$(CC) -L./lib -o $@ $^ #-lgetelec
 	
-bin/%.exe: obj/%.o $(MODOBJ)
+bin/%.exe: obj/%.o obj/getelec.o $(MODOBJ)
 	$(FC) $(FFLAGS) -Llib $^ $(DEPS) -o $@
 	
 cobj/%.o : tests/%.c
 	$(CC) $(CFLAGS) $^ -c -o $@ 
+	
+obj/getelec.o: modules/getelec.f90 $(MODOBJ)
+	$(FC) $(FFLAGS) -c $< -o $@
 
 obj/%.o : $(MODOBJ) tests/%.f90
 	$(FC) $(FFLAGS) -c $(lastword $^) -o $@
