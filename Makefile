@@ -85,7 +85,7 @@ cobj/%.o : tests/%.c
 	$(CC) $(CFLAGS) $^ -c -o $@ 
 	
 obj/getelec.o: modules/getelec.f90 $(MODOBJ)
-	$(FC) $(FFLAGS) -c $< -o $@
+	$(FC) -Jmod $(FFLAGS) -c $< -o $@
 
 obj/%.o : $(MODOBJ) tests/%.f90
 	$(FC) $(FFLAGS) -c $(lastword $^) -o $@
