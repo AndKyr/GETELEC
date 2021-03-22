@@ -18,11 +18,11 @@ SLATEC_OBJ := $(SLATEC_SRC:lib/slatec/src/%.f=lib/slatec/obj/%.o)
 PWD = $(shell pwd)
 
 LIBSTATIC=lib/libgetelec.a
-LIBDEPS = lib/libslatec.a
+LIBDEPS=
 LIBSHARED = lib/dynamic/libgetelec.so
 
 CINTERFACE = modules/cobj/c_interface.o
-DIRS = bin cobj mod obj modules/obj modules/cobj png
+DIRS = bin cobj mod obj modules/obj lib/slatec/obj lib/dynamic modules/cobj png
 	
 .PHONY: tests varyingTemp ctest KXerror
 .SECONDARY: *.o #$(MODOBJ)
@@ -64,9 +64,9 @@ thetaSC: bin/thetaSC.exe
 	
 
 $(LIBSHARED): $(CINTERFACE) $(LIBSTATIC) $(LIBDEPS)
-	mkdir -p lib/dynamic/; $(FC) -fPIC -shared -o $@ $^   
+	$(FC) -fPIC -shared -o $@ $^
 	
-$(LIBSTATIC): obj/getelec.o $(MODOBJ)
+$(LIBSTATIC): obj/getelec.o lib/libslatec.a $(MODOBJ)
 	$(AR) $@ $< $(MODOBJ)
 	
 lib/libslatec.a: $(SLATEC_OBJ)
