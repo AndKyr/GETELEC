@@ -21,3 +21,4 @@
 *.gz
 *.dvi
 *.svg
+webGUI/node_modules
