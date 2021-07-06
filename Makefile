@@ -18,7 +18,7 @@ SLATEC_OBJ := $(SLATEC_SRC:lib/slatec/src/%.f=lib/slatec/obj/%.o)
 PWD = $(shell pwd)
 
 LIBSTATIC=lib/libgetelec.a
-LIBDEPS=
+LIBDEPS=lib/libslatec.a
 LIBSHARED = lib/dynamic/libgetelec.so
 
 CINTERFACE = modules/cobj/c_interface.o
