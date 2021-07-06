@@ -838,6 +838,8 @@ subroutine J_num_integ(this)
     if (debug > 1) call cpu_time(t1)
     if (spectra) then !if spectra then j(E) will be printed into a file
         open(fidout,file=trim(outfolder)//'/spectra.csv')
+        write(fidout,*) '# Energy [eV],    Nott. spectral dens. [W /nm^2 /eV],', &
+            '  Spectral cur. dens. [A/nm^2 /eV],', ' Fermi-Dirac integral log,', ' Gamow exponent'
     endif
     this%Um = -1.d20
     this%xm = -1.d20
@@ -971,7 +973,7 @@ subroutine J_num_integ(this)
         outsum = outsum + integrand
         if (spectra) then !write spectroscopy data into the spectroscopy file
             fj=lFD(Ej,this%kT)/(1.d0+exp(G(k)))
-            write(fidout,*) Ej, ',', integrand, ',', integrand/Ej, ',', fj, ',', G(k)
+            write(fidout,*) Ej, zs * integrand, zs * integrand/Ej, fj, G(k)
         endif
         Ej = Ej + dE
     enddo
