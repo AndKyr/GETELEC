@@ -114,7 +114,7 @@ class Emission(ct.Structure):
         
         return I, Area
         
-def emission_create(F = 5., W = 4.5, R = 5000., gamma = 1., Temp = 300., \
+def emission_create(F = 5., W = 4.5, R = 5000., gamma = 10., Temp = 300., \
                 Jem = 0., heat = 0., xr = np.array([]), Vr = np.array([]), \
                 regime = 0, sharp = 1, approx = 1, mode = 0, ierr = 0, voltage = 500):
                     
