@@ -22,3 +22,6 @@
 *.dvi
 *.svg
 webGUI/node_modules
+webGUI/webclient
+webGUI/lib
+*.json
