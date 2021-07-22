@@ -106,6 +106,9 @@ class RootViewController extends UIViewController {
     }
     
     
+    
+    
+    
     async handleRoute(route: UIRoute) {
         
         super.handleRoute(route)
@@ -145,11 +148,13 @@ class RootViewController extends UIViewController {
                 
                 this.mainViewController.view.backgroundColor = UIColor.whiteColor;
                 
-                this.mainViewController.view.viewHTMLElement.innerHTML = LanguageService.stringForKey(
-                    "frontPageHTML",
-                    LanguageService.currentLanguageKey,
-                    "This is the front page."
-                );
+                this.mainViewController.view.viewHTMLElement.innerHTML = await CBCore.sharedInstance.readTextFileFromURL("/frontpage.html");
+                    
+                //     LanguageService.stringForKey(
+                //     "frontPageHTML",
+                //     LanguageService.currentLanguageKey,
+                //     "This is the front page."
+                // )
                 
             }
             

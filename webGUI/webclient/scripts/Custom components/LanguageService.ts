@@ -20,7 +20,7 @@ class LanguageService implements UILanguageService {
             
             "topBarTitle": "Carrum",
             
-            "frontPageHTML": "Asdasd <a id=\"FitFunButton\" tabindex=\"1\" href=\"#fit_fun[]\"> Show fit fun </a>  or <a id=\"FitFunTableButton\" tabindex=\"1\" href=\"#fit_funasdasd[]\"> Show table </a> WRITE FRONT PAGE STUFF IN HERE",
+            "frontPageHTML": "Asdasd",
             "bottomBarContent": "PUT BOTTOM BAR STUFF IN HERE"
             
             

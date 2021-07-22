@@ -19,6 +19,12 @@ expressApplication.get("/", (request, response) => {
     
 })
 
+expressApplication.get("/frontpage.html", (request, response) => {
+    
+    response.sendFile(__dirname + "/webclient/Frontpage.html")
+    
+})
+
 expressApplication.get("/styles.css", (request, response) => {
     
     response.sendFile(__dirname + "/webclient/styles.css")

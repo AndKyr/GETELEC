@@ -24,11 +24,7 @@ Press the load button.
 
 # Running
 
-Either run using VSCode by pressing the run button or run ```ts-node -r ./app.ts``` .
-Then open a browser and go to localhost:7005
-
-# Running the getelec python server
-Run: hug -f API.py
+Either run using VSCode by pressing the run button or run ```ts-node ./server.ts``` .
 
 # Packaging
 

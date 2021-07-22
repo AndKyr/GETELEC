@@ -25,7 +25,7 @@ public  ::  cur_dens, C_wrapper, print_data, EmissionData, plot_barrier, debug, 
 
 integer, parameter      :: dp = 8, sp = 4, fiderr = 987465, iknot = 0, &
                             idx = 0, knotx = 4 , fidparams = 812327
-!Ny: length of special functions array
+!Ny: length of special functions array that is used
 !knotx: No of bspline knots.
 !idx, iknot: spline module parameters to bee kept 0
 !dp, sp: double and single precision parameters
