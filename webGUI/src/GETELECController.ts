@@ -35,8 +35,8 @@ export class GETELECController {
             
             try {
                 
-                let result = await needle('post', 'http://172.17.207.205:8000/fit_fun', requestObject.inputData, { json: true })
-                //let result = await needle('post', 'http://localhost:7005/fit_fun', requestObject.inputData, {json: true})
+                //let result = await needle('post', 'http://172.17.207.205:8000/fit_fun', requestObject.inputData, { json: true })
+                let result = await needle('post', 'http://localhost:8000/fit_fun', requestObject.inputData, {json: true})
                 
                 respondWithMessage(result.body)
                 

@@ -107,7 +107,7 @@ class GETELECViewController extends UIViewController {
                 datasets: [
                     
                     {
-                        label: "Result points",
+                        label: "Input data points",
                         fill: false,
                         lineTension: 0,
                         //backgroundColor: UIColor.transparentColor,
@@ -116,7 +116,7 @@ class GETELECViewController extends UIViewController {
                         // x: 11, y: 45 }]
                     },
                     {
-                        label: "Result line",
+                        label: "Fitted line",
                         fill: false,
                         lineTension: 0,
                         backgroundColor: "rgb(255, 99, 132)",

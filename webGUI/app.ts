@@ -42,7 +42,7 @@ expressApplication.get("/images/:filename", (request, response) => {
     
 })
 
-let server = expressApplication.listen(7005)
+let server = expressApplication.listen(3000)
 
 var socketIO = SocketIO(server, { cookie: false, pingTimeout: 30000 })
 
