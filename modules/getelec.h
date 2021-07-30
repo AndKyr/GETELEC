@@ -19,6 +19,9 @@ struct emission{//struct for interoperability with fortran module getelec
 //external function from getelec fortran module doing all the connection
 extern void c_wrapper(struct emission * , int );
 
+//function that exports gamow factor as a function of energy
+extern void export_gamow(double, double, double, int, double *, double *, double []);
+
 //the three basic call subroutines of getelec working on struct emission
 int cur_dens_c(struct emission *);
 int print_data_c(struct emission *, int);
