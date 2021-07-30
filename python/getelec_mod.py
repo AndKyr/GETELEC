@@ -9,6 +9,7 @@ import scipy.integrate as ig
 import os
 import matplotlib.pyplot as plt
 import scipy.interpolate as intrp
+import json
 
 from io import StringIO 
 import sys
@@ -114,7 +115,7 @@ class Emission(ct.Structure):
         
         return I, Area
         
-def emission_create(F = 5., W = 4.5, R = 5000., gamma = 10., Temp = 300., \
+def emission_create(F = 5., W = 4.5, R = 5000., gamma = 1., Temp = 300., \
                 Jem = 0., heat = 0., xr = np.array([]), Vr = np.array([]), \
                 regime = 0, sharp = 1, approx = 1, mode = 0, ierr = 0, voltage = 500):
                     
@@ -128,6 +129,60 @@ def emission_create(F = 5., W = 4.5, R = 5000., gamma = 10., Temp = 300., \
             approx,mode,ierr, voltage)
     this.cur_dens()
     return this
+
+
+
+def calc_json(json_str):
+    """Creates an Emission class object and calculates everyting. 
+    from json imput object."""
+
+    try:
+        F = float(json_str["Field"])
+    except(KeyError):
+        F = 5.
+
+    try:
+        W = float(json_str["Work_function"])
+    except(KeyError):
+        W = 4.5
+
+    try:
+        R = float(json_str["Radius"])
+    except(KeyError):
+        R = 2000.
+
+    try:
+        gamma = float(json_str["gamma"])
+    except(KeyError):
+        gamma = 20.
+    try:
+        Temp = float(json_str["Temperature"])
+    except(KeyError):
+        Temp = 300.
+
+    try:
+        voltage = float(json_str["voltage"])
+    except(KeyError):
+        voltage=0.
+    
+    try:
+        approx = int(json_str["approximation"])
+    except(KeyError):
+        approx = 0
+
+
+    this = emission_create(F,W,R,gamma,Temp, approx=approx, voltage=voltage)
+
+    if (voltage > 0):
+        this.cur_dens_SC()
+    else:
+        this.cur_dens()
+                    
+
+    outdata = {'current_density': this.Jem, 'heat': this.heat, \
+                'regime': this.regime, 'sharpness': this.sharp, \
+                'Ierror': this.ierr}
+    return json.dumps(outdata)
     
 
     

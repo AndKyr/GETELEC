@@ -58,7 +58,7 @@ for i in range(len(fields)):
     ax1.plot(Eplot, Japprox,  colors[i]+'--', label = "F=%3.2f, approx"%field)
     ax2.plot(Eplot, Gplot, colors[i]+'-', label = "F=%3.2f, full"%field)
     ax2.plot(Eplot, Gapprox, colors[i]+'--', label = "F=%3.2f, approx"%field)
-    print "Field = %f, Japprox = %f, Jfull = %f"%(field, np.trapz(Japprox,Eplot), np.trapz(Jplot,Eplot))
+    print("Field = %f, Japprox = %f, Jfull = %f"%(field, np.trapz(Japprox,Eplot), np.trapz(Jplot,Eplot)))
     
 ax1.set_yscale('linear')    
 ax1.legend(loc = "best")

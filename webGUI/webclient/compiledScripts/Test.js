@@ -5420,7 +5420,7 @@ class GETELECViewController extends UIViewController {
                 const result = JSON.parse(stringSocketClientResult.result);
                 //console.log(result)
                 this.resultsLabel.innerHTML = FIRST(result.resultHTMLString, "") +
-                    IF(IS_NOT(result.resultHTMLString))(RETURNER(`Radius: ${result.Radius} &beta: ${result.beta} &sigma Aeff: ${result.sigma_Aeff}`))
+                    IF(IS_NOT(result.resultHTMLString))(RETURNER(`Radius: ${result.Radius} &beta;: ${result.beta} &sigma; Aeff: ${result.sigma_Aeff}`))
                         .ELSE(RETURNER(""));
                 const pointPoints = this.pointObjectsFromValues(result.xplot_mrk, result.yplot_mrk);
                 const linePoints = this.pointObjectsFromValues(result.xplot_line, result.yplot_line);
