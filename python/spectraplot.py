@@ -59,7 +59,7 @@ for i in range(len(F)):
     this.approx = 2
     this.cur_dens()
     
-    E,JE,J, Nj, G = np.loadtxt(sfile,unpack=True)
+    E,JE,J, Nj, G = np.loadtxt(sfile,unpack=True, delimiter=',')
     
     if this.R > 100:
         Rstr = r'$\infty$'
