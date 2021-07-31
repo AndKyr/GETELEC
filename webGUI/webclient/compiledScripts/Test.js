@@ -4289,7 +4289,7 @@ class RootViewController extends UIViewController {
                 textAlignment: UITextView.textAlignment.center
             },
             colors: {
-                background: { normal: new UIColor("#282c11") },
+                background: { normal: new UIColor("#004f20") },
                 titleLabel: { normal: UIColor.whiteColor }
             }
         });
@@ -5068,7 +5068,7 @@ class GETELECTableViewController extends UIViewController {
                 const result = JSON.parse(stringSocketClientResult.result);
                 //console.log(result)
                 this.resultsLabel.innerHTML = FIRST(result.resultHTMLString, "")
-                    + IF(IS_NOT(result.resultHTMLString))(RETURNER(`Radius: ${result.Radius} beta: ${result.beta} sigma_Aeff: ${result.sigma_Aeff}`))();
+                    + IF(IS_NOT(result.resultHTMLString))(RETURNER(`\r\n\Radius: ${result.Radius} \r\n\beta: ${result.beta} \r\n\sigma_Aeff: ${result.sigma_Aeff}`))();
                 const pointPoints = this.pointObjectsFromValues(result.xplot_mrk, result.yplot_mrk);
                 const linePoints = this.pointObjectsFromValues(result.xplot_line, result.yplot_line);
                 this.chart.data.datasets[0].data = pointPoints;
@@ -5307,7 +5307,7 @@ class GETELECViewController extends UIViewController {
                         fill: false,
                         lineTension: 0,
                         //backgroundColor: UIColor.transparentColor,
-                        borderColor: "rgb(125, 115, 252)" //,
+                        borderColor: "rgb(87, 173, 122)" //,
                         //data: [{ x: 0, y: 0 }, { x: 2, y: 10 }, { x: 5, y: 5 }, { x: 7, y: 2 }, { x: 8, y: 20 }, {
                         // x: 11, y: 45 }]
                     },
@@ -5315,8 +5315,8 @@ class GETELECViewController extends UIViewController {
                         label: "Fitted line",
                         fill: false,
                         lineTension: 0,
-                        backgroundColor: "rgb(255, 99, 132)",
-                        borderColor: "rgb(255, 99, 132)" //,
+                        backgroundColor: "rgb(213, 150, 102)",
+                        borderColor: "rgb(213, 150, 102)" //,
                         //data: [{ x: 0, y: 0 }, { x: 2, y: 10 }, { x: 5, y: 5 }, { x: 7, y: 2 }, { x: 8, y: 20 }, {
                         // x: 11, y: 45 }]
                     }
@@ -5424,7 +5424,9 @@ class GETELECViewController extends UIViewController {
                 const result = JSON.parse(stringSocketClientResult.result);
                 //console.log(result)
                 this.resultsLabel.innerHTML = FIRST(result.resultHTMLString, "") +
-                    IF(IS_NOT(result.resultHTMLString))(RETURNER(`Radius: ${result.Radius} &beta;: ${result.beta} &sigma; Aeff: ${result.sigma_Aeff}`))
+                    IF(IS_NOT(result.resultHTMLString))(RETURNER(`Radius: ${result.Radius} <br> 
+                    &beta;: ${result.beta} <br> 
+                    &sigma;Aeff: ${result.sigma_Aeff}<br>`))
                         .ELSE(RETURNER(""));
                 const pointPoints = this.pointObjectsFromValues(result.xplot_mrk, result.yplot_mrk);
                 const linePoints = this.pointObjectsFromValues(result.xplot_line, result.yplot_line);
@@ -5856,12 +5858,12 @@ class CBButton extends UIButton {
         //this.style.borderRadius = "2px"
         this.style.outline = "none";
         this.colors.titleLabel.normal = UIColor.whiteColor;
-        this.setBackgroundColorsWithNormalColor(UIColor.blueColor);
-        this.colors.titleLabel.selected = UIColor.blueColor;
+        this.setBackgroundColorsWithNormalColor(UIColor.colorWithRGBA(0, 79, 32));
+        this.colors.titleLabel.selected = UIColor.blackColor;
     }
     setBackgroundColorsWithNormalColor(normalBackgroundColor) {
         this.colors.background.normal = normalBackgroundColor;
-        this.colors.background.hovered = UIColor.colorWithRGBA(40, 168, 183); // normalBackgroundColor.colorByMultiplyingRGB(0.85)
+        this.colors.background.hovered = UIColor.colorWithRGBA(87, 173, 122); // normalBackgroundColor.colorByMultiplyingRGB(0.85)
         this.colors.background.focused = normalBackgroundColor; // normalBackgroundColor.colorByMultiplyingRGB(0.5)
         this.colors.background.highlighted = UIColor.colorWithRGBA(48, 196, 212); // normalBackgroundColor.colorByMultiplyingRGB(0.7)
         this.colors.background.selected = UIColor.whiteColor;

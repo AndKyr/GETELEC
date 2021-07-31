@@ -42,10 +42,10 @@ textarea {
 
 
 .button {
-    background: rgb(44, 168, 255);
-    border: 1px solid #2CA8FF;
+    background: #004f20;
+    border: 1px solid #004f20;
     border-radius: 30px;
-    font-family: "Montserrat", sans-serif;
+    font-family: sans-serif;
     font-weight: 400;
     margin: 10px 0;
     /* font-size: 13px; */
@@ -54,8 +54,8 @@ textarea {
 }
 
 .button:hover {
-    background: rgb(0, 134, 230);
-    border: 1px solid rgb(0, 134, 230);
+    background: #57ad7a;
+    border: 1px solid #57ad7a;
 }
 
 /* div#mainView {
@@ -891,6 +891,9 @@ a.button {
 	padding:7px 25px;
 	text-decoration:none;
 	text-shadow:0px 1px 0px #012c12;
+}
+a.button:hover{
+    background:#57ad7a;
 }
 
 
