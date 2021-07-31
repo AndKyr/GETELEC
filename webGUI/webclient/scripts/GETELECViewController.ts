@@ -331,7 +331,7 @@ class GETELECViewController extends UIViewController {
         
         const inquiryComponent = route.componentWithViewController(GETELECViewController)
         
-        this.titleLabel.text = "Enter your data and press the load button."
+        this.titleLabel.text = "Enter your data in json format and press the load button."
         
         route.didcompleteComponent(inquiryComponent)
         

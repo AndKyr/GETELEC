@@ -74,9 +74,9 @@ int main(){
     export_gamow(5.,10.,20.,10, &Wmin, &Wmax, G);
 
     for (int i = 0; i < 10; i++)
-        printf("%g ", G[i]);
+        printf("%g %g\n", Wmin + i * (Wmax - Wmin)/9, G[i]);
 
-    printf("\n%g %g \n", Wmin, Wmax);
+    printf("\nWmin, Wmax = %g, %g \n", Wmin, Wmax);
     
     
     

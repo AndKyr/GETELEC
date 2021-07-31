@@ -1358,7 +1358,6 @@ subroutine export_gamow(F, R, gamma, Npoints, Wmin, Wmax, G) bind(c)
             new = this
             new%W = Wmax
             call gamow_general(new,.true.)
-            print *, new%Gam
             if (new%Gam > Gmax) exit
         enddo
 

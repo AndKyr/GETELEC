@@ -1,5 +1,6 @@
+@import url('https://fonts.googleapis.com/css?family=Sarpanch:900');
 
-html, body {
+html {
 
     width: 100%;
     height: 100%;
@@ -826,8 +827,71 @@ textarea+label:after {
 
 
 
+body {
+    display: grid;
+    grid-template-areas: ". . ." ". text ." ". . .";
+    grid-template-rows: 1fr auto 1fr;
+    grid-template-columns: 1fr auto 1fr;
+    height: 100vh;
+    width: 100vw;
+    margin: 0;
+    overflow: hidden;
+    background-image: radial-gradient(circle, #333333, #222222)
+}
 
+.getelec_header {
+    padding-left: 15px;
+    margin-left: 10px;
+    display:block;
+    text-align:left; }
+h1 {
+    grid-area: text;
+    font-family: 'Sarpanch', sans-serif;
+    font-size: 12vmin;
+    margin: 0;
+    padding: 2px;
+    color: #D3D3D3;
+    text-shadow: 1.2vmin 1.2vmin 0 #004f20 , -1.2vmin -1vmin 0 #b95000;
+}
 
+h3 {
+    margin: 0;
+    padding: 2px;
+    font-family: 'Sarpanch', sans-serif;
+    font-size: 4vmin;
+    color:#914002;
+}
+
+h4{
+    font-family: sans-serif;
+    font-size: 3vmin;
+}
+img {
+     float: left;
+     padding: 5px;
+     width: 10%;
+     height:auto;
+}  
+.main{
+    padding-left: 15px;
+    margin-left: 10px;
+    display:block;
+    text-align:center;
+}
+a.button {
+	box-shadow: 3px 4px 0px 0px #57ad7a;
+	background-color:#004f20;
+	border-radius:18px;
+	border:1px solid #012c12;
+	display:inline-block;
+	cursor:pointer;
+	color:#ffffff;
+	font-family:'Sarpanch', sans-serif;
+	font-size:17px;
+	padding:7px 25px;
+	text-decoration:none;
+	text-shadow:0px 1px 0px #012c12;
+}
 
 
 

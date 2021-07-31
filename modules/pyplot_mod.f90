@@ -22,7 +22,7 @@
     character(len=*), parameter :: tmp_file = 'pyplot_module_temp_1234567890.py' !! Default name of the temporary file
                                                                                  !! (this can also be user-specified).
 
-    character(len=*), parameter :: python_exe       ='python'    !! The python executable name.
+    character(len=*), parameter :: python_exe       ='python3'    !! The python executable name.
     character(len=*), parameter :: int_fmt          = '(I10)'    !! integer format string
     integer, parameter          :: max_int_len      = 10         !! max string length for integers
     character(len=*), parameter :: real_fmt_default = '(E30.16)' !! default real number format string

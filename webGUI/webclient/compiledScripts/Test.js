@@ -295,6 +295,9 @@ class UIColor extends UIObject {
     static get lightGreyColor() {
         return new UIColor("lightgrey");
     }
+    static get theChosenGreyColor(){
+        return new UIColor("thechosengrey");
+    }
     static get transparentColor() {
         return new UIColor("transparent");
     }
@@ -445,7 +448,8 @@ class UIColor extends UIObject {
             "white": "#ffffff",
             "whitesmoke": "#f5f5f5",
             "yellow": "#ffff00",
-            "yellowgreen": "#9acd32"
+            "yellowgreen": "#9acd32",
+            "thechosengrey": "#e1e1e1"
         }[name.toLowerCase()];
     }
     static hexToDescriptor(c) {
@@ -4281,7 +4285,7 @@ class RootViewController extends UIViewController {
         document.body.style.backgroundColor = this.view.backgroundColor.stringValue;
         this.topBarView = new CellView("TopBarView").copyValuesRecursivelyFromObject({
             titleLabel: {
-                text: "GETELEC - General Tool for Electron Emission Calculations",
+                text: "", //GETELEC - General Tool for Electron Emission Calculations",
                 textAlignment: UITextView.textAlignment.center
             },
             colors: {
@@ -4294,7 +4298,7 @@ class RootViewController extends UIViewController {
         this.bottomBarView = new BottomBarView("BottomBarView").copyValuesRecursivelyFromObject({
             style: { overflow: "hidden" }
         });
-        this.view.addSubview(this.bottomBarView);
+        // this.view.addSubview(this.bottomBarView);
         this.backToMainButton = new CBFlatButton();
         this.backToMainButton.titleLabel.text = "&#8592;";
         this.backToMainButton.colors = {
@@ -4340,7 +4344,7 @@ class RootViewController extends UIViewController {
                 // Main view controller
                 if (!IS(this.mainViewController)) {
                     this.mainViewController = new UIViewController(new UIView("MainView"));
-                    this.mainViewController.view.backgroundColor = UIColor.whiteColor;
+                    this.mainViewController.view.backgroundColor = UIColor.theChosenGreyColor;
                     this.mainViewController.view.viewHTMLElement.innerHTML = yield CBCore.sharedInstance.readTextFileFromURL("/frontpage.html");
                     //     LanguageService.stringForKey(
                     //     "frontPageHTML",
@@ -4873,7 +4877,7 @@ UITextView.type = {
     "paragraph": "p",
     "header1": "h1",
     "header2": "h2",
-    "header3": "h3",
+    // "header3": "h3",
     "header4": "h4",
     "header5": "h5",
     "header6": "h6",
@@ -4919,7 +4923,7 @@ class GETELECTableViewController extends UIViewController {
     }
     loadSubviews() {
         this.view.backgroundColor = UIColor.whiteColor;
-        this.titleLabel = new UITextView(this.view.elementID + "TitleLabel", UITextView.type.header3);
+        this.titleLabel = new UITextView(this.view.elementID + "TitleLabel", UITextView.type.header4);
         this.titleLabel.textAlignment = UITextView.textAlignment.left;
         this.titleLabel.nativeSelectionEnabled = NO;
         this.titleLabel.isSingleLine = NO;
@@ -5268,7 +5272,7 @@ class GETELECViewController extends UIViewController {
         this.titleLabel.isSingleLine = NO;
         this.view.addSubview(this.titleLabel);
         this.inputTextArea = new UITextArea(this.view.elementID + "InputTextArea");
-        this.inputTextArea.placeholderText = "Input your data here.";
+        this.inputTextArea.placeholderText = "{\r\n\"Voltage\": [2.413e+02, 3.305e+02,  4.993e+02],\r\n\"Current\": [8.719e-01, 3.670e+01, 5.617e+03], \r\n\"Work_function\": 4.5\r\n}";
         this.inputTextArea.changesOften = YES;
         this.view.addSubview(this.inputTextArea);
         this.loadDataButton = new CBButton();
@@ -5462,7 +5466,7 @@ class GETELECViewController extends UIViewController {
         return __awaiter(this, void 0, void 0, function* () {
             _super.handleRoute.call(this, route);
             const inquiryComponent = route.componentWithViewController(GETELECViewController);
-            this.titleLabel.text = "Enter your data and press the load button.";
+            this.titleLabel.text = "Enter your data in json format and press the load button.";
             route.didcompleteComponent(inquiryComponent);
         });
     }
