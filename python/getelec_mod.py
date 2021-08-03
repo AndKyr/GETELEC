@@ -4,12 +4,15 @@ GETELEC software from python and perform electron emissino calculations"""
 
 import ctypes as ct
 import numpy as np
+from numpy.lib.polynomial import RankWarning
 import scipy.optimize as opt
 import scipy.integrate as ig
 import os
 import matplotlib.pyplot as plt
 import scipy.interpolate as intrp
 import json
+
+import warnings
 
 from io import StringIO 
 import sys
@@ -125,16 +128,25 @@ def get_gamow_line(F, R, gamma, Npoints):
     return W, Gamow
     
 def make_gamow_array(Frange, Rmin, Nf, Nr, Ngam, Npoly):
+    warnings.filterwarnings("error")
     Finv = np.linspace(1/Frange[1], 1./ Frange[0], Nf)
     Rinv = np.linspace(1.e-5, 1/Rmin, Nr)
-    gaminv = np.linspace(1.e5, .999, Ngam)
+    gaminv = np.linspace(1.e-5, .999, Ngam)
     outarray = np.ones([Ngam, Nr, Nf, Npoly])
 
     for i in range(Ngam):
         for j in range(Nr):
             for k in range(Nf):
-                W,G = get_gamow_line(1/Finv[k], 1/Rinv[j], 1/gaminv[i], 128)
-                poly = np.polyfit(W, G, Npoly-1)
+                F = 1/Finv[k]
+                R = 1/Rinv[j]
+                gamma = 1/gaminv[i]
+                W,G = get_gamow_line(F, R , gamma , 128)
+                try:
+                    poly = np.polyfit(W, G, Npoly-1)
+                except(RankWarning):
+                    print("Rank Warning for F = %g, R = %g, gamma = %g"%(F,R,gamma))
+                    plt.plot(W,G)
+                    plt.show()
                 outarray[i,j,k,:] = poly
     return outarray
 
