@@ -1338,7 +1338,7 @@ subroutine export_gamow(F, R, gamma, Npoints, Wmin, Wmax, G) bind(c)
         real(c_double)               :: Gf(Npoints) 
         type(EmissionData)              :: this, new
         integer                         :: i
-        real(dp), parameter             :: Gmax = 30.d0, inc = 1.5d0   
+        real(dp), parameter             :: Gmax = 40.d0, inc = 1.5d0   
         real(dp)                        :: Wa, Wb         
         
         

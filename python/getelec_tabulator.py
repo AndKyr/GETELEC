@@ -1,6 +1,3 @@
-"""This module provides with all the interfcace classes and functions to call
-GETELEC software from python and perform electron emissino calculations"""
-
 
 import ctypes as ct
 import numpy as np
@@ -16,6 +13,7 @@ import warnings
 
 from io import StringIO 
 import sys
+import getelec_mod as gt
 
 pythonpath,filename = os.path.split(os.path.realpath(__file__))
 emissionpath,pythonfolder = os.path.split(pythonpath)
@@ -51,6 +49,7 @@ def lFD(E, kT):
         L[highE] = np.exp(-E[highE] / kT)
         L[lowE] = - E[lowE] / kT
         L[midE]=np.log(1. + np.exp(-E[midE] / kT))
+        return L
     else:
         if E > 10 * kT:
             return np.exp(-E / kT)
@@ -59,18 +58,44 @@ def lFD(E, kT):
         else:
             return np.log(1. + np.exp(-E / kT))
 
-class Tabulator():
+def transmission(W, poly, Wmin, Wmax):
 
-    
+    if (isinstance(W, np.ndarray)):
+        G = np.copy(W)
+        highW = W > Wmax
+        lowW = W < Wmin
+        G = np.polyval(poly, W)
+        if (len(highW + lowW) > 0):
+            dpoly = np.polyder(poly)
+            G[highW] = np.polyval(poly, Wmax) + np.polyval(dpoly, Wmax) * (W[highW] - Wmax)
+            G[lowW] = np.polyval(poly, Wmin) + np.polyval(dpoly, Wmin) * (W[lowW] - Wmin)
+        D = np.copy(G)
+        D[G < 15.] = 1 / (1 + np.exp(G[G < 15.]))
+        D[G > 15] = np.exp(-G[G > 15.])
+        return D
+    else:
+        if (W > Wmin and W < Wmax):
+            G = np.polyval(poly, W)
+            return 1 / (1 + np.exp(G))
+        elif(W > Wmax):
+            dpoly = np.polyder(poly)
+            G = np.polyval(poly, Wmax) + np.polyval(dpoly, Wmax) * (W - Wmax)
+            return np.exp(-G)
+        else:
+            dpoly = np.polyder(poly)
+            G = np.polyval(poly, Wmin) + np.polyval(dpoly, Wmin) * (W - Wmin)
+            return 1 / (1 + np.exp(G))
+
+class Tabulator():
     def __init__(self, Nf = 256, Nr = 128, Ngamma = 32):
+        self.Nf = Nf
+        self.Nr = Nr
+        self.Ngamma = Ngamma
         if(self.load()):
             pass
         else:
-            self.Frange = [0.5, 15.]
+            self.Frange = [0.5, 20.]
             self.Rmin = 0.5
-            self.Nf = Nf
-            self.Nr = Nr
-            self.Ngamma = Ngamma
             print ("tabulating G, F, R, gamma")
             self.tabulate()
             self.save()
@@ -82,7 +107,7 @@ class Tabulator():
         self.Finv = np.linspace(1/self.Frange[1], 1./ self.Frange[0], self.Nf)
         self.Rinv = np.linspace(1.e-3, 1/self.Rmin, self.Nr)
         self.gaminv = np.linspace(1.e-3, .99, self.Ngamma)
-        self.Gtab = np.ones([self.Ngamma, self.Nr, self.Nf, Npoly])
+        self.Gtab = np.ones([self.Ngamma, self.Nr, self.Nf, Npoly+2])
 
         for i in range(self.Ngamma):
             for j in range(self.Nr):
@@ -97,7 +122,7 @@ class Tabulator():
                         print("Rank Warning for F = %g, R = %g, gamma = %g"%(F,R,gamma))
                         plt.plot(W,G)
                         plt.show()
-                    self.Gtab[i,j,k,:] = poly
+                    self.Gtab[i,j,k,:] = np.append(poly, [W[0], W[-1]])
     
 
     def save(self):
@@ -117,7 +142,10 @@ class Tabulator():
             self.Finv = np.load("tabulated/Finv.npy")
             self.Rinv = np.load("tabulated/Rinv.npy")
             self.gaminv = np.load("tabulated/gammainv.npy")
-            return True
+            if(np.shape(self.Gtab) == tuple([self.Ngamma, self.Nr, self.Nf, Npoly+2])):
+                return True
+            else:
+                return False
         except(IOError):
             print ("tabulation files not found")
             return False
@@ -125,20 +153,83 @@ class Tabulator():
     def get_Gpoly(self, F, R, gamma):
         return intrp.interpn((self.gaminv, self.Rinv, self.Finv), self.Gtab, (1/gamma, 1./R, 1./F))[0]
 
-    def cur_dens_metal(self, F, R, gamma, Work, kT):
+    def cur_dens_metal(self, F, R, gamma, Work, kT, plot = False):
         poly = self.get_Gpoly(F, R, gamma)
-        integrand = lambda E: lFD(E, kT) / (1. + np.exp(np.polyval(poly, Work - E)))
-        return ig.quad(integrand, -10., Work)
-
-
-
-
+        Wmin = poly[-2]
+        Wmax = poly[-1]
+        poly = poly[:Npoly]
         
+        #integrand = lambda E: lFD(E, kT) * transmission(Work - E, poly)
+        dG_fermi = np.polyval(np.polyder(poly), Work)
+        if (dG_fermi < 0.):
+            print()
+        Ehigh = 35* kT
+        Elow = -10 / dG_fermi
+        E = np.linspace(Elow, Ehigh, 256)
+        integ = lFD(E, kT) * transmission(Work - E, poly, Wmin, Wmax)
+
+        if(plot):
+            print("poly = ", poly, "Elow, Ehigh = ", Elow, Ehigh)
+            plt.plot(E,integ)
+            ax2 = plt.twinx()
+            ax2.plot(E,np.polyval(poly, Work - E), '.')
+            plt.show()
+
+        # return zs * kT * ig.quad(integrand, -10., Work)[0]
+        return zs * kT * np.trapz(integ, E)
+
+
+kBoltz = 8.6173324e-5       
         
 
 
-tab = Tabulator(64,32,8)
+tab = Tabulator()
+tab.save()
 
-poly = tab.get_Gpoly(5., 5., 50.)
-print(poly)
-print(tab.cur_dens_metal(5.,5.,50,4.5,0.025))
+Fmax = 1/tab.Finv[0]
+Fmin = 1/tab.Finv[-1]
+Rmax = 1/tab.Rinv[0]
+Rmin = 1/tab.Rinv[-1]
+gammax = 1/tab.gaminv[0]
+gammin = 1/tab.gaminv[-1]
+
+Np = 4096
+
+Fi = np.random.rand(Np) * (Fmax - Fmin) + Fmin
+Ri = np.random.rand(Np) * (Rmax - Rmin) + Rmin
+gami = np.random.rand(Np) * (gammax - gammin) + gammin
+Ji = np.copy(Fi)
+Wi = np.random.rand(Np) * (7.5 - 2.5) + 2.5
+Ti = np.random.rand(Np) * (3000 - 100) + 200
+kT = Ti * kBoltz
+Jget = np.copy(Ji)
+
+print("calculating from tabulator")
+for i in range(len(Fi)):
+    Ji[i] = tab.cur_dens_metal(Fi[i], Ri[i], gami[i], Wi[i], kT[i])
+
+print("calculating from getelec")
+
+em = gt.emission_create(approx=2)
+for i in range(len(Fi)):   
+    em.F = Fi[i]
+    em.W = Wi[i]
+    em.Temp = Ti[i]
+    em.gamma = gami[i]
+    em.R = Ri[i]
+    em.cur_dens()
+    Jget[i] = em.Jem
+
+relerr = abs(Ji/Jget - 1.) 
+abserr = abs(Ji - Jget)
+
+bad = np.where(np.logical_and(relerr > 0.3, abserr > 1.e-25))[0]
+print("bad = ", bad)
+for i in bad:
+    print("Jget, Ji : ", Jget[i], Ji[i])
+    tab.cur_dens_metal(Fi[i], Ri[i], gami[i], Wi[i], kT[i], plot = True)
+
+plt.loglog(Ji, Jget, '.')
+plt.loglog([1.e-50, 1.], [1.e-50, 1.])
+plt.grid()
+plt.show()
