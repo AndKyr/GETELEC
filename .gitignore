@@ -23,3 +23,4 @@
 *.svg
 webGUI
 .vscode
+.npy
