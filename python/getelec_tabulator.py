@@ -58,6 +58,28 @@ def lFD(E, kT):
         else:
             return np.log(1. + np.exp(-E / kT))
 
+def Gamow(W, poly, Wmin, Wmax):
+
+    if (isinstance(W, np.ndarray)):
+        G = np.copy(W)
+        highW = W > Wmax
+        lowW = W < Wmin
+        G = np.polyval(poly, W)
+        if (len(highW + lowW) > 0):
+            dpoly = np.polyder(poly)
+            G[highW] = np.polyval(poly, Wmax) + np.polyval(dpoly, Wmax) * (W[highW] - Wmax)
+            G[lowW] = np.polyval(poly, Wmin) + np.polyval(dpoly, Wmin) * (W[lowW] - Wmin)
+        return G
+    else:
+        if (W > Wmin and W < Wmax):
+            return np.polyval(poly, W)
+        elif(W > Wmax):
+            dpoly = np.polyder(poly)
+            return np.polyval(poly, Wmax) + np.polyval(dpoly, Wmax) * (W - Wmax)
+        else:
+            dpoly = np.polyder(poly)
+            return np.polyval(poly, Wmin) + np.polyval(dpoly, Wmin) * (W - Wmin)
+
 def transmission(W, poly, Wmin, Wmax):
 
     if (isinstance(W, np.ndarray)):
@@ -160,19 +182,39 @@ class Tabulator():
         poly = poly[:Npoly]
         
         #integrand = lambda E: lFD(E, kT) * transmission(Work - E, poly)
-        dG_fermi = np.polyval(np.polyder(poly), Work)
-        if (dG_fermi < 0.):
-            print()
-        Ehigh = 35* kT
-        Elow = -10 / dG_fermi
-        E = np.linspace(Elow, Ehigh, 256)
+        dG = np.polyder(poly)
+        maxbeta = np.polyval(dG, min(Work, Wmax))
+        dG_Wmin = np.polyval(dG, Wmin)
+        if (maxbeta * kT < 1.05): #field regime
+            Wcenter = 0.
+            Ehigh = 10 /(1/kT - .85*maxbeta)
+            Elow = -10 / maxbeta
+        elif (dG_Wmin * kT > .95):
+            Wcenter = Work - Wmin
+            Ehigh = Wcenter + 10 * kT
+            Elow = Wcenter - 10 / dG_Wmin
+        else:
+            rootpoly = np.copy(dG)
+            rootpoly[-1] -= 1./kT
+            Wcenter = np.roots(rootpoly)
+
+            Wcenter = np.real(Wcenter[np.nonzero(np.logical_and(Wcenter > Wmin, Wcenter < Work, np.imag(Wcenter) == 0.))])[0]
+            #print (Wcenter)
+            Ehigh = Work - Wcenter + 20 * kT
+            Elow = Work - Wcenter - 10 / kT
+
+        E = np.linspace(Elow, Ehigh, 128)
         integ = lFD(E, kT) * transmission(Work - E, poly, Wmin, Wmax)
 
         if(plot):
             print("poly = ", poly, "Elow, Ehigh = ", Elow, Ehigh)
+            print("maxbeta, minbeta, beta_T: ", maxbeta, dG_Wmin,1/ kT)
+            #print (rootpoly, Wcenter, Wmin, Wmax)
             plt.plot(E,integ)
-            ax2 = plt.twinx()
-            ax2.plot(E,np.polyval(poly, Work - E), '.')
+            ax = plt.gca()
+            ax2 = ax.twinx()
+            ax2.plot(E,Gamow(Work - E, poly, Wmin, Wmax), 'r-')
+            ax.grid()
             plt.show()
 
         # return zs * kT * ig.quad(integrand, -10., Work)[0]
@@ -220,11 +262,13 @@ for i in range(len(Fi)):
     em.cur_dens()
     Jget[i] = em.Jem
 
-relerr = abs(Ji/Jget - 1.) 
+relerr = abs(Jget/Ji - 1.) 
 abserr = abs(Ji - Jget)
 
 bad = np.where(np.logical_and(relerr > 0.3, abserr > 1.e-25))[0]
+
 print("bad = ", bad)
+print("rms error = ", np.sqrt(np.mean(relerr[abserr > 1.e-25])))
 for i in bad:
     print("Jget, Ji : ", Jget[i], Ji[i])
     tab.cur_dens_metal(Fi[i], Ri[i], gami[i], Wi[i], kT[i], plot = True)
