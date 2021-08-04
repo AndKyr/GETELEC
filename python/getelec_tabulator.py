@@ -172,43 +172,48 @@ class Emitter():
                 return np.exp(-G)
 
     def cur_dens_metal(self, Work, kT, plot = False):
+        self.get_lims(Work, kT)
+        return self.integrate_lin(Work, kT, plot)
 
-        maxbeta = np.polyval(self.dG, min(Work, self.Wmax))
-        dG_Wmin = np.polyval(self.dG, self.Wmin)
-        if (maxbeta * kT < 1.05): #field regime
+    def get_lims(self, Work, kT):
+
+        self.maxbeta = np.polyval(self.dG, min(Work, self.Wmax))
+        self.dG_Wmin = np.polyval(self.dG, self.Wmin)
+        if (self.maxbeta * kT < 1.05): #field regime
             Wcenter = 0.
-            Ehigh = 10 /(1/kT - .85*maxbeta)
-            Elow = -10 / maxbeta
-        elif (dG_Wmin * kT > .95):
+            self.Ehigh = 10 /(1/kT - .85*self.maxbeta)
+            self.Elow = -10 / self.maxbeta
+        elif (self.dG_Wmin * kT > .95):
             Wcenter = Work - self.Wmin
-            Ehigh = Wcenter + 10 * kT
-            Elow = Wcenter - 10 / dG_Wmin
+            self.Ehigh = Wcenter + 10 * kT
+            self.Elow = Wcenter - 10 / self.dG_Wmin
         else:
             rootpoly = np.copy(self.dG)
             rootpoly[-1] -= 1./kT
             Wcenter = np.roots(rootpoly)
-
             Wcenter = np.real(Wcenter[np.nonzero(np.logical_and(Wcenter > self.Wmin, Wcenter < Work, np.imag(Wcenter) == 0.))])[0]
             #print (Wcenter)
-            Ehigh = Work - Wcenter + 20 * kT
-            Elow = Work - Wcenter - 10 / kT
+            self.Ehigh = Work - Wcenter + 20 * kT
+            self.Elow = Work - Wcenter - 10 / kT
 
-        E = np.linspace(Elow, Ehigh, 128)
+    def integrate_lin(self, Work, kT, plot = False):
+        E = np.linspace(self.Elow, self.Ehigh, 128)
         integ = self.lFD(E, kT) * self.transmission(Work - E)
 
         if(plot):
-            print("poly = ", self.Gpoly, "Elow, Ehigh = ", Elow, Ehigh)
-            print("maxbeta, minbeta, beta_T: ", maxbeta, dG_Wmin,1/ kT)
-            #print (rootpoly, Wcenter, Wmin, Wmax)
+            print("poly = ", self.Gpoly, "Elow, Ehigh = ", self.Elow, self.Ehigh)
+            print("maxbeta, minbeta, beta_T: ", self.maxbeta, self.dG_Wmin,1/ kT)
             plt.plot(E,integ)
             ax = plt.gca()
             ax2 = ax.twinx()
             ax2.plot(E,self.calculate_Gamow(Work - E), 'r-')
             ax.grid()
             plt.show()
-
-        # return zs * kT * ig.quad(integrand, -10., Work)[0]
         return zs * kT * np.sum(integ) * (E[1] - E[0])
+
+    def integrate_quad(self, Work, kT):
+        args = tuple([Work] + [kT] + + [self.Wmin] + [self.Wmax] + list(self.Gpoly) + list(self.dG) )
+        return zs * kT * ig.quad(intfun, self.Elow, self.Ehigh, args)
 
 
 kBoltz = 8.6173324e-5       
