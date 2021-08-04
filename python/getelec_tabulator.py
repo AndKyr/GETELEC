@@ -2,6 +2,7 @@
 import ctypes as ct
 import numpy as np
 from numpy.lib.polynomial import RankWarning
+from scipy.integrate.quadpack import IntegrationWarning
 import scipy.optimize as opt
 import scipy.integrate as ig
 import os
@@ -9,7 +10,7 @@ import matplotlib.pyplot as plt
 import scipy.interpolate as intrp
 import json
 
-import warnings
+#import warnings
 
 from io import StringIO 
 import sys
@@ -24,6 +25,13 @@ print(libpath)
 ct.cdll.LoadLibrary(libpath)
 getelec = ct.CDLL(libpath)
 
+integrator = ct.CDLL(pythonpath + '/integrator.so') #use absolute path
+integrator.intfun.restype = ct.c_double
+integrator.intfun.argtypes = (ct.c_int, ct.c_double)
+integrator.Gfun.argtypes = (ct.c_int, ct.c_void_p)
+integrator.Gfun.restype = ct.c_double
+integrator.intfun_dbg.argtypes = (ct.c_int, ct.c_void_p)
+integrator.intfun_dbg.restype = ct.c_double
 Npoly = 5
 NGi = 128
 zs = 1.6183e-4
@@ -52,7 +60,7 @@ class Tabulator():
             self.save()
 
     def tabulate(self):
-        warnings.filterwarnings("error")
+        #warnings.filterwarnings("error")
         self.Finv = np.linspace(1/self.Frange[1], 1./ self.Frange[0], self.Nf)
         self.Rinv = np.linspace(1.e-3, 1/self.Rmin, self.Nr)
         self.gaminv = np.linspace(1.e-3, .99, self.Ngamma)
@@ -117,6 +125,8 @@ class Emitter():
         self.Wmax = data[-1]
         self.Gpoly = data[:Npoly]
         self.dG = np.polyder(self.Gpoly)
+        self.dGmin = np.polyval(self.dG, self.Wmin)
+        self.dGmax = np.polyval(self.dG, self.Wmax)
 
     def lFD(self, E, kT):
     #assert E.size() == kT.size()
@@ -147,16 +157,16 @@ class Emitter():
             lowW = W < self.Wmin
             G = np.polyval(self.Gpoly, W)
             if (len(highW + lowW) > 0):
-                G[highW] = np.polyval(self.Gpoly, self.Wmax) + np.polyval(self.dG, self.Wmax) * (W[highW] - self.Wmax)
-                G[lowW] = np.polyval(self.Gpoly, self.Wmin) + np.polyval(self.dG, self.Wmin) * (W[lowW] - self.Wmin)
+                G[highW] = np.polyval(self.Gpoly, self.Wmax) + self.dGmax * (W[highW] - self.Wmax)
+                G[lowW] = np.polyval(self.Gpoly, self.Wmin) + self.dGmin * (W[lowW] - self.Wmin)
             return G
         else:
             if (W > self.Wmin and W < self.Wmax):
                 return np.polyval(self.Gpoly, W)
             elif(W > self.Wmax):
-                return np.polyval(self.Gpoly, self.Wmax) + np.polyval(self.dG, self.Wmax) * (W - self.Wmax)
+                return np.polyval(self.Gpoly, self.Wmax) + self.dGmax * (W - self.Wmax)
             else:
-                return np.polyval(self.Gpoly, self.Wmin) + np.polyval(self.dG, self.Wmin) * (W - self.Wmin)
+                return np.polyval(self.Gpoly, self.Wmin) + self.dGmin * (W - self.Wmin)
 
     def transmission(self, W):
         G = self.Gamow(W)
@@ -173,20 +183,20 @@ class Emitter():
 
     def cur_dens_metal(self, Work, kT, plot = False):
         self.get_lims(Work, kT)
-        return self.integrate_lin(Work, kT, plot)
+        # return self.integrate_lin(Work, kT, plot)
+        return self.integrate_quad(Work, kT)
 
     def get_lims(self, Work, kT):
 
         self.maxbeta = np.polyval(self.dG, min(Work, self.Wmax))
-        self.dG_Wmin = np.polyval(self.dG, self.Wmin)
         if (self.maxbeta * kT < 1.05): #field regime
             Wcenter = 0.
             self.Ehigh = 10 /(1/kT - .85*self.maxbeta)
             self.Elow = -10 / self.maxbeta
-        elif (self.dG_Wmin * kT > .95):
+        elif (self.dGmin * kT > .95):
             Wcenter = Work - self.Wmin
             self.Ehigh = Wcenter + 10 * kT
-            self.Elow = Wcenter - 10 / self.dG_Wmin
+            self.Elow = Wcenter - 10 / self.dGmin
         else:
             rootpoly = np.copy(self.dG)
             rootpoly[-1] -= 1./kT
@@ -201,20 +211,46 @@ class Emitter():
         integ = self.lFD(E, kT) * self.transmission(Work - E)
 
         if(plot):
-            print("poly = ", self.Gpoly, "Elow, Ehigh = ", self.Elow, self.Ehigh)
-            print("maxbeta, minbeta, beta_T: ", self.maxbeta, self.dG_Wmin,1/ kT)
+            print("Elow, Ehigh = ", self.Elow, self.Ehigh)
+            print ("Wmin, Wmax, Work = ", self.Wmin, self.Wmax, Work)
+            print("maxbeta, minbeta, beta_T: ", self.maxbeta, self.dGmin,1/ kT)
             plt.plot(E,integ)
             ax = plt.gca()
             ax2 = ax.twinx()
-            ax2.plot(E,self.calculate_Gamow(Work - E), 'r-')
+            ax2.plot(E,self.Gamow(Work - E), 'r-')
             ax.grid()
             plt.show()
         return zs * kT * np.sum(integ) * (E[1] - E[0])
 
     def integrate_quad(self, Work, kT):
-        args = tuple([Work] + [kT] + + [self.Wmin] + [self.Wmax] + list(self.Gpoly) + list(self.dG) )
-        return zs * kT * ig.quad(intfun, self.Elow, self.Ehigh, args)
+        args = tuple([Work] + [kT] + [self.Wmin] + [self.Wmax] + [self.dGmin] + [self.dGmax] + list(self.Gpoly) )
+        try:
+            integ = ig.quad(integrator.intfun, self.Elow, self.Ehigh, args)[0]
+        except(IntegrationWarning):
+            integ = 0.
+        return zs * kT * integ
 
+    def plot_quad(self, Work, kT):
+        E = np.linspace(self.Elow, self.Ehigh, 128)
+        integ = np.copy(E)
+        gamow = np.copy(E)
+        for i in range(len(E)):
+            args = np.array([E[i], kT, self.Wmin, self.Wmax, self.dGmin, self.dGmax] + list(self.Gpoly))
+            N = ct.c_int(len(args))
+            cargs = ct.c_void_p(args.ctypes.data)
+            gamow[i] = integrator.Gfun(N, cargs)
+            integ[i] = integrator.intfun_dbg(N, cargs)
+        
+        plt.plot(E, integ)
+        plt.plot()
+        plt.grid()
+        ax = plt.gca()
+        ax2 = ax.twinx()
+        ax2.plot(E,gamow, 'r-')
+        plt.show()
+
+#     getelec.export_gamow(ct.c_double(F), ct.c_double(R), ct.c_double(gamma), ct.c_int(Npoints), \
+        # ct.c_void_p(Wmin.ctypes.data), ct.c_void_p(Wmax.ctypes.data), ct.c_void_p(Gamow.ctypes.data))
 
 kBoltz = 8.6173324e-5       
         
@@ -240,13 +276,13 @@ Ti = np.random.rand(Np) * (3000 - 100) + 200
 kT = Ti * kBoltz
 Jget = np.copy(Ji)
 
-em = Emitter(tab)
+emit = Emitter(tab)
 
 print("calculating from tabulator")
 for i in range(len(Fi)):
-    em.set(Fi[i], Ri[i], gami[i])
-    em.interpolate()
-    Ji[i] = em.cur_dens_metal(Wi[i], kT[i])
+    emit.set(Fi[i], Ri[i], gami[i])
+    emit.interpolate()
+    Ji[i] = emit.cur_dens_metal(Wi[i], kT[i])
 
 print("calculating from getelec")
 
@@ -260,7 +296,7 @@ for i in range(len(Fi)):
     em.cur_dens()
     Jget[i] = em.Jem
 
-relerr = abs(Jget/Ji - 1.) 
+relerr = abs(Ji/Jget - 1.) 
 abserr = abs(Ji - Jget)
 
 bad = np.where(np.logical_and(relerr > 0.3, abserr > 1.e-25))[0]
@@ -269,9 +305,12 @@ print("bad = ", bad)
 print("rms error = ", np.sqrt(np.mean(relerr[abserr > 1.e-25])))
 for i in bad:
     print("Jget, Ji : ", Jget[i], Ji[i])
-#     tab.cur_dens_metal(Fi[i], Ri[i], gami[i], Wi[i], kT[i], plot = True)
+    emit.set(Fi[i], Ri[i], gami[i])
+    emit.interpolate()
+    emit.integrate_lin(Wi[i], kT[i], plot = True)
+    emit.plot_quad(Wi[i], kT[i])
 
-# plt.loglog(Ji, Jget, '.')
-# plt.loglog([1.e-50, 1.], [1.e-50, 1.])
-# plt.grid()
-# plt.show()
+plt.loglog(Ji, Jget, '.')
+plt.loglog([1.e-50, 1.], [1.e-50, 1.])
+plt.grid()
+plt.show()
