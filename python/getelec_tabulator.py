@@ -158,9 +158,8 @@ class Emitter():
             highW = W > self.Wmax
             lowW = W < self.Wmin
             G = np.polyval(self.Gpoly, W)
-            if (len(highW + lowW) > 0):
-                G[highW] = np.polyval(self.Gpoly, self.Wmax) + self.dGmax * (W[highW] - self.Wmax)
-                G[lowW] = np.polyval(self.Gpoly, self.Wmin) + self.dGmin * (W[lowW] - self.Wmin)
+            G[highW] = np.polyval(self.Gpoly, self.Wmax) + self.dGmax * (W[highW] - self.Wmax)
+            G[lowW] = np.polyval(self.Gpoly, self.Wmin) + self.dGmin * (W[lowW] - self.Wmin)
             return G
         else:
             if (W > self.Wmin and W < self.Wmax):
@@ -202,20 +201,21 @@ class Emitter():
         else:
             rootpoly = np.copy(self.dG)
             rootpoly[-1] -= 1./kT
-            Wcenter = np.roots(rootpoly)
-            Wcenter = np.real(Wcenter[np.nonzero(np.logical_and(Wcenter > self.Wmin, Wcenter < Work, np.imag(Wcenter) == 0.))])[0]
+            rts = np.roots(rootpoly)
+            realroots = np.real(rts[np.nonzero(np.imag(rts) == 0)])
+            Wcenter = realroots[np.nonzero(np.logical_and(realroots > self.Wmin, realroots < Work))][0]
             #print (Wcenter)
-            self.Ehigh = Work - Wcenter + 20 * kT
-            self.Elow = Work - Wcenter - 10 / kT
+            self.Ehigh = Work - Wcenter + 10 * kT
+            self.Elow = Work - Wcenter - 25 * kT
 
     def integrate_lin(self, Work, kT, plot = False):
         E = np.linspace(self.Elow, self.Ehigh, 128)
         integ = self.lFD(E, kT) * self.transmission(Work - E)
 
         if(plot):
-            print("Elow, Ehigh = ", self.Elow, self.Ehigh)
+            print("Whigh, Wlow = ", Work - self.Elow, Work - self.Ehigh)
             print ("Wmin, Wmax, Work = ", self.Wmin, self.Wmax, Work)
-            print("maxbeta, minbeta, beta_T: ", self.maxbeta, self.dGmin,1/ kT)
+            print("maxbeta, minbeta, dGmax, beta_T: ", self.maxbeta, self.dGmin, self.dGmax, 1/ kT)
             plt.plot(E,integ)
             ax = plt.gca()
             ax2 = ax.twinx()
@@ -233,26 +233,23 @@ class Emitter():
         return zs * kT * integ
 
     def plot_quad(self, Work, kT):
-        E = np.linspace(self.Elow, self.Ehigh, 128)
+        E = np.linspace(self.Elow, self.Ehigh, 64)
         integ = np.copy(E)
         gamow = np.copy(E)
         for i in range(len(E)):
-            args = np.array([E[i], kT, self.Wmin, self.Wmax, self.dGmin, self.dGmax] + list(self.Gpoly))
+            args = np.array([E[i], Work, kT, self.Wmin, self.Wmax, self.dGmin, self.dGmax] + list(self.Gpoly))
             N = ct.c_int(len(args))
             cargs = ct.c_void_p(args.ctypes.data)
             gamow[i] = integrator.Gfun(N, cargs)
             integ[i] = integrator.intfun_dbg(N, cargs)
         
         plt.plot(E, integ)
-        plt.plot()
         plt.grid()
         ax = plt.gca()
         ax2 = ax.twinx()
         ax2.plot(E,gamow, 'r-')
         plt.show()
 
-#     getelec.export_gamow(ct.c_double(F), ct.c_double(R), ct.c_double(gamma), ct.c_int(Npoints), \
-        # ct.c_void_p(Wmin.ctypes.data), ct.c_void_p(Wmax.ctypes.data), ct.c_void_p(Gamow.ctypes.data))
 
 kBoltz = 8.6173324e-5       
         
@@ -267,7 +264,7 @@ Rmin = 1/tab.Rinv[-1]
 gammax = 1/tab.gaminv[0]
 gammin = 1/tab.gaminv[-1]
 
-Np = 4096
+Np = 8096
 
 Fi = np.random.rand(Np) * (Fmax - Fmin) + Fmin
 Ri = np.random.rand(Np) * (Rmax - Rmin) + Rmin
@@ -277,7 +274,7 @@ Wi = np.random.rand(Np) * (7.5 - 2.5) + 2.5
 Ti = np.random.rand(Np) * (3000 - 100) + 200
 kT = Ti * kBoltz
 Jget = np.copy(Ji)
-
+#
 emit = Emitter(tab)
 
 print("calculating from tabulator")
@@ -298,21 +295,27 @@ for i in range(len(Fi)):
     em.cur_dens()
     Jget[i] = em.Jem
 
-relerr = abs(Ji/Jget - 1.) 
 abserr = abs(Ji - Jget)
+relerr = abserr / Jget
 
-bad = np.where(np.logical_and(relerr > 0.3, abserr > 1.e-25))[0]
+bad = np.where(np.logical_and(relerr > 0.5, abserr > 1.e-25))[0]
 
 print("bad = ", bad)
-print("rms error = ", np.sqrt(np.mean(relerr[abserr > 1.e-25])))
+print("rms error = ", np.sqrt(np.mean(relerr[abserr > 1.e-25]**2)))
 for i in bad:
     print("Jget, Ji : ", Jget[i], Ji[i])
-#    emit.set(Fi[i], Ri[i], gami[i])
-#    emit.interpolate()
-#    emit.integrate_lin(Wi[i], kT[i], plot = True)
-#    emit.plot_quad(Wi[i], kT[i])
+    emit.set(Fi[i], Ri[i], gami[i])
+    emit.interpolate()
+    emit.get_lims(Wi[i], kT[i])
+    emit.plot_quad(Wi[i], kT[i])
 
 plt.loglog(Ji, Jget, '.')
 plt.loglog([1.e-50, 1.], [1.e-50, 1.])
 plt.grid()
 plt.show()
+        
+#emit.set(1.0806925592804786, 619.7322772569685, 850.0544127987904)
+#emit.interpolate()
+#emit.get_lims(5.724887551899318, 0.07987953439761075)
+#emit.integrate_lin(5.724887551899318, 0.07987953439761075, plot = True)
+#emit.plot_quad(5.724887551899318, 0.07987953439761075)

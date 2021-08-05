@@ -23,9 +23,9 @@ double lFD(double E, double kboltzT){
 
 
 double Gfun(int n, double *xx){
-    double G = poly(0), D;
+    double G = poly(0);
     double W = Work - Energ;
-    double Wlim, pow;
+    double Wlim;
 
 
     if (W > Wmax)
@@ -35,7 +35,7 @@ double Gfun(int n, double *xx){
     else
         Wlim = W;
     
-    pow = Wlim;
+    double pow = Wlim;
 
     for (int i = 1; i < Npoly; i++){
         G += poly(i) * pow;
@@ -51,10 +51,8 @@ double Gfun(int n, double *xx){
 }
 
 double intfun(int n, double *xx){
-    double G = 0., D;
-    double W = Work - Energ;
 
-    G = Gfun(n, xx);
+    double G = Gfun(n, xx);
 
     if (G > 40.)
         D = exp(-G);
