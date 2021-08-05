@@ -100,6 +100,7 @@ class Tabulator():
             self.Rinv = np.load("tabulated/Rinv.npy")
             self.gaminv = np.load("tabulated/gammainv.npy")
             if(np.shape(self.Gtab) == tuple([self.Ngamma, self.Nr, self.Nf, Npoly+2])):
+                self.interpolator = intrp.RegularGridInterpolator((self.gaminv, self.Rinv, self.Finv), self.Gtab)
                 return True
             else:
                 return False
@@ -108,7 +109,8 @@ class Tabulator():
             return False
     
     def get_Gpoly(self, F, R, gamma):
-        return intrp.interpn((self.gaminv, self.Rinv, self.Finv), self.Gtab, (1/gamma, 1./R, 1./F))[0]
+        outintr = self.interpolator.__call__([1/gamma, 1./R, 1./F])[0]
+        return outintr
 
 class Emitter():
     def __init__(self, tabula):
@@ -305,10 +307,10 @@ print("bad = ", bad)
 print("rms error = ", np.sqrt(np.mean(relerr[abserr > 1.e-25])))
 for i in bad:
     print("Jget, Ji : ", Jget[i], Ji[i])
-    emit.set(Fi[i], Ri[i], gami[i])
-    emit.interpolate()
-    emit.integrate_lin(Wi[i], kT[i], plot = True)
-    emit.plot_quad(Wi[i], kT[i])
+#    emit.set(Fi[i], Ri[i], gami[i])
+#    emit.interpolate()
+#    emit.integrate_lin(Wi[i], kT[i], plot = True)
+#    emit.plot_quad(Wi[i], kT[i])
 
 plt.loglog(Ji, Jget, '.')
 plt.loglog([1.e-50, 1.], [1.e-50, 1.])
