@@ -73,6 +73,10 @@ class UIColor extends UIObject {
         return new UIColor("lightgrey")
     }
     
+    static get theChosenGreyColor(){
+        return new UIColor("#e1e1e1");
+    }
+    
     static get transparentColor() {
         return new UIColor("transparent")
     }

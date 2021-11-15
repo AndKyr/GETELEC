@@ -57,7 +57,8 @@ class GETELECViewController extends UIViewController {
         
         
         this.inputTextArea = new UITextArea(this.view.elementID + "InputTextArea")
-        this.inputTextArea.placeholderText = "Input your data here."
+        this.inputTextArea.placeholderText = "{\r\n\"Voltage\": [2.413e+02, 3.305e+02,  4.993e+02],\r\n" +
+            "\"Current\": [8.719e-01, 3.670e+01, 5.617e+03], \r\n\"Work_function\": 4.5\r\n}"
         this.inputTextArea.changesOften = YES
         this.view.addSubview(this.inputTextArea)
         
@@ -111,7 +112,7 @@ class GETELECViewController extends UIViewController {
                         fill: false,
                         lineTension: 0,
                         //backgroundColor: UIColor.transparentColor,
-                        borderColor: "rgb(125, 115, 252)" //,
+                        borderColor: "rgb(87, 173, 122)" //,
                         //data: [{ x: 0, y: 0 }, { x: 2, y: 10 }, { x: 5, y: 5 }, { x: 7, y: 2 }, { x: 8, y: 20 }, {
                         // x: 11, y: 45 }]
                     },
@@ -119,8 +120,8 @@ class GETELECViewController extends UIViewController {
                         label: "Fitted line",
                         fill: false,
                         lineTension: 0,
-                        backgroundColor: "rgb(255, 99, 132)",
-                        borderColor: "rgb(255, 99, 132)" //,
+                        backgroundColor: "rgb(213, 150, 102)",
+                        borderColor: "rgb(213, 150, 102)" //,
                         //data: [{ x: 0, y: 0 }, { x: 2, y: 10 }, { x: 5, y: 5 }, { x: 7, y: 2 }, { x: 8, y: 20 }, {
                         // x: 11, y: 45 }]
                     }
@@ -256,9 +257,9 @@ class GETELECViewController extends UIViewController {
                 
                 
                 this.resultsLabel.innerHTML = FIRST(result.resultHTMLString, "") +
-                    IF(IS_NOT(result.resultHTMLString))(RETURNER(
-                        `Radius: ${ result.Radius } beta: ${ result.beta } sigma_Aeff: ${ result.sigma_Aeff }`
-                    ))
+                    IF(IS_NOT(result.resultHTMLString))(RETURNER(`Radius: ${ result.Radius } <br>
+                     &beta;: ${ result.beta } <br>
+                     &sigma;Aeff: ${ result.sigma_Aeff }<br>`))
                     .ELSE(RETURNER(""))
                 
                 const pointPoints = this.pointObjectsFromValues(result.xplot_mrk, result.yplot_mrk)

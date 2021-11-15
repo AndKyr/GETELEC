@@ -49,7 +49,7 @@ class GETELECTableViewController extends UIViewController {
         this.view.backgroundColor = UIColor.whiteColor
         
         
-        this.titleLabel = new UITextView(this.view.elementID + "TitleLabel", UITextView.type.header3)
+        this.titleLabel = new UITextView(this.view.elementID + "TitleLabel", UITextView.type.header4)
         this.titleLabel.textAlignment = UITextView.textAlignment.left
         this.titleLabel.nativeSelectionEnabled = NO
         this.titleLabel.isSingleLine = NO
@@ -66,7 +66,7 @@ class GETELECTableViewController extends UIViewController {
         this.loadDataButton.titleLabel.text = "Load data"
         this.view.addSubview(this.loadDataButton)
         
-        this.loadDataButton.enabled = NO;
+        this.loadDataButton.enabled = NO
         
         
         
@@ -107,7 +107,7 @@ class GETELECTableViewController extends UIViewController {
                 datasets: [
                     
                     {
-                        label: "Result points",
+                        label: "Input Data",
                         fill: false,
                         lineTension: 0,
                         //backgroundColor: UIColor.transparentColor,
@@ -116,7 +116,7 @@ class GETELECTableViewController extends UIViewController {
                         // x: 11, y: 45 }]
                     },
                     {
-                        label: "Result line",
+                        label: "Fitted theoretical line",
                         fill: false,
                         lineTension: 0,
                         backgroundColor: "rgb(255, 99, 132)",
@@ -143,23 +143,39 @@ class GETELECTableViewController extends UIViewController {
                         type: "logarithmic",
                         position: "bottom"
                     },
-                    yAxes: [{
-                        type: 'logarithmic',
-                        ticks: {
-                            min: 1,
-                            max: 1000000,
-                            callback: function (value, index, values) {
-                                if (value === 1000000) return "1M";
-                                if (value === 100000) return "100K";
-                                if (value === 10000) return "10K";
-                                if (value === 1000) return "1K";
-                                if (value === 100) return "100";
-                                if (value === 10) return "10";
-                                if (value === 1) return "1";
-                                return null;
+                    yAxes: [
+                        {
+                            type: "logarithmic",
+                            ticks: {
+                                min: 1,
+                                max: 1000000,
+                                callback: function (value, index, values) {
+                                    if (value === 1000000) {
+                                        return "1M"
+                                    }
+                                    if (value === 100000) {
+                                        return "100K"
+                                    }
+                                    if (value === 10000) {
+                                        return "10K"
+                                    }
+                                    if (value === 1000) {
+                                        return "1K"
+                                    }
+                                    if (value === 100) {
+                                        return "100"
+                                    }
+                                    if (value === 10) {
+                                        return "10"
+                                    }
+                                    if (value === 1) {
+                                        return "1"
+                                    }
+                                    return null
+                                }
                             }
                         }
-                    }]
+                    ]
                 },
                 tooltips: {
                     mode: "interpolate",
@@ -236,7 +252,7 @@ class GETELECTableViewController extends UIViewController {
                 
                 this.resultsLabel.innerHTML = FIRST(result.resultHTMLString, "")
                     + IF(IS_NOT(result.resultHTMLString))(RETURNER(
-                        `Radius: ${ result.Radius } beta: ${ result.beta } sigma_Aeff: ${ result.sigma_Aeff }`
+                        `\r\nRadius: ${ result.Radius } \r\nbeta: ${ result.beta } \r\nsigma_Aeff: ${ result.sigma_Aeff }`
                     ))()
                 
                 const pointPoints = this.pointObjectsFromValues(result.xplot_mrk, result.yplot_mrk)
@@ -302,8 +318,6 @@ class GETELECTableViewController extends UIViewController {
         return resultPoints
         
     }
-    
-    
     
     
     

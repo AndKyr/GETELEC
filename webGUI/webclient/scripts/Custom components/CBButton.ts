@@ -37,9 +37,9 @@ class CBButton extends UIButton {
         
         
         this.colors.titleLabel.normal = UIColor.whiteColor
-        this.setBackgroundColorsWithNormalColor(UIColor.blueColor)
+        this.setBackgroundColorsWithNormalColor(UIColor.colorWithRGBA(0, 79, 32))
         
-        this.colors.titleLabel.selected = UIColor.blueColor
+        this.colors.titleLabel.selected = UIColor.blackColor
         
         
     }
@@ -52,7 +52,7 @@ class CBButton extends UIButton {
         
         this.colors.background.normal = normalBackgroundColor
         
-        this.colors.background.hovered = UIColor.colorWithRGBA(40, 168, 183) // normalBackgroundColor.colorByMultiplyingRGB(0.85)
+        this.colors.background.hovered = UIColor.colorWithRGBA(87, 173, 122) // normalBackgroundColor.colorByMultiplyingRGB(0.85)
         
         this.colors.background.focused = normalBackgroundColor // normalBackgroundColor.colorByMultiplyingRGB(0.5)
         

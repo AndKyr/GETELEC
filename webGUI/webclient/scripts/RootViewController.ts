@@ -61,11 +61,11 @@ class RootViewController extends UIViewController {
         
         this.topBarView = new CellView("TopBarView").copyValuesRecursivelyFromObject({
             titleLabel: {
-                text: "GETELEC - General Tool for Electron Emission Calculations",
+                text: "",
                 textAlignment: UITextView.textAlignment.center
             },
             colors: {
-                background: { normal: new UIColor("#282c11") },
+                background: { normal: new UIColor("#004f20") },
                 titleLabel: { normal: UIColor.whiteColor }
             }
         })
@@ -75,7 +75,7 @@ class RootViewController extends UIViewController {
         this.bottomBarView = new BottomBarView("BottomBarView").copyValuesRecursivelyFromObject({
             style: { overflow: "hidden" }
         })
-        this.view.addSubview(this.bottomBarView)
+        //this.view.addSubview(this.bottomBarView)
         
         this.backToMainButton = new CBFlatButton()
         this.backToMainButton.titleLabel.text = "&#8592;"
@@ -146,7 +146,7 @@ class RootViewController extends UIViewController {
                 
                 this.mainViewController = new UIViewController(new UIView("MainView"))
                 
-                this.mainViewController.view.backgroundColor = UIColor.whiteColor;
+                this.mainViewController.view.backgroundColor = UIColor.theChosenGreyColor;
                 
                 this.mainViewController.view.viewHTMLElement.innerHTML = await CBCore.sharedInstance.readTextFileFromURL("/frontpage.html");
                     
