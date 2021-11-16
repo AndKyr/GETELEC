@@ -5421,8 +5421,9 @@ class GETELECViewController extends UIViewController {
             //console.log(sender)
             try {
                 CBDialogViewShower.showActionIndicatorDialog("Loading.");
+                this.inputTextArea.text = this.inputTextArea.text || this.inputTextArea.placeholderText;
                 const stringSocketClientResult = yield SocketClient.PerformFitFun({
-                    inputData: this.inputTextArea.text || this.inputTextArea.placeholderText
+                    inputData: this.inputTextArea.text
                 });
                 if (IS(stringSocketClientResult.errorResult)) {
                     console.log(stringSocketClientResult.errorResult);
