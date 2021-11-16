@@ -5298,7 +5298,7 @@ class GETELECViewController extends UIViewController {
         this.inputTextArea.addControlEventTarget.TextChange = (sender, event) => {
             //console.log(sender);
             this.view.setNeedsLayoutUpToRootView();
-            this.loadDataButton.enabled = IS(this.inputTextArea.text);
+            this.loadDataButton.enabled = IS(this.inputTextArea.text || this.inputTextArea.placeholderText);
         };
         // @ts-ignore
         const ctx = this.chartView.viewHTMLElement.getContext("2d");
@@ -5422,7 +5422,7 @@ class GETELECViewController extends UIViewController {
             try {
                 CBDialogViewShower.showActionIndicatorDialog("Loading.");
                 const stringSocketClientResult = yield SocketClient.PerformFitFun({
-                    inputData: this.inputTextArea.text
+                    inputData: this.inputTextArea.text || this.inputTextArea.placeholderText
                 });
                 if (IS(stringSocketClientResult.errorResult)) {
                     console.log(stringSocketClientResult.errorResult);

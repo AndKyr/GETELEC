@@ -88,7 +88,7 @@ class GETELECViewController extends UIViewController {
             
             this.view.setNeedsLayoutUpToRootView()
             
-            this.loadDataButton.enabled = IS(this.inputTextArea.text)
+            this.loadDataButton.enabled = IS(this.inputTextArea.text || this.inputTextArea.placeholderText)
             
         }
         
@@ -234,7 +234,7 @@ class GETELECViewController extends UIViewController {
                 CBDialogViewShower.showActionIndicatorDialog("Loading.")
                 
                 const stringSocketClientResult = await SocketClient.PerformFitFun({
-                    inputData: this.inputTextArea.text
+                    inputData: this.inputTextArea.text || this.inputTextArea.placeholderText
                 })
                 
                 if (IS(stringSocketClientResult.errorResult)) {
