@@ -19,10 +19,10 @@ PWD = $(shell pwd)
 
 LIBSTATIC=lib/libgetelec.a
 LIBDEPS=lib/libslatec.a
-LIBSHARED = lib/libgetelec.so
+LIBSHARED = lib/libgetelec.so lib/libslatec.so
 
 CINTERFACE = modules/cobj/c_interface.o
-DIRS = bin cobj mod obj modules/obj lib/slatec/obj lib/dynamic modules/cobj png
+DIRS = bin cobj mod obj modules/obj lib lib/slatec/obj modules/cobj png
 	
 .PHONY: tests varyingTemp ctest KXerror
 .SECONDARY: *.o #$(MODOBJ)
@@ -71,9 +71,12 @@ $(LIBSTATIC): obj/getelec.o lib/libslatec.a $(MODOBJ)
 	
 lib/libslatec.a: $(SLATEC_OBJ)
 	$(AR) $@ lib/slatec/obj/*.o
+
+lib/libslatec.so: $(SLATEC_OBJ)
+	$(FC) -fPIC -shared lib/slatec/obj/*.o -o $@
 	
 lib/slatec/obj/%.o: lib/slatec/src/%.f
-	$(FC) -O3 -w -c $< -o $@ 
+	$(FC) -fallow-argument-mismatch -fPIC -O3 -w -c $< -o $@ 
 
 bin/%.out: cobj/%.o $(LIBSHARED)
 	$(CC) -L./lib -o $@ $^ #-lgetelec
