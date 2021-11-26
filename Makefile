@@ -19,7 +19,7 @@ PWD = $(shell pwd)
 
 LIBSTATIC=lib/libgetelec.a
 LIBDEPS=lib/libslatec.a
-LIBSHARED = lib/dynamic/libgetelec.so
+LIBSHARED = lib/libgetelec.so
 
 CINTERFACE = modules/cobj/c_interface.o
 DIRS = bin cobj mod obj modules/obj lib/slatec/obj lib/dynamic modules/cobj png
