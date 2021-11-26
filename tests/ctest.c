@@ -61,8 +61,9 @@ int main(){
     pass.gamma = 1.1;
     pass.mode = 0;
     pass.approx = 0;
+    pass.voltage = 500.;
     
-    cur_dens_SC(&pass, 500.);
+    cur_dens_SC(&pass);
     
     print_data_c(&pass, 1);
 
