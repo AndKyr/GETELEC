@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 """This plots the spectra as outputed in spectra.csv from getelec. Spectra has to be 
 T in the GetelecPar.in""" 
