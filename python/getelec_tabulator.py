@@ -227,13 +227,14 @@ class Emitter():
     def integrate_quad(self, Work, kT):
         args = tuple([Work] + [kT] + [self.Wmin] + [self.Wmax] + [self.dGmin] + [self.dGmax] + list(self.Gpoly) )
         try:
-            integ = ig.quad(integrator.intfun, self.Elow, self.Ehigh, args)[0]
+            integ, abserr, info = ig.quad(integrator.intfun, self.Elow, self.Ehigh, args, full_output = 1)
+            #self.integ_points = info["alist"]
         except(IntegrationWarning):
             integ = 0.
         return zs * kT * integ
 
     def plot_quad(self, Work, kT):
-        E = np.linspace(self.Elow, self.Ehigh, 64)
+        E = self.integ_points
         integ = np.copy(E)
         gamow = np.copy(E)
         for i in range(len(E)):
@@ -307,6 +308,7 @@ for i in bad:
     emit.set(Fi[i], Ri[i], gami[i])
     emit.interpolate()
     emit.get_lims(Wi[i], kT[i])
+    emit.integrate_quad(Wi[i], kT[i])
     emit.plot_quad(Wi[i], kT[i])
 
 plt.loglog(Ji, Jget, '.')
