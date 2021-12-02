@@ -35,11 +35,6 @@ expressApplication.get("/compiledScripts/:filename", (request, response) => {
     response.sendFile(__dirname + "/webclient/compiledScripts/" + request.params.filename)
     
 })
-expressApplication.get("/compiledScripts/hjson-js-master/:filename", (request, response) => {
-    
-    response.sendFile(__dirname + "/webclient/compiledScripts/hjson-js-master/" + request.params.filename)
-    
-})
 
 expressApplication.get("/images/:filename", (request, response) => {
     
