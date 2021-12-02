@@ -67,7 +67,7 @@ class GETELECViewController extends UIViewController {
         this.loadDataButton.titleLabel.text = "Load data"
         this.view.addSubview(this.loadDataButton)
         
-        this.loadDataButton.enabled = NO
+        //this.loadDataButton.enabled = NO
         
         
         
