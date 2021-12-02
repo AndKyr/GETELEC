@@ -221,7 +221,7 @@ class RootViewController extends UIViewController {
         
         this.contentViewController.view.setMargins(0, 0, this.paddingLength, 0)
         
-        //this.view.setPaddings(0, 0, this.paddingLength, 0);
+        this.view.setPaddings(0, 0, this.paddingLength, 0);
         
         var bottomBarHeight = Math.max(
             100,
