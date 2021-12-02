@@ -57,8 +57,8 @@ class GETELECViewController extends UIViewController {
         
         
         this.inputTextArea = new UITextArea(this.view.elementID + "InputTextArea")
-        this.inputTextArea.placeholderText = "{\r\nVoltage: [2.413e+02, 3.305e+02,  4.993e+02],\r\n" +
-            "Current: [8.719e-01, 3.670e+01, 5.617e+03], \r\nWork_function: 4.5\r\n}"
+        this.inputTextArea.placeholderText = "Voltage: [2.413e+02, 3.305e+02,  4.993e+02]\r\n" +
+            "Current: [8.719e-01, 3.670e+01, 5.617e+03]\r\nWork_function: 4.5"
         this.inputTextArea.changesOften = YES
         this.view.addSubview(this.inputTextArea)
         
