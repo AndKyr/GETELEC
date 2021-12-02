@@ -57,8 +57,8 @@ class GETELECViewController extends UIViewController {
         
         
         this.inputTextArea = new UITextArea(this.view.elementID + "InputTextArea")
-        this.inputTextArea.placeholderText = "{\r\n\"Voltage\": [2.413e+02, 3.305e+02,  4.993e+02],\r\n" +
-            "\"Current\": [8.719e-01, 3.670e+01, 5.617e+03], \r\n\"Work_function\": 4.5\r\n}"
+        this.inputTextArea.placeholderText = "{\r\nVoltage: [2.413e+02, 3.305e+02,  4.993e+02],\r\n" +
+            "Current: [8.719e-01, 3.670e+01, 5.617e+03], \r\nWork_function: 4.5\r\n}"
         this.inputTextArea.changesOften = YES
         this.view.addSubview(this.inputTextArea)
         
@@ -236,7 +236,7 @@ class GETELECViewController extends UIViewController {
                 this.inputTextArea.text = this.inputTextArea.text || this.inputTextArea.placeholderText
                 
                 const stringSocketClientResult = await SocketClient.PerformFitFun({
-                    inputData: this.inputTextArea.text
+                    inputData: JSON.stringify(this.inputData())
                 })
                 
                 if (IS(stringSocketClientResult.errorResult)) {
@@ -310,6 +310,16 @@ class GETELECViewController extends UIViewController {
     
     
     
+    private inputData() {
+        
+        // @ts-ignore
+        const inputData = Hjson.parse(this.inputTextArea.text)
+        
+        return inputData
+        
+    }
+    
+    
     private pointObjectsFromValues(xValues, yValues) {
         
         var resultPoints: any[] = []
@@ -334,7 +344,7 @@ class GETELECViewController extends UIViewController {
         
         const inquiryComponent = route.componentWithViewController(GETELECViewController)
         
-        this.titleLabel.text = "Enter your data in json format and press the load button."
+        this.titleLabel.text = "Enter your data in HJSON format and press the load button."
         
         route.didcompleteComponent(inquiryComponent)
         
