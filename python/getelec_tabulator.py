@@ -35,15 +35,50 @@ integrator.intfun_dbg.restype = ct.c_double
 Npoly = 5
 NGi = 128
 zs = 1.6183e-4
+kBoltz = 8.6173324e-5 
 
-def get_gamow_line(F, R, gamma, Npoints = NGi):
-    Wmin = np.array([1.])
-    Wmax = np.copy(Wmin)
-    Gamow = np.zeros(Npoints)
-    getelec.export_gamow(ct.c_double(F), ct.c_double(R), ct.c_double(gamma), ct.c_int(Npoints), \
-        ct.c_void_p(Wmin.ctypes.data), ct.c_void_p(Wmax.ctypes.data), ct.c_void_p(Gamow.ctypes.data))
-    W = np.linspace(Wmin[0], Wmax[0], Npoints)
-    return W, Gamow
+"""
+Tabulator is class designed to reduce the complexity of GETELEC, from a 4D calculation [J(E,F,R,gammow)] to a 3D calculation [J(E,F,R)], where gammow is
+either a) loaded from an existing file or b) approximated to a polynomial, which is then saved for later use. Thus reducing the computational time to calculate J and Pn.
+
+There are 6 functions within the class Tabulator:
+    1) __init__()
+        This initialising function calls other functions within Tabulator to either load the polynomials describing Gammow or to calculate them 
+        As inputs this function uses:
+            Nf, Nr and Ngamma number of data points, given field, tip radius and gamma ranges, for which we want to evaluate Gammow
+            Frange which defines the range for the field we want to apply to our emitter (in V/nm)
+            Rmin is the minimum value for the tip radius (in nm)
+            
+    2) load()
+        This function looks for files where gammow has been pre-calculated and stored for future use. Thus saving the computational time of calculating it.
+        Gtab, Finv, Rinv and gaminv are loaded and ready to use
+        Then "RegularGridInterpolator" is use to asign values of Gtab to the corresponding Finv, Rinv and gaminv combination.
+            These relations are stored in interpolator for later use
+        
+    3) tabulate()
+        This function is called if there are nor pre-calculated values for Finv, Rinv, gaminv and Gtab.
+        It sets Finv, Rinv, gaminv for arbitrary values we give, from which the values for the field (F), tip radius (R) and gamma will be obtained
+        For each value of F, R and gamma, a C function calculates Gammow (G) and the energy range (w) for which G is evaluated
+            w0 is defined by the Fermi-Dirac distribution
+            w1 is defined by thermal distribution - WARNING I quite don't remember this
+        Then it tries to fit G(W) to a polynomial. Such polynomial and the energy limits are stored in Gtab
+                    G(W)|.
+                        | . 
+                        |   .   
+                        |       .     
+                        |            .
+                        |                  .
+                        |                         .
+                        |                                  .   
+                        |_________|_________________|______________W=E
+                                  w0                w1
+    
+    4) Save()
+        It saves the calculations we have made, if any, in order to be reused in future simulations
+    
+    5) get_Gtab()  
+        Calls the interpolator (see 2)) to access the tabulated polynomials describing Gammow
+"""
 
 class Tabulator():
     def __init__(self, Nf = 256, Nr = 128, Ngamma = 32):
@@ -59,40 +94,6 @@ class Tabulator():
             self.tabulate()
             self.save()
 
-    def tabulate(self):
-        #warnings.filterwarnings("error")
-        self.Finv = np.linspace(1/self.Frange[1], 1./ self.Frange[0], self.Nf)
-        self.Rinv = np.linspace(1.e-3, 1/self.Rmin, self.Nr)
-        self.gaminv = np.linspace(1.e-3, .99, self.Ngamma)
-        self.Gtab = np.ones([self.Ngamma, self.Nr, self.Nf, Npoly+2])
-
-        for i in range(self.Ngamma):
-            for j in range(self.Nr):
-                for k in range(self.Nf):
-                    F = 1/self.Finv[k]
-                    R = 1/self.Rinv[j]
-                    gamma = 1/self.gaminv[i]
-                    W,G = get_gamow_line(F, R , gamma)
-                    try:
-                        poly = np.polyfit(W, G, Npoly-1)
-                    except(RankWarning):
-                        print("Rank Warning for F = %g, R = %g, gamma = %g"%(F,R,gamma))
-                        plt.plot(W,G)
-                        plt.show()
-                    self.Gtab[i,j,k,:] = np.append(poly, [W[0], W[-1]])
-    
-
-    def save(self):
-        try:
-            os.mkdir("tabulated")
-        except:
-            pass
-            
-        np.save("tabulated/Gtable", self.Gtab)
-        np.save("tabulated/Finv", self.Finv)
-        np.save("tabulated/Rinv", self.Rinv)
-        np.save("tabulated/gammainv", self.gaminv)
-        
     def load(self):
         try:
             self.Gtab = np.load("tabulated/Gtable.npy")
@@ -103,15 +104,63 @@ class Tabulator():
                 self.interpolator = intrp.RegularGridInterpolator((self.gaminv, self.Rinv, self.Finv), self.Gtab)
                 return True
             else:
+                print("tabulation filed cannot be interpolated")
                 return False
         except(IOError):
             print ("tabulation files not found")
             return False
     
-    def get_Gpoly(self, F, R, gamma):
+    def tabulate(self):
+        #warnings.filterwarnings("error")
+        self.Finv = np.linspace(1/self.Frange[1], 1./ self.Frange[0], self.Nf)
+        self.Rinv = np.linspace(1.e-3, 1/self.Rmin, self.Nr)
+        self.gaminv = np.linspace(1.e-3, .99, self.Ngamma)
+        self.Gtab = np.ones([self.Ngamma, self.Nr, self.Nf, Npoly+2])
+
+        for i in range(self.Ngamma):
+            for j in range(self.Nr):
+                for k in range(self.Nf):
+                    
+                    F = 1/self.Finv[k]
+                    R = 1/self.Rinv[j]
+                    gamma = 1/self.gaminv[i]
+                    
+                    Wmin = np.array([1.])
+                    Wmax = np.copy(Wmin)
+                    G = np.zeros(NGi)
+                    
+                    getelec.export_gamow(ct.c_double(F), ct.c_double(R), ct.c_double(gamma), ct.c_int(NGi), \
+                        ct.c_void_p(Wmin.ctypes.data), ct.c_void_p(Wmax.ctypes.data), ct.c_void_p(G.ctypes.data))
+                    
+                    W = np.linspace(Wmin[0], Wmax[0], NGi)
+                    try:
+                        poly = np.polyfit(W, G, Npoly-1)
+                    except(RankWarning):
+                        print("Rank Warning for F = %g, R = %g, gamma = %g"%(F,R,gamma))
+                        plt.plot(W,G)
+                        plt.show()
+                    self.Gtab[i,j,k,:] = np.append(poly, [W[0], W[-1]])
+    
+    def save(self):
+        try:
+            os.mkdir("tabulated")
+        except:
+            pass
+            
+        np.save("tabulated/Gtable", self.Gtab)
+        np.save("tabulated/Finv", self.Finv)
+        np.save("tabulated/Rinv", self.Rinv)
+        np.save("tabulated/gammainv", self.gaminv)
+    
+    def get_Gtab(self, F, R, gamma):
         outintr = self.interpolator.__call__([1/gamma, 1./R, 1./F])[0]
         return outintr
-
+    
+"""
+If try 
+        
+"""
+ 
 class Emitter():
     def __init__(self, tabula):
         self.tabula = tabula
@@ -122,7 +171,7 @@ class Emitter():
         self.gamma = gamma
     
     def interpolate(self):
-        data = self.tabula.get_Gpoly(self.F, self.R, self.gamma)
+        data = self.tabula.get_Gtab(self.F, self.R, self.gamma)
         self.Wmin = data[-2]
         self.Wmax = data[-1]
         self.Gpoly = data[:Npoly]
@@ -251,12 +300,9 @@ class Emitter():
         ax2.plot(E,gamow, 'r-')
         plt.show()
 
-
-kBoltz = 8.6173324e-5       
-        
-
+      
 tab = Tabulator()
-tab.save()
+tab.save() #this might be redundant becuase it is already included within the __init__
 
 Fmax = 1/tab.Finv[0]
 Fmin = 1/tab.Finv[-1]
@@ -272,7 +318,7 @@ Ri = np.random.rand(Np) * (Rmax - Rmin) + Rmin
 gami = np.random.rand(Np) * (gammax - gammin) + gammin
 Ji = np.copy(Fi)
 Wi = np.random.rand(Np) * (7.5 - 2.5) + 2.5
-Ti = np.random.rand(Np) * (3000 - 100) + 200
+Ti = np.random.rand(Np) * (3000 - 100) + 100
 kT = Ti * kBoltz
 Jget = np.copy(Ji)
 #
