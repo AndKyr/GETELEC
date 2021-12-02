@@ -57,8 +57,8 @@ class GETELECViewController extends UIViewController {
         
         
         this.inputTextArea = new UITextArea(this.view.elementID + "InputTextArea")
-        this.inputTextArea.placeholderText = "Voltage: [2.413e+02, 3.305e+02,  4.993e+02]\r\n" +
-            "Current: [8.719e-01, 3.670e+01, 5.617e+03]\r\nWork_function: 4.5"
+        this.inputTextArea.placeholderText = "Voltage: [2.413e+02, 3.305e+02,  4.993e+02] // in Volts\r\n" +
+            "Current: [8.719e-01, 3.670e+01, 5.617e+03] // in Amperes\r\nWork_function: 4.5 // in eV"
         this.inputTextArea.changesOften = YES
         this.view.addSubview(this.inputTextArea)
         
@@ -259,9 +259,9 @@ class GETELECViewController extends UIViewController {
                 
                 
                 this.resultsLabel.innerHTML = FIRST(result.resultHTMLString, "") +
-                    IF(IS_NOT(result.resultHTMLString))(RETURNER(`Radius: ${ result.Radius } <br>
-                     &beta;: ${ result.beta } <br>
-                     &sigma;Aeff: ${ result.sigma_Aeff }<br>`))
+                    IF(IS_NOT(result.resultHTMLString))(RETURNER(`Radius: ${ (result.Radius as number).toPrecision(5) } nm <br>
+                     &beta;: ${ result.beta.toPrecision(5) } nm^-1 <br>
+                     &sigma;Aeff: ${ result.sigma_Aeff.toPrecision(5) } nm^2 <br>`))
                     .ELSE(RETURNER(""))
                 
                 const pointPoints = this.pointObjectsFromValues(result.xplot_mrk, result.yplot_mrk)
