@@ -65,13 +65,13 @@ There are 6 functions within the class Tabulator:
                     G(W)|.
                         | . 
                         |   .   
-                        |       .     
-                        |            .
+                        |      .     
+                        |           .
                         |                  .
-                        |                         .
-                        |                                  .   
-                        |_________|_________________|______________W=E
-                                  w0                w1
+                        |                              .
+                        |                                                .   
+                        |_________________|_________________|________________W=E
+                                          w0                w1
     
     4) Save()
         It saves the calculations we have made, if any, in order to be reused in future simulations
@@ -152,32 +152,138 @@ class Tabulator():
         np.save("tabulated/Rinv", self.Rinv)
         np.save("tabulated/gammainv", self.gaminv)
     
-    def get_Gtab(self, F, R, gamma):
+    def load_Gtab(self, F, R, gamma):
         outintr = self.interpolator.__call__([1/gamma, 1./R, 1./F])[0]
         return outintr
     
 """
-If try 
+Emitter is a class that takes as input the field, the tip radius, gamma, the electron energy and the temperate, 
+along with tabulated values of Gammow from Tabulator, to calculate the current density of a metallic field emitter
+
+There are 11 functions within the class Emitter. We could bundle them as
+    A) Global functions, which are common to the two ways we have implemented to calculate J.
+        These are the functions are:
+        __init__()
+        set()
+        interpolate()
+        cur_metal_dens()
+            get_lims()
+    B) Those proper of J calculation mode one:
+            integrate_quad()
+    C) Those proper of J calculation mode two:
+            integrate_lin()
+                lFD()
+                transmission()
+                    Gamow()
+         
+    1) __init__()
+        This function initializes the the class by assigining the values from Tabulator() to itself
+    
+    2) set()
+        It takes as inputs the values for the field, the tip radius, and the and the gamma coefficient for which we want to calculate J
+    
+    3) interpolate()
+        With the F, R and gamma values from set(), this function calls the class Tabulator fucntion load_Gtab
+        It loads the tabulated coefficients for Gammow and its energy limits, as calculated before (see class Tabulator 3))
+        Then it takes the derivative of Gammow and evalutes it at the energy limits
+                    G(W)|       .
+                        |         . 
+                        |           .   
+                        |             .     
+                        |               .
+                        |                  .
+                        |                        .
+                        |                                  . ................  
+                        |_________________|_________________|________________W=E
+                                          w0                w1
+    
+    4) cur_dens_metal()
+        This function takes as inputs the work (WARNING: what is work?) and the temperate in (eV)
+        It calls two functions to calculate J
+            get lims() (see below 5))
+            integrate_lin() (see below 6)) or integrate_quad()  (see below 9))
+        Then current density is the returned value
         
+    5) get_lims()
+        This function calculates the energy limits of the integral to calculate J
+        NOTE: This is to be completed by Andreas
+    
+    6) integrate_lin()
+        This function calculates J by inself
+            NOTE: it might be redundant on future versions when a definite J calculation mode is selected
+        It calls two functions to calculate the integrands
+            lFD() (see below 7))
+            transmission() (see below 8))
+            
+    7) lFD()
+        This function calculates the electron supply for different regimes as a function of the electron energy E and the emitter temperature kT
+        If the energy E is large compared with the thermal energy, we will have field emission 
+        If the energy E is small compared with the thermal energy, we will have thermal emission
+        If E and kt are similar, we will have an intermediate regime as described by the GFT theory
+        
+    8) transmission()
+        it 
+            
 """
  
 class Emitter():
     def __init__(self, tabula):
         self.tabula = tabula
-
+   
     def set(self, F, R, gamma):
         self.F = F
         self.R = R
         self.gamma = gamma
     
     def interpolate(self):
-        data = self.tabula.get_Gtab(self.F, self.R, self.gamma)
+        data = self.tabula.load_Gtab(self.F, self.R, self.gamma)
         self.Wmin = data[-2]
         self.Wmax = data[-1]
         self.Gpoly = data[:Npoly]
         self.dG = np.polyder(self.Gpoly)
         self.dGmin = np.polyval(self.dG, self.Wmin)
         self.dGmax = np.polyval(self.dG, self.Wmax)
+        
+    def cur_dens_metal(self, Work, kT, plot = False):
+        self.get_lims(Work, kT)
+        return self.integrate_quad(Work, kT)
+        # return self.integrate_lin(Work, kT, plot)
+
+    def get_lims(self, Work, kT):
+        self.maxbeta = np.polyval(self.dG, min(Work, self.Wmax))
+        if (self.maxbeta * kT < 1.05): #field regime
+            Wcenter = 0.
+            self.Ehigh = 10 /(1/kT - .85*self.maxbeta)
+            self.Elow = -10 / self.maxbeta
+        elif (self.dGmin * kT > .95):
+            Wcenter = Work - self.Wmin
+            self.Ehigh = Wcenter + 10 * kT
+            self.Elow = Wcenter - 10 / self.dGmin
+        else:
+            rootpoly = np.copy(self.dG)
+            rootpoly[-1] -= 1./kT
+            rts = np.roots(rootpoly)
+            realroots = np.real(rts[np.nonzero(np.imag(rts) == 0)])
+            Wcenter = realroots[np.nonzero(np.logical_and(realroots > self.Wmin, realroots < Work))][0]
+            #print (Wcenter)
+            self.Ehigh = Work - Wcenter + 10 * kT
+            self.Elow = Work - Wcenter - 25 * kT
+            
+    def integrate_lin(self, Work, kT, plot = False):
+        E = np.linspace(self.Elow, self.Ehigh, 128)
+        integ = self.lFD(E, kT) * self.transmission(Work - E)
+
+        if(plot):
+            print("Whigh, Wlow = ", Work - self.Elow, Work - self.Ehigh)
+            print ("Wmin, Wmax, Work = ", self.Wmin, self.Wmax, Work)
+            print("maxbeta, minbeta, dGmax, beta_T: ", self.maxbeta, self.dGmin, self.dGmax, 1/ kT)
+            plt.plot(E,integ)
+            ax = plt.gca()
+            ax2 = ax.twinx()
+            ax2.plot(E,self.Gamow(Work - E), 'r-')
+            ax.grid()
+            plt.show()
+        return zs * kT * np.sum(integ) * (E[1] - E[0])
 
     def lFD(self, E, kT):
     #assert E.size() == kT.size()
@@ -200,8 +306,21 @@ class Emitter():
             else:
                 return np.log(1. + np.exp(-E / kT))
 
-    def Gamow(self, W):
+    def transmission(self, W):
+        G = self.Gamow(W)
+        if (isinstance(W, np.ndarray)):
+            D = np.copy(G)
+            D[G < 15.] = 1 / (1 + np.exp(G[G < 15.]))
+            D[G > 15] = np.exp(-G[G > 15.])
+            return D
+        else:
+            if (G < 15.):
+                return 1 / (1 + np.exp(G))
+            else:
+                return np.exp(-G)
 
+    def Gamow(self, W):
+    #used integrate_lin
         if (isinstance(W, np.ndarray)):
             G = np.copy(W)
             highW = W > self.Wmax
@@ -217,61 +336,6 @@ class Emitter():
                 return np.polyval(self.Gpoly, self.Wmax) + self.dGmax * (W - self.Wmax)
             else:
                 return np.polyval(self.Gpoly, self.Wmin) + self.dGmin * (W - self.Wmin)
-
-    def transmission(self, W):
-        G = self.Gamow(W)
-        if (isinstance(W, np.ndarray)):
-            D = np.copy(G)
-            D[G < 15.] = 1 / (1 + np.exp(G[G < 15.]))
-            D[G > 15] = np.exp(-G[G > 15.])
-            return D
-        else:
-            if (G < 15.):
-                return 1 / (1 + np.exp(G))
-            else:
-                return np.exp(-G)
-
-    def cur_dens_metal(self, Work, kT, plot = False):
-        self.get_lims(Work, kT)
-        # return self.integrate_lin(Work, kT, plot)
-        return self.integrate_quad(Work, kT)
-
-    def get_lims(self, Work, kT):
-
-        self.maxbeta = np.polyval(self.dG, min(Work, self.Wmax))
-        if (self.maxbeta * kT < 1.05): #field regime
-            Wcenter = 0.
-            self.Ehigh = 10 /(1/kT - .85*self.maxbeta)
-            self.Elow = -10 / self.maxbeta
-        elif (self.dGmin * kT > .95):
-            Wcenter = Work - self.Wmin
-            self.Ehigh = Wcenter + 10 * kT
-            self.Elow = Wcenter - 10 / self.dGmin
-        else:
-            rootpoly = np.copy(self.dG)
-            rootpoly[-1] -= 1./kT
-            rts = np.roots(rootpoly)
-            realroots = np.real(rts[np.nonzero(np.imag(rts) == 0)])
-            Wcenter = realroots[np.nonzero(np.logical_and(realroots > self.Wmin, realroots < Work))][0]
-            #print (Wcenter)
-            self.Ehigh = Work - Wcenter + 10 * kT
-            self.Elow = Work - Wcenter - 25 * kT
-
-    def integrate_lin(self, Work, kT, plot = False):
-        E = np.linspace(self.Elow, self.Ehigh, 128)
-        integ = self.lFD(E, kT) * self.transmission(Work - E)
-
-        if(plot):
-            print("Whigh, Wlow = ", Work - self.Elow, Work - self.Ehigh)
-            print ("Wmin, Wmax, Work = ", self.Wmin, self.Wmax, Work)
-            print("maxbeta, minbeta, dGmax, beta_T: ", self.maxbeta, self.dGmin, self.dGmax, 1/ kT)
-            plt.plot(E,integ)
-            ax = plt.gca()
-            ax2 = ax.twinx()
-            ax2.plot(E,self.Gamow(Work - E), 'r-')
-            ax.grid()
-            plt.show()
-        return zs * kT * np.sum(integ) * (E[1] - E[0])
 
     def integrate_quad(self, Work, kT):
         args = tuple([Work] + [kT] + [self.Wmin] + [self.Wmax] + [self.dGmin] + [self.dGmax] + list(self.Gpoly) )
