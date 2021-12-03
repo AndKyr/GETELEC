@@ -376,6 +376,22 @@ class Emitter():
         ax2.plot(E,gamow, 'r-')
         plt.show()
 
+"""
+Main programmen
+
+Tha class Tabulator is innitiated to:
+    a) Load the precalculated polynomials for Gammmow
+    b) Calculate such polynomials
+
+F, R, gamma, W and T are randomly assigned to evaluate the performance of Tabulator Vs. GETELEC
+This randomization is done to prevent any biased values from the programmers when evaluating the code performance
+
+The class Emitter is innitiated with tab as the argument to establish a connection between both classes
+J is calculated from tabulator --> Ji
+J is calculated from GETELEC --> JgetElem --> Jget
+
+Then the error is calculated and displayed for comparison
+"""
       
 tab = Tabulator()
 tab.save() #this might be redundant becuase it is already included within the __init__
@@ -392,12 +408,12 @@ Np = 8096
 Fi = np.random.rand(Np) * (Fmax - Fmin) + Fmin
 Ri = np.random.rand(Np) * (Rmax - Rmin) + Rmin
 gami = np.random.rand(Np) * (gammax - gammin) + gammin
-Ji = np.copy(Fi)
 Wi = np.random.rand(Np) * (7.5 - 2.5) + 2.5
 Ti = np.random.rand(Np) * (3000 - 100) + 100
 kT = Ti * kBoltz
+Ji = np.copy(Fi)
 Jget = np.copy(Ji)
-#
+
 emit = Emitter(tab)
 
 print("calculating from tabulator")
