@@ -201,7 +201,7 @@ There are 11 functions within the class Emitter. We could bundle them as
         This function takes as inputs the work (WARNING: what is work?) and the temperate in (eV)
         It calls two functions to calculate J
             get lims() (see below 5))
-            integrate_lin() (see below 6)) or integrate_quad()  (see below 9))
+            integrate_lin() (see below 6)) or integrate_quad()  (see below 10))
         Then current density is the returned value
         
     5) get_lims()
@@ -222,7 +222,19 @@ There are 11 functions within the class Emitter. We could bundle them as
         If E and kt are similar, we will have an intermediate regime as described by the GFT theory
         
     8) transmission()
-        it 
+        It provides an expression for the transmission coefficient D by evaluating the Gammow coefficeint
+        To evaluate Gammow, this fucntion calls the fucntion Gamow() (see below 9))
+    
+    9) Gamow()
+        This function provides specific values for Gammow given a set of energies
+        It takes the polynomial coefficients from Tabulator() and evaluate them at the different energies
+        Then it returs such values to trasnmission()
+        
+    10) integrate_quad()
+        It integrates using a function called from GETELEC to calculate J
+    
+    11) plot_quad()
+        WARNING: I don't quite understand what is this function about
             
 """
  
