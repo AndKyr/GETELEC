@@ -4,7 +4,15 @@
   "description": "This repo is a boilerplate repo for creating typescript projects in a node environment. After following along the instructions you have the basic functionality for running a typescript project with ts-node included to your project-folder.",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "pm2 start 'ts-node -- ./app.ts' --exp-backoff-restart-delay=100",
+    "reload": "pm2 reload",
+    "list": "pm2 list",
+    "monit": "pm2 monit",
+    "serverStatus": "pm2 plus",
+    "logs": "pm2 logs",
+    "flushLogs": "pm2 flush",
+    "stop": "pm2 stop",
+    "delete": "pm2 delete"
   },
   "bin": {
     "edit-qd-script": "./app.js"
