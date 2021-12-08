@@ -3,12 +3,15 @@ import "./lib/Extensions"
 import express from "express"
 import { SocketController } from "./lib/SocketController"
 import { GETELECController } from "./src/GETELECController"
+import compression from "compression"
 import SocketIO = require("socket.io")
 
 
 var expressApplication = express()
 
 expressApplication.use(express.json())
+
+expressApplication.use(compression())
 
 //expressApp.set('view engine', 'ejs');// tell Express we're using EJS
 expressApplication.set("views", path.join(__dirname + "/webclient"))// set path to *.ejs files
