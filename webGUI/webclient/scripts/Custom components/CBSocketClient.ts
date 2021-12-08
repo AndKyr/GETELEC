@@ -106,20 +106,20 @@ class CBSocketClient extends UIObject {
             
             console.log("Socket.io connected to server. clientID = " + socket + ", socketID = " + socket)
             
-            var instanceIdentifier = localStorage.getItem("InstanceIdentifier")
-            
-            if (IS_NOT(instanceIdentifier)) {
-                
-                instanceIdentifier = MAKE_ID()
-                localStorage.setItem("InstanceIdentifier", instanceIdentifier)
-                
-            }
+            // var instanceIdentifier = localStorage.getItem("InstanceIdentifier")
+            //
+            // if (IS_NOT(instanceIdentifier)) {
+            //
+            //     instanceIdentifier = MAKE_ID()
+            //     localStorage.setItem("InstanceIdentifier", instanceIdentifier)
+            //
+            // }
             
             const handshakeMessage: CBSocketHandshakeInitMessage = {
                 
                 accessToken: null,
                 
-                instanceIdentifier: instanceIdentifier
+                instanceIdentifier: null // instanceIdentifier
                 
             }
             

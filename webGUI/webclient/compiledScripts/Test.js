@@ -3305,14 +3305,17 @@ class CBSocketClient extends UIObject {
         // @ts-ignore
         this.socket.on("connect", function (socket) {
             console.log("Socket.io connected to server. clientID = " + socket + ", socketID = " + socket);
-            var instanceIdentifier = localStorage.getItem("InstanceIdentifier");
-            if (IS_NOT(instanceIdentifier)) {
-                instanceIdentifier = MAKE_ID();
-                localStorage.setItem("InstanceIdentifier", instanceIdentifier);
-            }
+            // var instanceIdentifier = localStorage.getItem("InstanceIdentifier")
+            //
+            // if (IS_NOT(instanceIdentifier)) {
+            //
+            //     instanceIdentifier = MAKE_ID()
+            //     localStorage.setItem("InstanceIdentifier", instanceIdentifier)
+            //
+            // }
             const handshakeMessage = {
                 accessToken: null,
-                instanceIdentifier: instanceIdentifier
+                instanceIdentifier: null // instanceIdentifier
             };
             this.socket.emit("CBSocketHandshakeInitMessage", {
                 identifier: MAKE_ID(),
@@ -4385,7 +4388,7 @@ class RootViewController extends UIViewController {
         this.contentViewController.view.frame = this.topBarView.frame.rectangleForNextRow(this.paddingLength, FIRST_OR_NIL(wrapInNil(this.contentViewController).intrinsicViewContentHeight([bounds.width, 1250].min()), wrapInNil(this.contentViewController).view.intrinsicContentHeight([bounds.width, 1250].min()))).rectangleWithWidth([bounds.width, 1250].min(), 0.5);
         this.contentViewController.view.style.boxShadow = "0 3px 6px 0 rgba(0, 0, 0, 0.1)";
         this.contentViewController.view.setMargins(0, 0, this.paddingLength, 0);
-        //this.view.setPaddings(0, 0, this.paddingLength, 0);
+        this.view.setPaddings(0, 0, this.paddingLength, 0);
         var bottomBarHeight = Math.max(100, this.bottomBarView.intrinsicContentHeight(this.contentViewController.view.frame.width));
         this.bottomBarView.frame = this.contentViewController.view.frame.rectangleWithY([
             this.contentViewController.view.frame.max.y + this.paddingLength * 2,
@@ -5280,14 +5283,14 @@ class GETELECViewController extends UIViewController {
         this.titleLabel.isSingleLine = NO;
         this.view.addSubview(this.titleLabel);
         this.inputTextArea = new UITextArea(this.view.elementID + "InputTextArea");
-        this.inputTextArea.placeholderText = "{\r\n\"Voltage\": [2.413e+02, 3.305e+02,  4.993e+02],\r\n" +
-            "\"Current\": [8.719e-01, 3.670e+01, 5.617e+03], \r\n\"Work_function\": 4.5\r\n}";
+        this.inputTextArea.placeholderText = "Voltage: [2.413e+02, 3.305e+02,  4.993e+02] // In Volts\r\n" +
+            "Current: [8.719e-01, 3.670e+01, 5.617e+03] // In Amperes\r\nWork_function: 4.5 // In eV";
         this.inputTextArea.changesOften = YES;
         this.view.addSubview(this.inputTextArea);
         this.loadDataButton = new CBButton();
         this.loadDataButton.titleLabel.text = "Load data";
         this.view.addSubview(this.loadDataButton);
-        this.loadDataButton.enabled = NO;
+        //this.loadDataButton.enabled = NO
         this.resultsLabel = new UIView();
         this.resultsLabel.innerHTML = "Results";
         this.resultsLabel.hidden = YES;
@@ -5423,7 +5426,7 @@ class GETELECViewController extends UIViewController {
                 CBDialogViewShower.showActionIndicatorDialog("Loading.");
                 this.inputTextArea.text = this.inputTextArea.text || this.inputTextArea.placeholderText;
                 const stringSocketClientResult = yield SocketClient.PerformFitFun({
-                    inputData: this.inputTextArea.text
+                    inputData: JSON.stringify(this.inputData())
                 });
                 if (IS(stringSocketClientResult.errorResult)) {
                     console.log(stringSocketClientResult.errorResult);
@@ -5434,9 +5437,9 @@ class GETELECViewController extends UIViewController {
                 const result = JSON.parse(stringSocketClientResult.result);
                 //console.log(result)
                 this.resultsLabel.innerHTML = FIRST(result.resultHTMLString, "") +
-                    IF(IS_NOT(result.resultHTMLString))(RETURNER(`Radius: ${result.Radius} <br>
-                     &beta;: ${result.beta} <br>
-                     &sigma;Aeff: ${result.sigma_Aeff}<br>`))
+                    IF(IS_NOT(result.resultHTMLString))(RETURNER(`Radius: ${result.Radius.toPrecision(5)} nm <br>
+                     &beta;: ${result.beta.toPrecision(5)} nm^-1 <br>
+                     &sigma;Aeff: ${result.sigma_Aeff.toPrecision(5)} nm^2 <br>`))
                         .ELSE(RETURNER(""));
                 const pointPoints = this.pointObjectsFromValues(result.xplot_mrk, result.yplot_mrk);
                 const linePoints = this.pointObjectsFromValues(result.xplot_line, result.yplot_line);
@@ -5462,6 +5465,11 @@ class GETELECViewController extends UIViewController {
             CBDialogViewShower.hideActionIndicatorDialog();
         });
     }
+    inputData() {
+        // @ts-ignore
+        const inputData = Hjson.parse(this.inputTextArea.text);
+        return inputData;
+    }
     pointObjectsFromValues(xValues, yValues) {
         var resultPoints = [];
         for (var i = 0; i < xValues.length; i++) {
@@ -5478,7 +5486,7 @@ class GETELECViewController extends UIViewController {
         return __awaiter(this, void 0, void 0, function* () {
             _super.handleRoute.call(this, route);
             const inquiryComponent = route.componentWithViewController(GETELECViewController);
-            this.titleLabel.text = "Enter your data in json format and press the load button.";
+            this.titleLabel.text = "Enter your data in HJSON format and press the load button.";
             route.didcompleteComponent(inquiryComponent);
         });
     }
