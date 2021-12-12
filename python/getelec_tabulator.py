@@ -59,19 +59,19 @@ There are 6 functions within the class Tabulator:
         This function is called if there are nor pre-calculated values for Finv, Rinv, gaminv and Gtab.
         It sets Finv, Rinv, gaminv for arbitrary values we give, from which the values for the field (F), tip radius (R) and gamma will be obtained
         For each value of F, R and gamma, a C function calculates Gammow (G) and the energy range (w) for which G is evaluated
-            w0 is defined by the Fermi-Dirac distribution
-            w1 is defined by thermal distribution - WARNING I quite don't remember this
+            wmin is defined as the energy at the top of the potential barrier
+            wmax is defined as the energy where G gets a values high enough, here G=50, so the tunnelling probability is ~0%
         Then it tries to fit G(W) to a polynomial. Such polynomial and the energy limits are stored in Gtab
-                    G(W)|.
-                        | . 
-                        |   .   
-                        |      .     
-                        |           .
-                        |                  .
-                        |                              .
-                        |                                                .   
-                        |_________________|_________________|________________W=E
-                                          w0                w1
+                    G(W)|                                                     .
+                        |                                                   .
+                        |                                                .
+                        |                                            .
+                        |                                       .
+                        |                               . 
+                        |                    .               
+                        | .                                  
+                        |_________________|_________________________|________________W (energy)
+                         w=0(Evac)        wmin (Top barrier)        wmax (G=50)
     
     4) Save()
         It saves the calculations we have made, if any, in order to be reused in future simulations
@@ -186,16 +186,16 @@ There are 11 functions within the class Emitter. We could bundle them as
         With the F, R and gamma values from set(), this function calls the class Tabulator fucntion load_Gtab
         It loads the tabulated coefficients for Gammow and its energy limits, as calculated before (see class Tabulator 3))
         Then it takes the derivative of Gammow and evalutes it at the energy limits
-                    G(W)|       .
-                        |         . 
-                        |           .   
-                        |             .     
-                        |               .
-                        |                  .
-                        |                        .
-                        |                                  . ................  
-                        |_________________|_________________|________________W=E
-                                          w0                w1
+                    G(W)|                                                    .       
+                        |                                                 .      
+                        |                                              .    
+                        |                                           .
+                        |                                       .
+                        |                               . 
+                        | ................  .                                           
+                        |_________________|_________________________|________________W (energy)
+                         w=0(Evac)        wmin (Top barrier)        wmax (G=50)
+
     
     4) cur_dens_metal()
         This function takes as inputs the work (WARNING: what is work?) and the temperate in (eV)
@@ -260,8 +260,9 @@ class Emitter():
         self.get_lims(Work, kT)
         return self.integrate_quad(Work, kT)
         # return self.integrate_lin(Work, kT, plot)
-
+    
     def get_lims(self, Work, kT):
+        """finds the limits of integration"""
         self.maxbeta = np.polyval(self.dG, min(Work, self.Wmax))
         if (self.maxbeta * kT < 1.05): #field regime
             Wcenter = 0.
@@ -281,6 +282,33 @@ class Emitter():
             self.Ehigh = Work - Wcenter + 10 * kT
             self.Elow = Work - Wcenter - 25 * kT
             
+    def integrate_Pn(self, Work, kT):
+        E = np.linspace(self.Ehigh, self.Elow)
+        Trans = self.transmission(Work - E)
+        heat = self.depo_heat(E, kT)
+        
+        return zs * (np.sum(heat) * (E[1] - E[0])) * (np.sum(Trans) * (E[1]-E[0]))
+    
+    def depo_heat(self, E, kT):
+        if (isinstance(E,np.ndarray)):
+            H = np.copy(E)
+            
+            highE = E > 10. * kT
+            lowE = E < -10. * kT
+            midE = np.logical_not(highE) * np.logical_not(lowE)
+            
+            H[highE] = E
+            H[lowE] = kT
+            H[midE] = E/(1. + np.exp(E[midE] / kT))
+            return H
+        else:
+            if E > 10 * kT:
+                return E
+            elif(E < -10 * kT):
+                return kT
+            else:
+                return E/(1. + np.exp(E / kT))
+    
     def integrate_lin(self, Work, kT, plot = False):
         E = np.linspace(self.Elow, self.Ehigh, 128)
         integ = self.lFD(E, kT) * self.transmission(Work - E)
@@ -308,7 +336,7 @@ class Emitter():
 
             L[highE] = np.exp(-E[highE] / kT)
             L[lowE] = - E[lowE] / kT
-            L[midE]=np.log(1. + np.exp(-E[midE] / kT))
+            L[midE] = np.log(1. + np.exp(-E[midE] / kT))
             return L
         else:
             if E > 10 * kT:
@@ -412,7 +440,9 @@ Wi = np.random.rand(Np) * (7.5 - 2.5) + 2.5
 Ti = np.random.rand(Np) * (3000 - 100) + 100
 kT = Ti * kBoltz
 Ji = np.copy(Fi)
+Pi = np.copy(Fi)
 Jget = np.copy(Ji)
+Pget = np.copy(Ji)
 
 emit = Emitter(tab)
 
@@ -421,6 +451,7 @@ for i in range(len(Fi)):
     emit.set(Fi[i], Ri[i], gami[i])
     emit.interpolate()
     Ji[i] = emit.cur_dens_metal(Wi[i], kT[i])
+    Pi[i] = emit.integrate_Pn(Wi[i], kT[i])
 
 print("calculating from getelec")
 
@@ -433,14 +464,24 @@ for i in range(len(Fi)):
     em.R = Ri[i]
     em.cur_dens()
     Jget[i] = em.Jem
+    Pget[i] = em.heat
 
 abserr = abs(Ji - Jget)
 relerr = abserr / Jget
 
+Pn_abserr = abs(Pi - Pget)
+Pn_relerr = Pn_abserr / Pget
+
 bad = np.where(np.logical_and(relerr > 0.5, abserr > 1.e-25))[0]
+Pbad = mp.where(np.logical_and(Pn_relerr > 0.5, Pn_abserr > 1.e-25))[0]
+
 
 print("bad = ", bad)
 print("rms error = ", np.sqrt(np.mean(relerr[abserr > 1.e-25]**2)))
+
+print("Pbad = ", Pbad)
+print("rms error = ", np.sqrt(np.mean(Pn_relerr[Pn_abserr > 1.e-25]**2)))
+
 for i in bad:
     print("Jget, Ji : ", Jget[i], Ji[i])
     emit.set(Fi[i], Ri[i], gami[i])
@@ -448,6 +489,7 @@ for i in bad:
     emit.get_lims(Wi[i], kT[i])
     emit.integrate_quad(Wi[i], kT[i])
     emit.plot_quad(Wi[i], kT[i])
+    emit.integrate_Pn(Wi[i], kT[i])
 
 plt.loglog(Ji, Jget, '.')
 plt.loglog([1.e-50, 1.], [1.e-50, 1.])
