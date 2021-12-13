@@ -283,11 +283,12 @@ class Emitter():
             self.Elow = Work - Wcenter - 25 * kT
             
     def integrate_Pn(self, Work, kT):
-        E = np.linspace(self.Ehigh, self.Elow)
-        Trans = self.transmission(Work - E)
-        heat = self.depo_heat(E, kT)
+        Et = np.linspace(0, self.Ehigh, 128)
+        Eh = np.linspace(self.Elow, self.Ehigh, 128)
+        Trans = self.transmission(Work - Et)
+        heat = self.depo_heat(Eh, kT)
         
-        return zs * (np.sum(heat) * (E[1] - E[0])) * (np.sum(Trans) * (E[1]-E[0]))
+        return zs * (np.sum(heat) * (Eh[1] - Eh[0])) * (np.sum(Trans) * (Et[1]-Et[0]))
     
     def depo_heat(self, E, kT):
         if (isinstance(E,np.ndarray)):
