@@ -285,40 +285,26 @@ class Emitter():
     def get_Pn(self, work, kT):
         E = np.linspace(self.Elow, self.Ehigh, 128)
         D = self.transmission(work - E)
-        heat = self.depo_heat(E, D, kT)
-        
-        return zs * np.sum(heat) * (E[-1]-E[0])
     
-    def depo_heat(self,D, E, kT):
-        
-        #D_heat = np.copy(E)
+        D_heat = np.copy(E)
         heat_intg = np.copy(E)
-        #D_heat[0] = 0
+        D_heat[0] = 0
     
-        #for i in range(E):
-            #D_heat[i+1] = D_heat[i]+((E[i+1]-E[i])*((D[i+1]+D[i])/2))
-        D_heat = np.sum(D)*(E[-1]-E[0])
+        for i in range(E):
+            D_heat[i+1] = D_heat[i]+((E[i+1]-E[i])*((D[i+1]+D[i])/2))
         
         for i in range(E):
-            #heat_intg[i] = (E[i]*D_heat[-1])/(1+np.exp(E[i]/kT))
-            heat_intg[i] = (E[i]*D_heat)/(1+np.exp(E[i]/kT))
+            heat_intg[i] = (E[i]*D_heat[-1])/(1+np.exp(E[i]/kT))
             
-        return heat_intg
+        return zs * np.sum(heat_intg) * (E[1]-E[0])
     
-    """def get_Pn(self, work, kT):
+    def get_Pn(self, work, kT):
         E = np.linspace(self.Elow, self.Ehigh, 128)
         D = self.transmission(work - E)
         
-        D_heat = np.copy(E)
-        heat_intg = np.copy(D_heat)
+        return zs * np.sum((E*np.sum(D[:128])*(E[1]-E[0]))/(1+np.exp(E/kT))) * (E[1]-E[0])
     
-        for i in range(E):
-            D_heat[i] = (((E[i+1]-E[i]))*((D[i+1]+D[i])/2))
-            heat_intg[i] = (E[i]*D_heat[i])/(1+np.exp(E[i]/kT)) 
-        
-        return zs * np.sum(heat_intg) * (E[1]-E[0])"""
-        
-        
+    
     def integrate_lin(self, Work, kT, plot = False):
         E = np.linspace(self.Elow, self.Ehigh, 128)
         integ = self.lFD(E, kT) * self.transmission(Work - E)
