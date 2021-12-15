@@ -281,35 +281,44 @@ class Emitter():
             #print (Wcenter)
             self.Ehigh = Work - Wcenter + 10 * kT
             self.Elow = Work - Wcenter - 25 * kT
-            
-    def integrate_Pn(self, Work, kT):
-        Et = np.linspace(0, self.Ehigh, 128)
-        Eh = np.linspace(self.Elow, self.Ehigh, 128)
-        Trans = self.transmission(Work - Et)
-        heat = self.depo_heat(Eh, kT)
+    
+    def get_Pn(self, work, kT):
+        E = np.linspace(self.Elow, self.Ehigh, 128)
+        D = self.transmission(work - E)
+        heat = self.depo_heat(E, D, kT)
         
-        return zs * (np.sum(heat) * (Eh[1] - Eh[0])) * (np.sum(Trans) * (Et[1]-Et[0]))
+        return zs * np.sum(heat) * (E[-1]-E[0])
     
-    def depo_heat(self, E, kT):
-        if (isinstance(E,np.ndarray)):
-            H = np.copy(E)
-            
-            highE = E > 10. * kT
-            lowE = E < -10. * kT
-            midE = np.logical_not(highE) * np.logical_not(lowE)
-            
-            H[highE] = E
-            H[lowE] = kT
-            H[midE] = E/(1. + np.exp(E[midE] / kT))
-            return H
-        else:
-            if E > 10 * kT:
-                return E
-            elif(E < -10 * kT):
-                return kT
-            else:
-                return E/(1. + np.exp(E / kT))
+    def depo_heat(self,D, E, kT):
+        
+        #D_heat = np.copy(E)
+        heat_intg = np.copy(E)
+        #D_heat[0] = 0
     
+        #for i in range(E):
+            #D_heat[i+1] = D_heat[i]+((E[i+1]-E[i])*((D[i+1]+D[i])/2))
+        D_heat = np.sum(D)*(E[-1]-E[0])
+        
+        for i in range(E):
+            #heat_intg[i] = (E[i]*D_heat[-1])/(1+np.exp(E[i]/kT))
+            heat_intg[i] = (E[i]*D_heat)/(1+np.exp(E[i]/kT))
+            
+        return heat_intg
+    
+    """def get_Pn(self, work, kT):
+        E = np.linspace(self.Elow, self.Ehigh, 128)
+        D = self.transmission(work - E)
+        
+        D_heat = np.copy(E)
+        heat_intg = np.copy(D_heat)
+    
+        for i in range(E):
+            D_heat[i] = (((E[i+1]-E[i]))*((D[i+1]+D[i])/2))
+            heat_intg[i] = (E[i]*D_heat[i])/(1+np.exp(E[i]/kT)) 
+        
+        return zs * np.sum(heat_intg) * (E[1]-E[0])"""
+        
+        
     def integrate_lin(self, Work, kT, plot = False):
         E = np.linspace(self.Elow, self.Ehigh, 128)
         integ = self.lFD(E, kT) * self.transmission(Work - E)
@@ -452,7 +461,7 @@ for i in range(len(Fi)):
     emit.set(Fi[i], Ri[i], gami[i])
     emit.interpolate()
     Ji[i] = emit.cur_dens_metal(Wi[i], kT[i])
-    Pi[i] = emit.integrate_Pn(Wi[i], kT[i])
+    Pi[i] = emit.get_Pn(Wi[i], kT[i])
 
 print("calculating from getelec")
 
@@ -474,7 +483,7 @@ Pn_abserr = abs(Pi - Pget)
 Pn_relerr = Pn_abserr / Pget
 
 bad = np.where(np.logical_and(relerr > 0.5, abserr > 1.e-25))[0]
-Pbad = mp.where(np.logical_and(Pn_relerr > 0.5, Pn_abserr > 1.e-25))[0]
+Pbad = np.where(np.logical_and(Pn_relerr > 0.5, Pn_abserr > 1.e-25))[0]
 
 
 print("bad = ", bad)
@@ -490,7 +499,7 @@ for i in bad:
     emit.get_lims(Wi[i], kT[i])
     emit.integrate_quad(Wi[i], kT[i])
     emit.plot_quad(Wi[i], kT[i])
-    emit.integrate_Pn(Wi[i], kT[i])
+    emit.get_Pn(Wi[i], kT[i])
 
 plt.loglog(Ji, Jget, '.')
 plt.loglog([1.e-50, 1.], [1.e-50, 1.])
