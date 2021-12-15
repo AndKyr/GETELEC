@@ -511,11 +511,11 @@ def emit (F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300., verbose = False):
         this.print_data()
         return (this.Jem, this.heat)
         
-def MLplot (xfn, beta = 1., W = 4.5, R = 5., gamma = 10., Temp = 300.):
+def MLplot (xfn, beta = 1., W = 4.5, R = 5., gamma = 10., Temp = 300., approx = 2):
     """Take input data xfn=1/V (x axis of FN plot) and calculate the current density
     for a specific set of parameters and F = beta * V. Output in logarithmic scale """
     yfn = np.empty([len(xfn)])
-    this = emission_create(5,W,R,gamma,Temp)
+    this = emission_create(5,W,R,gamma,Temp, approx=approx)
     
     for i in range(len(xfn)):
         this.F = beta / xfn[i]

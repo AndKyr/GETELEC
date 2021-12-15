@@ -53,6 +53,7 @@ double Gfun(int n, double *xx){
 double intfun(int n, double *xx){
 
     double G = Gfun(n, xx);
+    double D;
 
     if (G > 40.)
         D = exp(-G);
@@ -64,6 +65,20 @@ double intfun(int n, double *xx){
 
 double intfun_dbg(int n , double *xx){
     return intfun(n, xx);
+}
+
+double intfun_Pn(int n, double *xx){
+
+    double G = Gfun(n, xx);
+    double D;
+
+    if (G > 40.)
+        D = exp(-G);
+    else
+        D = 1. / (1. + exp(G));
+
+    double expo = -exp(-Energ / kT);
+    return D * (lFD(Energ, kT) * Energ - kT * dilog_(&expo)) ;
 }
 
 

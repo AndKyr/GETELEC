@@ -28,6 +28,9 @@ getelec = ct.CDLL(libpath)
 integrator = ct.CDLL(pythonpath + '/integrator.so') #use absolute path
 integrator.intfun.restype = ct.c_double
 integrator.intfun.argtypes = (ct.c_int, ct.c_double)
+integrator.intfun_Pn.restype = ct.c_double
+# integrator.intfun_Pn.argtypes = (ct.c_int, ct.c_double)
+integrator.intfun_Pn.argtypes = (ct.c_int, ct.c_void_p)
 integrator.Gfun.argtypes = (ct.c_int, ct.c_void_p)
 integrator.Gfun.restype = ct.c_double
 integrator.intfun_dbg.argtypes = (ct.c_int, ct.c_void_p)
@@ -221,14 +224,47 @@ class Emitter():
             ax2 = ax.twinx()
             ax2.plot(E,self.Gamow(Work - E), 'r-')
             ax.grid()
-            plt.show()
+            plt.savefig("Jcur.png")
+            # plt.show()
+        return zs * kT * np.sum(integ) * (E[1] - E[0])
+
+
+    def integrate_lin_Pn(self, Work, kT, plot = False):
+        E = np.linspace(self.Elow, self.Ehigh, 128)
+        integ = np.copy(E)
+        for i in range(len(integ)):
+            args = np.array([E[i], Work, kT, self.Wmin, self.Wmax, self.dGmin, self.dGmax] + list(self.Gpoly))
+            N = ct.c_int(len(args))
+            cargs = ct.c_void_p(args.ctypes.data)
+            integ[i] = integrator.intfun_Pn(N, cargs)
+
+        if(plot):
+            print("Whigh, Wlow = ", Work - self.Elow, Work - self.Ehigh)
+            print ("Wmin, Wmax, Work = ", self.Wmin, self.Wmax, Work)
+            print("maxbeta, minbeta, dGmax, beta_T: ", self.maxbeta, self.dGmin, self.dGmax, 1/ kT)
+            plt.plot(E,integ)
+            ax = plt.gca()
+            ax2 = ax.twinx()
+            ax2.plot(E,self.Gamow(Work - E), 'r-')
+            ax.grid()
+            plt.savefig("Pnspectra.png")
+            # plt.show()
         return zs * kT * np.sum(integ) * (E[1] - E[0])
 
     def integrate_quad(self, Work, kT):
         args = tuple([Work] + [kT] + [self.Wmin] + [self.Wmax] + [self.dGmin] + [self.dGmax] + list(self.Gpoly) )
         try:
             integ, abserr, info = ig.quad(integrator.intfun, self.Elow, self.Ehigh, args, full_output = 1)
-            #self.integ_points = info["alist"]
+            self.integ_points = info["alist"]
+        except(IntegrationWarning):
+            integ = 0.
+        return zs * kT * integ
+
+    def integrate_quad_Nottingham(self, Work, kT):
+        args = tuple([Work] + [kT] + [self.Wmin] + [self.Wmax] + [self.dGmin] + [self.dGmax] + list(self.Gpoly) )
+        try:
+            integ, abserr, info = ig.quad(integrator.intfun_Pn, self.Elow, self.Ehigh, args, full_output = 1)
+            self.integ_points = info["alist"]
         except(IntegrationWarning):
             integ = 0.
         return zs * kT * integ
@@ -316,8 +352,19 @@ plt.loglog([1.e-50, 1.], [1.e-50, 1.])
 plt.grid()
 plt.show()
         
-#emit.set(1.0806925592804786, 619.7322772569685, 850.0544127987904)
-#emit.interpolate()
-#emit.get_lims(5.724887551899318, 0.07987953439761075)
-#emit.integrate_lin(5.724887551899318, 0.07987953439761075, plot = True)
-#emit.plot_quad(5.724887551899318, 0.07987953439761075)
+emit.set(1.0806925592804786, 619.7322772569685, 850.0544127987904)
+emit.interpolate()
+emit.get_lims(5.724887551899318, 0.07987953439761075)
+emit.integrate_lin(5.724887551899318, 0.07987953439761075, plot = True)
+emit.plot_quad(5.724887551899318, 0.07987953439761075)
+W = 4.5
+Temp = 300.
+kT = kBoltz * Temp
+emit.set(5., 10., 10.)
+emit.interpolate()
+emit.get_lims(W, kT)
+
+
+# J = emit.integrate_lin_Pn(W, kT, plot = True)
+# emit.plot_quad(5.724887551899318, 0.07987953439761075)
+

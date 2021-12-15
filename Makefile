@@ -27,7 +27,7 @@ DIRS = bin cobj mod obj modules/obj lib/slatec/obj lib/dynamic modules/cobj png
 .PHONY: tests varyingTemp ctest KXerror
 .SECONDARY: *.o #$(MODOBJ)
 
-all: $(DIRS) $(LIBSFULL) $(LIBSHARED)
+all: $(DIRS) $(LIBSFULL) $(LIBSHARED) python/libintegrator.so
 
 tests: varyingTemp ctest KXerror plots fitIV  
 
@@ -61,6 +61,15 @@ fitIV: tests/fitIV.py
 	
 thetaSC: bin/thetaSC.exe
 	./bin/theta.exe 1.e-6, 10, 500
+
+python/%.f.o: python/%.f
+	$(FC) -c -O3 -fPIC $^ -o $@
+
+python/%.c.o: python/%.c
+	$(CC) -c -O3 -fPIC $^ -o $@
+
+python/libintegrator.so: python/integrator.c.o python/dilog.f.o
+	$(CC) -fPIC -shared -o $@ $^
 	
 
 $(LIBSHARED): $(CINTERFACE) $(LIBSTATIC) $(LIBDEPS)
