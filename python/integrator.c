@@ -1,5 +1,4 @@
 #include <math.h>
-//[Work] + [kT] + + [self.Wmin] + [self.Wmax] + list(self.Gpoly) + list(self.dG) )
 
 #define Energ xx[0]
 #define Work xx[1]
@@ -71,6 +70,7 @@ double intfun_Pn(int n, double *xx){
 
     double G = Gfun(n, xx);
     double D;
+    extern double dilog_() ;
 
     if (G > 40.)
         D = exp(-G);
@@ -78,6 +78,7 @@ double intfun_Pn(int n, double *xx){
         D = 1. / (1. + exp(G));
 
     double expo = -exp(-Energ / kT);
+
     return D * (lFD(Energ, kT) * Energ - kT * dilog_(&expo)) ;
 }
 

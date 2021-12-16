@@ -25,12 +25,12 @@ print(libpath)
 ct.cdll.LoadLibrary(libpath)
 getelec = ct.CDLL(libpath)
 
-integrator = ct.CDLL(pythonpath + '/integrator.so') #use absolute path
+integrator = ct.CDLL(pythonpath + '/libintegrator.so') #use absolute path
 integrator.intfun.restype = ct.c_double
 integrator.intfun.argtypes = (ct.c_int, ct.c_double)
 integrator.intfun_Pn.restype = ct.c_double
-# integrator.intfun_Pn.argtypes = (ct.c_int, ct.c_double)
-integrator.intfun_Pn.argtypes = (ct.c_int, ct.c_void_p)
+integrator.intfun_Pn.argtypes = (ct.c_int, ct.c_double)
+# integrator.intfun_Pn.argtypes = (ct.c_int, ct.c_void_p)
 integrator.Gfun.argtypes = (ct.c_int, ct.c_void_p)
 integrator.Gfun.restype = ct.c_double
 integrator.intfun_dbg.argtypes = (ct.c_int, ct.c_void_p)
@@ -267,7 +267,7 @@ class Emitter():
             self.integ_points = info["alist"]
         except(IntegrationWarning):
             integ = 0.
-        return zs * kT * integ
+        return -zs * kT * integ
 
     def plot_quad(self, Work, kT):
         E = self.integ_points
@@ -307,11 +307,13 @@ Fi = np.random.rand(Np) * (Fmax - Fmin) + Fmin
 Ri = np.random.rand(Np) * (Rmax - Rmin) + Rmin
 gami = np.random.rand(Np) * (gammax - gammin) + gammin
 Ji = np.copy(Fi)
+Pni = np.copy(Fi)
+Pnget = np.copy(Fi)
 Wi = np.random.rand(Np) * (7.5 - 2.5) + 2.5
 Ti = np.random.rand(Np) * (3000 - 100) + 200
 kT = Ti * kBoltz
 Jget = np.copy(Ji)
-#
+
 emit = Emitter(tab)
 
 print("calculating from tabulator")
@@ -319,6 +321,7 @@ for i in range(len(Fi)):
     emit.set(Fi[i], Ri[i], gami[i])
     emit.interpolate()
     Ji[i] = emit.cur_dens_metal(Wi[i], kT[i])
+    Pni[i] = emit.integrate_quad_Nottingham(Wi[i], kT[i])
 
 print("calculating from getelec")
 
@@ -331,6 +334,7 @@ for i in range(len(Fi)):
     em.R = Ri[i]
     em.cur_dens()
     Jget[i] = em.Jem
+    Pnget[i] = em.heat
 
 abserr = abs(Ji - Jget)
 relerr = abserr / Jget
@@ -339,24 +343,25 @@ bad = np.where(np.logical_and(relerr > 0.5, abserr > 1.e-25))[0]
 
 print("bad = ", bad)
 print("rms error = ", np.sqrt(np.mean(relerr[abserr > 1.e-25]**2)))
-for i in bad:
-    print("Jget, Ji : ", Jget[i], Ji[i])
-    emit.set(Fi[i], Ri[i], gami[i])
-    emit.interpolate()
-    emit.get_lims(Wi[i], kT[i])
-    emit.integrate_quad(Wi[i], kT[i])
-    emit.plot_quad(Wi[i], kT[i])
+# for i in bad:
+#     print("Jget, Ji : ", Jget[i], Ji[i])
+#     emit.set(Fi[i], Ri[i], gami[i])
+#     emit.interpolate()
+#     emit.get_lims(Wi[i], kT[i])
+#     emit.integrate_quad(Wi[i], kT[i])
+#     emit.integrate_quad_Nottingham(W[i], kT[i])
 
 plt.loglog(Ji, Jget, '.')
+plt.loglog(abs(Pni), abs(Pnget), '.')
 plt.loglog([1.e-50, 1.], [1.e-50, 1.])
 plt.grid()
-plt.show()
-        
-emit.set(1.0806925592804786, 619.7322772569685, 850.0544127987904)
-emit.interpolate()
-emit.get_lims(5.724887551899318, 0.07987953439761075)
-emit.integrate_lin(5.724887551899318, 0.07987953439761075, plot = True)
-emit.plot_quad(5.724887551899318, 0.07987953439761075)
+plt.savefig("comparison.png")
+# plt.show()
+
+
+
+"""test single value of new Nottingham integration"""
+
 W = 4.5
 Temp = 300.
 kT = kBoltz * Temp
@@ -365,6 +370,14 @@ emit.interpolate()
 emit.get_lims(W, kT)
 
 
-# J = emit.integrate_lin_Pn(W, kT, plot = True)
-# emit.plot_quad(5.724887551899318, 0.07987953439761075)
+Pn = emit.integrate_quad_Nottingham(W, kT)
+
+em = gt.emission_create(approx=2) 
+em.F = 5.
+em.W = 4.5
+em.Temp = 300.
+em.gamma = 10.
+em.R = 10.
+em.cur_dens()
+print("Pget = ", em.heat, "Ptab = ", Pn)
 
