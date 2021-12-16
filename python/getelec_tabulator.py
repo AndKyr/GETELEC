@@ -412,8 +412,7 @@ class Emitter():
     def integrate_quad_Nottingham(self, Work, kT):
         args = tuple([Work] + [kT] + [self.Wmin] + [self.Wmax] + [self.dGmin] + [self.dGmax] + list(self.Gpoly) )
         try:
-            integ, abserr, info = ig.quad(integrator.intfun_Pn, self.Elow, self.Ehigh, args, full_output = 1)
-            self.integ_points = info["alist"]
+            integ, abserr = ig.quad(integrator.intfun_Pn, self.Elow, self.Ehigh, args, full_output = 0)
         except(IntegrationWarning):
             integ = 0.
         return -zs * kT * integ
@@ -469,14 +468,13 @@ Fi = np.random.rand(Np) * (Fmax - Fmin) + Fmin
 Ri = np.random.rand(Np) * (Rmax - Rmin) + Rmin
 gami = np.random.rand(Np) * (gammax - gammin) + gammin
 Ji = np.copy(Fi)
-Pni = np.copy(Fi)
-Pnget = np.copy(Fi)
 Wi = np.random.rand(Np) * (7.5 - 2.5) + 2.5
 Ti = np.random.rand(Np) * (3000 - 100) + 100
 kT = Ti * kBoltz
 Ji = np.copy(Fi)
 Pi = np.copy(Fi)
 Jget = np.copy(Ji)
+Pget = np.copy(Ji)
 
 emit = Emitter(tab)
 
@@ -485,7 +483,7 @@ for i in range(len(Fi)):
     emit.set(Fi[i], Ri[i], gami[i])
     emit.interpolate()
     Ji[i] = emit.cur_dens_metal(Wi[i], kT[i])
-    Pni[i] = emit.integrate_quad_Nottingham(Wi[i], kT[i])
+    Pi[i] = emit.integrate_quad_Nottingham(Wi[i], kT[i])
 
 print("calculating from getelec")
 
@@ -498,7 +496,7 @@ for i in range(len(Fi)):
     em.R = Ri[i]
     em.cur_dens()
     Jget[i] = em.Jem
-    Pnget[i] = em.heat
+    Pget[i] = em.heat
 
 abserr = abs(Ji - Jget)
 relerr = abserr / Jget
@@ -511,7 +509,8 @@ Pbad = np.where(np.logical_and(Pn_relerr > 0.5, Pn_abserr > 1.e-25))[0]
 
 
 print("bad = ", bad)
-print("rms error = ", np.sqrt(np.mean(relerr[abserr > 1.e-25]**2)))
+print("rms error in J= ", np.sqrt(np.mean(relerr[abserr > 1.e-25]**2)))
+print("rms error in Pn= ", np.sqrt(np.mean(Pn_relerr[Pn_abserr > 1.e-25]**2)))
 # for i in bad:
 #     print("Jget, Ji : ", Jget[i], Ji[i])
 #     emit.set(Fi[i], Ri[i], gami[i])
@@ -521,7 +520,7 @@ print("rms error = ", np.sqrt(np.mean(relerr[abserr > 1.e-25]**2)))
 #     emit.integrate_quad_Nottingham(W[i], kT[i])
 
 plt.loglog(Ji, Jget, '.')
-plt.loglog(abs(Pni), abs(Pnget), '.')
+plt.loglog(abs(Pi), abs(Pget), '.')
 plt.loglog([1.e-50, 1.], [1.e-50, 1.])
 plt.grid()
 plt.savefig("comparison.png")
