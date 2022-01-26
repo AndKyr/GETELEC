@@ -9,7 +9,7 @@ import os
 import matplotlib.pyplot as plt
 import scipy.interpolate as intrp
 import json
-
+import datetime
 #import warnings
 
 from io import StringIO 
@@ -262,7 +262,7 @@ class Emitter():
     def cur_dens_metal(self, Work, kT, plot = False):
         self.get_lims(Work, kT)
         return self.integrate_quad(Work, kT)
-        # return self.integrate_lin(Work, kT, plot)
+        #return self.integrate_lin(Work, kT, plot)
     
     def get_lims(self, Work, kT):
         """finds the limits of integration"""
@@ -285,27 +285,26 @@ class Emitter():
             self.Ehigh = Work - Wcenter + 10 * kT
             self.Elow = Work - Wcenter - 25 * kT
     
-    def get_Pn(self, work, kT):
+    def get_Pn(self, Work, kT):
+        E = np.linspace(self.Elow, self.Ehigh, 128)
+        D = self.transmission(Work-E)
+
+        G_heat = np.copy(E)
+        dif = (E[1]-E[0])
+        G_heat[0] = 0
+    
+        for i in range(len(E)-1):
+            G_heat[i+1] = G_heat[i]+(dif*(D[i+1]+D[i])/2)
+
+        heat_intg = (E*G_heat)/(1+np.exp(E/kT))
+
+        return -zs * np.sum(heat_intg) * dif
+    
+    """def get_Pn(self, work, kT):
         E = np.linspace(self.Elow, self.Ehigh, 128)
         D = self.transmission(work - E)
-    
-        D_heat = np.copy(E)
-        heat_intg = np.copy(E)
-        D_heat[0] = 0
-    
-        for i in range(E):
-            D_heat[i+1] = D_heat[i]+((E[i+1]-E[i])*((D[i+1]+D[i])/2))
         
-        for i in range(E):
-            heat_intg[i] = (E[i]*D_heat[-1])/(1+np.exp(E[i]/kT))
-            
-        return zs * np.sum(heat_intg) * (E[1]-E[0])
-    
-    def get_Pn(self, work, kT):
-        E = np.linspace(self.Elow, self.Ehigh, 128)
-        D = self.transmission(work - E)
-        
-        return zs * np.sum((E*np.sum(D[:128])*(E[1]-E[0]))/(1+np.exp(E/kT))) * (E[1]-E[0])
+        return zs * np.sum((E*np.sum(D[:128])*(E[1]-E[0]))/(1+np.exp(E/kT))) * (E[1]-E[0])"""
     
     
     def integrate_lin(self, Work, kT, plot = False):
@@ -479,14 +478,18 @@ Pget = np.copy(Ji)
 emit = Emitter(tab)
 
 print("calculating from tabulator")
+tab_start = datetime.datetime.now()
 for i in range(len(Fi)):
     emit.set(Fi[i], Ri[i], gami[i])
     emit.interpolate()
     Ji[i] = emit.cur_dens_metal(Wi[i], kT[i])
-    Pi[i] = emit.integrate_quad_Nottingham(Wi[i], kT[i])
+    Pi[i] = emit.get_Pn(Wi[i], kT[i])
+    #Pi[i] = emit.integrate_quad_Nottingham(Wi[i], kT[i])
+tab_end = datetime.datetime.now()
+
 
 print("calculating from getelec")
-
+get_start = datetime.datetime.now()
 em = gt.emission_create(approx=2)
 for i in range(len(Fi)):   
     em.F = Fi[i]
@@ -497,20 +500,25 @@ for i in range(len(Fi)):
     em.cur_dens()
     Jget[i] = em.Jem
     Pget[i] = em.heat
+get_end = datetime.datetime.now()
+
 
 abserr = abs(Ji - Jget)
 relerr = abserr / Jget
+bad = np.where(np.logical_and(relerr > 0.5, abserr > 1.e-25))[0]
 
 Pn_abserr = abs(Pi - Pget)
 Pn_relerr = Pn_abserr / Pget
-
-bad = np.where(np.logical_and(relerr > 0.5, abserr > 1.e-25))[0]
 Pbad = np.where(np.logical_and(Pn_relerr > 0.5, Pn_abserr > 1.e-25))[0]
 
 
 print("bad = ", bad)
 print("rms error in J= ", np.sqrt(np.mean(relerr[abserr > 1.e-25]**2)))
 print("rms error in Pn= ", np.sqrt(np.mean(Pn_relerr[Pn_abserr > 1.e-25]**2)))
+
+print("Tab running time", tab_end-tab_start)
+print("get running time", get_end-get_start)
+
 # for i in bad:
 #     print("Jget, Ji : ", Jget[i], Ji[i])
 #     emit.set(Fi[i], Ri[i], gami[i])
@@ -519,14 +527,23 @@ print("rms error in Pn= ", np.sqrt(np.mean(Pn_relerr[Pn_abserr > 1.e-25]**2)))
 #     emit.integrate_quad(Wi[i], kT[i])
 #     emit.integrate_quad_Nottingham(W[i], kT[i])
 
+fig = plt.figure(figsize=(16,6))
 plt.loglog(Ji, Jget, '.')
 plt.loglog(abs(Pi), abs(Pget), '.')
 plt.loglog([1.e-50, 1.], [1.e-50, 1.])
 plt.grid()
-plt.savefig("comparison.png")
-# plt.show()
+plt.title("J comparison")
+plt.savefig("J comparison.png")
+#plt.show()
 
-
+fig2 = plt.figure(figsize=(16,6))
+plt.loglog(Pi, Pget, '.')
+plt.loglog(abs(Pi), abs(Pget), '.')
+plt.loglog([1.e-50, 1.], [1.e-50, 1.])
+plt.grid()
+plt.title("Pn comparison")
+plt.savefig("Pn comparison.png")
+#plt.show()
 
 """test single value of new Nottingham integration"""
 
