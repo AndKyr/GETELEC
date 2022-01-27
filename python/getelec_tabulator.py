@@ -509,7 +509,7 @@ Rmin = 1/tab.Rinv[-1]
 gammax = 1/tab.gaminv[0]
 gammin = 1/tab.gaminv[-1]
 
-Np = 5
+Np = 8096
 
 Fi = np.random.rand(Np) * (Fmax - Fmin) + Fmin
 Ri = np.random.rand(Np) * (Rmax - Rmin) + Rmin
@@ -529,18 +529,18 @@ Sc = (4*q*pi*mo*kT)/h**3
 emit = Emitter(tab)
 
 print("calculating from tabulator")
-tab_start = datetime.datetime.now()
+#tab_start = datetime.datetime.now()
 for i in range(len(Fi)):
     emit.set(Fi[i], Ri[i], gami[i])
     emit.interpolate()
     Ji[i] = emit.cur_dens_metal(Wi[i], kT[i])
     Pi[i] = emit.get_Pn(Wi[i], kT[i])
     #Pi[i] = emit.integrate_quad_Nottingham(Wi[i], kT[i])
-tab_end = datetime.datetime.now()
+#tab_end = datetime.datetime.now()
 
 
 print("calculating from getelec")
-get_start = datetime.datetime.now()
+#get_start = datetime.datetime.now()
 em = gt.emission_create(approx=2)
 for i in range(len(Fi)):   
     em.F = Fi[i]
@@ -551,7 +551,7 @@ for i in range(len(Fi)):
     em.cur_dens()
     Jget[i] = em.Jem
     Pget[i] = em.heat
-get_end = datetime.datetime.now()
+#get_end = datetime.datetime.now()
 
 
 abserr = abs(Ji - Jget)
@@ -567,8 +567,8 @@ print("bad = ", bad)
 print("rms error in J= ", np.sqrt(np.mean(relerr[abserr > 1.e-25]**2)))
 print("rms error in Pn= ", np.sqrt(np.mean(Pn_relerr[Pn_abserr > 1.e-25]**2)))
 
-print("Tab running time", tab_end-tab_start)
-print("get running time", get_end-get_start)
+#print("Tab running time", tab_end-tab_start)
+#print("get running time", get_end-get_start)
 
 # for i in bad:
 #     print("Jget, Ji : ", Jget[i], Ji[i])
