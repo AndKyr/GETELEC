@@ -35,10 +35,19 @@ integrator.Gfun.argtypes = (ct.c_int, ct.c_void_p)
 integrator.Gfun.restype = ct.c_double
 integrator.intfun_dbg.argtypes = (ct.c_int, ct.c_void_p)
 integrator.intfun_dbg.restype = ct.c_double
+
 Npoly = 5
 NGi = 128
 zs = 1.6183e-4
 kBoltz = 8.6173324e-5 
+
+mo = 9.1093837015e-31 # free electron mass, same for holes
+mn = 1.09*mo # effective electron mass @300K, from Green 1990
+mp = 1.15*mo # effective hole mass @300k, from Gree 1990
+h = 6.62607004e-34 # Planck's constant
+q = 1.60217662e-19 # electron charge
+pi = np.pi
+
 
 """
 Tabulator is class designed to reduce the complexity of GETELEC, from a 4D calculation [J(E,F,R,gammow)] to a 3D calculation [J(E,F,R)], where gammow is
@@ -201,7 +210,7 @@ There are 11 functions within the class Emitter. We could bundle them as
 
     
     4) cur_dens_metal()
-        This function takes as inputs the work (WARNING: what is work?) and the temperate in (eV)
+        This function takes as inputs the work and the temperate in (eV)
         It calls two functions to calculate J
             get lims() (see below 5))
             integrate_lin() (see below 6)) or integrate_quad()  (see below 10))
@@ -259,11 +268,50 @@ class Emitter():
         self.dGmin = np.polyval(self.dG, self.Wmin)
         self.dGmax = np.polyval(self.dG, self.Wmax)
         
+    def cur_dens_semi(self, Ec, Ef, Ev, kT):
+        self.get_lims_semi(Ec, Ec, Ev, kT)
+        return self.integrate_lin_semi(Ec, Ef, Ev)
+
+    def get_lims_semi(self, Ec, Ef, Ev, kT):
+
+            if (Ec>Ef):
+                self.Ecmin = -Ec
+                self.Ecmax = Ef + 10*kT
+            else:
+                self.Ecmin = Ec
+                self.Ecmax = Ec + 10 / self.dGmin
+            
+            if (Ev<Ef):
+                self.Evmax = -Ev
+                self.Evmin = Ev + 10 / self.dGmax
+            else:
+                self.Evmax = Ev
+                self.Evmin = Ef - 10*kT
+
+    def integrate_lin_semi(self, Ec, Ef, Ev):
+        ec = np.linspace(self.Ecmin, self.Ecmax, 128)
+        ev = np.linspace(self.Evmin, self.Evmax, 128)
+        
+        eff_ec = (mn/mo) * ec
+
+        Jcinteg = self.lFD(((Ec-Ef)-ec), kT)*(self.transmission(ec)-((1-mm/mo)*self.transmission(eff_ec)))
+
+        """evv = (mn/mo) * ev[-1] 
+
+        evp = np.linspace(evv, self.ev[-1], 128)
+        eff_Dv = np.copy(evp)
+        eff_Dv[0] = 0
+        
+        for i range(len(evp)-1):
+            eff_Dv[i+1] = eff_Dv[i]+()"""
+
+        return (4*q*pi*mo*kT/h**3) * np.sum(Jcinteg) * (ec[-1]-ec[0])
+    
     def cur_dens_metal(self, Work, kT, plot = False):
         self.get_lims(Work, kT)
         return self.integrate_quad(Work, kT)
         #return self.integrate_lin(Work, kT, plot)
-    
+
     def get_lims(self, Work, kT):
         """finds the limits of integration"""
         self.maxbeta = np.polyval(self.dG, min(Work, self.Wmax))
@@ -461,7 +509,7 @@ Rmin = 1/tab.Rinv[-1]
 gammax = 1/tab.gaminv[0]
 gammin = 1/tab.gaminv[-1]
 
-Np = 8096
+Np = 5
 
 Fi = np.random.rand(Np) * (Fmax - Fmin) + Fmin
 Ri = np.random.rand(Np) * (Rmax - Rmin) + Rmin
@@ -474,6 +522,9 @@ Ji = np.copy(Fi)
 Pi = np.copy(Fi)
 Jget = np.copy(Ji)
 Pget = np.copy(Ji)
+
+Sc = (4*q*pi*mo*kT)/h**3
+
 
 emit = Emitter(tab)
 
