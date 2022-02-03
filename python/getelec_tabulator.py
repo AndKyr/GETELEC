@@ -311,9 +311,12 @@ class Emitter():
 
     def get_Pn_semi(self, Ec, Ef, Ev, kT):
         self.get_lims_semi(Ec, Ef, Ev, kT)
-        return Pn_semi_conduction_band(self, Ec, Ef, kT) + Pn_semi_valence_band(self, Ef, Ev, kT)
 
-    def Pn_semi_conduction_band(self, Ec, Ef, Ev, kT):
+        Pnc = self.Pn_semi_conduction_band(Ec, Ef, kT)
+        Pnv = self.Pn_semi_valence_band(Ef, Ev, kT)
+        return Pnc + Pnv
+
+    def Pn_semi_conduction_band(self, Ec, Ef, kT):
         ec = np.linspace(self.Eclow, self.Echigh, 128)
         
         G_heat_C = np.copy(ec)
@@ -329,7 +332,7 @@ class Emitter():
         
         heat_integ_c = (ec*G_heat_C)/(1+np.exp((ef-ec)/kT))
 
-        return -zs * np.sum(heat_integ_c) * dif_c
+        return zs * np.sum(heat_integ_c) * dif_c
     
     def Pn_semi_valence_band(self, Ef, Ev, kT):
         ev = np.linspace(self.Evlow, self.Evhigh, 128)
@@ -347,7 +350,7 @@ class Emitter():
         Dv = (self.transmission(-Ef-ev) - ((1+(mp/m)) * self.transmission(-Ef-ev-evm)))
 
         for i in range(len(ev)-1):
-            G_heat_V[i+1] = G_heat_V[i]+(diff_v*(Dv[i+1]+Dv[i])/2)
+            G_heat_V[i+1] = G_heat_V[i]+(dif_v*(Dv[i+1]+Dv[i])/2)
 
         heat_integ_v = (ev*G_heat_V)/(1+np.exp((ev-efv)/kT))
 
@@ -355,7 +358,7 @@ class Emitter():
 
         heat_integ_ValenceEffect = (dif_v/(1+np.exp((Ev-efv)/kT)))*np.sum(D_ValenceEffect)
 
-        return -zs * (np.sum(heat_integ_v) * dif_v) + heat_integ_ValenceEffect
+        return zs * ((np.sum(heat_integ_v) * dif_v) + heat_integ_ValenceEffect)
 
     def cur_dens_metal(self, Work, kT, plot = False):
         self.get_lims(Work, kT)
@@ -661,7 +664,7 @@ emit.get_lims(W, kT)
 
 
 #Pn = emit.integrate_quad_Nottingham(W, kT)
-Pn = emit.get_Pn(W, kT)
+Pn_metal = emit.get_Pn(W, kT)
 J_metal = emit.cur_dens_metal(W, kT)
 
 em = gt.emission_create(approx=2) 
@@ -678,4 +681,6 @@ Ef = -4.6
 Ev = Ec-1.1
 
 J_semi = emit.cur_dens_semi(Ec, Ef, Ev, kT)
+Pn_semi = emit.get_Pn_semi(Ec, Ef, Ev, kT)
 print(J_metal, J_semi)
+print(Pn_metal, Pn_semi)
