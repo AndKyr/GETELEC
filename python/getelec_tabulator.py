@@ -272,7 +272,11 @@ class Emitter():
         
     def cur_dens_semi(self, Ec, Ef, Ev, kT):
         self.get_lims_semi(Ec, Ef, Ev, kT)
-        return self.integrate_lin_semi(Ec, Ef, Ev, kT)
+
+        Jc = self.integrate_lin_semi_conduction_band(Ec, Ef, kT)
+        Jv = self.integrate_lin_semi_valence_band(Ef, Ev, kT)
+
+        return Jc + Jv
 
     def get_lims_semi(self, Ec, Ef, Ev, kT):
         self.Eclow = (Ec-Ef)
@@ -280,20 +284,18 @@ class Emitter():
         self.Evhigh = (Ev-Ef)
         self.Evlow = min(self.Evhigh, Ef) - 10 / self.dGmax
 
-    def integrate_lin_semi(self, Ec, Ef, Ev, kT):
+    def integrate_lin_semi_conduction_band(self, Ec, Ef, kT): #calculates the integers for J from the conduction band - Eq (7) 10.1103/PhysRev.125.67
         ec = np.linspace(self.Eclow, self.Echigh, 128)
-        ev = np.linspace(self.Evlow, self.Evhigh, 128)
-        #print("E semi",ev,ec)
-
-        #calculates the integers for J from the conduction band - Eq (7) 10.1103/PhysRev.125.67
+        
         ecm = (me/m) * ec
         ef = Ef-Ec
 
-        Jcinteg = self.lFD(ef-ec, kT)  *(self.transmission(-Ef-ec) - ((1-(me/m)) * self.transmission(-Ef-ec+ecm)))
+        Jcinteg = self.lFD(ef-ec, kT) * (self.transmission(-Ef-ec) - ((1-(me/m)) * self.transmission(-Ef-ec+ecm)))
 
-        Jc = zs * kT * np.sum(Jcinteg) * (ec[1]-ec[0])
+        return zs * kT * np.sum(Jcinteg) * (ec[1]-ec[0]) 
         
-        #calculates the integers for J from the valence band - Eq. (A1) 10.1103/PhysRev.135.A794
+    def integrate_lin_semi_valence_band(self, Ef, Ev, kT): #calculates the integers for J from the valence band - Eq. (A1) 10.1103/PhysRev.135.A794
+        ev = np.linspace(self.Evlow, self.Evhigh, 128)
         evm = (mp/m) * ev
         efv = Ef-Ev
 
@@ -305,10 +307,56 @@ class Emitter():
         
         Jvinteg = self.lFD(ev-efv, kT) * (self.transmission(-Ef-ev) - ((1+(mp/m)) * self.transmission(-Ef-ev-evm)))
 
-        Jv = zs * kT * ((np.sum(Jvinteg) * (ev[1]-ev[0])) + ValenceEffect)
+        return zs * kT * ((np.sum(Jvinteg) * (ev[1]-ev[0])) + ValenceEffect)
 
-        return  Jc + Jv
+    def get_Pn_semi(self, Ec, Ef, Ev, kT):
+        self.get_lims_semi(Ec, Ef, Ev, kT)
+        return Pn_semi_conduction_band(self, Ec, Ef, kT) + Pn_semi_valence_band(self, Ef, Ev, kT)
+
+    def Pn_semi_conduction_band(self, Ec, Ef, Ev, kT):
+        ec = np.linspace(self.Eclow, self.Echigh, 128)
+        
+        G_heat_C = np.copy(ec)
+        dif_c = ec[1]-ec[0]
+        G_heat_C[0] = 0
+        ecm = (me/m) * ec 
+        ef = Ef-Ec
+
+        Dc = (self.transmission(-Ef-ec) - ((1-(me/m)) * self.transmission(-Ef-ec+ecm)))
+
+        for i in range(len(ec)-1):
+            G_heat_C[i+1] = G_heat_C[i]+(dif_c*(Dc[i+1]+Dc[i])/2)
+        
+        heat_integ_c = (ec*G_heat_C)/(1+np.exp((ef-ec)/kT))
+
+        return -zs * np.sum(heat_integ_c) * dif_c
     
+    def Pn_semi_valence_band(self, Ef, Ev, kT):
+        ev = np.linspace(self.Evlow, self.Evhigh, 128)
+
+        G_heat_V = np.copy(ev)
+        dif_v = ev[1]-ev[0]
+        G_heat_V[0] = 0
+        evm = (mp/m) * ev
+        efv = Ef-Ev
+
+        Evhigh_eff = Ev * (1 + mp/m)
+
+        ev_eff = np.linspace(Ev, Evhigh_eff, 128)
+
+        Dv = (self.transmission(-Ef-ev) - ((1+(mp/m)) * self.transmission(-Ef-ev-evm)))
+
+        for i in range(len(ev)-1):
+            G_heat_V[i+1] = G_heat_V[i]+(diff_v*(Dv[i+1]+Dv[i])/2)
+
+        heat_integ_v = (ev*G_heat_V)/(1+np.exp((ev-efv)/kT))
+
+        D_ValenceEffect = self.transmission(-Ef-ev) * (ev_eff[1] - ev_eff[0])
+
+        heat_integ_ValenceEffect = (dif_v/(1+np.exp((Ev-efv)/kT)))*np.sum(D_ValenceEffect)
+
+        return -zs * (np.sum(heat_integ_v) * dif_v) + heat_integ_ValenceEffect
+
     def cur_dens_metal(self, Work, kT, plot = False):
         self.get_lims(Work, kT)
         return self.integrate_quad(Work, kT)
@@ -523,7 +571,7 @@ Evi = Eci + Efi
 
 emit = Emitter(tab)
 
-
+"""
 print("calculating from tabulator")
 #tab_start = datetime.datetime.now()
 for i in range(len(Fi)):
@@ -594,7 +642,7 @@ plt.title("Pn comparison")
 plt.savefig("Pn comparison.png")
 #plt.show()
 
-"""fig3 = plt.figure(figsize=(16,6))
+fig3 = plt.figure(figsize=(16,6))
 plt.loglog(Ji_semi, Ji_semi, '.')
 plt.loglog(abs(Ji_semi), Ji_semi, '.')
 plt.loglog([1.e-50, 1.], [1.e-50, 1.])
@@ -625,7 +673,7 @@ em.R = 10.
 em.cur_dens()
 #print("Pget = ", em.heat, "Ptab = ", Pn)
 
-Ec = -5.5
+Ec = -4.05
 Ef = -4.6
 Ev = Ec-1.1
 
