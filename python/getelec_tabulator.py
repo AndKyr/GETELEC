@@ -329,7 +329,7 @@ class Emitter():
         for i in range(len(ec)-1):
             G_heat_C[i+1] = G_heat_C[i]+(dif_c*(Dc[i+1]+Dc[i])/2)
         
-        heat_integ_c = (ec*G_heat_C)/(1+np.exp((ef-ec)/kT))
+        heat_integ_c = (ec*G_heat_C)/(1+np.exp((ec)/kT))
 
         return zs * np.sum(heat_integ_c) * dif_c
     
@@ -346,16 +346,16 @@ class Emitter():
 
         ev_eff = np.linspace(Ev, Evhigh_eff, 128)
 
+        D_ValenceEffect = self.transmission(-Ef-ev) * (ev_eff[1] - ev_eff[0])
+
+        heat_integ_ValenceEffect = (dif_v/(1+np.exp((Ev-efv)/kT)))*np.sum(D_ValenceEffect)
+
         Dv = (self.transmission(-Ef-ev) - ((1+(mp/m)) * self.transmission(-Ef-ev-evm)))
 
         for i in range(len(ev)-1):
             G_heat_V[i+1] = G_heat_V[i]+(dif_v*(Dv[i+1]+Dv[i])/2)
 
-        heat_integ_v = (ev*G_heat_V)/(1+np.exp((ev-efv)/kT))
-
-        D_ValenceEffect = self.transmission(-Ef-ev) * (ev_eff[1] - ev_eff[0])
-
-        heat_integ_ValenceEffect = (dif_v/(1+np.exp((Ev-efv)/kT)))*np.sum(D_ValenceEffect)
+        heat_integ_v = (ev*G_heat_V)/(1+np.exp((ev)/kT))
 
         return zs * ((np.sum(heat_integ_v) * dif_v) + heat_integ_ValenceEffect)
 
@@ -675,7 +675,7 @@ em.R = 10.
 em.cur_dens()
 #print("Pget = ", em.heat, "Ptab = ", Pn)
 
-Ec = -6
+Ec = -3.5
 Ef = -4.5
 Ev = Ec-1.1
 
