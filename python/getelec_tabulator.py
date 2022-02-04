@@ -42,13 +42,11 @@ zs = 1.6183e-4
 kBoltz = 8.6173324e-5 
 
 m = 9.1093837015e-31 # free electron mass, same for holes
-me = 1.08*m # effective electron mass @300K, https://doi.org/10.1142/S0219749909005833
+#me = 1.08*m # effective electron mass @300K, https://doi.org/10.1142/S0219749909005833
 mp = 0.54*m # effective hole mass @300k, https://doi.org/10.1142/S0219749909005833
 #mp = m
-#me = m
-h = 6.62607004e-34 # Planck's constant
-q = 1.60217662e-19 # electron charge
-pi = np.pi
+me = m
+
 
 
 """
@@ -280,18 +278,19 @@ class Emitter():
 
     def get_lims_semi(self, Ec, Ef, Ev, kT):
         self.Eclow = (Ec-Ef)
-        self.Echigh = max(self.Eclow, Ef) + 10 * kT
+        self.Echigh = max(self.Eclow, 0) + 10 * kT
         self.Evhigh = (Ev-Ef)
-        self.Evlow = min(self.Evhigh, Ef) - 10 / self.dGmax
+        self.Evlow = min(self.Evhigh, 0) - 10 / self.dGmax
 
     def integrate_lin_semi_conduction_band(self, Ec, Ef, kT): #calculates the integers for J from the conduction band - Eq (7) 10.1103/PhysRev.125.67
         ec = np.linspace(self.Eclow, self.Echigh, 128)
-        
+        #print(ec)
         ecm = (me/m) * ec
         ef = Ef-Ec
 
-        Jcinteg = self.lFD(ef-ec, kT) * (self.transmission(-Ef-ec) - ((1-(me/m)) * self.transmission(-Ef-ec+ecm)))
-
+        Jcinteg = self.lFD(ec, kT) * (self.transmission(-Ef-ec) - ((1-(me/m)) * self.transmission(-Ef-ec+ecm)))
+        #print(self.transmission(-Ef-ec))
+        #print((1-(me/m)) * self.transmission(-Ef-ec+ecm)))
         return zs * kT * np.sum(Jcinteg) * (ec[1]-ec[0]) 
         
     def integrate_lin_semi_valence_band(self, Ef, Ev, kT): #calculates the integers for J from the valence band - Eq. (A1) 10.1103/PhysRev.135.A794
@@ -303,9 +302,9 @@ class Emitter():
 
         ev_eff = np.linspace(Ev, Evhigh_eff, 128)
 
-        ValenceEffect = self.lFD(Ev-efv, kT) * np.sum(self.transmission(-Ef-ev)) * (ev_eff[1] - ev_eff[0])
+        ValenceEffect = np.log(1+np.exp((Ev-efv)/2)) * np.sum(self.transmission(-Ef-ev)) * (ev_eff[1] - ev_eff[0])
         
-        Jvinteg = self.lFD(ev-efv, kT) * (self.transmission(-Ef-ev) - ((1+(mp/m)) * self.transmission(-Ef-ev-evm)))
+        Jvinteg = self.lFD(ev, kT) * (self.transmission(-Ef-ev) - ((1+(mp/m)) * self.transmission(-Ef-ev-evm)))
 
         return zs * kT * ((np.sum(Jvinteg) * (ev[1]-ev[0])) + ValenceEffect)
 
@@ -314,7 +313,7 @@ class Emitter():
 
         Pnc = self.Pn_semi_conduction_band(Ec, Ef, kT)
         Pnv = self.Pn_semi_valence_band(Ef, Ev, kT)
-        return Pnc + Pnv
+        return -Pnc + Pnv
 
     def Pn_semi_conduction_band(self, Ec, Ef, kT):
         ec = np.linspace(self.Eclow, self.Echigh, 128)
@@ -676,8 +675,8 @@ em.R = 10.
 em.cur_dens()
 #print("Pget = ", em.heat, "Ptab = ", Pn)
 
-Ec = -4.05
-Ef = -4.6
+Ec = -6
+Ef = -4.5
 Ev = Ec-1.1
 
 J_semi = emit.cur_dens_semi(Ec, Ef, Ev, kT)
