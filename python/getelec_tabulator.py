@@ -42,10 +42,10 @@ zs = 1.6183e-4
 kBoltz = 8.6173324e-5 
 
 m = 9.1093837015e-31 # free electron mass, same for holes
-#me = 1.08*m # effective electron mass @300K, https://doi.org/10.1142/S0219749909005833
+me = 1.08*m # effective electron mass @300K, https://doi.org/10.1142/S0219749909005833
 mp = 0.54*m # effective hole mass @300k, https://doi.org/10.1142/S0219749909005833
 #mp = m
-me = m
+#me = m
 
 
 
@@ -267,55 +267,54 @@ class Emitter():
         self.dG = np.polyder(self.Gpoly)
         self.dGmin = np.polyval(self.dG, self.Wmin)
         self.dGmax = np.polyval(self.dG, self.Wmax)
-        
-    def cur_dens_semi(self, Ec, Ef, Ev, kT):
-        self.get_lims_semi(Ec, Ef, Ev, kT)
 
-        Jc = self.integrate_lin_semi_conduction_band(Ec, Ef, kT)
-        Jv = self.integrate_lin_semi_valence_band(Ef, Ev, kT)
-
-        return Jc + Jv
-
-    def get_lims_semi(self, Ec, Ef, Ev, kT):
+    def integration_limits_for_semiconductors(self, Ec, Ef, Ev, kT):
         self.Eclow = (Ec-Ef)
         self.Echigh = max(self.Eclow, 0) + 10 * kT
         self.Evhigh = (Ev-Ef)
         self.Evlow = min(self.Evhigh, 0) - 10 / self.dGmax
 
-    def integrate_lin_semi_conduction_band(self, Ec, Ef, kT): #calculates the integers for J from the conduction band - Eq (7) 10.1103/PhysRev.125.67
-        ec = np.linspace(self.Eclow, self.Echigh, 128)
-        #print(ec)
-        ecm = (me/m) * ec
+    def currents_from_semiconductors(self, Ec, Ef, Ev, kT):
+        self.integration_limits_for_semiconductors(Ec, Ef, Ev, kT)
+
+        Jc = self.current_from_conduction_band(Ec, Ef, kT)
+        Jv = self.current_from_valence_band(Ef, Ev, kT)
+
+        return Jc, Jv, Jc+Jv
+
+    def current_from_conduction_band(self, Ec, Ef, kT): #calculates the integers for J from the conduction band - Eq (7) 10.1103/PhysRev.125.67
+        E = np.linspace(self.Eclow, self.Echigh, 128)
+      
+        ecm = (me/m) * E
         ef = Ef-Ec
 
-        Jcinteg = self.lFD(ec, kT) * (self.transmission(-Ef-ec) - ((1-(me/m)) * self.transmission(-Ef-ec+ecm)))
-        #print(self.transmission(-Ef-ec))
-        #print((1-(me/m)) * self.transmission(-Ef-ec+ecm)))
-        return zs * kT * np.sum(Jcinteg) * (ec[1]-ec[0]) 
-        
-    def integrate_lin_semi_valence_band(self, Ef, Ev, kT): #calculates the integers for J from the valence band - Eq. (A1) 10.1103/PhysRev.135.A794
+        Jcinteg = self.lFD(E, kT) * (self.transmission(-Ef-E) - ((1-(me/m)) * self.transmission(-Ef-E+ecm)))
+        return zs * kT * np.sum(Jcinteg) * (E[1]-E[0]) 
+    
+    def current_from_valence_band(self, Ef, Ev, kT): #calculates the integers for J from the valence band - Eq. (A1) 10.1103/PhysRev.135.A794
         ev = np.linspace(self.Evlow, self.Evhigh, 128)
         evm = (mp/m) * ev
         efv = Ef-Ev
 
         Evhigh_eff = Ev * (1 + mp/m)
 
-        ev_eff = np.linspace(Ev, Evhigh_eff, 128)
+        ev_eff = np.linspace(Evhigh_eff, Ev, 128)
 
-        ValenceEffect = np.log(1+np.exp((Ev-efv)/2)) * np.sum(self.transmission(-Ef-ev)) * (ev_eff[1] - ev_eff[0])
+        ValenceEffect = self.lFD(Ev-efv, kT) * np.sum(self.transmission(-Ef-ev)) * (ev_eff[1] - ev_eff[0])
         
-        Jvinteg = self.lFD(ev, kT) * (self.transmission(-Ef-ev) - ((1+(mp/m)) * self.transmission(-Ef-ev-evm)))
+        Jvinteg = self.lFD(ev, kT) * (self.transmission(-Ef-ev) + ((1+(mp/m)) * self.transmission(-Ef-ev-evm)))
 
         return zs * kT * ((np.sum(Jvinteg) * (ev[1]-ev[0])) + ValenceEffect)
 
-    def get_Pn_semi(self, Ec, Ef, Ev, kT):
-        self.get_lims_semi(Ec, Ef, Ev, kT)
+    def nottinghah_heat_from_semiconductors(self, Ec, Ef, Ev, kT):
+        self.integration_limits_for_semiconductors(Ec, Ef, Ev, kT)
 
-        Pnc = self.Pn_semi_conduction_band(Ec, Ef, kT)
-        Pnv = self.Pn_semi_valence_band(Ef, Ev, kT)
-        return -Pnc + Pnv
+        Pnc = self.nottingham_heat_conduction_band(Ec, Ef, kT)
+        Pnv = self.nottingham_heat_valence_band(Ef, Ev, kT)
 
-    def Pn_semi_conduction_band(self, Ec, Ef, kT):
+        return  Pnc, Pnv, Pnc+Pnv
+
+    def nottingham_heat_conduction_band(self, Ec, Ef, kT):
         ec = np.linspace(self.Eclow, self.Echigh, 128)
         
         G_heat_C = np.copy(ec)
@@ -333,7 +332,7 @@ class Emitter():
 
         return zs * np.sum(heat_integ_c) * dif_c
     
-    def Pn_semi_valence_band(self, Ef, Ev, kT):
+    def nottingham_heat_valence_band(self, Ef, Ev, kT):
         ev = np.linspace(self.Evlow, self.Evhigh, 128)
 
         G_heat_V = np.copy(ev)
@@ -344,11 +343,11 @@ class Emitter():
 
         Evhigh_eff = Ev * (1 + mp/m)
 
-        ev_eff = np.linspace(Ev, Evhigh_eff, 128)
+        ev_eff = np.linspace(Evhigh_eff, Ev, 128)
 
         D_ValenceEffect = self.transmission(-Ef-ev) * (ev_eff[1] - ev_eff[0])
 
-        heat_integ_ValenceEffect = (dif_v/(1+np.exp((Ev-efv)/kT)))*np.sum(D_ValenceEffect)
+        heat_integ_ValenceEffect = (dif_v/(self.lFD(Ev-efv, kT)))*np.sum(D_ValenceEffect)
 
         Dv = (self.transmission(-Ef-ev) - ((1+(mp/m)) * self.transmission(-Ef-ev-evm)))
 
@@ -359,10 +358,31 @@ class Emitter():
 
         return zs * ((np.sum(heat_integ_v) * dif_v) + heat_integ_ValenceEffect)
 
+    def energy_distribution_from_semiconductors(self, Ec, Ef, Ev, kT):
+        a, b = self.energy_distribution_conduction_band(Ec, Ef, kT)
+
+        return  a, b
+
+    def energy_distribution_conduction_band(self, Ec, Ef, kT):
+        E = np.linspace(self.Eclow, self.Echigh, 128)
+      
+        ecm = (me/m) * E
+        ef = Ef-Ec
+
+        Jcinteg = self.lFD(E, kT) * (self.transmission(-Ef-E)- ((1-(me/m)) * self.transmission(-Ef-E+ecm)))
+       
+        return E , Jcinteg * zs * kT  * (E[1]-E[0])
+
     def cur_dens_metal(self, Work, kT, plot = False):
         self.get_lims(Work, kT)
-        return self.integrate_quad(Work, kT)
-        #return self.integrate_lin(Work, kT, plot)
+        #return self.integrate_quad(Work, kT)
+        return self.integrate_lin(Work, kT, plot)
+    
+    def energy_distribution_from_metals(self, Work, kT):
+        E = np.linspace(self.Elow, self.Ehigh, 128)
+        integ = self.lFD(E, kT) * self.transmission(Work - E)
+
+        return  E, integ * zs * kT * (E[1] - E[0])
 
     def get_lims(self, Work, kT):
         """finds the limits of integration"""
@@ -415,7 +435,6 @@ class Emitter():
             plt.savefig("Jcur.png")
             # plt.show()
         return zs * kT * np.sum(integ) * (E[1] - E[0])
-
 
     def integrate_lin_Pn(self, Work, kT, plot = False):
         E = np.linspace(self.Elow, self.Ehigh, 128)
@@ -567,6 +586,10 @@ Pi = np.copy(Fi)
 Jget = np.copy(Ji)
 Pget = np.copy(Ji)
 Ji_semi = np.copy(Ji)
+Energy_C = np.copy(Ji)
+Electrons_C = np.copy(Ji)
+Energy_M = np.copy(Ji)
+Electrons_M = np.copy(Ji)
 Eci = -np.random.rand(Np) * (4.5 - 3.5) + 3.5
 Efi = -np.random.rand(Np) * (4.0 - 3.0) + 3.0
 Evi = Eci + Efi 
@@ -582,7 +605,7 @@ for i in range(len(Fi)):
     Ji[i] = emit.cur_dens_metal(Wi[i], kT[i])
     Pi[i] = emit.get_Pn(Wi[i], kT[i])
     #Pi[i] = emit.integrate_quad_Nottingham(Wi[i], kT[i])
-   #Ji_semi[i] = emit.cur_dens_semi(Eci[i], Efi[i], Evi[i], kT[i]) 
+   #Ji_semi[i] = emit.currents_from_semiconductors(Eci[i], Efi[i], Evi[i], kT[i]) 
     
 #tab_end = datetime.datetime.now()
 
@@ -663,7 +686,7 @@ emit.get_lims(W, kT)
 
 
 #Pn = emit.integrate_quad_Nottingham(W, kT)
-Pn_metal = emit.get_Pn(W, kT)
+Pn_metal = emit.integrate_quad_Nottingham(W, kT)
 J_metal = emit.cur_dens_metal(W, kT)
 
 em = gt.emission_create(approx=2) 
@@ -675,11 +698,69 @@ em.R = 10.
 em.cur_dens()
 #print("Pget = ", em.heat, "Ptab = ", Pn)
 
-Ec = -3.5
+Ec = -4.5
 Ef = -4.5
 Ev = Ec-1.1
 
-J_semi = emit.cur_dens_semi(Ec, Ef, Ev, kT)
-Pn_semi = emit.get_Pn_semi(Ec, Ef, Ev, kT)
+J_c, J_v, J_semi = emit.currents_from_semiconductors(Ec, Ef, Ev, kT)
+
+Pn_c, Pn_v, Pn_semi = emit.nottinghah_heat_from_semiconductors(Ec, Ef, Ev, kT)
+
+Energy_C, Electrons_C = emit.energy_distribution_from_semiconductors(Ec, Ef, Ev, kT)
+
+#Energy_M, Electrons_M = emit.energy_distribution_from_metals(W, kT)
+
 print(J_metal, J_semi)
 print(Pn_metal, Pn_semi)
+#print(Energy_C, Electrons_C)
+
+fig = plt.figure(figsize=(16,6))
+plt.plot(Energy_C, Electrons_C)
+#plt.plot(Energy_M, Electrons_M)
+plt.title("Energy distributions")
+plt.savefig("Energy distributions.png")
+
+"""
+n = 300
+
+Current_Conduction_Band = np.zeros(n)
+Current_Valence_Band = np.zeros(n)
+Total_Semiconductor_Current = np.zeros(n)
+
+NottinghamHeat_Conduction_Band = np.zeros(n)
+NottinghamHeat_Valence_Band = np.zeros(n)
+Total_Semiconductor_NottinghamHeat = np.zeros(n)
+
+Energy_Conduction_Band =  np.ones(n)
+Electrons_Conduction_Band = np.ones(n)
+
+ConductionBand = np.zeros(n)
+
+for i in range(n):
+    Ec = -i*0.01-3.5
+    Ef = -4.5
+    Ev = Ec-1.1
+
+    Current_Conduction_Band[i], Current_Valence_Band[i],Total_Semiconductor_Current[i] = emit.currents_from_semiconductors(Ec, Ef, Ev, kT)
+    
+    NottinghamHeat_Conduction_Band[i], NottinghamHeat_Valence_Band[i], Total_Semiconductor_NottinghamHeat[i] = emit.nottinghah_heat_from_semiconductors(Ec, Ef, Ev, kT)
+    
+    ConductionBand[i] = Ec
+
+fig3 = plt.figure(figsize=(16,6))
+plt.semilogy(ConductionBand, Current_Conduction_Band)
+plt.semilogy(ConductionBand-1.1, Current_Valence_Band)
+plt.semilogy(ConductionBand, Total_Semiconductor_Current)
+plt.grid()
+#plt.title("Current from semiconductor")
+#plt.savefig("Current from semiconductor.png")
+
+fig4 = plt.figure(figsize=(16,6))
+#plt.plot(ConductionBand, NottinghamHeat_Conduction_Band)
+plt.plot(ConductionBand-1.1, NottinghamHeat_Valence_Band)
+plt.plot(ConductionBand, Total_Semiconductor_NottinghamHeat)
+plt.yscale("symlog", linscale=-1)
+plt.grid('True')
+#plt.title("Nottinghah Heat from semiconductor")
+#plt.savefig("Nottinghah Heat from semiconductor.png")
+"""
