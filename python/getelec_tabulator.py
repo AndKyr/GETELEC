@@ -19,7 +19,7 @@ import datetime
 from io import StringIO 
 import sys
 import getelec_mod as gt
-from python.GTFplot import F
+#from python.GTFplot import F
 
 pythonpath,filename = os.path.split(os.path.realpath(__file__))
 emissionpath,pythonfolder = os.path.split(pythonpath)
@@ -180,7 +180,7 @@ class Barrier:
     def __init__(self, tabulator: Tabulator):
         self.tabulator = tabulator
     
-    def Define_Barrier_Parametres(self, field, radius, gamma):
+    def Define_Barrier_Parameters(self, field, radius, gamma):
         self.field = field
         self.radius = radius
         self.gamma = gamma
@@ -269,7 +269,7 @@ class Metal_Emitter:
     def Define_Emitter_Parameters(self, workfunction: float, kT: float):
         self.workfunction = workfunction
         self.kT = kT
-        self.energy = self.Integration_Limits_for_Metal(self)
+        self.energy = self.Integration_Limits_for_Metals(self)
         
     def Integration_Limits_for_Metals(self):
         """finds the limits of integration"""
@@ -512,9 +512,9 @@ class Semiconductor_Emitter():
     
     def Nottingham_Heat_from_Valence_Band(self):
         
-        energy_distribution = self.Energy_Distribution_from_Valence_Band(self)
+        Energy_Distribution = self.Energy_Distribution_from_Valence_Band(self)
         
-        return -zs * self.kT * np.sum(energy_distribution)
+        return -zs * self.kT * np.sum(Energy_Distribution)
   
     """
 Emitter is a class that takes as input the field, the tip radius, gamma, the electron energy and the temperate, 
@@ -978,15 +978,17 @@ Efi = -np.random.rand(Np) * (4.0 - 3.0) + 3.0
 Evi = Eci + Efi """
 
 #emit = Emitter(tab)
-W = 4.5
+Work = 4.5
 Temp = 300.
 kT = kBoltz * Temp
 
 metal = Metal_Emitter(tab)
 
-metal.Define_Barrier_Parametres(5., 10., 10.)
+metal.Define_Barrier_Parameters(5., 10., 10.)
 metal.Interpolate_Gammow()
-metal.Define_Emitter_Parameters(W, kT)
+metal.Define_Emitter_Parameters(Work, kT)
+
+
 
 pn_metal = metal.Nottingham_Heat_from_Metals()
 j_metal = metal.Current_Density_from_Metals()
