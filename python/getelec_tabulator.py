@@ -1,10 +1,11 @@
 
 from array import array
 import ctypes as ct
+from importlib.metadata import distribution
 from tokenize import Number
 import numpy as np
 from numpy.lib.polynomial import RankWarning
-from pkg_resources import Distribution
+from pkg_resources import Distribution, WorkingSet
 from scipy.integrate.quadpack import IntegrationWarning
 import scipy.optimize as opt
 import scipy.integrate as ig
@@ -19,6 +20,8 @@ import datetime
 from io import StringIO 
 import sys
 import getelec_mod as gt
+from interp3d import interp_3d
+
 #from python.Supply_approx_test import E
 #from python.GTFplot import F
 
@@ -76,6 +79,7 @@ class Tabulator:
             self.gaminv = np.load("tabulated/gammainv.npy")
             if(np.shape(self.Gtab) == tuple([self.Ngamma, self.Nr, self.Nf, Npoly+2])):
                 self.interpolator = intrp.RegularGridInterpolator((self.gaminv, self.Rinv, self.Finv), self.Gtab)
+                #self.interpolator = interp_3d.Interp3D(self.Gtab, self.gaminv, self.Rinv, self.Finv)
                 return True
             else:
                 print("tabulation filed cannot be interpolated")
@@ -127,6 +131,7 @@ class Tabulator:
         np.save("tabulated/gammainv", self.gaminv)
     
     def load_Gtab(self, F, R, gamma):
+        #outintr = self.interpolator.__call__([1/gamma, 1./R, 1./F])[0]
         outintr = self.interpolator.__call__([1/gamma, 1./R, 1./F])[0]
         # it doesn't into account the interpolation is done in a regular grid - equidistance grid
         return outintr
@@ -146,12 +151,12 @@ class Barrier:
         
     def Interpolate_Gammow(self):
         data = self.tabulator.load_Gtab(self.field, self.radius, self.gamma)
-        self.energy_top_barrier = data[-2]
-        self.energy_bottom_barrier = data[-1]
-        self.gammow_coefficients = data[:Npoly]
-        self.gammow_derivative = np.polyder(self.gammow_coefficients)
-        self.gammow_derivative_at_top = np.polyval(self.gammow_derivative, self.energy_top_barrier)
-        self.gammow_derivative_in_bottom = np.polyval(self.gammow_derivative, self.energy_bottom_barrier)
+        self.energy_top_barrier = data[-2] #Wmin
+        self.energy_bottom_barrier = data[-1] #Wmax
+        self.gammow_coefficients = data[:Npoly] #Gpoly
+        self.gammow_derivative = np.polyder(self.gammow_coefficients) #dG
+        self.gammow_derivative_at_top = np.polyval(self.gammow_derivative, self.energy_top_barrier) #dGmin
+        self.gammow_derivative_in_bottom = np.polyval(self.gammow_derivative, self.energy_bottom_barrier) #dGmax
         
 class Emitter_Attributes:
     barrier: Barrier
@@ -178,19 +183,19 @@ class Emitter_Attributes:
     def Gamow(self, energy):
         if (isinstance(energy, np.ndarray)):
             gammow = np.copy(energy)
-            high_energy = energy > self.barrier.energy_top_barrier
-            low_energy = energy < self.barrier.energy_bottom_barrier
+            high_energy = energy > self.barrier.energy_bottom_barrier
+            low_energy = energy < self.barrier.energy_top_barrier
             gammow = np.polyval(self.barrier.gammow_coefficients, energy)
-            gammow[high_energy] = np.polyval(self.barrier.gammow_coefficients, self.barrier.energy_top_barrier) + self.barrier.gammow_derivative_at_top * (energy[high_energy] - self.barrier.energy_top_barrier)
-            gammow[low_energy] = np.polyval(self.barrier.gammow_coefficients, self.barrier.energy_bottom_barrier) + self.barrier.gammow_derivative_in_bottom * (energy[low_energy] - self.barrier.energy_bottom_barrier)
+            gammow[high_energy] = np.polyval(self.barrier.gammow_coefficients, self.barrier.energy_bottom_barrier) + self.barrier.gammow_derivative_in_bottom * (energy[high_energy] - self.barrier.energy_bottom_barrier)
+            gammow[low_energy] = np.polyval(self.barrier.gammow_coefficients, self.barrier.energy_top_barrier) + self.barrier.gammow_derivative_at_top * (energy[low_energy] - self.barrier.energy_top_barrier)
             return gammow
         else:
-            if (energy > self.barrier.energy_bottom_barrier and energy < self.barrier.energy_top_barrier):
+            if (energy > self.barrier.energy_top_barrier and energy < self.barrier.energy_bottom_barrier):
                 return np.polyval(self.barrier.gammow_coefficients, energy)
-            elif(energy > self.barrier.energy_top_barrier):
-                return np.polyval(self.barrier.gammow_coefficients, self.barrier.energy_top_barrier) + self.barrier.gammow_derivative_at_top * (energy - self.barrier.energy_top_barrier)
+            elif(energy > self.barrier.energy_bottom_barrier):
+                return np.polyval(self.barrier.gammow_coefficients, self.barrier.energy_bottom_barrier) + self.barrier.gammow_derivative_in_bottom * (energy - self.barrier.energy_bottom_barrier)
             else:
-                return np.polyval(self.barrier.gammow_coefficients, self.barrier.energy_bottom_barrier) + self.barrier.gammow_derivative_in_bottom * (energy - self.barrier.energy_bottom_barrier) 
+                return np.polyval(self.barrier.gammow_coefficients, self.barrier.energy_top_barrier) + self.barrier.gammow_derivative_at_top * (energy - self.barrier.energy_top_barrier) 
 
     def Log_Fermi_Dirac_Distribution(self, energy, kT):
     #assert E.size() == kT.size()
@@ -221,6 +226,7 @@ class Metal_Emitter:
     emitter_attributes: Emitter_Attributes
     kT: float
     workfunction: float
+    energy: array
     
     def __init__(self, tabulator: Tabulator):
         self.emitter_attributes = Emitter_Attributes(tabulator)
@@ -259,7 +265,7 @@ class Metal_Emitter:
             return np.linspace(energy_bottom, energy_top, resolution)
      
     def Current_Density_from_Metals(self):
-        args = tuple([self.workfunction, self.kT, self.emitter_attributes.barrier.energy_bottom_barrier, self.emitter_attributes.barrier.energy_top_barrier, self.emitter_attributes.barrier.gammow_derivative_in_bottom, self.emitter_attributes.barrier.gammow_derivative_at_top] + list(self.emitter_attributes.barrier.gammow_coefficients))
+        args = tuple([self.workfunction] + [self.kT] + [self.emitter_attributes.barrier.energy_top_barrier] + [self.emitter_attributes.barrier.energy_bottom_barrier] + [self.emitter_attributes.barrier.gammow_derivative_at_top] + [self.emitter_attributes.barrier.gammow_derivative_in_bottom] + list(self.emitter_attributes.barrier.gammow_coefficients))
         try:
             integ, abserr, info = ig.quad(integrator.intfun, self.energy[0], self.energy[-1], args, full_output = 1)
             self.integ_points = info["alist"]
@@ -282,7 +288,7 @@ class Metal_Emitter:
         return  self.energy, energy_distribution
     
     def Nottingham_Heat_from_Metals(self):
-        args = tuple([self.workfunction, self.kT, self.emitter_attributes.barrier.energy_bottom_barrier, self.emitter_attributes.barrier.energy_top_barrier, self.emitter_attributes.barrier.gammow_derivative_in_bottom, self.emitter_attributes.barrier.gammow_derivative_at_top] + list(self.emitter_attributes.barrier.gammow_coefficients))
+        args = tuple([self.workfunction] + [self.kT] + [self.emitter_attributes.barrier.energy_top_barrier] + [self.emitter_attributes.barrier.energy_bottom_barrier] + [self.emitter_attributes.barrier.gammow_derivative_at_top] + [self.emitter_attributes.barrier.gammow_derivative_in_bottom] + list(self.emitter_attributes.barrier.gammow_coefficients))
         try:
             integ, abserr = ig.quad(integrator.intfun_Pn, self.energy[0], self.energy[-1], args, full_output = 0)
         except(IntegrationWarning):
@@ -291,9 +297,9 @@ class Metal_Emitter:
     
     def Nottingham_Heat_from_Metals_educational(self):
         
-        energy_distribution = self.Energy_Distribution_from_Metal(self)
+        energy_space, energy_distribution = self.Energy_Distribution_from_Metals()
         
-        return -zs * np.sum(energy_distribution)
+        return zs * np.sum(energy_distribution) * self.kT
     
     def Current_Density_from_Metals_educational(self, plot = False):
         integ = self.emitter_attributes.Log_Fermi_Dirac_Distribution(self.energy, self.kT) * self.emitter_attributes.Transmission_Coefficient(self.workfunction - self.energy)
@@ -358,16 +364,16 @@ class Semiconductor_Emitter:
     Ev: float
     kT: float
     
-    def __init__(self):
-        self.emitter_attributes = Emitter_Attributes()
-    
+    def __init__(self, tabulator: Tabulator):
+        self.emitter_attributes = Emitter_Attributes(tabulator)
+        
     def Define_Semiconductor_Emitter_Parameters(self, Ec, Ef, Eg, kT):
         self.Ec = Ec
         self.Ef = Ef
         self.Eg = Eg
         self.Ev = self.Ec-self.Eg
         self.kT = kT
-        self.Integration_Limits_for_Semiconductor()
+        self.Integration_Limits_for_Semiconductors()
     
     def Integration_Limits_for_Semiconductors(self):
         resolution = 128
@@ -382,9 +388,10 @@ class Semiconductor_Emitter:
            
     def Current_Density_from_Semiconductors(self):
 
-        current_conduction = self.Current_from_Conduction_Band(self)
-        current_valence = self.Current_from_Valence_Band(self)
+        current_conduction = self.Current_from_Conduction_Band()
+        current_valence = self.Current_from_Valence_Band()
         current_total = current_conduction+current_valence
+        print(type(current_conduction), type(current_valence), type(current_total))
         return current_conduction, current_valence, current_total
 
     def Current_from_Conduction_Band(self): #calculates the integers for J from the conduction band - Eq (7) 10.1103/PhysRev.125.67
@@ -400,14 +407,14 @@ class Semiconductor_Emitter:
         energy_v_effect = np.linspace(max_energy_v_effect, self.energy_valence_band[-1], 128)
 
         valence_effect = self.emitter_attributes.Log_Fermi_Dirac_Distribution(self.energy_valence_band[-1],self.kT) * np.sum(self.emitter_attributes.Transmission_Coefficient(-self.Ef-energy_v_effect)) * (energy_v_effect[1] - energy_v_effect[0])
-        
+        print(type(valence_effect))
         jv_integ = self.emitter_attributes.Log_Fermi_Dirac_Distribution(self.energy_valence_band, self.kT) * (self.emitter_attributes.Transmission_Coefficient(-self.Ef-self.energy_valence_band) + ((1+(mp/m)) * self.emitter_attributes.Transmission_Coefficient(-self.Ef-self.energy_valence_band-self.max_energy_valence_band)))
 
-        return zs * self.kT * ((np.sum(jv_integ) * (self.energy_valence_band[1]-self.energy_valence_band[0])) + valence_effect)
+        return zs * self.kT * ((np.sum(jv_integ) * (self.energy_valence_band[1]-self.energy_valence_band[0])) + np.sum(valence_effect))
   
     def Energy_Distribution_from_Semiconductors(self):
-        energy_space_c, energy_distribution_c = self.Energy_Distribution_from_Conduction_Band(self)
-        energy_space_v, energy_distribution_v = self.Energy_Distribution_from_Valence_Band2(self)
+        energy_space_c, energy_distribution_c = self.Energy_Distribution_from_Conduction_Band()
+        energy_space_v, energy_distribution_v = self.Energy_Distribution_from_Valence_Band2()
         return  energy_space_c, energy_distribution_c, energy_space_v, energy_distribution_v
 
     def Energy_Distribution_from_Conduction_Band(self):
@@ -457,24 +464,26 @@ class Semiconductor_Emitter:
     
     def Nottingham_Heat_from_Semiconductors(self):
         
-        nottingham_conduction = self.Nottingham_Heat_from_Conduction_Band(self)
-        nottigham_valence = self.Nottingham_Heat_from_Valence_Band(self)
+        nottingham_conduction = self.Nottingham_Heat_from_Conduction_Band()
+        nottigham_valence = self.Nottingham_Heat_from_Valence_Band()
         nottingham_total = nottingham_conduction + nottigham_valence   
         
         return nottingham_total
     
     def Nottingham_Heat_from_Conduction_Band(self):
         
-        energy_distribution = self.Energy_Distribution_from_Conduction_Band(self)
+        energy_distribution = self.Energy_Distribution_from_Conduction_Band()
         
         return -zs* self.kT * np.sum(energy_distribution)
     
     def Nottingham_Heat_from_Valence_Band(self):
         
-        energy_distribution = self.Energy_Distribution_from_Valence_Band(self)
+        energy_distribution = self.Energy_Distribution_from_Valence_Band()
         
         return -zs * self.kT * np.sum(energy_distribution)
-    
+
+start = datetime.datetime.now()
+
 tab = Tabulator()
 tab.save() #this might be redundant becuase it is already included within the __init__
 """
@@ -512,24 +521,51 @@ Efi = -np.random.rand(Np) * (4.0 - 3.0) + 3.0
 Evi = Eci + Efi """
 
 Work = 4.5
+Ec = 4.
+Ef = Work
+Eg = 1.1
 Temp = 300.
 kT = kBoltz * Temp
 
-metal_emitter = Metal_Emitter(tab)
 
+
+metal_emitter = Metal_Emitter(tab)
 
 metal_emitter.emitter_attributes.barrier.Define_Barrier_Parameters(5., 10., 10.)
 metal_emitter.emitter_attributes.barrier.Interpolate_Gammow()
 
 metal_emitter.Define_Metal_Emitter_Parameters(Work, kT)
 
-pn_metal = metal_emitter.Nottingham_Heat_from_Metals()
 j_metal = metal_emitter.Current_Density_from_Metals()
 j_metal_educational = metal_emitter.Current_Density_from_Metals_educational()
+pn_metal = metal_emitter.Nottingham_Heat_from_Metals()
+pn_metal_educational = metal_emitter.Nottingham_Heat_from_Metals_educational()
+energy_space_metal, distribution_metal = metal_emitter.Energy_Distribution_from_Metals()
+"""
+semi_emitter = Semiconductor_Emitter(tab)
 
-print(pn_metal)
-print(j_metal)
-print(j_metal_educational)
+semi_emitter.emitter_attributes.barrier.Define_Barrier_Parameters(5., 10., 10.)
+semi_emitter.emitter_attributes.barrier.Interpolate_Gammow()
+
+semi_emitter.Define_Semiconductor_Emitter_Parameters(Ec, Ef, Eg, kT)
+
+j_c, j_v, j_total = semi_emitter.Current_Density_from_Semiconductors()
+print(j_c, j_v, j_total)
+#pn_semi = semi_emitter.Nottingham_Heat_from_Semiconductors()"""
+
+end = datetime.datetime.now()
+
+#print("Running time", end-start)
+
+print("Current from metal", j_metal, j_metal_educational)
+print("N heat from metal", pn_metal, pn_metal_educational)
+
+fig = plt.figure(figsize=(16,6))
+plt.plot(energy_space_metal, distribution_metal)#/max(distribution_metal))
+plt.grid("True")
+plt.title("Energy distributions")
+plt.savefig("Energy distributions.png")
+
 
 """
 print("calculating from tabulator")
