@@ -295,12 +295,6 @@ class Metal_Emitter:
             integ = 0.
         return -zs * self.kT * integ
     
-    def Nottingham_Heat_from_Metals_educational(self):
-        
-        energy_space, energy_distribution = self.Energy_Distribution_from_Metals()
-        
-        return zs * np.sum(energy_distribution) * self.kT
-    
     def Current_Density_from_Metals_educational(self, plot = False):
         integ = self.emitter_attributes.Log_Fermi_Dirac_Distribution(self.energy, self.kT) * self.emitter_attributes.Transmission_Coefficient(self.workfunction - self.energy)
 
@@ -316,45 +310,20 @@ class Metal_Emitter:
             plt.savefig("Jcur.png")
             # plt.show()
         return zs * self.kT * np.sum(integ) * (self.energy[1] - self.energy[0])
-    
-    def integrate_lin_Pn(self, plot = False):
-        integ = np.copy(self.energy)
-        for i in range(len(integ)):
-            args = np.array([self.energy[i], self.workfunction, self.kT, self.emitter_attributes.barrier.energy_bottom_barrier, self.emitter_attributes.barrier.energy_top_barrier, self.emitter_attributes.barrier.gammow_derivative_in_bottom, self.emitter_attributes.barrier.gammow_derivative_at_top] + list(self.emitter_attributes.barrier.gammow_coefficients))
-            N = ct.c_int(len(args))
-            cargs = ct.c_void_p(args.ctypes.data)
-            integ[i] = integrator.intfun_Pn(N, cargs)
-
-        if(plot):
-            print("Whigh, Wlow = ", self.workfunction - self.energy[0], self.workfunction - self.energy[-1])
-            print ("Wmin, Wmax, Work = ", self.emitter_attributes.barrier.energy_bottom_barrier, self.emitter_attributes.barrier.energy_top_barrier, self.workfunction)
-            print("maxbeta, minbeta, dGmax, beta_T: ", self.maxbeta, self.emitter_attributes.barrier.gammow_derivative_in_bottom, self.emitter_attributes.barrier.gammow_derivative_at_top, 1/ self.kT)
-            plt.plot(self.energy,integ)
-            ax = plt.gca()
-            ax2 = ax.twinx()
-            ax2.plot(self.energy,self.emitter_attributes.Gamow(self.workfunction - self.energy), 'r-')
-            ax.grid()
-            plt.savefig("Pnspectra.png")
-            # plt.show()
-        return zs * self.kT * np.sum(integ) * (self.energy[1] - self.energy[0])
-    
-    def plot_quad(self):
-        energy = self.integ_points
-        integ = np.copy(energy)
-        gamow = np.copy(energy)
-        for i in range(len(energy)):
-            args = np.array([self.energy[i], self.workfunction, self.kT, self.emitter_attributes.barrier.energy_bottom_barrier, self.emitter_attributes.barrier.energy_top_barrier, self.emitter_attributes.barrier.gammow_derivative_in_bottom, self.emitter_attributes.barrier.gammow_derivative_at_top] + list(self.emitter_attributes.barrier.gammow_coefficients))
-            N = ct.c_int(len(args))
-            cargs = ct.c_void_p(args.ctypes.data)
-            gamow[i] = integrator.Gfun(N, cargs)
-            integ[i] = integrator.intfun_dbg(N, cargs)
+     
+    def Nottingham_Heat_from_Metals_educational(self):
         
-        plt.plot(energy, integ)
-        plt.grid()
-        ax = plt.gca()
-        ax2 = ax.twinx()
-        ax2.plot(energy,gamow, 'r-')
-        plt.show()
+        transmission_in_energy_z = self.emitter_attributes.Transmission_Coefficient(self.workfunction - self.energy)
+
+        cumulative_transmission = np.copy(self.energy)
+        cumulative_transmission[0] = 0
+
+        for i in range(len(self.energy)-1):
+            cumulative_transmission[i+1] = cumulative_transmission[i]+((self.energy[1]-self.energy[0])*(transmission_in_energy_z[i+1]+transmission_in_energy_z[i])/2)
+        
+        heat_components = self.emitter_attributes.Fermi_Dirac_Distribution(self.energy, self.kT) * cumulative_transmission * self.energy
+        
+        return -zs * np.sum(heat_components) * (self.energy[1] - self.energy[0])
     
 class Semiconductor_Emitter:
     emitter_attributes: Emitter_Attributes
