@@ -22,9 +22,6 @@ import sys
 import getelec_mod as gt
 from interp3d import interp_3d
 
-#from python.Supply_approx_test import E
-#from python.GTFplot import F
-
 pythonpath,filename = os.path.split(os.path.realpath(__file__))
 emissionpath,pythonfolder = os.path.split(pythonpath)
 libpath = emissionpath + '/lib/dynamic/libgetelec.so'
@@ -46,7 +43,7 @@ integrator.intfun_dbg.argtypes = (ct.c_int, ct.c_void_p)
 integrator.intfun_dbg.restype = ct.c_double
 
 Npoly = 5
-NGi = 256
+NGi = 128
 zs = 1.6183e-4
 kBoltz = 8.6173324e-5 
 
@@ -515,8 +512,8 @@ class Semiconductor_Emitter:
         return self._energy_conduction_band , energy_distribution
     # endregion
 
-"""# region One data point calculation routine
-tab = Tabulator()
+# region One data point calculation routine
+"""tab = Tabulator()
 
 work = 4.5
 Ec = 6
@@ -563,6 +560,7 @@ plt.title("Energy distributions")
 plt.savefig("Energy distributions.png")
 # endregion
 """
+
 # region Multiple data point calculation routine
 tab = Tabulator()
 
@@ -634,20 +632,18 @@ Pn_abserr = abs(Pi - Pget)
 Pn_relerr = Pn_abserr / Pget
 Pbad = np.where(np.logical_and(Pn_relerr > 0.5, Pn_abserr > 1.e-25))[0]
 
-
-
 print("bad = ", bad)
 print("rms error in J= ", np.sqrt(np.mean(relerr[abserr > 1.e-25]**2)))
 print("rms error in Pn= ", np.sqrt(np.mean(Pn_relerr[Pn_abserr > 1.e-25]**2)))
 
 
-# for i in bad:
-#     print("Jget, Ji : ", Jget[i], Ji[i])
-#     emit.set(Fi[i], Ri[i], gami[i])
-#     emit.interpolate()
-#     emit.get_lims(Wi[i], kT[i])
-#     emit.integrate_quad(Wi[i], kT[i])
-#     emit.integrate_quad_Nottingham(W[i], kT[i])
+#for i in bad:
+#    print("Jget, Ji : ", Jget[i], Ji[i])
+#    emit.set(Fi[i], Ri[i], gami[i])
+#    emit.interpolate()
+#    emit.get_lims(Wi[i], kT[i])
+#    emit.integrate_quad(Wi[i], kT[i])
+#    emit.integrate_quad_Nottingham(W[i], kT[i])
 
 fig = plt.figure(figsize=(16,6))
 plt.loglog(Ji, Jget, '.')
