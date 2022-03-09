@@ -609,9 +609,6 @@ for i in range(len(Fi)):
     metal_emitter.Define_Emitter_Parameters(Wi[i], kT[i])
     Ji[i] = metal_emitter.Current_Density()
     Pi[i] = metal_emitter.Nottingham_Heat()
-    #Pi[i] = emit.integrate_quad_Nottingham(Wi[i], kT[i])
-    #Ji_semi[i] = emit.Currents_from_Semiconductors(Eci[i], Efi[i], Evi[i], kT[i]) 
-    
 #tab_end = datetime.datetime.now()
 
 print("calculating from getelec")
@@ -643,8 +640,6 @@ print("bad = ", bad)
 print("rms error in J= ", np.sqrt(np.mean(relerr[abserr > 1.e-25]**2)))
 print("rms error in Pn= ", np.sqrt(np.mean(Pn_relerr[Pn_abserr > 1.e-25]**2)))
 
-#print("Tab running time", tab_end-tab_start)
-#print("get running time", get_end-get_start)
 
 # for i in bad:
 #     print("Jget, Ji : ", Jget[i], Ji[i])
@@ -671,14 +666,6 @@ plt.grid()
 plt.title("Pn comparison")
 plt.savefig("Pn comparison.png")
 #plt.show()
-
-fig3 = plt.figure(figsize=(16,6))
-plt.loglog(Ji_semi, Ji_semi, '.')
-plt.loglog(abs(Ji_semi), Ji_semi, '.')
-plt.loglog([1.e-50, 1.], [1.e-50, 1.])
-plt.grid()
-plt.title("J from semiconductors")
-plt.savefig("J from semiconductors.png")
 
 """test single value of new Nottingham integration"""
 """
