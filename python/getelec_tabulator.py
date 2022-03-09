@@ -237,9 +237,9 @@ class Emitter:
 class Metal_Emitter:
     # region field declarations
     emitter: Emitter
-    _kT: float
-    _workfunction: float
-    _energy: array
+    kT: float
+    workfunction: float
+    energy: array
     _maxbeta: float
     # endregion
     
@@ -251,111 +251,111 @@ class Metal_Emitter:
     # region user methods 
     def Define_Emitter_Parameters(self, workfunction: float, kT: float):
         """Defines main emitter characteristics"""
-        self._workfunction = workfunction
-        self._kT = kT
-        self._energy = self.Integration_Limits()
+        self.workfunction = workfunction
+        self.kT = kT
+        self.energy = self.Integration_Limits()
         
     def Integration_Limits(self):
         """Finds the limits of integration"""
         resolution = NGi #128
-        self._maxbeta = np.polyval(self.emitter._gammow_derivative_coefficients, min(self._workfunction, self.emitter._energy_bottom_barrier))
+        self._maxbeta = np.polyval(self.emitter._gammow_derivative_coefficients, min(self.workfunction, self.emitter._energy_bottom_barrier))
         
-        if (self._maxbeta * self._kT < 1.05): #field regime
+        if (self._maxbeta * self.kT < 1.05): #field regime
             workfunction_center = 0.
-            energy_top = 10 /(1/self._kT - .85*self._maxbeta)
+            energy_top = 10 /(1/self.kT - .85*self._maxbeta)
             energy_bottom = -10 / self._maxbeta
             return  np.linspace(energy_bottom, energy_top, resolution)
         
-        elif (self.emitter._gammow_derivative_top_barrier * self._kT > .95):
-            workfunction_center = self._workfunction - self.emitter._energy_top_barrier
-            energy_top = workfunction_center + 10 * self._kT
+        elif (self.emitter._gammow_derivative_top_barrier * self.kT > .95):
+            workfunction_center = self.workfunction - self.emitter._energy_top_barrier
+            energy_top = workfunction_center + 10 * self.kT
             energy_bottom = workfunction_center - 10 / self.emitter._gammow_derivative_top_barrier
             return np.linspace(energy_bottom, energy_top, resolution)
         
         else:
             rootpoly = np.copy(self.emitter._gammow_derivative_coefficients)
-            rootpoly[-1] -= 1./self._kT
+            rootpoly[-1] -= 1./self.kT
             rts = np.roots(rootpoly)
             realroots = np.real(rts[np.nonzero(np.imag(rts) == 0)])
-            workfunction_center = realroots[np.nonzero(np.logical_and(realroots > self.emitter._energy_top_barrier, realroots < self._workfunction))][0]
+            workfunction_center = realroots[np.nonzero(np.logical_and(realroots > self.emitter._energy_top_barrier, realroots < self.workfunction))][0]
             #print (Wcenter)
-            energy_top = self._workfunction - workfunction_center + 10 * self._kT
-            energy_bottom = self._workfunction - workfunction_center - 25 * self._kT
+            energy_top = self.workfunction - workfunction_center + 10 * self.kT
+            energy_bottom = self.workfunction - workfunction_center - 25 * self.kT
             return np.linspace(energy_bottom, energy_top, resolution)
      
     def Current_Density(self):
         """Calculates the field emitted current density from metal surfaces"""
-        args = tuple([self._workfunction] + [self._kT] + [self.emitter._energy_top_barrier] + [self.emitter._energy_bottom_barrier] + [self.emitter._gammow_derivative_top_barrier] + [self.emitter._gammow_derivative_bottom_barrier] + list(self.emitter._gammow_coefficients))
+        args = tuple([self.workfunction] + [self.kT] + [self.emitter._energy_top_barrier] + [self.emitter._energy_bottom_barrier] + [self.emitter._gammow_derivative_top_barrier] + [self.emitter._gammow_derivative_bottom_barrier] + list(self.emitter._gammow_coefficients))
         try:
-            integ, abserr, info = ig.quad(integrator.intfun, self._energy[0], self._energy[-1], args, full_output = 1)
+            integ, abserr, info = ig.quad(integrator.intfun, self.energy[0], self.energy[-1], args, full_output = 1)
             self.integ_points = info["alist"]
         except(IntegrationWarning):
             integ = 0.
-        return zs * self._kT * integ
+        return zs * self.kT * integ
     
     def Energy_Distribution(self):
         """Calculates the energy distribution of field emitted electrons from metals"""
-        transmission_in_energy_z = self.emitter.Transmission_Coefficient(self._workfunction - self._energy)
+        transmission_in_energy_z = self.emitter.Transmission_Coefficient(self.workfunction - self.energy)
 
-        cumulative_transmission = np.insert(np.cumsum((transmission_in_energy_z[1:]+transmission_in_energy_z[:-1])*(self._energy[1]-self._energy[0])/2), 0, 0)
+        cumulative_transmission = np.insert(np.cumsum((transmission_in_energy_z[1:]+transmission_in_energy_z[:-1])*(self.energy[1]-self.energy[0])/2), 0, 0)
         
-        energy_distribution = self.emitter.Fermi_Dirac_Distribution(self._energy, self._kT) * cumulative_transmission
+        energy_distribution = self.emitter.Fermi_Dirac_Distribution(self.energy, self.kT) * cumulative_transmission
 
-        return  self._energy, energy_distribution
+        return  self.energy, energy_distribution
   
     def Nottingham_Heat(self):
         """Calculates the Nottingham heat resulted from field emitted electrons from metals"""
-        args = tuple([self._workfunction] + [self._kT] + [self.emitter._energy_top_barrier] + [self.emitter._energy_bottom_barrier] + [self.emitter._gammow_derivative_top_barrier] + [self.emitter._gammow_derivative_bottom_barrier] + list(self.emitter._gammow_coefficients))
+        args = tuple([self.workfunction] + [self.kT] + [self.emitter._energy_top_barrier] + [self.emitter._energy_bottom_barrier] + [self.emitter._gammow_derivative_top_barrier] + [self.emitter._gammow_derivative_bottom_barrier] + list(self.emitter._gammow_coefficients))
         try:
-            integ, abserr = ig.quad(integrator.intfun_Pn, self._energy[0], self._energy[-1], args, full_output = 0)
+            integ, abserr = ig.quad(integrator.intfun_Pn, self.energy[0], self.energy[-1], args, full_output = 0)
         except(IntegrationWarning):
             integ = 0.
-        return -zs * self._kT * integ
+        return -zs * self.kT * integ
     
     def Current_Density_educational(self, plot = False):
         """Calculates the field emitted current density from metals on a clear equation to code manner"""
-        integ = self.emitter.Log_Fermi_Dirac_Distribution(self._energy, self._kT) * self.emitter.Transmission_Coefficient(self._workfunction - self._energy)
+        integ = self.emitter.Log_Fermi_Dirac_Distribution(self.energy, self.kT) * self.emitter.Transmission_Coefficient(self.workfunction - self.energy)
 
         if(plot):
-            print("Whigh, Wlow = ", self._workfunction - self._energy[0], self._workfunction - self._energy[-1])
-            print ("Wmin, Wmax, Work = ", self.emitter._energy_bottom_barrier, self.emitter._energy_top_barrier, self._workfunction)
-            print("maxbeta, minbeta, dGmax, beta_T: ", self._maxbeta, self.emitter._gammow_derivative_bottom_barrier, self.emitter._gammow_derivative_top_barrier, 1/ self._kT)
-            plt.plot(self._energy,integ)
+            print("Whigh, Wlow = ", self.workfunction - self.energy[0], self.workfunction - self.energy[-1])
+            print ("Wmin, Wmax, Work = ", self.emitter._energy_bottom_barrier, self.emitter._energy_top_barrier, self.workfunction)
+            print("maxbeta, minbeta, dGmax, beta_T: ", self._maxbeta, self.emitter._gammow_derivative_bottom_barrier, self.emitter._gammow_derivative_top_barrier, 1/ self.kT)
+            plt.plot(self.energy,integ)
             ax = plt.gca()
             ax2 = ax.twinx()
-            ax2.plot(self._energy,self.emitter.Gamow(self._workfunction - self._energy), 'r-')
+            ax2.plot(self.energy,self.emitter.Gamow(self.workfunction - self.energy), 'r-')
             ax.grid()
             plt.savefig("Jcur.png")
             # plt.show()
-        return zs * self._kT * np.sum(integ) * (self._energy[1] - self._energy[0])
+        return zs * self.kT * np.sum(integ) * (self.energy[1] - self.energy[0])
     
     def Energy_Distribution_educational(self):
         """Calculates the energy distribution of field emitted electrons from metals on a clear equation to code manner"""
-        transmission_in_energy_z = self.emitter.Transmission_Coefficient(self._workfunction - self._energy)
+        transmission_in_energy_z = self.emitter.Transmission_Coefficient(self.workfunction - self.energy)
 
-        cumulative_transmission = np.copy(self._energy)
+        cumulative_transmission = np.copy(self.energy)
         cumulative_transmission[0] = 0
 
-        for i in range(len(self._energy)-1):
-            cumulative_transmission[i+1] = cumulative_transmission[i]+((self._energy[1]-self._energy[0])*(transmission_in_energy_z[i+1]+transmission_in_energy_z[i])/2)
+        for i in range(len(self.energy)-1):
+            cumulative_transmission[i+1] = cumulative_transmission[i]+((self.energy[1]-self.energy[0])*(transmission_in_energy_z[i+1]+transmission_in_energy_z[i])/2)
         
-        energy_distribution = self.emitter.Fermi_Dirac_Distribution(self._energy, self._kT) * cumulative_transmission
+        energy_distribution = self.emitter.Fermi_Dirac_Distribution(self.energy, self.kT) * cumulative_transmission
 
-        return  self._energy, energy_distribution
+        return  self.energy, energy_distribution
     
     def Nottingham_Heat_educational(self):
         """Calculates the Nottingham heat resulted from field emitted electrons from metals on a clear equation to code manner"""
-        transmission_in_energy_z = self.emitter.Transmission_Coefficient(self._workfunction - self._energy)
+        transmission_in_energy_z = self.emitter.Transmission_Coefficient(self.workfunction - self.energy)
 
-        cumulative_transmission = np.copy(self._energy)
+        cumulative_transmission = np.copy(self.energy)
         cumulative_transmission[0] = 0
 
-        for i in range(len(self._energy)-1):
-            cumulative_transmission[i+1] = cumulative_transmission[i]+((self._energy[1]-self._energy[0])*(transmission_in_energy_z[i+1]+transmission_in_energy_z[i])/2)
+        for i in range(len(self.energy)-1):
+            cumulative_transmission[i+1] = cumulative_transmission[i]+((self.energy[1]-self.energy[0])*(transmission_in_energy_z[i+1]+transmission_in_energy_z[i])/2)
         
-        heat_components = self.emitter.Fermi_Dirac_Distribution(self._energy, self._kT) * cumulative_transmission * self._energy
+        heat_components = self.emitter.Fermi_Dirac_Distribution(self.energy, self.kT) * cumulative_transmission * self.energy
         
-        return -zs * np.sum(heat_components) * (self._energy[1] - self._energy[0])
+        return -zs * np.sum(heat_components) * (self.energy[1] - self.energy[0])
     #endregion
     
 class Semiconductor_Emitter:
@@ -513,7 +513,7 @@ class Semiconductor_Emitter:
     # endregion
 
 # region One data point calculation routine
-"""tab = Tabulator()
+tab = Tabulator()
 
 work = 4.5
 Ec = 6
@@ -559,10 +559,10 @@ plt.grid("True")
 plt.title("Energy distributions")
 plt.savefig("Energy distributions.png")
 # endregion
-"""
+
 
 # region Multiple data point calculation routine
-tab = Tabulator()
+"""tab = Tabulator()
 
 Fmax = 1/tab.Finv[0]
 Fmin = 1/tab.Finv[-1]
@@ -661,7 +661,7 @@ plt.loglog([1.e-50, 1.], [1.e-50, 1.])
 plt.grid()
 plt.title("Pn comparison")
 plt.savefig("Pn comparison.png")
-#plt.show()
+#plt.show()"""
 
 """test single value of new Nottingham integration"""
 """
