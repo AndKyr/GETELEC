@@ -447,35 +447,17 @@ class Semiconductor_Emitter:
     
     def Energy_Distribution_from_Valence_Band(self): #NEED MODIFICATIONS #FOR LOOP
         """Calculates the contribution of the valence band to the energy distribution of field emitted electrons from semiconductors"""
-        E_Valence = np.linspace(self._Evlow, self._Evhigh, 128)
-        #Eq = np.linspace(self.Evhigh, self.Evlow, 128)
-        Eq = E_Valence
-        evm = (mp/m) * Eq
+        a = mp/m
+        b = 1+a
         
-        emv = E_Valence[-1]*(1+(mp/m))
-        ev_eff = np.linspace(E_Valence[-1], emv, 128)
-        Trans = self.emitter.Transmission_Coefficient(-self._Ef-ev_eff)
-        a = np.copy(E_Valence)
-        a[0] = 0
-
-        for i in range(len(E_Valence)-1):
-            a[i+1] = a[i] + (ev_eff[1]-ev_eff[0])*((Trans[i+1]+Trans[i])/2)
-
-        value = self.emitter.Fermi_Dirac_Distribution(E_Valence[-1], self._kT) * a * (ev_eff[1]-ev_eff[0])
-    
-        Transmission_in_Ex = self.emitter.Transmission_Coefficient(-self._Ef-Eq) + ((1+(mp/m)) * self.emitter.Transmission_Coefficient(-self._Ef-Eq-evm))
+        transmission_in_z = self.emitter.Transmission_Coefficient(-self._Ef-self._energy_valence_band) - (1+(mp/m)) * self.emitter.Transmission_Coefficient(-self._Ef-b*self._energy_valence_band+a*self._Evhigh)  
+        #Transmission_in_Ex = np.abs(Transmission_in_Ex)
         
-        Cumulative_Transmission = np.copy(Eq)
-        Cumulative_Transmission[0] = 0
-        #Transmission_in_Ex = np.flip(Transmission_in_Ex)
-        for i in range(len(E_Valence)-1):
-            Cumulative_Transmission[i+1] = Cumulative_Transmission[i] + ((E_Valence[1]-E_Valence[0])*(Transmission_in_Ex[i+1]+Transmission_in_Ex[i])/2)
-        
-        Population_V = self.emitter.Fermi_Dirac_Distribution(E_Valence, self._kT)
-
-        Energy_V = Cumulative_Transmission * Population_V
-        
-        return E_Valence, Energy_V*np.flip(value)
+        cumulative_transmission = np.insert(np.cumsum((transmission_in_z[1:]+transmission_in_z[:-1])*(self._energy_valence_band[1]-self._energy_valence_band[0])/2), 0, 0)
+            
+        energy_distribution = self.emitter.Fermi_Dirac_Distribution(self._energy_valence_band, self._kT) * cumulative_transmission 
+      
+        return self._energy_valence_band, energy_distribution
     
     def Nottingham_Heat_from_Semiconductors(self):
         """Calculates the Nottingham heat resulted from field emitted electrons from semicoductors"""
