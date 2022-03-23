@@ -42,14 +42,6 @@ integrator.Gfun.restype = ct.c_double
 integrator.intfun_dbg.argtypes = (ct.c_int, ct.c_void_p)
 integrator.intfun_dbg.restype = ct.c_double
 
-Npoly = 5
-NGi = 128
-zs = 1.6183e-4
-kBoltz = 8.6173324e-5 
-
-m = 9.1093837015e-31 # free electron mass, same for holes
-me = 1.08*m # effective electron mass @300K, https://doi.org/10.1142/S0219749909005833
-mp = 0.54*m # effective hole mass @300k, https://doi.org/10.1142/S0219749909005833
 #mp = m
 #me = m
 
@@ -299,9 +291,9 @@ class Metal_Emitter:
 
         cumulative_transmission = np.insert(np.cumsum((transmission_in_energy_z[1:]+transmission_in_energy_z[:-1])*(self.energy[1]-self.energy[0])/2), 0, 0)
         
-        energy_distribution = self.emitter.Fermi_Dirac_Distribution(self.energy, self.kT) * cumulative_transmission
+        electron_number = self.emitter.Fermi_Dirac_Distribution(self.energy, self.kT) * cumulative_transmission
 
-        return  self.energy, energy_distribution
+        return  self.energy, electron_number
   
     def Nottingham_Heat(self):
         """Calculates the Nottingham heat resulted from field emitted electrons from metals"""
@@ -315,7 +307,7 @@ class Metal_Emitter:
     def Current_Density_educational(self, plot = False):
         """Calculates the field emitted current density from metals on a clear equation to code manner"""
         integ = self.emitter.Log_Fermi_Dirac_Distribution(self.energy, self.kT) * self.emitter.Transmission_Coefficient(self.workfunction - self.energy)
-
+        
         if(plot):
             print("Whigh, Wlow = ", self.workfunction - self.energy[0], self.workfunction - self.energy[-1])
             print ("Wmin, Wmax, Work = ", self.emitter._energy_bottom_barrier, self.emitter._energy_top_barrier, self.workfunction)
@@ -374,6 +366,9 @@ class Semiconductor_Emitter:
     _Echigh: float
     _Evhigh: float
     _Evlow: float
+    _m:float #free mass of the electrons
+    _me: float #electron effective mass
+    _mp: float #hole effective mass
     # endregion
     
     # region initialization
@@ -382,13 +377,16 @@ class Semiconductor_Emitter:
     # endregion
 
     # region user methods
-    def Define_Semiconductor_Emitter_Parameters(self, Ec, Ef, Eg, kT):
-        """Defines main emitter characteristics"""
+    def Define_Semiconductor_Emitter_Parameters(self, Ec, Ef, Eg, kT, m, me, mp):
+        """Defines main emitter characteristics (in order): botton of the conduction band, fermi level, band gap, temperature, free electrons mass, effective electron mass, effective hole mass"""
         self._Ec = -Ec
         self._Ef = -Ef
         self._Eg = -Eg
         self._Ev = self._Ec+self._Eg
         self._kT = kT
+        self._m  = m
+        self._me = me
+        self._mp = mp
         self.Integration_Limits_for_Semiconductors()
     
     def Integration_Limits_for_Semiconductors(self):
@@ -399,9 +397,8 @@ class Semiconductor_Emitter:
         self._Evhigh = (self._Ev-self._Ef)
         self._Evlow = min(self._Evhigh, 0) - 20 / self.emitter._gammow_derivative_bottom_barrier
         self._energy_conduction_band = np.linspace(self._Eclow, self._Echigh, resolution)
-        self._max_energy_conduction_band = (me/m) * self._energy_conduction_band
         self._energy_valence_band = np.linspace(self._Evlow, self._Evhigh, resolution)
-        self._max_energy_valence_band = (mp/m) * self._energy_valence_band
+
            
     def Current_Density_from_Semiconductors(self):
         """Calculates the field emitted current density from semiconductor surfaces"""
@@ -412,22 +409,22 @@ class Semiconductor_Emitter:
         return current_conduction, current_valence, current_total
 
     def Current_from_Conduction_Band(self): 
-        """Calculates the contribution of the conduction band to the field emitted current density from semiconductor surfaces - Eq (7) 10.1103/PhysRev.125.67"""
-        jc_integ = self.emitter.Log_Fermi_Dirac_Distribution(self._energy_conduction_band, self._kT) * (self.emitter.Transmission_Coefficient(-self._Ef-self._energy_conduction_band) - ((1-(me/m)) * self.emitter.Transmission_Coefficient(-self._Ef-self._energy_conduction_band-self._max_energy_conduction_band)))
+        """Calculates the contribution of the conduction band to the field emitted current density from semiconductor surfaces - Andreas' equation"""
+        a = self._me/self._m
+        b = 1-a 
+        
+        jc_integ = self.emitter.Log_Fermi_Dirac_Distribution(self._energy_conduction_band, self._kT) * (self.emitter.Transmission_Coefficient(-self._Ef-self._energy_conduction_band) - (b*self.emitter.Transmission_Coefficient(-self._Ef-a*self._energy_conduction_band)))
         
         return zs * self._kT * np.sum(jc_integ) * (self._energy_conduction_band[1]-self._energy_conduction_band[0]) 
     
     def Current_from_Valence_Band(self):
-        """Calculates the contribution of the valence band to the field emitted current density from semiconductor surfaces - Eq. (A1) 10.1103/PhysRev.135.A794"""
-        max_energy_v_effect = self._energy_valence_band[-1]*(1+(mp/m))
+        """Calculates the contribution of the valence band to the field emitted current density from semiconductor surfaces - Andreas' equation"""
+        a = self._mp/self._m
+        b = 1+a
         
-        energy_v_effect = np.linspace(max_energy_v_effect, self._energy_valence_band[-1], 128)
-
-        valence_effect = self.emitter.Log_Fermi_Dirac_Distribution(self._energy_valence_band[-1],self._kT) * np.sum(self.emitter.Transmission_Coefficient(-self._Ef-energy_v_effect)) * (energy_v_effect[1] - energy_v_effect[0])
+        jv_integ = self.emitter.Log_Fermi_Dirac_Distribution(self._energy_valence_band, self._kT) * (self.emitter.Transmission_Coefficient(-self._Ef-self._energy_valence_band) - (b*self.emitter.Transmission_Coefficient(-self._Ef-b*self._energy_valence_band+a*self._Evhigh)))
         
-        jv_integ = self.emitter.Log_Fermi_Dirac_Distribution(self._energy_valence_band, self._kT) * (self.emitter.Transmission_Coefficient(-self._Ef-self._energy_valence_band) + ((1+(mp/m)) * self.emitter.Transmission_Coefficient(-self._Ef-self._energy_valence_band-self._max_energy_valence_band)))
-        
-        return zs * self._kT * ((np.sum(jv_integ) * (self._energy_valence_band[1]-self._energy_valence_band[0])) + np.sum(valence_effect))
+        return zs * self._kT * ((np.sum(jv_integ) * (self._energy_valence_band[1]-self._energy_valence_band[0])))
   
     def Energy_Distribution_from_Semiconductors(self):
         """Calculates the energy distribution of field emitted electrons from semiconductors"""
@@ -437,70 +434,92 @@ class Semiconductor_Emitter:
 
     def Energy_Distribution_from_Conduction_Band(self):
         """Calculates the contribution of the conduction band to the energy distribution of field emitted electrons from semiconductors """
-        transmission_in_z = self.emitter.Transmission_Coefficient(-self._Ef-self._energy_conduction_band) - ((1-(me/m)) * self.emitter.Transmission_Coefficient(-self._Ef-self._energy_conduction_band-self._max_energy_conduction_band))
+        a = self._me/self._m
+        b = 1-a 
+        
+        transmission_in_z = self.emitter.Transmission_Coefficient(-self._Ef-self._energy_conduction_band) - (b*self.emitter.Transmission_Coefficient(-self._Ef-a*self._energy_conduction_band))
 
         cumulative_transmission = np.insert(np.cumsum((transmission_in_z[1:]+transmission_in_z[:-1])*(self._energy_conduction_band[1]-self._energy_conduction_band[0])/2), 0, 0)
         
-        energy_distribution = self.emitter.Fermi_Dirac_Distribution(self._energy_conduction_band, self._kT) * cumulative_transmission 
+        number_of_electrons = self.emitter.Fermi_Dirac_Distribution(self._energy_conduction_band, self._kT) * cumulative_transmission 
 
-        return self._energy_conduction_band , energy_distribution
+        return self._energy_conduction_band , number_of_electrons
     
-    def Energy_Distribution_from_Valence_Band(self): #NEED MODIFICATIONS #FOR LOOP
+    def Energy_Distribution_from_Valence_Band(self): #NEED REVISION
         """Calculates the contribution of the valence band to the energy distribution of field emitted electrons from semiconductors"""
-        a = mp/m
+        a = self._mp/self._m
         b = 1+a
         
-        transmission_in_z = self.emitter.Transmission_Coefficient(-self._Ef-self._energy_valence_band) - (1+(mp/m)) * self.emitter.Transmission_Coefficient(-self._Ef-b*self._energy_valence_band+a*self._Evhigh)  
-        #Transmission_in_Ex = np.abs(Transmission_in_Ex)
+        transmission_in_z = self.emitter.Transmission_Coefficient(-self._Ef-self._energy_valence_band) - (b*self.emitter.Transmission_Coefficient(-self._Ef-b*self._energy_valence_band+a*self._Evhigh))
         
         cumulative_transmission = np.insert(np.cumsum((transmission_in_z[1:]+transmission_in_z[:-1])*(self._energy_valence_band[1]-self._energy_valence_band[0])/2), 0, 0)
             
-        energy_distribution = self.emitter.Fermi_Dirac_Distribution(self._energy_valence_band, self._kT) * cumulative_transmission 
+        number_of_electrons = self.emitter.Fermi_Dirac_Distribution(self._energy_valence_band, self._kT) * cumulative_transmission 
       
-        return self._energy_valence_band, energy_distribution
+        return self._energy_valence_band, number_of_electrons
     
     def Nottingham_Heat_from_Semiconductors(self):
         """Calculates the Nottingham heat resulted from field emitted electrons from semicoductors"""
         nottingham_conduction = self.Nottingham_Heat_from_Conduction_Band()
         nottigham_valence = self.Nottingham_Heat_from_Valence_Band()
-        nottingham_total = nottingham_conduction + nottigham_valence   
+        nottigham_replacement = self.Nottingham_Heat_fron_Replacement_Electrons()
+        nottingham_total = nottingham_conduction + nottigham_valence + nottigham_replacement   
         
         return nottingham_conduction, nottigham_valence, nottingham_total
     
     def Nottingham_Heat_from_Conduction_Band(self): #NEED MODIFICATIONS
         """Calculates the contribution of the conduction band to the Nottingham heat resulted from field emitted electrons from semicoductors"""
-        energy_distribution = self.Energy_Distribution_from_Conduction_Band()
+        """the fuction will be replaced by the full code from the function, if we agree the function works well"""
+        energy_distribution = self.Energy_Distribution_from_Conduction_Band()*self._energy_conduction_band
         
         return -zs* self._kT * np.sum(energy_distribution)
     
     def Nottingham_Heat_from_Valence_Band(self): #NEED MOFICATIONS
         """Calculates the contribution of the valence band to the Nottingham heat resulted from field emitted electrons from semicoductors"""
-        energy_distribution = self.Energy_Distribution_from_Valence_Band()
+        """the fuction will be replaced by the full code from the function, if we agree the function works well"""
+        energy_distribution = self.Energy_Distribution_from_Valence_Band()*self._energy_valence_band
         
         return -zs * self._kT * np.sum(energy_distribution)
     
+    def Nottingham_Heat_fron_Replacement_Electrons(self):
+        """To be calculated from COMSOL"""
+        return 0
+    
     def Energy_Distribution_from_Conduction_Band_educational(self):
         """Calculates the contribution of the conduction band to the energy distribution of field emitted electrons from semiconductors on a clear equation to code manner"""
-        transmission_in_ez = self.emitter.Transmission_Coefficient(-self._Ef-self._energy_conduction_band) - ((1-(me/m)) * self.emitter.Transmission_Coefficient(-self._Ef-self._energy_conduction_band-self._max_energy_conduction_band))
+        a = self._me/self._m
+        b = 1-a 
+        
+        transmission_in_z = self.emitter.Transmission_Coefficient(-self._Ef-self._energy_conduction_band) - (b*self.emitter.Transmission_Coefficient(-self._Ef-a*self._energy_conduction_band))
 
         cumulative_transmission = np.copy(self._energy_conduction_band)
         cumulative_transmission[0] = 0
 
         for i in range(len(self._energy_conduction_band)-1):
-            cumulative_transmission[i+1] = cumulative_transmission[i] + ((self._energy_conduction_band[1]-self._energy_conduction_band[0])*(transmission_in_ez[i+1]+transmission_in_ez[i])/2)
+            cumulative_transmission[i+1] = cumulative_transmission[i] + ((self._energy_conduction_band[1]-self._energy_conduction_band[0])*(transmission_in_z[i+1]+transmission_in_z[i])/2)
         
         energy_distribution = self.emitter.Fermi_Dirac_Distribution(self._energy_conduction_band, self._kT) * cumulative_transmission 
 
         return self._energy_conduction_band , energy_distribution
     # endregion
 
+
 # region One data point calculation routine
+
+Npoly = 5
+NGi = 128
+zs = 1.6183e-4
+kBoltz = 8.6173324e-5 
+
 tab = Tabulator()
 
-work = 4.5
-Ec = 6
+Workfunction = 4.5
+Ec = 3
 Ef = 4.5
 Eg = 1.1
+m = 9.1093837015e-31 
+me = 1.08*m # effective electron mass @300K, https://doi.org/10.1142/S0219749909005833
+mp = 0.54*m # effective hole mass @300k, https://doi.org/10.1142/S0219749909005833
 Temp = 300.
 kT = kBoltz * Temp
 
@@ -509,7 +528,7 @@ metal_emitter = Metal_Emitter(tab)
 metal_emitter.emitter.Define_Barrier_Parameters(5., 10., 10.)
 metal_emitter.emitter.Interpolate_Gammow()
 
-metal_emitter.Define_Emitter_Parameters(work, kT)
+metal_emitter.Define_Emitter_Parameters(Workfunction, kT)
 
 j_metal = metal_emitter.Current_Density()
 pn_metal = metal_emitter.Nottingham_Heat()
@@ -521,7 +540,7 @@ semiconductor_emitter = Semiconductor_Emitter(tab)
 semiconductor_emitter.emitter.Define_Barrier_Parameters(5., 10., 10.)
 semiconductor_emitter.emitter.Interpolate_Gammow()
 
-semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec, Ef, Eg, kT)
+semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec, Ef, Eg, kT, m, me, mp)
 
 j_c, j_v, j_total = semiconductor_emitter.Current_Density_from_Semiconductors()
 
@@ -540,11 +559,18 @@ plt.plot(energy_v, distribution_v/max(distribution_v))
 plt.grid("True")
 plt.title("Energy distributions")
 plt.savefig("Energy distributions.png")
+
 # endregion
 
+# region Multiple data point calculation routine - metal
+"""
 
-# region Multiple data point calculation routine
-"""tab = Tabulator()
+Npoly = 5
+NGi = 128
+zs = 1.6183e-4
+kBoltz = 8.6173324e-5 
+
+tab = Tabulator()
 
 Fmax = 1/tab.Finv[0]
 Fmin = 1/tab.Finv[-1]
@@ -558,7 +584,6 @@ Np = 8096
 Fi = np.random.rand(Np) * (Fmax - Fmin) + Fmin
 Ri = np.random.rand(Np) * (Rmax - Rmin) + Rmin
 gami = np.random.rand(Np) * (gammax - gammin) + gammin
-Ji = np.copy(Fi)
 Wi = np.random.rand(Np) * (7.5 - 2.5) + 2.5
 Ti = np.random.rand(Np) * (3000 - 100) + 100
 kT = Ti * kBoltz
@@ -566,18 +591,6 @@ Ji = np.copy(Fi)
 Pi = np.copy(Fi)
 Jget = np.copy(Ji)
 Pget = np.copy(Ji)
-Ji_semi = np.copy(Ji)
-Energy_C = np.copy(Ji)
-Electrons_C = np.copy(Ji)
-Energy_Ca = np.copy(Ji)
-Electrons_Ca = np.copy(Ji)
-Energy_V = np.copy(Ji)
-Electrons_V = np.copy(Ji)
-Energy_M = np.copy(Ji)
-Electrons_M = np.copy(Ji)
-Eci = -np.random.rand(Np) * (4.5 - 3.5) + 3.5
-Efi = -np.random.rand(Np) * (4.0 - 3.0) + 3.0
-Evi = Eci + Efi
 
 metal_emitter = Metal_Emitter(tab)
 
@@ -643,98 +656,83 @@ plt.loglog([1.e-50, 1.], [1.e-50, 1.])
 plt.grid()
 plt.title("Pn comparison")
 plt.savefig("Pn comparison.png")
-#plt.show()"""
-
-"""test single value of new Nottingham integration"""
+#plt.show()
 """
-W = 4.5
+#endregion
+
+# region Multiple data point calculation routine - semiconductor
+"""
+Npoly = 5
+NGi = 128
+zs = 1.6183e-4
+kBoltz = 8.6173324e-5 
+
+tab = Tabulator()
+
+Ef = 4.5
+Eg = 1.1
 Temp = 300.
+m = 9.1093837015e-31 
+me = 1.08*m # effective electron mass @300K, https://doi.org/10.1142/S0219749909005833
+mp = 0.54*m # effective hole mass @300k, https://doi.org/10.1142/S0219749909005833
 kT = kBoltz * Temp
-emit.set(5., 10., 10.)
-emit.interpolate()
-emit.get_lims(W, kT)
 
+semiconductor_emitter = Semiconductor_Emitter(tab)
 
-#Pn = emit.integrate_quad_Nottingham(W, kT)
-Pn_metal = emit.integrate_quad_Nottingham(W, kT)
-J_metal = emit.cur_dens_metal(W, kT)
+semiconductor_emitter.emitter.Define_Barrier_Parameters(5., 10., 10.)
+semiconductor_emitter.emitter.Interpolate_Gammow()
 
-em = gt.emission_create(approx=2) 
-em.F = 5.
-em.W = 4.5
-em.Temp = 300.
-em.gamma = 10.
-em.R = 10.
-em.cur_dens()
-#print("Pget = ", em.heat, "Ptab = ", Pn)
+metal_emitter = Metal_Emitter(tab)
 
-Ec = -6
-Ef = -4.5
-Ev = Ec-0.5
+metal_emitter.emitter.Define_Barrier_Parameters(5., 10., 10.)
+metal_emitter.emitter.Interpolate_Gammow()
 
-J_c, J_v, J_semi = emit.Current_from_Semiconductors(Ec, Ef, Ev, kT)
-Pn_c, Pn_v, Pn_semi = emit.Nottinghah_Heat_from_Semiconductors(Ec, Ef, Ev, kT)
-Energy_C, Electrons_C, Energy_V, Electrons_V = emit.Energy_Distribution_from_Semiconductors(Ef, kT)
-Energy_M, Electrons_M = emit.Energy_Distribution_from_Metals(W, kT)
-#Energy_Ca, Electrons_Ca = emit.Energy_Distribution_from_Conduction_Band2(Ef, kT, 4, 4.5E7)
-#print(J_metal, J_semi)
-#print(Pn_metal, Pn_semi)
-#print(Energy_C, Electrons_C)
+resolution = 500
 
-fig = plt.figure(figsize=(16,6))
-plt.plot(Energy_C, Electrons_C/max(Electrons_C))
-#plt.plot(Energy_Ca, Electrons_Ca/max(Electrons_Ca))
-plt.plot(Energy_V, Electrons_V/max(Electrons_V))
-#plt.plot(Energy_M, Electrons_M/max(Electrons_M))
-plt.grid("True")
-plt.title("Energy distributions")
-plt.savefig("Energy distributions.png")
+j_c = np.zeros(resolution) 
+j_v = np.zeros(resolution) 
+j_total = np.zeros(resolution) 
+pn_c = np.zeros(resolution) 
+pn_v = np.zeros(resolution) 
+pn_total = np.zeros(resolution) 
+Bottom_Ec = np.zeros(resolution) 
+j_metal = np.zeros(resolution) 
+pn_metal = np.zeros(resolution)
 
-n = 400
+for i in range(resolution):
+    Ec = i*0.01+2
 
-Current_Conduction_Band = np.zeros(n)
-Current_Valence_Band = np.zeros(n)
-Total_Semiconductor_Current = np.zeros(n)
-
-Total_Metal_Current = np.zeros(n)
-
-NottinghamHeat_Conduction_Band = np.zeros(n)
-NottinghamHeat_Valence_Band = np.zeros(n)
-Total_Semiconductor_NottinghamHeat = np.zeros(n)
-
-Energy_Conduction_Band =  np.ones(n)
-Electrons_Conduction_Band = np.ones(n)
-
-ConductionBand = np.zeros(n)
-
-for i in range(n):
-    Ec = -i*0.01-2
-    Ef = -4.5
-    Ev = Ec-1.1
-
-    Current_Conduction_Band[i], Current_Valence_Band[i],Total_Semiconductor_Current[i] = emit.Current_from_Semiconductors(Ec, Ef, Ev, kT)
     
-    NottinghamHeat_Conduction_Band[i], NottinghamHeat_Valence_Band[i], Total_Semiconductor_NottinghamHeat[i] = emit.Nottinghah_Heat_from_Semiconductors(Ec, Ef, Ev, kT)
+    semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec, Ef, Eg, kT, m, me, mp)
+    metal_emitter.Define_Emitter_Parameters(Ec, kT)
+
+    j_c[i], j_v[i], j_total[i] = semiconductor_emitter.Current_Density_from_Semiconductors()
     
-    Total_Metal_Current[i] = emit.cur_dens_metal(-Ec, kT)
+    pn_c[i], pn_v[i], pn_total[i] = semiconductor_emitter.Nottingham_Heat_from_Semiconductors()
     
-    ConductionBand[i] = Ec
+    j_metal[i] = metal_emitter.Current_Density()
+    
+    pn_metal[i] = metal_emitter.Nottingham_Heat()
+    
+    Bottom_Ec[i] = Ec
 
 fig3 = plt.figure(figsize=(16,6))
-plt.semilogy(ConductionBand, Current_Conduction_Band)
-plt.semilogy(ConductionBand, Current_Valence_Band)
-plt.semilogy(ConductionBand, Total_Semiconductor_Current)
-plt.semilogy(ConductionBand, Total_Metal_Current)
+plt.semilogy(Bottom_Ec, j_c)
+plt.semilogy(Bottom_Ec, j_v)
+plt.semilogy(Bottom_Ec, j_total)
+plt.semilogy(Bottom_Ec, j_metal)
 plt.grid()
 plt.title("Current from semiconductor")
 plt.savefig("Current from semiconductor.png")
 
 fig4 = plt.figure(figsize=(16,6))
-plt.plot(ConductionBand, NottinghamHeat_Conduction_Band)
-plt.plot(ConductionBand-1.1, NottinghamHeat_Valence_Band)
-plt.plot(ConductionBand, Total_Semiconductor_NottinghamHeat)
+#plt.plot(Bottom_Ec, pn_c)
+#plt.plot(Bottom_Ec-Eg, pn_v)
+#plt.plot(Bottom_Ec, pn_total)
+plt.plot(Bottom_Ec, pn_metal)
 plt.yscale("symlog", linscale=-1)
 plt.grid('True')
-#plt.title("Nottinghah Heat from semiconductor")
-#plt.savefig("Nottinghah Heat from semiconductor.png")"""
+plt.title("Nottinghah Heat from semiconductor")
+plt.savefig("Nottinghah Heat from semiconductor.png")
+"""
 # endregion
