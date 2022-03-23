@@ -219,6 +219,26 @@ class Emitter:
                 return np.log(1. + np.exp(-energy / kT))
     
     def Fermi_Dirac_Distribution(self, energy, kT):
+
+        if (isinstance(energy, np.ndarray)):
+            distribution = np.copy(energy)
+
+            high_energy = energy > 10. * kT
+            low_energy = energy < -10. * kT
+            mid_energy = np.logical_not(high_energy) * np.logical_not(low_energy)
+
+            distribution[high_energy] = np.exp(-energy[high_energy] / kT)
+            distribution[low_energy] = 1. - np.exp(-energy[high_energy] / kT)
+            distribution[mid_energy] = 1. / (1. + np.exp(energy[mid_energy] / kT))
+            return distribution
+        else:
+            if energy > 10 * kT:
+                return np.exp(-energy / kT)
+            elif(energy < -10 * kT):
+                return 1 - np.exp(energy / kT)
+            else:
+                return 1. / (1. + np.exp(energy / kT))
+
         distribution = 1/(1+np.exp(energy/kT))
         return distribution
     # endregion
