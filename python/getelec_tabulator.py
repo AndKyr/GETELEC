@@ -42,9 +42,6 @@ integrator.Gfun.restype = ct.c_double
 integrator.intfun_dbg.argtypes = (ct.c_int, ct.c_void_p)
 integrator.intfun_dbg.restype = ct.c_double
 
-#mp = m
-#me = m
-
 class Tabulator:
     # region field declarations
     _number_of_gamma_values: int
