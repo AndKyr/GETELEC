@@ -43,6 +43,10 @@ integrator.Gfun.restype = ct.c_double
 integrator.intfun_dbg.argtypes = (ct.c_int, ct.c_void_p)
 integrator.intfun_dbg.restype = ct.c_double
 
+Npoly = 5
+NGi = 512
+zs = 1.6183e-4
+
 class Tabulator:
     # region field declarations
     _number_of_gamma_values: int
@@ -531,6 +535,51 @@ class Semiconductor_Emitter:
         return self._energy_conduction_band , energy_distribution
     # endregion
 
+
+def metal_emitter(Field:float, Radius:float, Gamma:int, Workfunction:float, Temperature:int):
+    
+    tab = Tabulator()
+    
+    kBoltz = 8.6173324e-5 
+    kT = kBoltz * Temperature
+    
+    metal_emitter = Metal_Emitter(tab)
+    
+    metal_emitter.emitter.Define_Barrier_Parameters(Field, Radius, Gamma)
+    metal_emitter.emitter.Interpolate_Gammow()
+    
+    metal_emitter.Define_Emitter_Parameters(Workfunction, kT)
+    
+    j_metal = metal_emitter.Current_Density()
+    pn_metal = metal_emitter.Nottingham_Heat()
+    #energy_space_metal, distribution_metal = metal_emitter.Energy_Distribution()
+    
+    return j_metal, pn_metal
+
+def semiconductor_emitter(Field:float, Radius:float, Gamma:float ,Ec:float, Ef:float, Eg:float, Temperature:int, mass_electron:float, mass_hole:float):
+    
+    tab = Tabulator()
+    
+    kBoltz = 8.6173324e-5 
+    kT = kBoltz * Temperature
+    
+    m = 9.1093837015e-31 
+    me = mass_electron*m
+    mp = mass_hole*m
+    
+    semiconductor_emitter = Semiconductor_Emitter(tab)
+
+    semiconductor_emitter.emitter.Define_Barrier_Parameters(Field, Radius, Gamma)
+    semiconductor_emitter.emitter.Interpolate_Gammow()
+
+    semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec, Ef, Eg, kT, m, me, mp)
+
+    j_c, j_v, j_total = semiconductor_emitter.Current_Density_from_Semiconductors()
+    pn_c, pn_v, pn_total = semiconductor_emitter.Nottingham_Heat_from_Semiconductors()
+    #energy_c, distribution_c, energy_v, distribution_v = semiconductor_emitter.Energy_Distribution_from_Semiconductors()
+    
+    return j_total, pn_total
+
 # region One data point calculation routine
     # This routine calculates the current density from semiconductors (two methods) and metals, as well as the plotting of the energy distributions
 """     
@@ -701,7 +750,7 @@ plt.savefig("Pn comparison.png")
 #endregion
 
 # region Multiple data point calculation routine - semiconductor
-
+"""
 Npoly = 5
 NGi = 128
 zs = 1.6183e-4
@@ -843,5 +892,5 @@ for i in range(len(Bottom_Ec)):
 file.write("\r\nMax relative error = %e\r\n" % (total_max))
   
 file.close()
-
+"""
 # endregion
