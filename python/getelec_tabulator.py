@@ -4,6 +4,7 @@ import ctypes as ct
 from importlib.metadata import distribution
 from pickle import TRUE
 from tokenize import Number
+from turtle import color
 import numpy as np
 from numpy.lib.polynomial import RankWarning
 from pkg_resources import Distribution, WorkingSet
@@ -48,6 +49,71 @@ NGi = 512
 zs = 1.6183e-4
 
 class Tabulator:
+    """
+    Tabulator is class designed to reduce the computational effort of GETELEC, thus enabling to allocate computationa resources into solving other problems
+    like the calculation of a semiconductor's band structure. This functionality is based on the fact that the potential barrier of an emitter is independed 
+    from the emitter's material. So this barrier can be calcualted once and to be later called when needed.
+    
+    Tabulator first looks through the barrier maps (function: _Load_Table_from_File) to see if there is a pre-calculated barrier. If there is one, it passes 
+    it to the rest of the model for further computation. If there is not, it uses the maps from whose it would infer one using tabulation 
+    (function: Gammow_Exponent_for_Parameters). In the case that the maps do not exist, Tabulator calculate (function: _Calculate_Table) and save 
+    (function: _Save_Table_to_Files) these maps - a process than can take several hours. 
+
+    There are 5 functions within the class Tabulator. Four of which are private to the class (see the _ before the function name) and one which it public (no
+    _ before the name) and will be inheritated by class Emitter.
+    
+    1) __init__()
+        Initialises Tabulator by 1) loading the "resolution", 2) loading the maps and 3) if maps not found, calling the functions to calculate and sabe the maps
+            
+    2) _Load_Table_from_Files()
+        Looks for the files where the precaculate barriers are stored. Then it uses interpolation methods to make the most accurate barrier for the given 
+        input (electric field, tip radius and gamma exponent). Gtab is stores the polinomial that gives its shape to the barrier.
+        
+    3) _Calculate_Table()
+        This function is called if the barrier maps are not found. For each field, tip radius and gamma combitation, Gtab is calculated by polynomial fitting 
+        to the data points extracted from getelec.export_gamow
+        For each value of the field, the radius and gamma, the Gammow coeffient (G) and the energy range (W), for such G, are evaluated
+            Wmin is defined as the energy at the top of the potential barrier. Point from which G goes to 0 and tranmission cofficient equals 1
+            Wmax is defined as the energy where G gets a values high enough, here G=50, so the tunnelling probability is effectively 0
+        Then it tries to fit G(W) to a polynomial. Such polynomial and the energy limits are stored in Gtab
+        
+        Here a depiction of how the gammow coefficient changes with energy, as one goes from the vacuum level (E = 0 eV) to the bottom of the 
+        energy spectrum, and associated tramission coefficient.
+                    G(W)|                                                     .
+                        |                                                    .
+                        |                                                 .
+                        |                                             .
+                        |                                        .
+                        |                                .
+                        |                     .
+                        |.
+                        |_________________|_________________________|________________W (energy)
+                         W=0(Vacuum)      Wmin (Top barrier)        Wmax (G=50)
+    
+    
+               D(W) = 1 |.................                                                      
+                        |                 .                                  
+                        |                  .                                
+                        |                    .                            
+                        |                        .                       
+                        |                             .               
+                        |                                    .                
+                        |                                           .                 
+                      0 |_________________|_________________________|._______________W (energy)
+                         W=0(Vacuum)      Wmin (Top barrier)        Wmax (G=50)
+    
+    
+    
+    
+    4) _Save_Table_to_Files()
+        It saves the barrier maps, if any, in order to be reused in future simulations
+    
+    5) Gammow_Exponent_for_Parameters()
+        It is the public function that takes the three describing barrier parameters (field, radius, gamma) and calls the interpolator 
+        (_Load_Table_from_Files()) to calculate the polinomial that describes the barrier, as well as the energy limis (Wmin and Wmax)
+        of it
+"""
+
     # region field declarations
     _number_of_gamma_values: int
     _number_of_radius_values: int
@@ -56,6 +122,13 @@ class Tabulator:
     
     # region initialization
     def __init__(self, Nf=256, Nr=128, Ngamma=32):
+        """Initialises Tabulator by 1) loading the "resolution", 2) loading the maps and 3) if maps not found, calling the functions to calculate and sabe the maps
+
+        Args:
+            Nf (int, optional): Resolution for the electric field. Defaults to 256.
+            Nr (int, optional): Resolution for the tip radius. Defaults to 128.
+            Ngamma (int, optional): Resolution for gamma. Defaults to 32.
+        """
         self._number_of_field_values = Nf
         self._number_of_radius_values = Nr
         self._number_of_gamma_values = Ngamma
@@ -68,6 +141,9 @@ class Tabulator:
             self._Save_Table_to_Files()
 
     def _Load_Table_from_Files(self) -> bool:
+        """Looks for the files where the precaculate barriers are stored. Then it uses interpolation methods to make the most accurate barrier for the given 
+        input (electric field, tip radius and gamma exponent). Gtab is stores the polinomial that gives its shape to the barrier.
+        """
         try:
             self.Gtab = np.load("tabulated/Gtable.npy")
             self.Finv = np.load("tabulated/Finv.npy")
@@ -85,6 +161,9 @@ class Tabulator:
             return False
     
     def _Calculate_Table(self):
+        """Looks for the files where the precaculate barriers are stored. Then it uses interpolation methods to make the most accurate barrier for the given 
+        input (electric field, tip radius and gamma exponent). Gtab is stores the polinomial that gives its shape to the barrier.
+        """
         # warnings.filterwarnings("error")
         self.Finv = np.linspace(1 / self._range_of_field_values[1], 1. / self._range_of_field_values[0], self._number_of_field_values)
         self.Rinv = np.linspace(1.e-3, 1 / self._minimum_radius, self._number_of_radius_values)
@@ -118,6 +197,8 @@ class Tabulator:
                     self.Gtab[i, j, k, :] = np.append(poly, [W[0], W[-1]])
     
     def _Save_Table_to_Files(self):
+        """It saves the barrier maps, if any, in order to be reused in future simulations
+        """
         try:
             os.mkdir("tabulated")
         except:
@@ -130,13 +211,58 @@ class Tabulator:
     # endregion
     
     # region user methods
-    def Gammow_Exponent_for_Parameters(self, F, R, gamma):
+    def Gammow_Exponent_for_Parameters(self, F: float, R: float, gamma: float):
+        """It is the public function that takes the three describing barrier parameters (field, radius, gamma) and calls the interpolator 
+        (_Load_Table_from_Files()) to calculate the polinomial that describes the barrier, as well as the energy limis (Wmin and Wmax)
+        of it
+
+        Args:
+            F (float): Value of the electric field
+            R (float): Value of the emitter tip radius
+            gamma (float): Value of gamma
+
+        Returns:
+            array: Contains the polynomial which describes the barrier, as well as the top (transmission = 1) and bottom (transmission is efectively 0) 
+            limits of this barrier
+        """
         # Using __call_ because of scipy reasons
         outintr = self.interpolator.__call__([1 / gamma, 1. / R, 1. / F])[0]
         return outintr
     # endregion
 
 class Emitter:
+    """
+    This class gathers those attributes that are common to all emitters regardless of the material they are made of, and inheritage from tabulator
+    the potential barrier. Thus making an emitter. Later Emitter will be composed with the classes Metal_Emitter and Semiconductor_Emitter to complete
+    the model for the emitter
+    
+    This class 7 classes, of which one is private and the rest public (called later by Metal_Emitter or Semiconductor_Emitter):
+    1) __init__()
+        Initialises the class by inheritating Tabulator and setting it up as a private field to be used by Emitter
+        
+    2) Define_Barrier_Parameters()
+        This function will be called by the user to define the main parameters of the barrier they want to work with. These values will be fed to Tabulator
+        from which the total barrier shape and magnitude will be tabulated
+        
+    3) Interpolate_Gammow()
+        Here a function from Tabulator is called in order to interpolate the potential barrier. Then the top and bottom limits, as well as the polynomial
+        describing the barrier's shape, are extracted. The polinomial coefficients are derivated and evaluated at the top and bottom of the barrier to analyse
+        the barrier slope at such points - which will be required to later calculate the integration limits for the currrent density and heat intgrals
+    
+    4) Tranmission_Coefficient()
+        Calculates the probability of an electron tunelling (being transmitted) through the potential barrier by means of the Kemble formula whitin the JWKB approximation
+        
+    5) Gamow()
+        Evaluates the gammow coefficients in order to provide the exponential for the Kemble formula
+    
+    6) Log_Fermi_Dirac_Distribuition()
+        Returs the natural logarith of the Fermi Diract distribution
+        
+    7) Fermi_Dirac_Distribution()
+        Returns the Fermi Dirac distribution
+    """
+    
+    
     # region field declarations
     _energy: float
     _kT: float
@@ -153,17 +279,36 @@ class Emitter:
    
     # region initialization
     def __init__(self, tabulator: Tabulator):
-        self.tabulator = tabulator
+        """Initialises the class by inheritating Tabulator and setting it up as a private field to be used by Emitter
+
+        Args:
+            tabulator (Tabulator): Object that contains the attributes to interpolate the potential barrier given the field, radius and gamma as inputs
+        """
+        self._tabulator = tabulator
     # endregion
     
     # region user methods
     def Define_Barrier_Parameters(self, field: float, radius: float, gamma: float):
+        """This function will be called by the user to define the main parameters of the barrier they want to work with. These values will be fed to Tabulator
+        from which the total barrier shape and magnitude will be tabulated
+
+        Args:
+            field (float): Electric field (V/A)
+            radius (float): Emitter tip raidus (nm)
+            gamma (float): gamma coefficient (number)
+        """
+        
         self._field = field
         self._radius = radius
         self._gamma = gamma
         
     def Interpolate_Gammow(self):
-        data = self.tabulator.Gammow_Exponent_for_Parameters(self._field, self._radius, self._gamma)
+        """Here a function from Tabulator is called in order to interpolate the potential barrier. Then the top and bottom limits, as well as the polynomial
+        describing the barrier's shape, are extracted. The polinomial coefficients are derivated and evaluated at the top and bottom of the barrier to analyse
+        the barrier slope at such points - which will be required to later calculate the integration limits for the currrent density and heat intgrals
+        """
+        
+        data = self._tabulator.Gammow_Exponent_for_Parameters(self._field, self._radius, self._gamma)
         self._energy_top_barrier = data[-2] #Wmin
         self._energy_bottom_barrier = data[-1] #Wmax
         self._gammow_coefficients = data[:Npoly] #Gpoly
@@ -172,7 +317,15 @@ class Emitter:
         self._gammow_derivative_bottom_barrier = np.polyval(self._gammow_derivative_coefficients, self._energy_bottom_barrier) #dGmax
     
     def Transmission_Coefficient(self, energy):
-        """Calculates the transmission coefficient"""
+        """Calculates the probability of an electron tunelling (being transmitted) through the potential barrier by means of the Kemble formula whitin the JWKB approximation
+
+        Args:
+            energy (array): Energy, perpendicular to the emitting surface, values (eV) for which the transmission cofficients are calculated (eV)
+
+        Returns:
+            array: Probability of an electron with a certain kinetic energy perpendicular to the emitting surface to tunnerl through the potential barrier (number)
+        """
+        
         gamow_coefficient = self.Gamow(energy)
         if (isinstance(energy, np.ndarray)):
             transmission_coefficient = np.copy(gamow_coefficient)
@@ -186,6 +339,15 @@ class Emitter:
                 return np.exp(-gamow_coefficient)
     
     def Gamow(self, energy):
+        """Evaluates the gammow coefficients in order to provide the exponential for the Kemble formula
+
+        Args:
+            energy (array): Energy, perpendicular to the emitting surface, values (eV) for which the transmission cofficients are calculated (eV)
+
+        Returns:
+            array: Kemble's formula exponent value for a given energy (number)
+        """
+        
         if (isinstance(energy, np.ndarray)):
             gammow = np.copy(energy)
             high_energy = energy > self._energy_bottom_barrier
@@ -203,7 +365,17 @@ class Emitter:
                 return np.polyval(self._gammow_coefficients, self._energy_top_barrier) + self._gammow_derivative_top_barrier * (energy - self._energy_top_barrier) 
 
     def Log_Fermi_Dirac_Distribution(self, energy, kT):
-    #assert E.size() == kT.size()
+        """Returs the natural logarith of the Fermi Diract distribution.
+        The energy is divided in 3 terms to prevent the computer from overfloading with large exponents 
+
+        Args:
+            energy (array): Energy, perpendicular to the emitting surface, values (eV) for which the transmission cofficients are calculated (eV)
+            kT (float): Energy from temperature (eV)
+
+        Returns:
+            array: Natural logarith of the Fermi Diract distribution (number)
+        """
+        
         if (isinstance(energy, np.ndarray)):
             distribution = np.copy(energy)
 
@@ -224,13 +396,53 @@ class Emitter:
                 return np.log(1. + np.exp(-energy / kT))
     
     def Fermi_Dirac_Distribution(self, energy, kT):
+        """Returns the Fermi Dirac distribution
+        
+        Args:
+            energy (array): Energy, perpendicular to the emitting surface, values (eV) for which the transmission cofficients are calculated (eV)
+            kT (float): Energy from temperature (eV)
 
+        Returns:
+            array: Fermi Diract distribution (number)
+        """
+        
         distribution = 1/(1+np.exp(energy/kT))
         
         return distribution
     # endregion
    
 class Metal_Emitter:
+    """This class will be composed along with Emitter(Tabulator) in order to create a metal field emitter. Then different functions will be executed to 
+    calculate the density, nottingham heat and energy density of the electrons being emitted.
+    
+    1) __init__()
+        Initialises the function by adding the atributes of a "tabulated" barrier emitter to metals
+        
+    2) Define_Emitter_Parameters()
+        Takes the two relevant material properties (workfucntion and temperature) and makes them available for the rest of the class
+        
+    3) _Integration_Limits()
+        Finds the limits of integration
+    
+    4) Current_Density()
+        Calculates the field emitted current density from metal surfaces
+     
+    5) Energy_Distribution()
+        Calculates the energy distribution of field emitted electrons from metals
+       
+    6) Nottingham_Heat()
+        Calculates the Nottingham heat resulted from field emitted electrons from metals
+        
+    7) Current_Density_educational()
+        Calculates the field emitted current density from metals on a clear equation to code manner
+        
+    8) Energy_Distribution_educational()
+        Calculates the energy distribution of field emitted electrons from metals on a clear equation to code manner
+        
+    9) Nottingham_Heat_educational()
+        Calculates the Nottingham heat resulted from field emitted electrons from metals on a clear equation to code manner
+    """
+    
     # region field declarations
     emitter: Emitter
     kT: float
@@ -241,18 +453,35 @@ class Metal_Emitter:
     
     # region initialization
     def __init__(self, tabulator: Tabulator):
+        """Initialises the function by adding the atributes of a "tabulated" barrier emitter to metals
+
+        Args:
+            tabulator (Tabulator): Object that contains the attributes of a x material emitter (potential barrier, transmission coefficiens and electron supply functions)
+        """
+        
         self.emitter = Emitter(tabulator)
     # endregion   
     
     # region user methods 
     def Define_Emitter_Parameters(self, workfunction: float, kT: float):
-        """Defines main emitter characteristics"""
+        """Defines main emitter characteristics
+
+        Args:
+            workfunction (float): Average minimum energy required to put an electron, whitin a material, out in vacuum (some few nm away from the material surface) (eV)
+            kT (float): Energy from temperature (eV)
+        """
+        
         self.workfunction = workfunction
         self.kT = kT
-        self.energy = self.Integration_Limits()
+        self.energy = self._Integration_Limits()
         
-    def Integration_Limits(self):
-        """Finds the limits of integration"""
+    def _Integration_Limits(self):
+        """Finds the limits of integration. ANDREAS PLEASE MAKE A COMMENT WHY THE 3 DIFFERENT INSTANCES AND WHY THE VALUES
+        
+        Returns:
+            array: Energy space for which the electron emission and Notigham heat are going to be evaluated in (eV)
+        """
+        
         resolution = NGi #128
         self._maxbeta = np.polyval(self.emitter._gammow_derivative_coefficients, min(self.workfunction, self.emitter._energy_bottom_barrier))
         
@@ -279,7 +508,12 @@ class Metal_Emitter:
             return np.linspace(energy_bottom, energy_top, resolution)
      
     def Current_Density(self):
-        """Calculates the field emitted current density from metal surfaces"""
+        """Calculates the field emitted current density from metal surfaces
+
+        Returns:
+            float: Emitted current density being emitted from an infinitesimal flat surface area (electrons/area*time)
+        """
+        
         args = tuple([self.workfunction] + [self.kT] + [self.emitter._energy_top_barrier] + [self.emitter._energy_bottom_barrier] + [self.emitter._gammow_derivative_top_barrier] + [self.emitter._gammow_derivative_bottom_barrier] + list(self.emitter._gammow_coefficients))
         try:
             integ, abserr, info = ig.quad(integrator.intfun, self.energy[0], self.energy[-1], args, full_output = 1)
@@ -289,7 +523,13 @@ class Metal_Emitter:
         return zs * self.kT * integ
     
     def Energy_Distribution(self):
-        """Calculates the energy distribution of field emitted electrons from metals"""
+        """Calculates the energy distribution of field emitted electrons from metals
+
+        Returns:
+            energy (array): Energy space for which the electron emission has been evalated (eV)
+            electron_number (array): Number of electrons being emitter with a certain energy (number)
+        """
+        
         transmission_in_energy_z = self.emitter.Transmission_Coefficient(self.workfunction - self.energy)
 
         cumulative_transmission = np.insert(np.cumsum((transmission_in_energy_z[1:]+transmission_in_energy_z[:-1])*(self.energy[1]-self.energy[0])/2), 0, 0)
@@ -299,7 +539,12 @@ class Metal_Emitter:
         return  self.energy, electron_number
   
     def Nottingham_Heat(self):
-        """Calculates the Nottingham heat resulted from field emitted electrons from metals"""
+        """Calculates the Nottingham heat resulted from field emitted electrons from metals
+
+        Returns:
+            float: Resulted Nottigham from the emission of electrons from an infinitesinal area (J)
+        """
+        
         args = tuple([self.workfunction] + [self.kT] + [self.emitter._energy_top_barrier] + [self.emitter._energy_bottom_barrier] + [self.emitter._gammow_derivative_top_barrier] + [self.emitter._gammow_derivative_bottom_barrier] + list(self.emitter._gammow_coefficients))
         try:
             integ, abserr = ig.quad(integrator.intfun_Pn, self.energy[0], self.energy[-1], args, full_output = 0)
@@ -354,6 +599,57 @@ class Metal_Emitter:
     #endregion
     
 class Semiconductor_Emitter:
+    """This class will be composed along with Emitter(Tabulator) in order to create a semiconductor field emitter. Then different functions will be executed to 
+    calculate the density, nottingham heat and energy density of the electrons being emitted
+    
+    1) __init__()
+        Initialises the function by adding the atributes of a "tabulated" barrier emitter to metals
+    
+    2) Define_Semiconductor_Emitter_Parameters()
+        Takes the material properties (workfucntion and temperature) and makes them available for the rest of the class
+        
+    3) _Integration_Limits_for_Semiconductors()
+        Finds the limits of integration
+    
+    4) Current_Density_from_Semicondductors()
+        Returns the field emitted current density from semiconducting surfaces, by calling two other functions
+    
+    4) Current_from_Conduction_Band()
+        Calculates the conduction band component of the emitted current
+        
+    5) Current_from_Valence_Band()
+        Calculates the valence band component of the emitter current
+     
+    6) Distributed_Current_Density_from_Semiconductors()
+        Calculates the current density being emitter from a semiconducting flat surface by calculating the emitted electron
+        energy distrubution and integrating over that distribution
+    
+    7) Energy_Distribution_from_Semiconductors()
+        Returns the energy distribution of the electrons being emitted from the conduction and valence bands
+        
+    8) Energy_Distribution_from_Conduction_Band()
+        Calculates teh energy distribution of those electrons emitted from the conduction band
+        
+    9) Energy_Distribution_from_Valence_Band()
+        Calculates teh energy distribution of those electrons emitted from the valence band
+       
+    10) Nottingham_Heat_from_Semiconductors()
+        Returns the Nottigham heat resulted from electrons being emitter fromt the conduction and valence band
+        
+    11) Nottingham_Heat_from_Conduction_Band()
+        Calculates the Nottingham heat resulted from field emitted electrons from the conduction band
+    
+    12) Nottingham_Heat_from_Valence_Band()
+        Calculates the Nottingham heat resulted from field emitted electrons from the valence band
+    
+    13) Nottingham_Heat_from_Replacement_Electrons()
+        UNDER CONSTRUCTION
+        It will return the energy of those electrons that replace the emitted ones
+    
+    14) Energy_Distribution_from_Conduction_Band_educational()
+        Calculates the contribution of the conduction band to the energy distribution of field emitted electrons from semiconductors on a clear equation to code manner
+    """
+    
     # region field declarations
     emitter: Emitter
     _max_energy_conduction_band: array
@@ -376,12 +672,29 @@ class Semiconductor_Emitter:
     
     # region initialization
     def __init__(self, tabulator: Tabulator):
+        """Initialises the function by adding the atributes of a "tabulated" barrier emitter to metals
+
+        Args:
+            tabulator (Tabulator): Object that contains the attributes of a x material emitter (potential barrier, transmission coefficiens and electron supply functions)
+        """
+        
         self.emitter = Emitter(tabulator)
     # endregion
 
     # region user methods
-    def Define_Semiconductor_Emitter_Parameters(self, Ec, Ef, Eg, kT, m, me, mp):
-        """Defines main emitter characteristics (in order): botton of the conduction band, fermi level, band gap, temperature, free electrons mass, effective electron mass, effective hole mass"""
+    def Define_Semiconductor_Emitter_Parameters(self, Ec: float, Ef: float, Eg: float, kT: float, m: float, me:float, mp: float):
+        """Defines the main emitter parameters:,, band gap, temperature, free electrons mass, effective electron mass, effective hole mass
+
+        Args:
+            Ec (float): botton of the conduction band (eV)
+            Ef (float): fermi level (eV)
+            Eg (float): band gap (eV)
+            kT (float): temperature (eV)
+            m (float): free electron mass (kg)
+            me (float): effective electron mass (number)
+            mp (float): effective hole mass (number)
+        """
+        
         self._Ec = -Ec
         self._Ef = -Ef
         self._Eg = -Eg
@@ -390,9 +703,9 @@ class Semiconductor_Emitter:
         self._m  = m
         self._me = me
         self._mp = mp
-        self.Integration_Limits_for_Semiconductors()
+        self._Integration_Limits_for_Semiconductors()
     
-    def Integration_Limits_for_Semiconductors(self):
+    def _Integration_Limits_for_Semiconductors(self):
         """Finds the limits of integration"""
         resolution = NGi #128
         self._Eclow = (self._Ec-self._Ef)
@@ -403,7 +716,14 @@ class Semiconductor_Emitter:
         self._energy_valence_band = np.linspace(self._Evlow, self._Evhigh, resolution)
       
     def Current_Density_from_Semiconductors(self):
-        """Calculates the field emitted current density from semiconductor surfaces"""
+        """Returns the field emitted current density from semiconducting surfaces, by calling two other functions
+
+        Returns:
+            current_conduction (float): current density emitted from the conduction band (electrons/area*time)
+            current_valence (float): current density emitted from the valence band (electrons/area*time)
+            current_total (float): total current emitted from a semiconducting infinitisimal and flat surface (sum of the conduction and valence contributions) (electrons/area*time)
+        """
+        
         current_conduction = self.Current_from_Conduction_Band()
         current_valence = self.Current_from_Valence_Band()
         current_total = current_conduction+current_valence
@@ -411,7 +731,12 @@ class Semiconductor_Emitter:
         return current_conduction, current_valence, current_total
 
     def Current_from_Conduction_Band(self): 
-        """Calculates the contribution of the conduction band to the field emitted current density from semiconductor surfaces - Andreas' equation"""
+        """ Calculates the conduction band component of the emitted current - Stratton's 1962 equation
+
+        Returns:
+            float: Emitted current density from the conduction band (electrons/area*time)
+        """
+        
         a = self._me/self._m
         b = 1-a 
         
@@ -420,7 +745,12 @@ class Semiconductor_Emitter:
         return zs * self._kT * np.sum(jc_integ) * (self._energy_conduction_band[1]-self._energy_conduction_band[0]) 
     
     def Current_from_Valence_Band(self):
-        """Calculates the contribution of the valence band to the field emitted current density from semiconductor surfaces - Andreas' equation"""
+        """Calculates the conduction band component of the emitted current - Andreas' equation
+
+        Returns:
+            float: Emitted current density from the valence band (electrons/area*time)
+        """
+        
         a = self._mp/self._m
         b = 1+a
         
@@ -429,6 +759,15 @@ class Semiconductor_Emitter:
         return zs * self._kT * ((np.sum(jv_integ) * (self._energy_valence_band[1]-self._energy_valence_band[0])))
     
     def Distributed_Current_Density_from_Semiconductors(self):
+        """Calculates the current density being emitter from a semiconducting flat surface by calculating the emitted electron
+        energy distrubution and integrating over that distribution
+        
+        This function was implemented for validation purposes and it is not optimised!
+
+        Returns:
+            float: Emitted current density from semiconductor emitter with infinitesimal area (electrons/area*time)
+        """
+        
         #conduction band
         a = self._me/self._m
         b = 1-a 
@@ -458,14 +797,28 @@ class Semiconductor_Emitter:
         return total_c, total_v, total
     
     def Energy_Distribution_from_Semiconductors(self):
-        """Calculates the energy distribution of field emitted electrons from semiconductors"""
+        """Returns the energy distribution of the electrons being emitted from the conduction and valence bands
+
+        Returns:
+            energy_space_c (array): Energy values in the conduction band from which electrons are emitted (eV)
+            electrons_from_c (array): Number of emitted electrons from the conduction band for each energy value (number)
+            energy_space_v (array): Energy values in the valence band from which electrons are emitted (eV)
+            electrons_from_v (array): Number of emitted electrons from the valence band for each energy value (number)
+        """
+        
         energy_space_c, electrons_from_c = self.Energy_Distribution_from_Conduction_Band()
         energy_space_v, electrons_from_v = self.Energy_Distribution_from_Valence_Band()
 
         return  energy_space_c, electrons_from_c, energy_space_v, electrons_from_v
 
     def Energy_Distribution_from_Conduction_Band(self):
-        """Calculates the contribution of the conduction band to the energy distribution of field emitted electrons from semiconductors """
+        """Calculates teh energy distribution of those electrons emitted from the conduction band
+
+        Returns:
+            _energy_conduction_band (array): Energy values in the conduction band from which electrons are emitted (eV)
+            number_of_electrons (array): Number of emitted electrons from the conduction band for each energy value (number)
+        """
+        
         a = self._me/self._m
         b = 1-a 
         
@@ -478,7 +831,13 @@ class Semiconductor_Emitter:
         return self._energy_conduction_band , number_of_electrons
     
     def Energy_Distribution_from_Valence_Band(self): #NEED REVISION
-        """Calculates the contribution of the valence band to the energy distribution of field emitted electrons from semiconductors"""
+        """Calculates teh energy distribution of those electrons emitted from the valence band
+
+        Returns:
+            _energy_conduction_band (array): Energy values in the valence band from which electrons are emitted (eV)
+            number_of_electrons (array): Number of emitted electrons from the valence band for each energy value (number)
+        """
+        
         a = self._mp/self._m
         b = 1+a
         
@@ -491,7 +850,14 @@ class Semiconductor_Emitter:
         return self._energy_valence_band, number_of_electrons
     
     def Nottingham_Heat_from_Semiconductors(self):
-        """Calculates the Nottingham heat resulted from field emitted electrons from semicoductors"""
+        """Returns the Nottigham heat resulted from electrons being emitter fromt the conduction and valence band
+
+        Returns:
+            nottigham_conduction (float): Conduction band contribution to Nottingham heat (J)
+            nottigham_valence (float): Valence band contribution to Nottingham heat (J)
+            nottigham_total (float): Total Nottingham heat (J)
+        """
+        
         nottingham_conduction = self.Nottingham_Heat_from_Conduction_Band()
         nottigham_valence = self.Nottingham_Heat_from_Valence_Band()
         nottigham_replacement = self.Nottingham_Heat_fron_Replacement_Electrons()
@@ -513,7 +879,7 @@ class Semiconductor_Emitter:
         
         return -zs * self._kT * np.sum(energy_distribution)
     
-    def Nottingham_Heat_fron_Replacement_Electrons(self):
+    def Nottingham_Heat_from_Replacement_Electrons(self):
         """To be calculated from COMSOL"""
         return 0
     
@@ -534,7 +900,6 @@ class Semiconductor_Emitter:
 
         return self._energy_conduction_band , energy_distribution
     # endregion
-
 
 def metal_emitter(Field:float, Radius:float, Gamma:int, Workfunction:float, Temperature:int):
     
@@ -582,7 +947,7 @@ def semiconductor_emitter(Field:float, Radius:float, Gamma:float ,Ec:float, Ef:f
 
 # region One data point calculation routine
     # This routine calculates the current density from semiconductors (two methods) and metals, as well as the plotting of the energy distributions
-"""     
+     
 Npoly = 5
 NGi = 512
 zs = 1.6183e-4
@@ -591,12 +956,12 @@ kBoltz = 8.6173324e-5
 tab = Tabulator()
 
 Workfunction = 4.5
-Ec = 3
-Ef = 4.5
-Eg = 0.7
+Ec = 4.4195
+Ef = 4.75
+Eg = 0.661
 m = 9.1093837015e-31 
-me = 1.08*m # effective electron mass @300K, https://doi.org/10.1142/S0219749909005833
-mp = 0.54*m # effective hole mass @300k, https://doi.org/10.1142/S0219749909005833
+me = 1.59*m # effective electron mass @300K, https://doi.org/10.1142/S0219749909005833
+mp = 0.33*m # effective hole mass @300k, https://doi.org/10.1142/S0219749909005833
 Temp = 300.
 kT = kBoltz * Temp
 
@@ -643,13 +1008,19 @@ print("current_metal", j_metal)
 
 
 fig = plt.figure(figsize=(16,6))
-#plt.plot(energy_space_metal, distribution_metal/max(distribution_metal))
-plt.plot(energy_c, distribution_c)#/max(distribution_c))
-plt.plot(energy_v, distribution_v)#/max(distribution_v))
+#plt.plot(energy_space_metal-Workfunction, distribution_metal/max(distribution_metal), color = "steelblue") # /max(distribution_metal)
+#plt.plot(energy_c-Ef+Eg/2, distribution_c/max(distribution_c), color = "orange") # /max(distribution_c)
+#plt.plot(energy_v-Ef+Eg/2, distribution_v/max(distribution_v), color = "green") # /max(distribution_v)
+#plt.plot(energy_space_metal-Workfunction, distribution_metal, color = "steelblue") 
+#plt.plot(energy_c-Ef+Eg/2, distribution_c, color = "orange") 
+plt.plot(energy_v-Ef+Eg/2, distribution_v, color = "green") 
 plt.grid("True")
-plt.title("Energy distributions")
-plt.savefig("Energy distributions.png")
-"""
+plt.xlabel("Energy (eV)")
+plt.ylabel("Electron count")
+plt.title("Field emitted electron energy distribution from a semiconductor (valence band)")
+plt.savefig("Field emitted electron energy distribution from a semiconductor (valence band).svg")
+plt.savefig("Field emitted electron energy distribution from a semiconductor (valence band).png")
+
 # endregion
 
 # region Multiple data point calculation routine - metal
