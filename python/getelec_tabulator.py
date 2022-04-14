@@ -3,6 +3,7 @@ from array import array
 import ctypes as ct
 from importlib.metadata import distribution
 from pickle import TRUE
+from tkinter.ttk import LabeledScale
 from tokenize import Number
 from turtle import color
 import numpy as np
@@ -15,6 +16,7 @@ import os
 import matplotlib.pyplot as plt
 import scipy.interpolate as intrp
 import scipy.constants as const
+import matplotlib as mb
 import json
 import datetime
 #import warnings
@@ -860,7 +862,7 @@ class Semiconductor_Emitter:
         
         nottingham_conduction = self.Nottingham_Heat_from_Conduction_Band()
         nottigham_valence = self.Nottingham_Heat_from_Valence_Band()
-        nottigham_replacement = self.Nottingham_Heat_fron_Replacement_Electrons()
+        nottigham_replacement = self.Nottingham_Heat_from_Replacement_Electrons()
         nottingham_total = nottingham_conduction + nottigham_valence + nottigham_replacement   
         
         return nottingham_conduction, nottigham_valence, nottingham_total
@@ -947,7 +949,7 @@ def semiconductor_emitter(Field:float, Radius:float, Gamma:float ,Ec:float, Ef:f
 
 # region One data point calculation routine
     # This routine calculates the current density from semiconductors (two methods) and metals, as well as the plotting of the energy distributions
-     
+"""     
 Npoly = 5
 NGi = 512
 zs = 1.6183e-4
@@ -1007,20 +1009,64 @@ print("current_semi", j_total, j_total2, "relative error:", total_rel_error)
 print("current_metal", j_metal)
 
 
-fig = plt.figure(figsize=(16,6))
-#plt.plot(energy_space_metal-Workfunction, distribution_metal/max(distribution_metal), color = "steelblue") # /max(distribution_metal)
-#plt.plot(energy_c-Ef+Eg/2, distribution_c/max(distribution_c), color = "orange") # /max(distribution_c)
-#plt.plot(energy_v-Ef+Eg/2, distribution_v/max(distribution_v), color = "green") # /max(distribution_v)
-#plt.plot(energy_space_metal-Workfunction, distribution_metal, color = "steelblue") 
-#plt.plot(energy_c-Ef+Eg/2, distribution_c, color = "orange") 
-plt.plot(energy_v-Ef+Eg/2, distribution_v, color = "green") 
+font = 60
+x = 40
+y = 17
+
+
+mb.rcParams["font.size"] = font
+mb.rcParams["axes.labelsize"] = font
+mb.rcParams["xtick.labelsize"] = font
+mb.rcParams["ytick.labelsize"] = font+5
+mb.rcParams["legend.fontsize"] = font
+mb.rcParams["lines.linewidth"] = 7
+
+fig, ax = plt.subplots(figsize=(x,y))
+ax.ticklabel_format(scilimits=[-1,1])
+plt.plot(energy_space_metal-Workfunction, distribution_metal/max(distribution_metal), color = "steelblue", label = "electrons from metal") 
+plt.plot(energy_c-Ef+Eg/2, distribution_c/max(distribution_c), color = "orange", label = "electrons from conduction band") 
+plt.plot(energy_v-Ef+Eg/2, distribution_v/max(distribution_v), color = "green", label = "electrons from valence band") 
+plt.legend()
 plt.grid("True")
 plt.xlabel("Energy (eV)")
-plt.ylabel("Electron count")
-plt.title("Field emitted electron energy distribution from a semiconductor (valence band)")
-plt.savefig("Field emitted electron energy distribution from a semiconductor (valence band).svg")
-plt.savefig("Field emitted electron energy distribution from a semiconductor (valence band).png")
+plt.ylabel("$J_{eN}$(E) (A$nm^{-2}$$eV^{-1}$)")
+plt.title("Normalised electron energy distribution")
+plt.savefig("Normalised electron energy distribution.svg")
+plt.savefig("Normalised electron energy distribution.png")
 
+fig, ax = plt.subplots(figsize=(x,y))
+ax.ticklabel_format(scilimits=[-1,1])
+plt.plot(energy_space_metal-Workfunction, distribution_metal, color = "steelblue", label = "electrons from metal") 
+plt.legend()
+plt.grid("True")
+plt.xlabel("Energy (eV)")
+plt.ylabel("$J_e$(E) (A$nm^{-2}$$eV^{-1}$)")
+plt.title("Electron energy distribution from a metal")
+plt.savefig("Electron energy distribution from a metal.svg")
+plt.savefig("Electron energy distribution from a metal.png")
+
+fig, ax = plt.subplots(figsize=(x,y))
+ax.ticklabel_format(scilimits=[-1,1])
+plt.plot(energy_c-Ef+Eg/2, distribution_c, color = "orange", label = "electrons from conduction band") 
+plt.legend()
+plt.grid("True")
+plt.xlabel("Energy (eV)")
+plt.ylabel("$J_e$(E) (A$nm^{-2}$$eV^{-1}$)")
+plt.title("Electron energy distribution from conduction band")
+plt.savefig("Electron energy distribution from conduction band.svg")
+plt.savefig("Electron energy distribution from conduction band.png")
+
+fig, ax = plt.subplots(figsize=(x,y))
+ax.ticklabel_format(scilimits=[-1,1])
+plt.plot(energy_v-Ef+Eg/2, distribution_v, color = "green", label = "electrons from valence band") 
+plt.legend()
+plt.grid("True")
+plt.xlabel("Energy (eV)")
+plt.ylabel("$J_e$(E) (A$nm^{-2}$$eV^{-1}$)")
+plt.title("Electron energy distribution from valence band")
+plt.savefig("Electron energy distribution from valence band.svg")
+plt.savefig("Electron energy distribution from valence band.png")
+"""
 # endregion
 
 # region Multiple data point calculation routine - metal
@@ -1121,7 +1167,7 @@ plt.savefig("Pn comparison.png")
 #endregion
 
 # region Multiple data point calculation routine - semiconductor
-"""
+
 Npoly = 5
 NGi = 128
 zs = 1.6183e-4
@@ -1129,12 +1175,12 @@ kBoltz = 8.6173324e-5
 
 tab = Tabulator()
 
-Ef = 4.5
-Eg = 1.1
+Ef = 4.75
+Eg = 0.661
 Temp = 300.
 m = 9.1093837015e-31 
-me = 1.08*m # effective electron mass @300K, https://doi.org/10.1142/S0219749909005833
-mp = 0.54*m # effective hole mass @300k, https://doi.org/10.1142/S0219749909005833
+me = 1.59*m # effective electron mass @300K, https://doi.org/10.1142/S0219749909005833
+mp = 0.33*m # effective hole mass @300k, https://doi.org/10.1142/S0219749909005833
 kT = kBoltz * Temp
 
 semiconductor_emitter = Semiconductor_Emitter(tab)
@@ -1166,7 +1212,7 @@ v_rel_error = np.zeros(resolution)
 total_rel_error = np.zeros(resolution)
 
 for i in range(resolution):
-    Ec = i*0.05+2
+    Ec = i*(6/resolution)+1
 
     semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec, Ef, Eg, kT, m, me, mp)
 
@@ -1189,7 +1235,7 @@ for i in range(resolution):
     energy_space_metal, distribution_metal = metal_emitter.Energy_Distribution()
     
     
-    Bottom_Ec[i] = Ec
+    Bottom_Ec[i] = -Ec
     
     
     c_abs_error = abs(j_c2[i]-j_c[i])
@@ -1227,25 +1273,31 @@ total_mean = np.mean(total_rel_error)
 total_std = np.std(total_rel_error)
 total_max = max(total_rel_error)
 
+font = 60
+x = 40
+y = 17
 
-fig3 = plt.figure(figsize=(16,6))
-plt.semilogy(Bottom_Ec, j_c)
-plt.semilogy(Bottom_Ec, j_v)
-plt.semilogy(Bottom_Ec, j_total)
-plt.semilogy(Bottom_Ec, j_metal)
-plt.grid()
-plt.title("Current from semiconductor")
-plt.savefig("Current from semiconductor.png")
+mb.rcParams["font.size"] = font
+mb.rcParams["axes.labelsize"] = font
+mb.rcParams["xtick.labelsize"] = font
+mb.rcParams["ytick.labelsize"] = font+5
+mb.rcParams["legend.fontsize"] = font
+mb.rcParams["lines.linewidth"] = 7
 
-fig4 = plt.figure(figsize=(16,6))
-plt.plot(Bottom_Ec, pn_c)
-plt.plot(Bottom_Ec, pn_v)
-plt.plot(Bottom_Ec, pn_total)
-plt.plot(Bottom_Ec, pn_metal)
+fig, ax = plt.subplots(figsize=(x,y))
+#ax.ticklabel_format(scilimits=[-1,1])
+plt.plot(Bottom_Ec, j_c, color = "steelblue", label = "electrons from conduction band")
+plt.plot(Bottom_Ec, j_v, color = "green", label = "electrons from valence band")
+plt.plot(Bottom_Ec, j_total, color = "orange", label = "total emitted electrons")
+#plt.plot(Bottom_Ec, j_metal)
 plt.yscale("symlog", linscale=-1)
-plt.grid('True')
-plt.title("Nottinghah Heat from semiconductor")
-plt.savefig("Nottinghah Heat from semiconductor.png")
+plt.legend()
+plt.grid("True")
+plt.xlabel("Energy (eV)")
+plt.ylabel("$J_{e}$(E) (A$nm^{-2}$$eV^{-1}$)")
+plt.title("Electron emission as function of band structure")
+plt.savefig("Current from semiconductor.png")
+plt.savefig("Current from semiconductor.svg")
 
 file = open("Field_Emission_Data.txt", "w+")
 
@@ -1263,5 +1315,5 @@ for i in range(len(Bottom_Ec)):
 file.write("\r\nMax relative error = %e\r\n" % (total_max))
   
 file.close()
-"""
+
 # endregion

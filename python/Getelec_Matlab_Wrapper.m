@@ -1,6 +1,18 @@
 function [Current_Density,Nottingham_Heat] = Getelec_Matlab_Wrapper(material,Field, Radius, Gamma, Ec, Ef, Eg, T, me, mp)
     % Wrappers Geletec (in Python) with Matlab enviroment so it is callable
     % from COMSOL
+    % material should be a number
+    % input has to be an array
+    % get rid of constant parameter
+        %might be able to be e includ as text file 
+        %but can be expensive. so inlcude constant parameters as constants
+    %check for hdf5 format out
+    % get rid material Eg gamma - make function just for semiconductor
+    % 1) make the code first for metals (Field, Rad and T)
+    % 2) make sure the whole thing runs on one machine (install Comsol)
+    % 3) Tuesday 26th Veronika shows how is it done
+
+    % self consistency should be done automatically, but we need to know how to do it
 
     %Checking and initialising Python environment
     pe = pyenv;
