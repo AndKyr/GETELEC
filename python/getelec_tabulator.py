@@ -1212,7 +1212,7 @@ v_rel_error = np.zeros(resolution)
 total_rel_error = np.zeros(resolution)
 
 for i in range(resolution):
-    Ec = i*(6/resolution)+1
+    Ec = i*(0.5/resolution)+4.5
 
     semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec, Ef, Eg, kT, m, me, mp)
 
@@ -1282,22 +1282,22 @@ mb.rcParams["axes.labelsize"] = font
 mb.rcParams["xtick.labelsize"] = font
 mb.rcParams["ytick.labelsize"] = font+5
 mb.rcParams["legend.fontsize"] = font
-mb.rcParams["lines.linewidth"] = 7
+mb.rcParams["lines.linewidth"] = 5
 
 fig, ax = plt.subplots(figsize=(x,y))
-#ax.ticklabel_format(scilimits=[-1,1])
-plt.plot(Bottom_Ec, j_c, color = "steelblue", label = "electrons from conduction band")
-plt.plot(Bottom_Ec, j_v, color = "green", label = "electrons from valence band")
-plt.plot(Bottom_Ec, j_total, color = "orange", label = "total emitted electrons")
+ax.ticklabel_format(scilimits=[-1,1])
+plt.semilogy(Bottom_Ec, j_c, color = "steelblue", label = "electrons from conduction band")
+plt.semilogy(Bottom_Ec, j_v, color = "green", label = "electrons from valence band")
+plt.semilogy(Bottom_Ec, j_total, color = "orange", label = "total emitted electrons")
 #plt.plot(Bottom_Ec, j_metal)
-plt.yscale("symlog", linscale=-1)
-plt.legend()
+#plt.yscale("symlog", linscale=-1)
+#plt.legend()
 plt.grid("True")
-plt.xlabel("Energy (eV)")
-plt.ylabel("$J_{e}$(E) (A$nm^{-2}$$eV^{-1}$)")
-plt.title("Electron emission as function of band structure")
-plt.savefig("Current from semiconductor.png")
-plt.savefig("Current from semiconductor.svg")
+plt.xlabel("Bottom of conduction band (eV)")
+plt.ylabel("$J_{e}$ (A$nm^{-2}$)")
+plt.title("Detail")
+plt.savefig("Detail.png")
+plt.savefig("Detail.svg")
 
 file = open("Field_Emission_Data.txt", "w+")
 
