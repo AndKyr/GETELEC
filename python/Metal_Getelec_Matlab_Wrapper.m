@@ -1,4 +1,4 @@
-function [Current_Density,Nottingham_Heat] = Metal_Getelec_Matlab_Wrapper(Field, Radius, Gamma, Ef, T)
+function Current_Density = Metal_Getelec_Matlab_Wrapper(Field, Radius, Gamma, Ef, T)
     % Wrappers Geletec (in Python) with Matlab enviroment so it is callable
     % from COMSOL
     % material should be a number
@@ -24,17 +24,17 @@ function [Current_Density,Nottingham_Heat] = Metal_Getelec_Matlab_Wrapper(Field,
     end
     
     %Checking and initiliasing parallel processing
-    if isempty(gcp('nocreate')) == 1
-        disp('Initialising parpool');
-        parpool
-    else
+    %if isempty(gcp('nocreate')) == 1
+    %    disp('Initialising parpool');
+    %    parpool
+    %else
         %pass
-    end
+    %end
     
     %Pointing MATLAB to the right files
-    if count(py.sys.path, '/home/salva/getelec_remote/getelec_priv/python') == 0
+    if count(py.sys.path, '/home/salva/Documents/getelec_priv/python') == 0
         disp('Loading path')
-        insert(py.sys.path, int64(0),'/home/salva/getelec_remote/getelec_priv/python');
+        insert(py.sys.path, int64(0),'/home/salva/Documents/getelec_priv/python');
     else
         %pass
     end
@@ -47,15 +47,15 @@ function [Current_Density,Nottingham_Heat] = Metal_Getelec_Matlab_Wrapper(Field,
     
     
     %Initialising arrays to store our data
-    Current_Density = zeros(1:lenght(Field));
-    Nottingham_Heat = zeros(1:lenght(Field));
+    Current_Density = zeros(1:length(Field));
+    %Nottingham_Heat = zeros(1:lenght(Field));
 
     %Calls GETELEC and calculates current density and Notigham heat. Parfor loop to run the loop in parallel
     disp('Calculating J and Pn from metal emitter')
     parfor i = 1:lenght(Field)
         getelec_data = cell(getelec.metal_emitter(Field(i), Radius(i), Gamma(i), Ef(i), T(i)));
         Current_Density(i) = getelec_data(1);
-        Nottingham_Heat(i) = getelec_data(2);
+        %Nottingham_Heat(i) = getelec_data(2);
     end
     
     %disp(Current_Density, Nottingham_Heat);

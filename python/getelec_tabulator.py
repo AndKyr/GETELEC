@@ -918,10 +918,10 @@ def metal_emitter(Field:float, Radius:float, Gamma:int, Workfunction:float, Temp
     metal_emitter.Define_Emitter_Parameters(Workfunction, kT)
     
     j_metal = metal_emitter.Current_Density()
-    pn_metal = metal_emitter.Nottingham_Heat()
+    #pn_metal = metal_emitter.Nottingham_Heat()
     #energy_space_metal, distribution_metal = metal_emitter.Energy_Distribution()
     
-    return j_metal, pn_metal
+    return j_metal#, pn_metal
 
 def semiconductor_emitter(Field:float, Radius:float, Gamma:float ,Ec:float, Ef:float, Eg:float, Temperature:int, mass_electron:float, mass_hole:float):
     
