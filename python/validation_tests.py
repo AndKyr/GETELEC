@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 # region One data point calculation routine
     # This routine calculates the current density from semiconductors (two methods) and metals, as well as the plotting of the energy distributions
-   
+"""  
 Npoly = 5
 NGi = 512
 zs = 1.6183e-4
@@ -124,11 +124,11 @@ plt.ylabel("$J_e$(E) (A$nm^{-2}$$eV^{-1}$)")
 plt.title("Electron energy distribution from valence band")
 plt.savefig("Electron energy distribution from valence band.svg")
 plt.savefig("Electron energy distribution from valence band.png")
-
+"""
 # endregion
 
 # region Multiple data point calculation routine - metal
-"""
+
 Npoly = 5
 NGi = 128
 zs = 1.6183e-4
@@ -221,7 +221,7 @@ plt.grid()
 plt.title("Pn comparison")
 plt.savefig("Pn comparison.png")
 #plt.show()
-"""
+
 #endregion
 
 # region Multiple data point calculation routine - semiconductor

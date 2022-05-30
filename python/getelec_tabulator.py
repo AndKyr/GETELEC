@@ -161,7 +161,7 @@ class Tabulator:
         except(IOError):
             print("tabulation files not found")
             return False
-    
+        
     def _Calculate_Table(self):
         """Looks for the files where the precaculate barriers are stored. Then it uses interpolation methods to make the most accurate barrier for the given 
         input (electric field, tip radius and gamma exponent). Gtab is stores the polinomial that gives its shape to the barrier.
@@ -228,7 +228,14 @@ class Tabulator:
             limits of this barrier
         """
         # Using __call_ because of scipy reasons
-        outintr = self.interpolator.__call__([1 / gamma, 1. / R, 1. / F])[0]
+        try:
+            outintr = self.interpolator.__call__([1 / gamma, 1. / R, 1. / F], method="linear")[0]
+
+        except:
+            # This except is here in case the field, from comosl, is very low to prevent errors. This outintr results in a current equal to 0 A/cm2
+            print("WARNING: Field is too high/low for GETELEC. Review model/results")
+            outintr = np.array([1, 1., 500, 500, 0, 2., 2.0])
+            
         return outintr
     # endregion
 
@@ -903,7 +910,7 @@ class Semiconductor_Emitter:
         return self._energy_conduction_band , energy_distribution
     # endregion
 
-def metal_emitter(Field:float, Radius:float, Gamma:int, Workfunction:float, Temperature:int):
+def current_metal_emitter(Field:float, Radius:float, Gamma:int, Workfunction:float, Temperature:int):
     
     tab = Tabulator()
     
@@ -920,8 +927,28 @@ def metal_emitter(Field:float, Radius:float, Gamma:int, Workfunction:float, Temp
     j_metal = metal_emitter.Current_Density()
     #pn_metal = metal_emitter.Nottingham_Heat()
     #energy_space_metal, distribution_metal = metal_emitter.Energy_Distribution()
-    
+    print(j_metal)
     return j_metal#, pn_metal
+
+
+def heat_metal_emitter(Field:float, Radius:float, Gamma:int, Workfunction:float, Temperature:int):
+    
+    tab = Tabulator()
+    
+    kBoltz = 8.6173324e-5 
+    kT = kBoltz * Temperature
+    
+    metal_emitter = Metal_Emitter(tab)
+    
+    metal_emitter.emitter.Define_Barrier_Parameters(Field, Radius, Gamma)
+    metal_emitter.emitter.Interpolate_Gammow()
+    
+    metal_emitter.Define_Emitter_Parameters(Workfunction, kT)
+    
+    pn_metal = metal_emitter.Nottingham_Heat()
+    #energy_space_metal, distribution_metal = metal_emitter.Energy_Distribution()
+
+    return pn_metal
 
 def semiconductor_emitter(Field:float, Radius:float, Gamma:float ,Ec:float, Ef:float, Eg:float, Temperature:int, mass_electron:float, mass_hole:float):
     
@@ -946,3 +973,6 @@ def semiconductor_emitter(Field:float, Radius:float, Gamma:float ,Ec:float, Ef:f
     #energy_c, distribution_c, energy_v, distribution_v = semiconductor_emitter.Energy_Distribution_from_Semiconductors()
     
     return j_total, pn_total
+
+
+#current_metal_emitter(20,10000,10,4.5,300)
