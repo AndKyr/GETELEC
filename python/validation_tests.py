@@ -129,9 +129,9 @@ plt.savefig("Electron energy distribution from valence band.png")
 
 # region Multiple data point calculation routine - metal
 
-Npoly = 5
-NGi = 128
-zs = 1.6183e-4
+#Npoly = 5
+#NGi = 128
+#zs = 1.6183e-4
 kBoltz = 8.6173324e-5 
 
 tab = gtab.Tabulator()
