@@ -23,8 +23,8 @@ import scipy.interpolate as intrp
 
 #from io import StringIO 
 #import sys
-#import getelec_mod as gt
-#from interp3d import interp_3d
+import getelec_mod as gt
+from interp3d import interp_3d
 
 pythonpath,filename = os.path.split(os.path.realpath(__file__))
 emissionpath,pythonfolder = os.path.split(pythonpath)
@@ -148,12 +148,26 @@ class Tabulator:
         """
         try:
             self.Gtab = np.load("tabulated/Gtable.npy")
+            #self.Gtab1 = np.load("tabulated/Gtable1.npy")
+            #self.Gtab2 = np.load("tabulated/Gtable2.npy")
+            #self.Gtab3 = np.load("tabulated/Gtable3.npy")
+            #self.Gtab4 = np.load("tabulated/Gtable4.npy")
+            #self.Gtab5 = np.load("tabulated/Gtable5.npy")
+            #self.Gtab6 = np.load("tabulated/Gtable6.npy")
+            #self.Gtab7 = np.load("tabulated/Gtable7.npy")
             self.Finv = np.load("tabulated/Finv.npy")
             self.Rinv = np.load("tabulated/Rinv.npy")
             self.gaminv = np.load("tabulated/gammainv.npy")
+            #if (np.shape(self.Gtab1) == tuple([self._number_of_gamma_values, self._number_of_radius_values, self._number_of_field_values])):
             if (np.shape(self.Gtab) == tuple([self._number_of_gamma_values, self._number_of_radius_values, self._number_of_field_values, Npoly + 2])):
                 self.interpolator = intrp.RegularGridInterpolator((self.gaminv, self.Rinv, self.Finv), self.Gtab)
-                #self.interpolator = interp_3d.Interp3D(self.Gtab, self.gaminv, self.Rinv, self.Finv)
+                #self.interpolator1 = interp_3d.Interp3D(self.Gtab1, self.gaminv, self.Rinv, self.Finv)
+                #self.interpolator2 = interp_3d.Interp3D(self.Gtab2, self.gaminv, self.Rinv, self.Finv)
+                #self.interpolator3 = interp_3d.Interp3D(self.Gtab3, self.gaminv, self.Rinv, self.Finv)
+                #self.interpolator4 = interp_3d.Interp3D(self.Gtab4, self.gaminv, self.Rinv, self.Finv)
+                #self.interpolator5 = interp_3d.Interp3D(self.Gtab5, self.gaminv, self.Rinv, self.Finv)
+                #self.interpolator6 = interp_3d.Interp3D(self.Gtab6, self.gaminv, self.Rinv, self.Finv)
+                #self.interpolator7 = interp_3d.Interp3D(self.Gtab7, self.gaminv, self.Rinv, self.Finv)
                 return True
             else:
                 print("tabulation filed cannot be interpolated")
@@ -171,7 +185,14 @@ class Tabulator:
         self.Rinv = np.linspace(1.e-3, 1 / self._minimum_radius, self._number_of_radius_values)
         self.gaminv = np.linspace(1.e-3, .99, self._number_of_gamma_values)
         self.Gtab = np.ones([self._number_of_gamma_values, self._number_of_radius_values, self._number_of_field_values, Npoly + 2])
-        
+        #self.Gtab1 = np.ones([self._number_of_gamma_values, self._number_of_radius_values, self._number_of_field_values])
+        #self.Gtab2 = np.ones([self._number_of_gamma_values, self._number_of_radius_values, self._number_of_field_values])
+        #self.Gtab3 = np.ones([self._number_of_gamma_values, self._number_of_radius_values, self._number_of_field_values])
+        #self.Gtab4 = np.ones([self._number_of_gamma_values, self._number_of_radius_values, self._number_of_field_values])
+        #self.Gtab5 = np.ones([self._number_of_gamma_values, self._number_of_radius_values, self._number_of_field_values])
+        #self.Gtab6 = np.ones([self._number_of_gamma_values, self._number_of_radius_values, self._number_of_field_values])
+        #self.Gtab7 = np.ones([self._number_of_gamma_values, self._number_of_radius_values, self._number_of_field_values])
+
         for i in range(self._number_of_gamma_values):
             for j in range(self._number_of_radius_values):
                 for k in range(self._number_of_field_values):
@@ -197,6 +218,13 @@ class Tabulator:
                         plt.plot(W, G)
                         plt.show()
                     self.Gtab[i, j, k, :] = np.append(poly, [W[0], W[-1]])
+                    #self.Gtab1[i, j, k] = (poly[0])
+                    #self.Gtab2[i, j, k] = (poly[1])
+                    #self.Gtab3[i, j, k] = (poly[2])
+                    #self.Gtab4[i, j, k] = (poly[3])
+                    #self.Gtab5[i, j, k] = (poly[4])
+                    #self.Gtab6[i, j, k] = (W[0])
+                    #self.Gtab7[i, j, k] = (W[-1])
     
     def _Save_Table_to_Files(self):
         """It saves the barrier maps, if any, in order to be reused in future simulations
@@ -207,6 +235,13 @@ class Tabulator:
             pass
         
         np.save("tabulated/Gtable", self.Gtab)
+        #np.save("tabulated/Gtable1", self.Gtab1)
+        #np.save("tabulated/Gtable2", self.Gtab2)
+        #np.save("tabulated/Gtable3", self.Gtab3)
+        #np.save("tabulated/Gtable4", self.Gtab4)
+        #np.save("tabulated/Gtable5", self.Gtab5)
+        #np.save("tabulated/Gtable6", self.Gtab6)
+        #np.save("tabulated/Gtable7", self.Gtab7)
         np.save("tabulated/Finv", self.Finv)
         np.save("tabulated/Rinv", self.Rinv)
         np.save("tabulated/gammainv", self.gaminv)
@@ -230,6 +265,14 @@ class Tabulator:
         # Using __call_ because of scipy reasons
         try:
             outintr = self.interpolator.__call__([1 / gamma, 1. / R, 1. / F], method="linear")[0]
+            #outintr1 = self.interpolator1((1./gamma, 1./R, 1./F))
+            #outintr2 = self.interpolator2((1./gamma, 1./R, 1./F))
+            #outintr3 = self.interpolator3((1./gamma, 1./R, 1./F))
+            #outintr4 = self.interpolator4((1./gamma, 1./R, 1./F))
+            #outintr5 = self.interpolator5((1./gamma, 1./R, 1./F))
+            #outintr6 = self.interpolator6((1./gamma, 1./R, 1./F))
+            #outintr7 = self.interpolator7((1./gamma, 1./R, 1./F))
+            #outintr = np.array([outintr1,outintr2,outintr3,outintr4,outintr5,outintr6,outintr7])
 
         except:
             # This except is here in case the field, from comosl, is very low to prevent errors. This outintr results in a current equal to 0 A/cm2

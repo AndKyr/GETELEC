@@ -1,9 +1,10 @@
+from pkgutil import get_data
 import getelec_tabulator as gtab
 import getelec_mod as gt
 import numpy as np
 import matplotlib as mb
 import matplotlib.pyplot as plt
-
+import datetime
 
 # region One data point calculation routine
     # This routine calculates the current density from semiconductors (two methods) and metals, as well as the plotting of the energy distributions
@@ -143,7 +144,7 @@ Rmin = 1/tab.Rinv[-1]
 gammax = 1/tab.gaminv[0]
 gammin = 1/tab.gaminv[-1]
 
-Np = 8096
+Np = 80960
 
 Fi = np.random.rand(Np) * (Fmax - Fmin) + Fmin
 Ri = np.random.rand(Np) * (Rmax - Rmin) + Rmin
@@ -159,17 +160,17 @@ Pget = np.copy(Ji)
 metal_emitter = gtab.Metal_Emitter(tab)
 
 print("calculating from tabulator")
-#tab_start = datetime.datetime.now()
+tab_start = datetime.datetime.now()
 for i in range(len(Fi)):
     metal_emitter.emitter.Define_Barrier_Parameters(Fi[i], Ri[i], gami[i])
     metal_emitter.emitter.Interpolate_Gammow()
     metal_emitter.Define_Emitter_Parameters(Wi[i], kT[i])
     Ji[i] = metal_emitter.Current_Density()
     Pi[i] = metal_emitter.Nottingham_Heat()
-#tab_end = datetime.datetime.now()
+tab_end = datetime.datetime.now()
 
 print("calculating from getelec")
-#get_start = datetime.datetime.now()
+get_start = datetime.datetime.now()
 em = gt.emission_create(approx=2)
 for i in range(len(Fi)):   
     em.F = Fi[i]
@@ -180,7 +181,7 @@ for i in range(len(Fi)):
     em.cur_dens()
     Jget[i] = em.Jem
     Pget[i] = em.heat
-#get_end = datetime.datetime.now()
+get_end = datetime.datetime.now()
 
 
 abserr = abs(Ji - Jget)
@@ -192,8 +193,10 @@ Pn_relerr = Pn_abserr / Pget
 Pbad = np.where(np.logical_and(Pn_relerr > 0.5, Pn_abserr > 1.e-25))[0]
 
 print("bad = ", bad)
-print("rms error in J= ", np.sqrt(np.mean(relerr[abserr > 1.e-25]**2)))
-print("rms error in Pn= ", np.sqrt(np.mean(Pn_relerr[Pn_abserr > 1.e-25]**2)))
+print("rms error in J = ", np.sqrt(np.mean(relerr[abserr > 1.e-25]**2)))
+print("rms error in Pn = ", np.sqrt(np.mean(Pn_relerr[Pn_abserr > 1.e-25]**2)))
+print("getelec running time =", get_end-get_start)
+print("tabulat running time =", tab_end-tab_start)
 
 
 #for i in bad:
