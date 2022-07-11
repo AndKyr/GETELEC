@@ -1,5 +1,5 @@
-function current_density = current_metal_c(field, radius, gamma, ef, T)
-
+function current_density = current_metal_copy(field, radius, gamma, ef, T)
+    %%%%%%% OLD VERSION
     %Checking and initialising Python environment
     pe = pyenv;
     if pe.Status == 'Loaded'

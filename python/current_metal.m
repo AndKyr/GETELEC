@@ -1,4 +1,4 @@
-function current_density = current_metal(field)
+function current_density = current_metal(field,radius,gamma,workf,temp)
     
     %Checking and initialising Python environment
     pe = pyenv;
@@ -18,38 +18,15 @@ function current_density = current_metal(field)
         %pass
     end
 
-    % WARNING: parfor returns a warming about missing libraries/functions +
-    %and error from using dummy as indexing is not supported by the that
-    %variable
-    %Checking and initiliasing parallel processing
-    %if isempty(gcp('nocreate')) == 1
-    %    disp('Initialising parpool');
-    %    parpool
-    %else
-        %pass
-    %end
-    
     %Importing GETELEC
     getelec = py.importlib.import_module('getelec_tabulator');
 
-    %Initialising array to store our data
-    current_density = zeros(size(field));
-    
-    %Changing field magnitude (COMSOL - V/m) for GETELEC (V/A)
-    %field = 2*field/1E8;
-
     %Calculating current density from GETELEC
-    %disp('Calculating J metal emitter')
-    for i = 1:length(field)
-        current_density(1) = getelec.current_metal_emitter(field(i), 20, 10, 4.5, 300);
-        %disp(size(Field(1,i)))
-        %disp(current_density(i))
-    end
+    disp('Calculating J metal emitter')
     
-    %Changing current density magnitude (GETELEC - A/nm^2) for COMSOL
-    %(A/m^2)
+    % field is transformed from a double to np, so GETELEC can handle it
+    % GETELEC outcomes are transformed to double for COMSOL
+    % in A/m^2
+    current_density = double(getelec.current_metal_emitter(py.numpy.array(field),py.numpy.array(radius),py.numpy.array(gamma),py.numpy.array(workf), py.numpy.array(temp)))/1E18;
 
-    %current_density = current_density/1E18;
-    %disp("TIME")
-    %disp(toc)
 end

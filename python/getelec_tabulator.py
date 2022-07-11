@@ -18,7 +18,7 @@ import scipy.interpolate as intrp
 #import scipy.constants as const
 #import matplotlib as mb
 #import json
-#import datetime
+import time
 #import warnings
 
 #from io import StringIO 
@@ -953,7 +953,29 @@ class Semiconductor_Emitter:
         return self._energy_conduction_band , energy_distribution
     # endregion
 
-def current_metal_emitter(Field:float, Radius:float, Gamma:int, Workfunction:float, Temperature:int):
+def current_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
+ 
+    tab = Tabulator()
+
+    kBoltz = 8.6173324e-5 
+    kT = kBoltz * Temperature
+    
+    metal_emitter = Metal_Emitter(tab)
+
+    j_metal = np.copy(Field)
+    
+    for i in range(len(Field)):
+
+        metal_emitter.emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
+        metal_emitter.emitter.Interpolate_Gammow()
+    
+        metal_emitter.Define_Emitter_Parameters(Workfunction[i], kT[i])
+    
+        j_metal[i] = metal_emitter.Current_Density()
+        
+    return j_metal
+
+def heat_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
     
     tab = Tabulator()
     
@@ -962,60 +984,76 @@ def current_metal_emitter(Field:float, Radius:float, Gamma:int, Workfunction:flo
     
     metal_emitter = Metal_Emitter(tab)
     
-    metal_emitter.emitter.Define_Barrier_Parameters(Field, Radius, Gamma)
-    metal_emitter.emitter.Interpolate_Gammow()
-    
-    metal_emitter.Define_Emitter_Parameters(Workfunction, kT)
-    
-    j_metal = metal_emitter.Current_Density()
-    #pn_metal = metal_emitter.Nottingham_Heat()
-    #energy_space_metal, distribution_metal = metal_emitter.Energy_Distribution()
-    print(j_metal)
-    return j_metal#, pn_metal
+    nh_metal = np.copy(Field)
 
-
-def heat_metal_emitter(Field:float, Radius:float, Gamma:int, Workfunction:float, Temperature:int):
+    for i in range(len(Field)):
+        metal_emitter.emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
+        metal_emitter.emitter.Interpolate_Gammow()
     
+        metal_emitter.Define_Emitter_Parameters(Workfunction[i], kT[i])
+    
+        nh_metal[i] = metal_emitter.Nottingham_Heat()
+
+    return nh_metal
+
+def current_semiconductor_emitter(Field:float ,Ec:float, Ef:float, Eg:float):
+    debug = 1
     tab = Tabulator()
     
     kBoltz = 8.6173324e-5 
-    kT = kBoltz * Temperature
+    Temperature = 300
+    kt = kBoltz * Temperature
     
-    metal_emitter = Metal_Emitter(tab)
-    
-    metal_emitter.emitter.Define_Barrier_Parameters(Field, Radius, Gamma)
-    metal_emitter.emitter.Interpolate_Gammow()
-    
-    metal_emitter.Define_Emitter_Parameters(Workfunction, kT)
-    
-    pn_metal = metal_emitter.Nottingham_Heat()
-    #energy_space_metal, distribution_metal = metal_emitter.Energy_Distribution()
-
-    return pn_metal
-
-def semiconductor_emitter(Field:float, Radius:float, Gamma:float ,Ec:float, Ef:float, Eg:float, Temperature:int, mass_electron:float, mass_hole:float):
-    
-    tab = Tabulator()
-    
-    kBoltz = 8.6173324e-5 
-    kT = kBoltz * Temperature
-    
-    m = 9.1093837015e-31 
-    me = mass_electron*m
-    mp = mass_hole*m
+    mass_e = 9.1093837015e-31 
+    effec_e = 0.98*mass_e
+    effec_p = 0.59*mass_e
+    radius = 20
+    gamma = 10
     
     semiconductor_emitter = Semiconductor_Emitter(tab)
 
-    semiconductor_emitter.emitter.Define_Barrier_Parameters(Field, Radius, Gamma)
-    semiconductor_emitter.emitter.Interpolate_Gammow()
+    j_total = np.copy(Field)
+    j_c = np.copy(Field)
+    j_v = np.copy(Field)
 
-    semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec, Ef, Eg, kT, m, me, mp)
 
-    j_c, j_v, j_total = semiconductor_emitter.Current_Density_from_Semiconductors()
-    pn_c, pn_v, pn_total = semiconductor_emitter.Nottingham_Heat_from_Semiconductors()
+    Radius = np.ones(len(Field))*radius
+    Gamma = np.ones(len(Field))*gamma
+    kT = np.ones(len(Field))*kt
+    m = np.ones(len(Field))*mass_e
+    me = np.ones(len(Field))*effec_e
+    mp = np.ones(len(Field))*effec_p
+
+    for i in range(len(Field)):
+
+        semiconductor_emitter.emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
+        semiconductor_emitter.emitter.Interpolate_Gammow()
+
+        semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec[i], Ef[i], Eg[i], kT[i], m[i], me[i], mp[i])
+        
+        j_c[i], j_v[i], j_total[i] = semiconductor_emitter.Current_Density_from_Semiconductors()
+        #pn_c, pn_v, pn_total = semiconductor_emitter.Nottingham_Heat_from_Semiconductors()
     #energy_c, distribution_c, energy_v, distribution_v = semiconductor_emitter.Energy_Distribution_from_Semiconductors()
     
-    return j_total, pn_total
+    #if debug == 1:
+    #y = time.time()
 
+    file = open("Field_Emission_COMSOL_Debugging_Data.txt", "a")
+    file.write("Array length = %d" % len(Field))
+    file.write("\r\nArray length = %d" % len(Ec))
+    file.write("\r\nCurrent density        Field    Radius    Gamma     Ec    Ef    Eg     kT            m                    me                   mp\r\n")
+        
 
-#current_metal_emitter(20,10000,10,4.5,300)
+    for i in range(len(Field)):
+            #file.write("\r\n%e %e %e %e %e %e %e %e %e %e " % (j_total[i]) (Field[i]) (Radius[i]) (Gamma[i]) (Ec[i]) (Ef[i]) (Eg[i]) (m[i]) (me[i]) (mp[i]))
+        L = [str(j_total[i]),"   ",str(Field[i]), "     ",str(Radius[i]), "     ",str(Gamma[i]),"     ", str(Ec[i]),"   ", str(Ef[i]),"   ", str(Eg[i]), "   ", str(kT[i]/kBoltz), "   ",str(m[i]), "   ",str(me[i]),"   ", str(mp[i])] 
+        file.writelines(L) 
+        file.write("\r\n")
+    file.close()
+
+    return j_total
+
+#data = current_metal_emitter(np.ones(10)*10, np.ones(10)*20,np.ones(10)*10,np.ones(10)*4.5, np.ones(10)*300)
+#end = time.time()
+#print(data)
+

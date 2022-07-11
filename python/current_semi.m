@@ -1,5 +1,5 @@
-function n_heat = nheat_metal(field,radius,gamma,workf,temp)
-
+function current_density = current_semi(field,ec,ef,eg)
+    
     %Checking and initialising Python environment
     pe = pyenv;
     if pe.Status == 'Loaded'
@@ -22,8 +22,11 @@ function n_heat = nheat_metal(field,radius,gamma,workf,temp)
     getelec = py.importlib.import_module('getelec_tabulator');
 
     %Calculating current density from GETELEC
-    disp('Calculating Nottigham heat metal emitter')
-    n_heat = double(getelec.heat_metal_emitter(py.numpy.array(field),py.numpy.array(radius),py.numpy.array(gamma),py.numpy.array(workf), py.numpy.array(temp)));
-
+    disp('Calculating J semi emitter')
     
+    % field is transformed from a double to np, so GETELEC can handle it
+    % GETELEC outcomes are transformed to double for COMSOL
+    % in A/m^2
+    current_density = double(getelec.current_semiconductor_emitter(py.numpy.array(field),py.numpy.array(ec),py.numpy.array(ef),py.numpy.array(eg))*1E18);
+
 end
