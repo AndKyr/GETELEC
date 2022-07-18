@@ -45,7 +45,7 @@ metal_emitter.emitter.Interpolate_Gammow()
 metal_emitter.Define_Emitter_Parameters(4.5, kT)
 energy_space_metal1, distribution_metal1 = metal_emitter.Energy_Distribution()
 
-metal_emitter.emitter.Define_Barrier_Parameters(1.94, 10., 10.)
+metal_emitter.emitter.Define_Barrier_Parameters(2., 10., 10.)
 metal_emitter.emitter.Interpolate_Gammow()
 metal_emitter.Define_Emitter_Parameters(2, kT)
 energy_space_metal2, distribution_metal2 = metal_emitter.Energy_Distribution()
