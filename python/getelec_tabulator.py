@@ -24,7 +24,7 @@ import time
 #from io import StringIO 
 #import sys
 import getelec_mod as gt
-from interp3d import interp_3d
+#from interp3d import interp_3d
 
 pythonpath,filename = os.path.split(os.path.realpath(__file__))
 emissionpath,pythonfolder = os.path.split(pythonpath)
