@@ -35,7 +35,7 @@ def fit_fun(indata_arr):
     F0 = [1., 5., 20.]
     R0 = [1., 5., 50.]
     gamma0 = [1., 10., 100.]
-    Temp0 = [299.99999, 300., 300.01]
+    temp0 = [299.99999, 300., 300.01]
     
     #load the data
     xdata = 1./np.array(indata_arr[0])
@@ -43,7 +43,7 @@ def fit_fun(indata_arr):
     W0 = np.array([1.-1e-4, 1., 1.+1e-4]) * float(indata_arr[2][0])
 
     #magic stuff with getelec
-    fit = gt.fitML(xdata,ydata, F0, W0, R0, gamma0, Temp0)
+    fit = gt.fitML(xdata,ydata, F0, W0, R0, gamma0, temp0)
     popt = fit.x
     yopt = gt.MLplot(xdata, popt[0], popt[1], popt[2], popt[3], popt[4])
     yshift = max(yopt) - max(ydata)
