@@ -217,6 +217,6 @@ def fit_data(xML, yML, F0, W0, R0, Gamma0, Temp0):
     fit_data = gt_mod.fitML(xML, yML, F0, W0, R0, Gamma0, Temp0)
     return fit_data
 
-def plot_data(xfn, beta, W0, R0, Gamma0, Temp0, approx):
+def plot_data(xfn, beta, W0, R0, Gamma0, Temp0, approx=1):
     plot_data = gt_mod.MLplot(xfn, beta, W0, R0, Gamma0, Temp0, approx)
     return plot_data

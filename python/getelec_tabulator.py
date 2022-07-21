@@ -1057,5 +1057,5 @@ def current_semiconductor_emitter(Field:float ,Ec:float, Ef:float, Eg:float):
 
 data = current_metal_emitter(np.ones(10)*10, np.ones(10)*20,np.ones(10)*10,np.ones(10)*4.5, np.ones(10)*300)
 #end = time.time()
-print(data)
+#print(data)
 

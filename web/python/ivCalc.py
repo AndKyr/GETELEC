@@ -61,4 +61,4 @@ def fit_fun():
 
     return json.dumps(outdata)
 
-print(fit_fun(dataInArr))
+print(fit_fun())
