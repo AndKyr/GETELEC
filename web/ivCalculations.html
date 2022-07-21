@@ -1,0 +1,148 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, shrink-to-fit=no, maximum-scale=1">
+    <title href="./index.html">Getelec</title>
+    <link rel="icon" type="image/x-icon" href="./assets/img/logo.svg">
+    <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic&amp;display=swap">
+    <link rel="stylesheet" href="assets/fonts/font-awesome.min.css">
+    <link rel="stylesheet" href="assets/fonts/simple-line-icons.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <script src="./js/ivCalculationsMain.js" type="module"></script>
+    <script src="./js/eventListeners.js" type="module"></script>
+    <script src="./js/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/1.2.1/chartjs-plugin-zoom.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+
+
+</head>
+
+<body>
+
+    <nav class="navbar navbar-light navbar-expand bg-light navigation-clean">
+        <div class="container">
+            <img alt="logo" src="./assets/img/logo.svg" href="./index.html" width="60px" id="logo"><a class="navbar-brand" href="./index.html">GETELEC</a>
+        </div>
+    </nav>
+    <!--    A green line?-->
+
+    <div id="TopBarView1" tabindex="1" style="background-color: rgb(0, 79, 32); opacity: 1; height: 5px; width: 100%;"></div>
+    
+    <section class="showcase bg-light feautures-icons py-3 animated bounceInLeft">
+
+        <select id="dataSetCount" class="custom-select btn-outline-secondary dropdown-toggle" style="float:right; margin-right:50px">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+        </select>
+
+        <div class="container">
+            <div class="input-group mb-3">
+                <div class="input-group-prepend">
+                    <select id="voltageSelectDiv"class="custom-select btn-outline-secondary dropdown-toggle" style="width:132px">
+
+                        <option value="1">Voltage</option>
+                        <option value="2">Applied Field</option>
+
+                    </select>
+                </div>
+                <input type="text" class="form-control" aria-label="" id="voltage_in" 
+                placeholder="2.413e+02, 2.511e+02, 2.622e+02, 2.706e+02, 2.803e+02, 2.915e+02, 2.999e+02, 3.096e+02, 3.208e+02, 3.305e+02, 3.403e+02, 3.515e+02, 3.612e+02, 3.710e+02, 3.808e+02, 3.891e+02, 4.003e+02, 4.100e+02, 4.184e+02, 4.338e+02, 4.491e+02, 4.644e+02, 4.826e+02, 4.993e+02">
+                <div class="input-group-append">
+                    <select class="d-inline-flex bg-light custom-select btn-outline-secondary dropdown-toggle" id="voltage_mult_in" style="width:70px">
+                        <option value="1">[V]</option>
+                        <option value="1000">[kV]</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="input-group mb-3">
+                <div class="input-group-prepend">
+                    <span class="input-group-text">Current</span>
+                </div>
+                <input type="text" class="form-control" aria-label="" id="current_in"
+                placeholder="8.719e-01, 1.582e+00, 2.967e+00, 5.038e+00, 8.555e+00, 1.406e+01, 2.309e+01, 3.670e+01, 5.643e+01, 8.678e+01, 1.249e+02, 1.797e+02, 2.502e+02, 3.371e+02, 4.540e+02, 6.116e+02, 7.459e+02, 9.720e+02, 1.267e+03, 1.764e+03, 2.376e+03, 3.096e+03, 4.310e+03, 5.617e+03">
+                <div class="input-group-append">
+                    <select class="bg-light custom-select btn-outline-secondary dropdown-toggle" id="current_mult_in" style="width:70px">
+                        <option value="1">[A]</option>
+                        <option value="0.001">[mA]</option>
+                        <option value="1000">[kA]</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <div class="input-group-prepend text-center">
+                    <span class="input-group-text">Work Function</span>
+                </div>
+                <input type="text" class="form-control" aria-label="" id="work_function_in" placeholder="4.5">
+                <div class="input-group-append">
+                    <select class="custom-select btn-outline-secondary dropdown-toggle" id="work_function_mult_in">
+                        <option value="1">[eV]</option>
+                    </select>
+                </div>
+
+                <button type="button" id="enterButton">Enter</button>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!--    A green line?-->
+
+    <div id="TopBarView2" tabindex="1" style="background-color: rgb(0, 79, 32); opacity: 1; height: 5px; width: 100%;"></div>
+
+    <section class="showcase bg-light feautures-icons py-5 align-items-center animated bounceInRight">
+        <div class="container">
+            <canvas id="myChart"></canvas>
+            <button id="canvasButton" data-bss-hover-animate="pulse" class="my-3">Download data</button>
+        </div>
+
+
+        <div class="container d-flex feautures-icons-icon align-items-center">
+            <i class="icon-question text-primary pt-3" data-bss-hover-animate="pulse" id="helpIcon">
+                How to use</i>
+        </div>
+
+
+    </section>   
+
+    <!--    A green line?-->
+
+    <div id="lineOfErrors" tabindex="1" style="background-color: rgb(0, 79, 32); opacity: 1; height: 5px; width: 100%;"></div>
+
+
+
+    <footer class="bg-light footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-6 text-center text-lg-start my-auto h-100">
+                    <ul class="list-inline mb-2">
+                        <li class="list-inline-item"><a href="https://matter.ee/">About</a></li>
+                        <li class="list-inline-item"><span>⋅</span></li>
+                        <li class="list-inline-item"><a href="https://matter.ee/">Contact</a></li>
+                        <li class="list-inline-item"><span>⋅</span></li>
+                        <li class="list-inline-item"><a href="./termsOfService.html">Terms of &nbsp;Use</a></li>
+                        <li class="list-inline-item"><span>⋅</span></li>
+                        <li class="list-inline-item"><a href="./termsOfService.html">Privacy Policy</a></li>
+                    </ul>
+                    <p class="text-muted small mb-4 mb-lg-0">© Getelec 2022. All Rights Reserved.</p>
+                    <p class="text-muted small mb-4 mb-lg-0">GETELEC is an open-source software for easy, fast, and correct calculations of electron emission quantities. The source code and full documentation can be found <a href="https://github.com/AndKyr/GETELEC">here</a>.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="assets/bootstrap/js/bootstrap.min.js"></script>
+    <script src="assets/js/bs-init.js"></script>
+</body>
+
+</html>

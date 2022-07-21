@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="">
+<head>
+    <meta charset="utf-8" />
+
+    <link rel="stylesheet" href="assets/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic&amp;display=swap">
+    <link rel="stylesheet" href="assets/fonts/font-awesome.min.css">
+    <link rel="stylesheet" href="assets/fonts/simple-line-icons.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+
+    <meta name="generator" content="pandoc" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+    <meta name="author" content="Andreas Kyritsakis and Flyura Djurabekova" />
+    <title>Brief documentation for GETELEC</title>
+    <link rel="icon" type="image/x-icon" href="./assets/img/logo.svg">
+
+
+    <style>
+        html {
+            line-height: 1.5;
+            font-family: Georgia, serif;
+            font-size: 20px;
+            color: #1a1a1a;
+            background-color: #fdfdfd;
+        }
+
+        body {
+            margin: 0 auto;
+            max-width: 72em;
+            padding-left: 50px;
+            padding-right: 50px;
+            padding-top: 50px;
+            padding-bottom: 50px;
+            hyphens: auto;
+            overflow-wrap: break-word;
+            text-rendering: optimizeLegibility;
+            font-kerning: normal;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                font-size: 0.9em;
+                padding: 1em;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+        }
+
+        @media print {
+            body {
+                background-color: transparent;
+                color: black;
+                font-size: 12pt;
+            }
+
+            p, h2, h3 {
+                orphans: 3;
+                widows: 3;
+            }
+
+            h2, h3, h4 {
+                page-break-after: avoid;
+            }
+        }
+
+        p {
+            margin: 1em 0;
+        }
+
+        a {
+            color: #1a1a1a;
+        }
+
+            a:visited {
+                color: #1a1a1a;
+            }
+
+        img {
+            max-width: 100%;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            margin-top: 1.4em;
+        }
+
+        h5, h6 {
+            font-size: 1em;
+            font-style: italic;
+        }
+
+        h6 {
+            font-weight: normal;
+        }
+
+        ol, ul {
+            padding-left: 1.7em;
+            margin-top: 1em;
+        }
+
+        li > ol, li > ul {
+            margin-top: 0;
+        }
+
+        blockquote {
+            margin: 1em 0 1em 1.7em;
+            padding-left: 1em;
+            border-left: 2px solid #e6e6e6;
+            color: #606060;
+        }
+
+        code {
+            font-family: Menlo, Monaco, 'Lucida Console', Consolas, monospace;
+            font-size: 85%;
+            margin: 0;
+        }
+
+        pre {
+            margin: 1em 0;
+            overflow: auto;
+        }
+
+            pre code {
+                padding: 0;
+                overflow: visible;
+                overflow-wrap: normal;
+            }
+
+        .sourceCode {
+            background-color: transparent;
+            overflow: visible;
+        }
+
+        hr {
+            background-color: #1a1a1a;
+            border: none;
+            height: 1px;
+            margin: 1em 0;
+        }
+
+        table {
+            margin: 1em 0;
+            border-collapse: collapse;
+            width: 100%;
+            overflow-x: auto;
+            display: block;
+            font-variant-numeric: lining-nums tabular-nums;
+        }
+
+            table caption {
+                margin-bottom: 0.75em;
+            }
+
+        tbody {
+            margin-top: 0.5em;
+            border-top: 1px solid #1a1a1a;
+            border-bottom: 1px solid #1a1a1a;
+        }
+
+        th {
+            border-top: 1px solid #1a1a1a;
+            padding: 0.25em 0.5em 0.25em 0.5em;
+        }
+
+        td {
+            padding: 0.125em 0.5em 0.25em 0.5em;
+        }
+
+        header {
+            margin-bottom: 4em;
+            text-align: center;
+        }
+
+        #TOC li {
+            list-style: none;
+        }
+
+        #TOC ul {
+            padding-left: 1.3em;
+        }
+
+        #TOC > ul {
+            padding-left: 0;
+        }
+
+        #TOC a:not(:hover) {
+            text-decoration: none;
+        }
+
+        code {
+            white-space: pre-wrap;
+        }
+
+        span.smallcaps {
+            font-variant: small-caps;
+        }
+
+        span.underline {
+            text-decoration: underline;
+        }
+
+        div.column {
+            display: inline-block;
+            vertical-align: top;
+            width: 50%;
+        }
+
+        div.hanging-indent {
+            margin-left: 1.5em;
+            text-indent: -1.5em;
+        }
+
+        ul.task-list {
+            list-style: none;
+        }
+
+        .display.math {
+            display: block;
+            text-align: center;
+            margin: 0.5rem auto;
+        }
+    </style>
+    <!--[if lt IE 9]>
+      <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+    <![endif]-->
+</head>
+<body>
+
+    <nav class="navbar navbar-light navbar-expand bg-light navigation-clean">
+        <div class="container">
+            <img alt="logo" src="./assets/img/logo.svg" href="./index.html" width="60px" id="logo"><a class="navbar-brand" href="./index.html">GETELEC</a>
+        </div>
+    </nav>
+
+    <!--    A green line?-->
+    <section class="animated bounceInTop">
+
+    <div id="TopBarView10" tabindex="1" style="background-color: rgb(0, 79, 32); opacity: 1; height: 5px; width: 100%;"></div>
+
+    <header id="title-block-header">
+        <h1 class="title">Brief documentation for GETELEC</h1>
+        <p class="author">Andreas Kyritsakis and Flyura Djurabekova</p>
+    </header>
+    <p>
+        GETELEC is a scientific software for calculating electron emission
+        currents and the Nottingham effect heat. For details see the
+        corresponding scientific paper <a href="http://arxiv.org/abs/1609.02364"
+                                          class="uri">http://arxiv.org/abs/1609.02364</a>. Updated versions of the
+        GETELEC project can always be downloaded from <a href="https://github.com/AndKyr/GETELEC"
+                                                         class="uri">https://github.com/AndKyr/GETELEC</a>.
+    </p>
+    <h1 id="sec:Gen">General instructions for using GETELEC</h1>
+    <h2 id="requirements-downloading-and-compiling">
+        Requirements,
+        downloading and compiling
+    </h2>
+    <p>
+        Currently GETELEEC is developed for Linux and OSX systems. A version
+        that can be compiled in Windows systems will be available in forthcoming
+        updates. After downloading the zip file, the user needs to extract it
+        and in the resulting folder execute "make" (GNU make is required) to
+        compile it and build the GETELEC static and dynamic libraries. For
+        successful building, it is required that in the system there are
+        installed gfortran (version 5 or later) and gcc (version 5 or later) and
+        a recent version of ar. By executing "make tests" some test programs are
+        compiled and executed, outputting some of the plots included in the
+        present paper. For those tests to produce correct results, existing
+        installation of python (version 2.7 or later) with the accompanying
+        libraries "numpy" (version 0.13 or later), "matplotlib" (version 1.3 or
+        later) and "scipy" (version 0.18 or later) is required.
+    </p>
+    <h2 id="fortran">Usage as a FORTRAN static library</h2>
+    <p>
+        GETELEC consists mainly of a FORTRAN 2003 module
+        ("modules/getelec.f90") which contains all the essential data types and
+        subroutines for the calculations. After the compilation, the user can
+        call GETELEC public data types and subroutines by including the static
+        library "lib/libgetelec.a" and the dependency library "lib/libslatec.a".
+        The main data type in the module that handles all the emission data and
+        parameters is <code>EmissionData</code>. The user mainly has to define
+        the input parameters which are members of this data type. The first
+        member that has to be defined is the <code>mode</code> that determines
+        how the barrier will be input. If <code>mode</code>=(0 or -1), the
+        barrier will be given in the form of the 3-parameter model of eq. (2) of
+        the corresponding paper and the user has to specify the three members of
+        the data type:
+    </p>
+    <ul>
+        <li>
+            <p>
+                <code>F</code>: Local field in <span class="math inline"><em>V</em>/<em>n</em><em>m</em></span>
+            </p>
+        </li>
+        <li>
+            <p>
+                <code>R</code>: Local radius of curvature in <span class="math inline"><em>n</em><em>m</em></span>
+            </p>
+        </li>
+        <li>
+            <p>
+                <code>gamma</code> : "enhancement factor" <span class="math inline"><em>γ</em></span> of eq. (2)
+            </p>
+        </li>
+    </ul>
+    <p>Another two members must always be specified as input are:</p>
+    <ul>
+        <li>
+            <p>
+                <code>W</code>: Work function <span class="math inline"><em>ϕ</em></span> in <span class="math inline"><em>e</em><em>V</em></span>
+            </p>
+        </li>
+        <li>
+            <p>
+                <code>kT</code>: <span class="math inline"><em>k</em><sub><em>B</em></sub><em>T</em></span>
+                (Boltzmann constant <span class="math inline">×</span> temperature) in
+                <span class="math inline"><em>e</em><em>V</em></span>
+            </p>
+        </li>
+    </ul>
+    <p>
+        If <code>mode</code> is set to (1,2,-10,-11,-20,-21) then the barrier
+        has to be input (<span class="math inline"><em>x</em><sub><em>i</em></sub>, <em>V</em><sub><em>i</em></sub></span>)
+        vectors, and the user must allocate and give values to the
+        members-vectors <code>xr</code>, <code>Vr</code> correspondingly. For
+        more details about the specific modes of calculation see the commented
+        source file. In general, when <span class="math inline">(<em>x</em><sub><em>i</em></sub>,<em>V</em><sub><em>i</em></sub>)</span>
+        are available, the recommended mode of calculation is
+        <code>mode=-21</code>. Furthermore, the logical variable member of the
+        data type <code>full</code> must be determined. If it is true, the full
+        calculation is carried out, while if it is false, the integration over
+        energies is done according to the GTF approximations for CPU
+        efficiency.
+    </p>
+    <p>
+        When these input parameters are set, the main subroutine
+        <code>cur_dens</code> might be called to calculate the current density
+        and the Nottingham heat. After successful execution, all the output
+        members of the data type will be determined. They are:
+    </p>
+    <ul>
+        <li>
+            <p>
+                <code>Jem</code>: The current density <span class="math inline"><em>J</em></span> in <span class="math inline"><em>A</em>/<em>n</em><em>m</em><sup>2</sup></span>
+            </p>
+        </li>
+        <li>
+            <p>
+                <code>heat</code>: The Nottingham heat density <span class="math inline"><em>P</em><sub><em>N</em></sub></span> in <span class="math inline"><em>W</em>/<em>n</em><em>m</em><sup>2</sup></span>
+            </p>
+        </li>
+        <li>
+            <p>
+                <code>Gam</code>: The Gamow exponent <span class="math inline"><em>G</em></span>
+            </p>
+        </li>
+        <li>
+            <p>
+                <code>xm</code>: The abcissa where the maximum of the barrier
+                appears in nm
+            </p>
+        </li>
+        <li>
+            <p>
+                <code>Um</code>: The value <span class="math inline"><em>U</em><sub><em>m</em></sub></span> of the
+                maximum of the barrier in eV (with respect to the Fermi energy)
+            </p>
+        </li>
+        <li>
+            <p>
+                <code>maxbeta</code>: derivative <span class="math inline"> − <em>G</em>′(<em>E</em>=0)</span> in <span class="math inline"><em>e</em><em>V</em><sup>−1</sup></span>
+            </p>
+        </li>
+        <li>
+            <p>
+                <code>minbeta</code>: derivative <span class="math inline"> − <em>G</em>′(<em>E</em>=<em>U</em><sub><em>m</em></sub>)</span>
+                in <span class="math inline"><em>e</em><em>V</em><sup>−1</sup></span>
+            </p>
+        </li>
+        <li>
+            <p>
+                <code>regime</code>: character indicating the regime of
+                calculation. <code>’f’</code> for field, <code>’i’</code> for
+                intermediate and <code>’t’</code> for thermal
+            </p>
+        </li>
+        <li>
+            <p>
+                <code>sharpeness</code>: character indicating if the approximate
+                formula ("blunt") or numerical integration ("sharp") where used.
+                <code>’b’</code> and <code>’s’</code> correspondingly.
+            </p>
+        </li>
+        <li>
+            <p>
+                <code>ierr</code>: integer indicating errors in the calculation.
+                If it is 0 the subroutine has been executed successfully. If not,
+                detailed debugging information may be found on the commented
+                code.
+            </p>
+        </li>
+    </ul>
+    <h2 id="user-defined-parameters">User-defined parameters</h2>
+    <p>
+        Finally, GETELEC gives the ability to the user to define some global
+        calculation parameters. In order to do that, a text file "GetelecPar.in"
+        must be present in the working directory. Its format must be exactly as
+        specified in the existing example file. If the parameter file does not
+        exist in the directory, the input parameters will take their standard
+        default value. However, if it exists, all values must be specified in
+        the same order. The specified parameters are the following:
+    </p>
+    <ul>
+        <li>
+            <p>
+                <code>xlim</code>: <span class="math inline"><em>χ</em><sub><em>l</em><em>i</em><em>m</em></sub></span>(Described
+                in the main text).
+            </p>
+        </li>
+        <li>
+            <p>
+                <code>nlimfield</code>: <span class="math inline"><em>n</em><sub><em>h</em><em>i</em><em>g</em><em>h</em></sub></span>
+                (Described in the main text).
+            </p>
+        </li>
+        <li>
+            <p>
+                <code>nlimthermal</code>: <span class="math inline"><em>n</em><sub><em>l</em><em>o</em><em>w</em></sub></span>
+                (Described in the main text).
+            </p>
+        </li>
+        <li>
+            <p>
+                <code>nmaxlim</code>: Maximum limit for the usage of GTF formulas
+                in Field regime. If <span class="math inline"><em>n</em>&gt;</span><code>nmaxlim</code>, the
+                temperature corrected version of the FN equation is used.
+            </p>
+        </li>
+        <li>
+            <p>
+                <code>gammalim</code>: Maximum acceptable <span class="math inline"><em>γ</em></span>. If <span class="math inline"><em>γ</em>&gt;</span> <code>gammalim</code> the
+                approximate analytic expressions are used.
+            </p>
+        </li>
+        <li>
+            <p>
+                <code>varlim</code>: Limit of variance for the fitting
+                approximation (has meaning for <code>mode</code>=-2). If the fitting
+                variance is more than <code>varlim</code> the algorithm switches to
+                spline mode.
+            </p>
+        </li>
+        <li>
+            <p>
+                <code>epsfit</code>: Requested algorithm for all fittings of the
+                input potential <span class="math inline">(<em>x</em><sub><em>i</em></sub>,<em>V</em><sub><em>i</em></sub>)</span>
+            </p>
+        </li>
+        <li>
+            <p>
+                <code>Nmaxpoly</code>: Maximum degree of the fitted to <span class="math inline">(<em>x</em><sub><em>i</em></sub>,<em>V</em><sub><em>i</em></sub>)</span>
+                polynomial.
+            </p>
+        </li>
+        <li>
+            <p>
+                <code>spectra</code>: If true, spectroscopy data (Energy
+                distribution of the emitted current) are written to a file
+                "spectra.csv".
+            </p>
+        </li>
+    </ul>
+    <h1 id="sec:C">Interface with C - dynamic library</h1>
+    <p>
+        GETELEC provides with an interface so that its main functions can be
+        called from the C language. Its communication is done through a C
+        structure that contains all the input-output parameters. The input
+        parameters are: <code>F</code>, <code>W</code>, <code>R</code>,
+        <code>Temp</code> = Temperature in <span class="math inline"><em>K</em></span> , <code>xr</code>,
+        <code>Vr</code>, <code>mode</code>, <code>full</code>. The corresponding
+        output variables are <code>Jem</code>, <code>heat</code>,
+        <code>regime</code>, <code>sharp</code>, <code>ierr</code>. They all
+        have exactly the same meaning and format as their corresponding for the
+        FORTRAN type described in section <a href="#fortran"
+                                             data-reference-type="ref" data-reference="fortran">1.2</a>. In order to
+        call GETELEC from C one has to include the header file
+        "modules/getelec.h" and link with the dynamic library
+        "lib/libgetelec.so". Then a data structure with the above parameters has
+        to be created and the interface C function "<code>cur_dens_c()</code>"
+        has to be called.
+    </p>
+    <h1 id="sec:Python">Interface with Python - Fitting algorithm</h1>
+    <p>
+        Once GETELEC can be called from the C language and built into a
+        dynamic library, it is very easy to write an interface also for Python.
+        Such an interface would be very useful since Python provides with
+        extensive scientific libraries that can be used to manipulate very
+        easily the input and output of GETELEC. It also facilitates the usage of
+        GETELEC for the analysis of experimental <span class="math inline"><em>I</em> − <em>V</em></span> data as the python
+        library scipy provides with the fitting algorithm.
+    </p>
+    <p>
+        The python module "getelec_mod.py" provides with this interface. It
+        contains all the necessary classes and functions to facilitate it. All
+        the communication is done through the class <code>Emission</code>, which
+        has exactly the same data members as the corresponding C structure. An
+        object of the class can be easily created by calling the function
+        <code>emission_create()</code> and giving the appropriate input. The
+        arrays <code>xr,Vr</code> must be given as numpy arrays. The output
+        object contains both all the input parameters and the output results
+        from GETELEC.
+    </p>
+    <p>
+        Another important function contained in "getelec_mod.py" is
+        <code>fitML()</code>. It takes as input two arrays of experimental I-V
+        data in the form of <span class="math inline">1/<em>V</em> − log (<em>I</em>)</span> and fits to
+        them the GETELEC parameters that best reproduce them. See section 3.2 of
+        the paper for more details. The other input parameters of the function
+        are lists with 3 elements that contain the minimum value, the initial
+        guess and the maximum value of every fitting parameter.
+    </p>
+    <p>
+        The simplest way to fit experimental data is putting the <span class="math inline"><em>V</em> − <em>I</em></span> data in two columns
+        of a .csv file (text file with comma separated values) and run the
+        script "python/fitdata.py" giving the name of the file as command line
+        argument. The fitting parameters bounds and initial guesses can be
+        changed by modifying the first lines of the script.
+    </p>
+    </section>
+    <!--    A green line?-->
+
+    <div id="TopBarView" tabindex="1" style="background-color: rgb(0, 79, 32); opacity: 1; height: 5px; width: 100%;"></div>
+
+    <footer class="bg-light footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-6 text-center text-lg-start my-auto h-100">
+                    <ul class="list-inline mb-2">
+                        <li class="list-inline-item"><a href="https://matter.ee/">About</a></li>
+                        <li class="list-inline-item"><span>⋅</span></li>
+                        <li class="list-inline-item"><a href="https://matter.ee/">Contact</a></li>
+                        <li class="list-inline-item"><span>⋅</span></li>
+                        <li class="list-inline-item"><a href="./termsOfService.html">Terms of &nbsp;Use</a></li>
+                        <li class="list-inline-item"><span>⋅</span></li>
+                        <li class="list-inline-item"><a href="./termsOfService.html">Privacy Policy</a></li>
+                    </ul>
+                    <p class="text-muted small mb-4 mb-lg-0">© Getelec 2022. All Rights Reserved.</p>
+                    <p class="text-muted small mb-4 mb-lg-0">GETELEC is an open-source software for easy, fast, and correct calculations of electron emission quantities. The source code and full documentation can be found <a href="https://github.com/AndKyr/GETELEC">here</a>.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+
+</body>
+</html>
