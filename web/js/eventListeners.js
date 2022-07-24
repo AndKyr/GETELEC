@@ -1,7 +1,7 @@
 export function getButtonsForMain() {
 
 	let ivDataBtn = document.getElementById("ivDataBtn");
-	let threeDGraphingBtn = document.getElementById("3dGraphingBtn");
+	let threeDGraphingBtn = document.getElementById("emissionDataBtn");
 	let documentationBtn = document.getElementById("documentationBtn");
 
 	ivDataBtn.addEventListener("click", goToIvCalculationPage);
@@ -30,9 +30,9 @@ function goToIvCalculationPage() {
 }
 
 function goToThreeDGraphingPage() {
-	window.location.href = "./3dGraphing.html";
+	window.location.href = "./emissionCalc.html";
 }
 
 function goToDocumentationPage() {
-	window.location.href = "./BriefDoc.html";
+	window.location.href = "./briefDoc.html";
 }
