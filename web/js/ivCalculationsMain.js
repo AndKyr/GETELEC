@@ -404,8 +404,6 @@ function main() {
         ]
     });
 
-    
-
     function checkValidity() {
 
         if (errorDivs.length > 0) {
@@ -505,7 +503,10 @@ function main() {
 
                 let data = [_voltage, _current, _workFunction];
 
-                if (canCompute) socket.emit('calculateIv', data);
+                if (canCompute) {
+                    socket.emit('calculateIv', data);
+                    $('#loadingModal').modal('show');
+                }
 
 
             }
@@ -516,6 +517,7 @@ function main() {
     socket.on('calculatedData', (data) => {
 
         updateGraph(data);
+        $('#loadingModal').modal('hide');
         console.log(data);
 
     })

@@ -2,6 +2,7 @@ import getelec_tabulator as gt_tab
 import getelec_mod as gt_mod
 import numpy as np
 
+#emitted current
 def current_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
     """
     Field [nm] - Electric field
@@ -33,6 +34,7 @@ def current_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
         
     return j_metal
 
+#nottingham heat
 def heat_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
     """
     Field [nm] - Electric field
@@ -63,6 +65,7 @@ def heat_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
 
     return nh_metal
 
+#electric spectrum - WIP
 def spectrum_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
     """
     Field [nm] - Electric field
@@ -100,7 +103,7 @@ def current_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature,
     Field [nm] - Electric field
     Radius [nm] - Emitter's tip radius
     Gamma [int] - Math parameter
-    Ec [eV] - Bottom of the conduction band
+    Ec [eV] - Bottom of the conduction band NB! on the backend make it into arrays
     Ef [eV] - Fermi level
     Eg [eV] - band gap
     Temperature [K] - Emitter's temperature
@@ -213,10 +216,13 @@ def spectrum_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature
 
     return energy_c, count_c, energy_v, count_v
 
+
+#1st analyze iv button
 def fit_data(xML, yML, F0, W0, R0, Gamma0, Temp0):
     fit_data = gt_mod.fitML(xML, yML, F0, W0, R0, Gamma0, Temp0)
     return fit_data
 
+#notice i made approx=1
 def plot_data(xfn, beta, W0, R0, Gamma0, Temp0, approx=1):
     plot_data = gt_mod.MLplot(xfn, beta, W0, R0, Gamma0, Temp0, approx)
     return plot_data
