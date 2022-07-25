@@ -36,6 +36,7 @@ def current_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
 
 #nottingham heat
 def heat_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
+
     """
     Field [nm] - Electric field
     Radius [nm] - Emitter's tip radius
@@ -215,7 +216,6 @@ def spectrum_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature
         energy_c[i], count_c[i], energy_v[i], count_v[i] = semiconductor_emitter.Energy_Distribution_from_Semiconductors()
 
     return energy_c, count_c, energy_v, count_v
-
 
 #1st analyze iv button
 def fit_data(xML, yML, F0, W0, R0, Gamma0, Temp0):

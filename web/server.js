@@ -127,6 +127,84 @@ io.sockets.on('connection', function (socket) {
     })
   })
 
+  socket.on('calculateEmission', (data) =>{
+
+    const params = JSON.stringify({
+      "Field": data[0],
+      "Radius": data[1], "Gamma": data[2],
+      "Work_Function": data[3], "Temperature": data[4],
+      "calculateNH": data[5], "calculateES": data[6], "CalculateEC": data[7]
+    });
+
+    const options = {
+
+      scriptPath: "",
+      args: [params]
+
+    }
+
+    PythonShell.run("python/emissionCalc.py", options, (err, res) => {
+
+      if(err){
+
+        console.log(updateTimeError() + socket.id + " " + err);
+        let errorMsg = updateTimeError() + err;
+        logger.log('error', errorMsg);
+        socket.emit('logServerSideError', err);
+
+
+      } else if(res){
+
+        res.forEach(el =>{
+
+          if(el[0] == "{"){
+
+            try{
+
+              let _el = JSON.parse(el);
+
+              switch(_el.type){
+
+                case "current":
+
+                  socket.emit("calculatedCurrent", _el);
+
+                  break;
+
+                case "nottighamHeat":
+
+                  socket.emit("calculatedNottinghamHeat", _el);
+
+                  break;
+
+                case "electronSpectrum":
+
+                  socket.emit("calculatedElectronSpectrum", _el);
+
+                  break;
+
+              } 
+
+            } catch (e) {
+
+              console.log(updateTimeError() + e);
+
+            } 
+
+          } else {
+
+            console.log(updateTime() + el)
+
+          }
+
+        })
+
+      }
+
+    })
+
+  })
+
 })
 
 //Console recursive input 

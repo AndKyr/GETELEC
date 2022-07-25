@@ -34,33 +34,115 @@
 
     <section class="showcase bg-light feautures-icons py-3 animated bounceInLeft">
 
-        <select id="pickMaterialType" class="custom-select btn-outline-secondary dropdown-toggle"  style="width:175px">
-            <option value="1">Metal</option>
-            <option value="2">Semiconductor</option>
-        </select>
+        <div class="container">
 
-        <div class="form-check">
-            <input class="form-check-input" type="checkbox" value="" id="chooseNH">
-            <label class="form-check-label" for="flexCheckDefault">
-              Calculate Nottingham heat
-            </label>
+            <select id="pickMaterialType" class="custom-select btn-outline-secondary dropdown-toggle"  style="width:175px;margin-bottom:15px">
+                <option value="1">Metal</option>
+                <option value="2">Semiconductor</option>
+            </select>
+
+            <div class="input-group mb-3">
+                <div class="input-group-prepend">
+                    <span class="input-group-text">Field</span>
+                </div>
+                <input type="text" class="form-control" aria-label="" id="field_in"
+                placeholder="">
+                <div class="input-group-append">
+                    <select class="bg-light custom-select btn-outline-secondary dropdown-toggle" id="field_mult_in" style="width:70px">
+                        <option value="1">[nm]</option>
+                        <!-- <option value="0.001">[mA]</option>
+                        <option value="1000">[kA]</option> -->
+                    </select>
+                </div>
+            </div>
+
+            <div class="input-group mb-3">
+                <div class="input-group-prepend">
+                    <span class="input-group-text">Radius</span>
+                </div>
+                <input type="text" class="form-control" aria-label="" id="radius_in"
+                placeholder="">
+                <div class="input-group-append">
+                    <select class="bg-light custom-select btn-outline-secondary dropdown-toggle" id="radius_mult_in" style="width:70px">
+                        <option value="1">[nm]</option>
+                        <!-- <option value="0.001">[mA]</option>
+                        <option value="1000">[kA]</option> -->
+                    </select>
+                </div>
+            </div>
+
+            <div class="input-group mb-3">
+                <div class="input-group-prepend">
+                    <span class="input-group-text">Gamma</span>
+                </div>
+                <input type="text" class="form-control" aria-label="" id="gamma_in"
+                placeholder="">
+                <!-- <div class="input-group-append">
+                    <select class="bg-light custom-select btn-outline-secondary dropdown-toggle" id="current_mult_in" style="width:70px">
+                        <option value="1">[A]</option>
+                        <option value="0.001">[mA]</option>
+                        <option value="1000">[kA]</option>
+                    </select>
+                </div> -->
+            </div>
+
+            <div class="input-group mb-3">
+                <div class="input-group-prepend">
+                    <span class="input-group-text">Work Function</span>
+                </div>
+                <input type="text" class="form-control" aria-label="" id="wf_in"
+                placeholder="">
+                <div class="input-group-append">
+                    <select class="bg-light custom-select btn-outline-secondary dropdown-toggle" id="wf_mult_in" style="width:70px">
+                        <option value="1">[eV]</option>
+                        <!-- <option value="0.001">[mA]</option>
+                        <option value="1000">[kA]</option> -->
+                    </select>
+                </div>
+            </div>
+
+            <div class="input-group mb-3">
+                <div class="input-group-prepend">
+                    <span class="input-group-text">Temperature</span>
+                </div>
+                <input type="text" class="form-control" aria-label="" id="temperature_in"
+                placeholder="">
+                <div class="input-group-append">
+                    <select class="bg-light custom-select btn-outline-secondary dropdown-toggle" id="temperature_mult_in" style="width:70px">
+                        <option value="1">[°K]</option>
+                        <!-- <option value="0.001">[mA]</option>
+                        <option value="1000">[kA]</option> -->
+                    </select>
+                </div>
+            </div>
+
+
+
+
+
+    
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="chooseNH">
+                <label class="form-check-label" for="flexCheckDefault">
+                  Calculate Nottingham heat
+                </label>
+            </div>
+            
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="chooseES">
+                <label class="form-check-label" for="flexCheckDefault">
+                  Calculate electron spectrum
+                </label>
+            </div>
+    
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" value="" id="chooseEC">
+                <label class="form-check-label" for="flexCheckDefault">
+                  Calculate Emitted current
+                </label>
+              </div>
+
         </div>
-        
-        <div class="form-check">
-            <input class="form-check-input" type="checkbox" value="" id="chooseES">
-            <label class="form-check-label" for="flexCheckDefault">
-              Calculate electron spectrum
-            </label>
-        </div>
-
-        <div class="form-check">
-            <input class="form-check-input" type="checkbox" value="" id="chooseEC">
-            <label class="form-check-label" for="flexCheckDefault">
-              Calculate Emitted current
-            </label>
-          </div>
-
-
 
     </section>
 
@@ -72,15 +154,7 @@
     <section class="showcase bg-light feautures-icons py-5 align-items-center animated bounceInRight">
         <div class="container">
             <canvas id="myChart"></canvas>
-            <button id="canvasButton" data-bss-hover-animate="pulse" class="my-3">Download data</button>
         </div>
-
-
-        <div class="container d-flex feautures-icons-icon align-items-center">
-            <i class="icon-question text-primary pt-3" data-bss-hover-animate="pulse" id="helpIcon">
-                How to use</i>
-        </div>
-
 
     </section>   
 

@@ -29,9 +29,9 @@ emissionpath,mainfolder = os.path.split(emissionpath)
 pythonpath = emissionpath + '/python'
 sys.path.append(pythonpath)
 
-from getelec_online import current_metal_emitter, fit_data, plot_data
+from getelec_online import fit_data, plot_data
 
-def fit_fun():
+def main():
     F0 = [1., 5., 20.]
     R0 = [1., 5., 50.]
     gamma0 = [1., 10., 100.]
@@ -61,4 +61,4 @@ def fit_fun():
 
     return json.dumps(outdata)
 
-print(fit_fun())
+print(main())
