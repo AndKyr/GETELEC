@@ -35,7 +35,7 @@ from getelec_online import current_semiconductor_emitter, heat_semiconductor_emi
 def main():
 
     F0 = [1., 5., 20.]
-    R0 = [1., 5., 50.]
+    R0 = [15., 25., 50.]
     gamma0 = [1., 10., 100.]
     temp0 = [299.99999, 300., 300.01]
 

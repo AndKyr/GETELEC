@@ -622,11 +622,11 @@ function main() {
     function loadInitEventListeners(){
 
         let enterButton = document.getElementById("enterButton");
-        helpButton = document.getElementById("helpIcon");
+        let helpButton = document.getElementById("helpIcon");
 
 
-        helpButton.addEventListener("click", addHelpDiv);
-        enterButton.addEventListener("click", checkValidity);
+        try {helpButton.addEventListener("click", addHelpDiv);} catch (e) {console.log(e)};
+        try {enterButton.addEventListener("click", checkValidity);} catch (e) {console.log(e)};
     
     }
 
@@ -745,6 +745,13 @@ export function raiseInputError(id) {
         case "2008":
             addErrorDiv("Can not download data file as there is no data to download. (Did you click on Enter button?)");
             break;
+        case "3000":
+            addErrorDiv("Can not create graph as all inputs must have equal amount of data points");
+            break;
+        case "3001":
+            addErrorDiv("All input fields must have at least 3 values each");
+            break;
+    
         default:
             addErrorDiv("Unknown error");
     }
@@ -752,24 +759,24 @@ export function raiseInputError(id) {
     function addErrorDiv(message) {
 
         console.log(message);
-
+    
         const template = `
         <section class="container showcase alert alert-danger alert-dismissible my-auto animated bounceInLeft">
             <strong class="mx-2">Error!</strong> ${message}!
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </section>
         `;
-
+    
         let relativeDiv = document.getElementById("myChart");
         let errorDiv = document.createElement("div");
         errorDiv.innerHTML = template;
-
+    
         let section = errorDiv.children[0];
-
+    
         errorDivs.push(section)
-
+    
         insertAfter(section, relativeDiv);
-
+    
     }
 
 }
