@@ -33,16 +33,39 @@ function main(){
         workFunctionMult = document.getElementById("wf_mult_in").value;
         temperatureMult = document.getElementById("temperature_mult_in").value;
 
+        calculateEC = document.getElementById("chooseEC").checked;
+        calculateES = document.getElementById("chooseES").checked;
+        calculateNH = document.getElementById("chooseNH").checked;
+
         if(field == "") field = "1, 5, 20"
         if(radius == "") radius = "15, 25, 50"
         if(gamma == "") gamma = "1, 10, 100"
-        if(temperature = "") temperature = "299.99, 300, 300.01"
+        if(workFunction == "") workFunction = "10, 10, 10"
+        if(temperature == "") temperature = "299.99, 300, 300.01"
 
         let _field = processDataInput(field);
         let _radius = processDataInput(radius);
         let _workFunction = processDataInput(workFunction);
         let _gamma = processDataInput(gamma);
         let _temperature = processDataInput(temperature);
+
+        if(calculateEC){
+            calculateEC = "1";
+        } else {
+            calculateEC = "0";
+        }
+
+        if(calculateES){
+            calculateES = "1";
+        } else {
+            calculateES = "0";
+        }
+
+        if(calculateNH){
+            calculateNH = "1";
+        } else {
+            calculateNH = "0";
+        }
 
         for(let i = 0; i < _field.length; i++){
             _field[i] = _field[i] * fieldMult;
@@ -56,25 +79,43 @@ function main(){
             _workFunction[i] = _workFunction[i] * workFunctionMult;
         }
 
-        for(let i = 0; i < _gamma.length; i++){
-            _gamma[i] = _gamma[i] * gammaMult;
-        }
+        // for(let i = 0; i < _gamma.length; i++){
+        //     _gamma[i] = _gamma[i] * gammaMult;
+        // }
 
         for(let i = 0; i < _temperature.length; i++){
             _temperature[i] = _temperature[i] * temperatureMult;
         }
 
+        if(materialType == "metal") materialType == 0;
+        if(materialType == "semiconductor") materialType == 1;
+
         let canCompute = true;
 
-        if(_field.length != _radius.length != _workFunction.length != _gamma.length != _temperature.length){
+        //THIS IS BROKEN
+        if( (_field.length == _radius.length_ == _workFunction.length == _gamma.length == _temperature.length)){
 
             canCompute = false;
 
-        } else if(_field.length < 3 || _radius.length < 3 || _workFunction.length < 3 || _gamma.length < 3 || _temperature.length < 3){
+        }
+        
+        else if(_field.length < 3 || _radius.length < 3 || _workFunction.length < 3 || _gamma.length < 3 || _temperature.length < 3){
 
 
             canCompute = false;
 
+        } else {
+
+            if(canCompute == true){
+
+                //HERE WILL CHECK FOR VALID INPUT RANGE
+
+                let data = [materialType, _field, _radius, _gamma, _workFunction, _temperature, calculateNH, calculateES, calculateEC];
+                
+                socket.emit('calculateEmission', data);
+                // $('#loadingModal').modal('show');
+
+            }
         }
         
     }
@@ -417,12 +458,15 @@ function getSeparator(data) {
 
 function beautifyResult(data) {
 
-    if (endsWith(data, " ")) {
-        data.slice(0, -1);
-    }
+    for(let i = 0; i < data.length; i++){
+        if(endsWith(data[i], " ")){
+            data[i] = data[i].slice(0, -1);
+        }
 
-    if (data[0] == " ") {
-        data.slice(1);
+        if(data[i][0] == " "){
+            data[i] = data[i].slice(1);
+        }
+
     }
 
     return data;

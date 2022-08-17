@@ -1,3 +1,5 @@
+import cProfile
+import pstats
 import json
 import os
 import sys
@@ -31,7 +33,12 @@ sys.path.append(pythonpath)
 
 from getelec_online import fit_data, plot_data
 
+outdata = {}
+
 def main():
+
+    print(json.dumps(dataInArr))
+
     F0 = [1., 5., 20.]
     R0 = [1., 5., 50.]
     gamma0 = [1., 10., 100.]
@@ -59,6 +66,12 @@ def main():
                 "beta": popt[0], "Radius": popt[2], "sigma_Aeff": 1e-9*np.exp(-yshift), \
                 "xAxisUnit": "1 / (Local Field [V/nm])", "yAxisUnit": "Current [Amps]"}
 
-    return json.dumps(outdata)
+    print(json.dumps(outdata))
 
-print(main())
+with cProfile.Profile() as pr:
+    main()
+
+stats = pstats.Stats(pr)
+stats.sort_stats(pstats.SortKey.TIME)
+stats.print_stats()
+#stats.dump_stats(filename='ivCalcProfiling.prof')

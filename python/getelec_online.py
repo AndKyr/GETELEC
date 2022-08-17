@@ -204,7 +204,7 @@ def spectrum_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature
     count_c = np.copy(Field)
     energy_v = np.copy(Field)
     count_v = np.copy(Field)
-    m = np.ones(Field)*9.1093837015e-31 
+    m = np.ones(Field) * 9.1093837015e-31 
 
     for i in range(len(Field)):
 

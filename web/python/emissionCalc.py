@@ -2,22 +2,22 @@ import json
 import os
 import sys
 
-
 def convertInput(input):
     _dataIn = input.split("]")
-    _data = []
-    for i in range(len(_dataIn)):
-        _ddataIn = _dataIn[i].split("[")
-        if(len(_ddataIn) > 1):
-            paramListStr = _ddataIn[1].split(",")
-            paramListFloat = []
-            for j in range(len(paramListStr)):
-                paramListFloat.append(float(paramListStr[j]))
-            _data.append(paramListFloat)
-        else:
-            param = _ddataIn[0].split(":")[1].split("}")[0]
-            _data.append([float(param)])
-    return _data
+    print(_dataIn)
+    # _data = []
+    # for i in range(len(_dataIn)):
+    #     _ddataIn = _dataIn[i].split("[")
+    #     if(len(_ddataIn) > 1):
+    #         paramListStr = _ddataIn[1].split(",")
+    #         paramListFloat = []
+    #         for j in range(len(paramListStr)):
+    #             paramListFloat.append(float(paramListStr[j]))
+    #         _data.append(paramListFloat)
+    #     else:
+    #         param = _ddataIn[0].split(":")[1].split("}")[0]
+    #         _data.append([float(param)])
+    return input
 
 dataInArr = convertInput(sys.argv[1])
 
@@ -39,18 +39,20 @@ def main():
     gamma0 = [1., 10., 100.]
     temp0 = [299.99999, 300., 300.01]
 
+
+    print(json.dumps(dataInArr))
     
 
-    outdata1 = {"type": "current"}
+    # outdata1 = {"type": "current"}
 
-    outdata2 = {"type": "nottinghamHeat"}
+    # outdata2 = {"type": "nottinghamHeat"}
 
-    outdata3 = {"type": "electronSpectrum"}
+    # outdata3 = {"type": "electronSpectrum"}
 
 
-    print(json.dumps(outdata1))
-    print(json.dumps(outdata2))
-    print(json.dumps(outdata3))
+    # print(json.dumps(outdata1))
+    # print(json.dumps(outdata2))
+    # print(json.dumps(outdata3))
 
 
 main()
