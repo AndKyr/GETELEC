@@ -309,12 +309,11 @@ function mainLoopInput(data) {
       process.exit(1);
     case "exit":
       process.exit(1);
-    case "clients":
-      console.log(updateTime() + "Connected clients: " + io.sockets.clients());
-      break;
     case "kickAll":
       disconnectAllSockets();
       break; //might not work
+    case "help":
+      console.log(updateTime() + "List of available commands: q, stop, exit, kickAll");
 
     default:
       console.log(updateTime() + "Unknown command: " + data);
