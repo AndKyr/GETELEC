@@ -124,15 +124,79 @@ function main(){
 
         let enterButton = document.getElementById("enterButton");
         let pickChangingVarGenerationMethodDiv = document.getElementById("pickChangingVarGenerationMethod");
+        let generateValuesBtn = document.getElementById("generateValuesButton")
 
         //enterButton.addEventListener("click", checkValidity);
         pickChangingVarGenerationMethodDiv.addEventListener("change", updateAutoGenerateValuesDiv);
+        generateValuesBtn.addEventListener("click", autoGenerateValues);
         
     }
 }
 
+
 let errorDivs = [];
 main();
+
+function autoGenerateValues(){
+
+    //TEMPORARY. BETTER INPUT TRANSFORMING LATER
+
+    let lowerBound, upperBound, count
+
+    let varNum = document.getElementById("pickChangingVar").value;
+
+    try{
+
+        lowerBound = parseFloat(document.getElementById("lowerBound").value);
+        upperBound = parseFloat(document.getElementById("upperBound").value);
+        count = parseInt(document.getElementById("numberOfPointsInBounds").value);
+
+    } catch (e){
+
+        console.log(e);
+        return;
+
+    }
+
+    const varTypeDict = {
+        1: "Field",
+        2: "Radius",
+        3: "Gamma",
+        4: "Work_Function",
+        5: "Temperature"
+    }
+
+    const dTot = upperBound - lowerBound;
+    const dSt = dTot / (count - 1);
+
+    let result = [];
+
+    for(let i = 0; i < count; i++){
+        result.push((lowerBound + i * dSt).toFixed(3));
+    }
+
+    switch(varNum){
+        case "1":
+            document.getElementById("field_in").value = result;
+            break;
+        case "2":
+            document.getElementById("radius_in").value = result;
+            break;
+        case "3":
+            document.getElementById("gamma_in").value = result;
+            break;
+        case "4":
+            document.getElementById("wf_in").value = result;
+            break;
+        case "5":
+            document.getElementById("temperature_in").value = result;
+            break;
+    }
+
+    console.log(result);
+
+
+}
 
 
 function updateAutoGenerateValuesDiv(){
@@ -147,7 +211,7 @@ function updateAutoGenerateValuesDiv(){
     } else if(pickChangingVarGenerationMethodDiv.value == 2){
 
         autoGenerateValuesDiv.hidden = false
-        
+
     }
 
 }
@@ -243,7 +307,6 @@ const commaDict = {
     1: ".",
     99: "Unknown"
 }
-
 
 //Purpose of code below is to proccess user input and understand whats inside it
 
