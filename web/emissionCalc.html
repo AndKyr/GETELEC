@@ -51,8 +51,7 @@
                 </div>
 
                 <div class="container g-3 align-items-center mb-3 my-auto mx-auto">
-
-                    <label for="pickChangingVar" class="col-auto">Pick Changing variable</label>
+                    <label for="pickChangingVar" class="col-auto">Pick sweeping parameter</label>
                     <select id="pickChangingVar" class="custom-select btn-outline-secondary dropdown-toggle"  style="width:175px;margin-bottom:15px">
 
                         <option value="1">Field</option>
@@ -113,14 +112,14 @@
                     
                     <div class="row g-3 align-items-center mb-3 mx-auto">
                         <div class="col-auto">
-                        <label for="numberOfPointsInBounds" class="col-form-label">Points amount</label>
+                        <label for="numberOfPointsInBounds" class="col-form-label">Points count</label>
                         </div>
                         <div class="col-auto">
                         <input type="text" id="numberOfPointsInBounds" class="form-control" aria-describedby="lnumberOfPointsInBoundsInLine">
                         </div>
                         <div class="col-auto">
                         <span id="numberOfPointsInBoundsInLine" class="form-text">
-                            Pick the count of points
+                            Pick the number of points
                         </span>
                         </div>
                     </div>
@@ -181,7 +180,7 @@
 
                 <div class="input-group mb-3">
                     <div class="input-group-prepend">
-                        <span class="input-group-text">Work Function</span>
+                        <span class="input-group-text" id="wf_name">Work Function</span>
                     </div>
                     <input type="text" class="form-control" aria-label="" id="wf_in"
                     placeholder="">
@@ -203,7 +202,7 @@
                     <div class="input-group-append">
                         <select class="bg-light custom-select btn-outline-secondary dropdown-toggle" id="temperature_mult_in" style="width:70px">
                             <option value="1">[°K]</option>
-                            <option value="2">[°C]/option>
+                            <option value="2">[°C]</option>
                         </select>
                     </div>
                 </div>
@@ -231,7 +230,8 @@
                     <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" id="chooseES">
                         <label class="form-check-label" for="flexCheckDefault">
-                          Calculate electron spectrum
+                          Calculate electron spectrum 
+                          <!-- spectra -->
                         </label>
                     </div>
         

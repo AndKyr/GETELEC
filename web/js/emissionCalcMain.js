@@ -124,11 +124,14 @@ function main(){
 
         let enterButton = document.getElementById("enterButton");
         let pickChangingVarGenerationMethodDiv = document.getElementById("pickChangingVarGenerationMethod");
-        let generateValuesBtn = document.getElementById("generateValuesButton")
+        let generateValuesBtn = document.getElementById("generateValuesButton");
+        let pickMaterialTypeDiv = document.getElementById("pickMaterialType");
 
         //enterButton.addEventListener("click", checkValidity);
         pickChangingVarGenerationMethodDiv.addEventListener("change", updateAutoGenerateValuesDiv);
         generateValuesBtn.addEventListener("click", autoGenerateValues);
+        pickMaterialTypeDiv.addEventListener("change", updateWFName)
+
         
     }
 }
@@ -198,6 +201,25 @@ function autoGenerateValues(){
 
 }
 
+function updateWFName(){
+
+    let pickMaterialTypeDiv = document.getElementById("pickMaterialType");
+    let pickChangingVarDiv = document.getElementById("pickChangingVar");
+    let wfName = document.getElementById("wf_name");
+
+    if(pickMaterialTypeDiv.value == 1){
+
+        wfName.textContent = "Work Function";
+        pickChangingVarDiv.options[3].textContent = "Work Function";
+
+    } else if(pickMaterialTypeDiv.value == 2){
+
+        wfName.textContent = "Betta";
+        pickChangingVarDiv.options[3].textContent = "Betta"
+
+    }
+
+}
 
 function updateAutoGenerateValuesDiv(){
 
