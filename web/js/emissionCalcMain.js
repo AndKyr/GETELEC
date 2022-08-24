@@ -126,11 +126,16 @@ function main(){
         let pickChangingVarGenerationMethodDiv = document.getElementById("pickChangingVarGenerationMethod");
         let generateValuesBtn = document.getElementById("generateValuesButton");
         let pickMaterialTypeDiv = document.getElementById("pickMaterialType");
+        let advancedModeToggleDiv = document.getElementById("advancedModeToggle");
+        let advancedModeToggleMainDiv = document.getElementById("advancedModeToggleMainDiv");
+
+        advancedModeToggleMainDiv.hidden = true;
 
         //enterButton.addEventListener("click", checkValidity);
         pickChangingVarGenerationMethodDiv.addEventListener("change", updateAutoGenerateValuesDiv);
         generateValuesBtn.addEventListener("click", autoGenerateValues);
-        pickMaterialTypeDiv.addEventListener("change", updateWFName)
+        pickMaterialTypeDiv.addEventListener("change", updateWFName);
+        advancedModeToggleDiv.addEventListener("change", updateAdvancedMethods);
 
         
     }
@@ -139,6 +144,23 @@ function main(){
 
 let errorDivs = [];
 main();
+
+function updateAdvancedMethods(){
+
+    let advancedModeToggleDiv = document.getElementById("advancedModeToggle");
+    let advancedParameters = document.getElementById("advancedParameters");
+
+    if(advancedModeToggleDiv.checked == false){
+
+        advancedParameters.hidden = true;
+
+    } else if(advancedModeToggleDiv.checked == true){
+
+        advancedParameters.hidden = false;
+
+    }
+
+}
 
 function autoGenerateValues(){
 
@@ -206,16 +228,32 @@ function updateWFName(){
     let pickMaterialTypeDiv = document.getElementById("pickMaterialType");
     let pickChangingVarDiv = document.getElementById("pickChangingVar");
     let wfName = document.getElementById("wf_name");
+    let advancedModeToggleMainDiv = document.getElementById("advancedModeToggleMainDiv");
+    let advancedModeToggle = document.getElementById("advancedModeToggle");
+    let advancedMode = document.getElementById("advancedParameters");
 
     if(pickMaterialTypeDiv.value == 1){
 
         wfName.textContent = "Work Function";
         pickChangingVarDiv.options[3].textContent = "Work Function";
+        advancedModeToggleMainDiv.hidden = true;
+        advancedModeToggle.checked = false;
+        advancedMode.hidden = true;
+
+        
+
 
     } else if(pickMaterialTypeDiv.value == 2){
 
         wfName.textContent = "Betta";
-        pickChangingVarDiv.options[3].textContent = "Betta"
+        pickChangingVarDiv.options[3].textContent = "Betta";
+        advancedModeToggleMainDiv.hidden = false;
+        
+        if(advancedModeToggle.checked == true){
+
+            advancedMode.hidden = false;
+
+        }
 
     }
 

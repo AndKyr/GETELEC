@@ -75,6 +75,13 @@
                     </select>
                 
                 </div>
+
+                <div class="container align-items-center mb-3 pl-3" id="advancedModeToggleMainDiv">
+                    <input class="form-check-input" type="checkbox" id="advancedModeToggle">
+                    <label class="form-check-label" for="flexCheckDefault">
+                      Advanced Parameters
+                    </label>
+                </div>
                 
             </div>
 
@@ -110,7 +117,7 @@
                     </div>
 
                     
-                    <div class="row g-3 align-items-center mb-3 mx-auto">
+                    <div class="row g-3 align-items-center mb-1 mx-auto">
                         <div class="col-auto">
                         <label for="numberOfPointsInBounds" class="col-form-label">Points count</label>
                         </div>
@@ -124,10 +131,84 @@
                         </div>
                     </div>
 
-                    <button type="button" class="mt-3 mx-3 mb-3 row" id="generateValuesButton" data-bss-hover-animate="pulse">Generate Values</button>
-
+                    <button type="button" class="mt-3 mx-3 mb-3" id="generateValuesButton" data-bss-hover-animate="pulse">Generate Values</button>
 
             </div>
+
+            <div id="advancedParameters" hidden style="border-style:solid;padding-left:10px;border-radius:9px" class="mb-3">
+
+                <div class="row g-3 align-items-center mb-3 mt-1 mx-auto">
+                    <div class="col-auto">
+                    <label for="ecParam" class="col-form-label">Ec [eV]</label>
+                    </div>
+                    <div class="col-auto">
+                    <input type="text" id="ecParam" class="form-control" aria-describedby="ecParamInLine">
+                    </div>
+                    <div class="col-auto">
+                    <span id="ecParamInLine" class="form-text">
+                        Bottom of the conduction band
+                    </span>
+                    </div>
+                </div>
+
+                <div class="row g-3 align-items-center mb-3 mx-auto">
+                    <div class="col-auto">
+                    <label for="efParam" class="col-form-label">Ef [eV]</label>
+                    </div>
+                    <div class="col-auto">
+                    <input type="text" id="ecParam" class="form-control" aria-describedby="efParamInLine">
+                    </div>
+                    <div class="col-auto">
+                    <span id="efParamInLine" class="form-text">
+                        Fermi level
+                    </span>
+                    </div>
+                </div>
+
+                <div class="row g-3 align-items-center mb-3 mx-auto">
+                    <div class="col-auto">
+                    <label for="egParam" class="col-form-label">Eg [eV]</label>
+                    </div>
+                    <div class="col-auto">
+                    <input type="text" id="ecParam" class="form-control" aria-describedby="egParamInLine">
+                    </div>
+                    <div class="col-auto">
+                    <span id="egParamInLine" class="form-text">
+                        Band gap
+                    </span>
+                    </div>
+                </div>
+
+                <div class="row g-3 align-items-center mb-3 mx-auto">
+                    <div class="col-auto">
+                    <label for="meParam" class="col-form-label">me [kg]</label>
+                    </div>
+                    <div class="col-auto">
+                    <input type="text" id="meParam" class="form-control" aria-describedby="meParamInLine">
+                    </div>
+                    <div class="col-auto">
+                    <span id="meParamInLine" class="form-text">
+                        Electron effective mass
+                    </span>
+                    </div>
+                </div>
+
+                <div class="row g-3 align-items-center mb-3 mx-auto">
+                    <div class="col-auto">
+                    <label for="mpParam" class="col-form-label">mp [kg]</label>
+                    </div>
+                    <div class="col-auto">
+                    <input type="text" id="mpParam" class="form-control" aria-describedby="mpParamInLine">
+                    </div>
+                    <div class="col-auto">
+                    <span id="mpParamInLine" class="form-text">
+                        Hole effective mass
+                    </span>
+                    </div>
+                </div>
+            
+            </div>
+
 
 
             <div style="border-style:solid;padding-left:10px;border-radius:9px" class="mb-3 pt-3">
