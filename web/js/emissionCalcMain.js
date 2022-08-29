@@ -128,15 +128,18 @@ function main(){
         let pickMaterialTypeDiv = document.getElementById("pickMaterialType");
         let advancedModeToggleDiv = document.getElementById("advancedModeToggle");
         let advancedModeToggleMainDiv = document.getElementById("advancedModeToggleMainDiv");
+        let pickChangingVarDiv = document.getElementById("pickChangingVar");
 
-        advancedModeToggleMainDiv.hidden = true;
+        //advancedModeToggleMainDiv.hidden = true;
 
         //enterButton.addEventListener("click", checkValidity);
         pickChangingVarGenerationMethodDiv.addEventListener("change", updateAutoGenerateValuesDiv);
         generateValuesBtn.addEventListener("click", autoGenerateValues);
         pickMaterialTypeDiv.addEventListener("change", updateWFName);
         advancedModeToggleDiv.addEventListener("change", updateAdvancedMethods);
+        pickChangingVarDiv.addEventListener("change", updatePropertiesPresets);
 
+        updatePropertiesPresets();
         
     }
 }
@@ -145,18 +148,93 @@ function main(){
 let errorDivs = [];
 main();
 
+function updatePropertiesPresets(){
+
+    const fieldLong = "2.413e+02, 2.511e+02, 2.622e+02, 2.706e+02, 2.803e+02";
+    const fieldShort = "3.000e+02";
+    const radiusLong = "50, 60, 70, 80, 90";
+    const radiusShort = "50";
+    const wfLong = "4, 5, 6, 7, 8";
+    const wfShort = "4.5";
+    const tempLong = "273.15, 298.15, 300, 350, 500";
+    const tempShort = "300";
+
+    let fieldDiv = document.getElementById("field_in");
+    let radiusDiv = document.getElementById("radius_in");
+    let wfDiv = document.getElementById("wf_in");
+    let tempDiv = document.getElementById("temperature_in");
+
+    let pickChangingVarDiv = document.getElementById("pickChangingVar");
+
+    switch(pickChangingVarDiv.value){
+
+        case "1":
+
+            fieldDiv.placeholder = fieldLong;
+            radiusDiv.placeholder = radiusShort;
+            wfDiv.placeholder = wfShort;
+            tempDiv.placeholder = tempShort;
+
+            break;
+
+        case "2":
+
+            fieldDiv.placeholder = fieldShort;
+            radiusDiv.placeholder = radiusLong;
+            wfDiv.placeholder = wfShort;
+            tempDiv.placeholder = tempShort;
+
+            break;
+
+        case "3":
+
+            fieldDiv.placeholder = fieldShort;
+            radiusDiv.placeholder = radiusShort;
+            wfDiv.placeholder = wfLong;
+            tempDiv.placeholder = tempShort;
+
+            break;
+
+        case "4":
+
+            fieldDiv.placeholder = fieldShort;
+            radiusDiv.placeholder = radiusShort;
+            wfDiv.placeholder = wfShort;
+            tempDiv.placeholder = tempLong;
+
+            break;
+
+    }
+
+
+}
+
 function updateAdvancedMethods(){
 
     let advancedModeToggleDiv = document.getElementById("advancedModeToggle");
-    let advancedParameters = document.getElementById("advancedParameters");
+    let materialSelectDiv = document.getElementById("pickMaterialType");
+    let advancedParametersSemi = document.getElementById("advancedParametersSemi");
+    let advancedParametersMetal = document.getElementById("advancedParametersMetal");
+
 
     if(advancedModeToggleDiv.checked == false){
 
-        advancedParameters.hidden = true;
+        advancedParametersMetal.hidden = true;
+        advancedParametersSemi.hidden = true;
 
     } else if(advancedModeToggleDiv.checked == true){
 
-        advancedParameters.hidden = false;
+        if(materialSelectDiv.value == 1){
+
+            advancedParametersMetal.hidden = false;
+            advancedParametersSemi.hidden = true;
+
+        } else if(materialSelectDiv.value == 2){
+
+            advancedParametersMetal.hidden = true;
+            advancedParametersSemi.hidden = false;
+
+        }
 
     }
 
@@ -230,28 +308,43 @@ function updateWFName(){
     let wfName = document.getElementById("wf_name");
     let advancedModeToggleMainDiv = document.getElementById("advancedModeToggleMainDiv");
     let advancedModeToggle = document.getElementById("advancedModeToggle");
-    let advancedMode = document.getElementById("advancedParameters");
+    let advancedModeSemi = document.getElementById("advancedParametersSemi");
+    let advancedModeMetal = document.getElementById("advancedParametersMetal");
+
+
 
     if(pickMaterialTypeDiv.value == 1){
 
-        wfName.textContent = "Work Function";
-        pickChangingVarDiv.options[3].textContent = "Work Function";
-        advancedModeToggleMainDiv.hidden = true;
-        advancedModeToggle.checked = false;
-        advancedMode.hidden = true;
+        //wfName.textContent = "Work Function";
+        //pickChangingVarDiv.options[3].textContent = "Work Function";
+        //advancedModeToggleMainDiv.hidden = true;
 
-        
+        if(advancedModeToggle.checked == true){
 
+            advancedModeMetal.hidden = false;
+            advancedModeSemi.hidden = true;
+
+        } else{
+
+            advancedModeMetal.hidden = true;
+            advancedModeSemi.hidden = true;
+
+        }
 
     } else if(pickMaterialTypeDiv.value == 2){
 
-        wfName.textContent = "Betta";
-        pickChangingVarDiv.options[3].textContent = "Betta";
-        advancedModeToggleMainDiv.hidden = false;
+        //wfName.textContent = "Work Function";
+        //pickChangingVarDiv.options[3].textContent = "Work Function";
         
         if(advancedModeToggle.checked == true){
 
-            advancedMode.hidden = false;
+            advancedModeMetal.hidden = true;
+            advancedModeSemi.hidden = false;
+
+        }   else {
+
+            advancedModeMetal.hidden = true;
+            advancedModeSemi.hidden = true;
 
         }
 

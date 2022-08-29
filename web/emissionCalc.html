@@ -135,7 +135,7 @@
 
             </div>
 
-            <div id="advancedParameters" hidden style="border-style:solid;padding-left:10px;border-radius:9px" class="mb-3">
+            <div id="advancedParametersSemi" hidden style="border-style:solid;padding-left:10px;border-radius:9px" class="mb-3">
 
                 <div class="row g-3 align-items-center mb-3 mt-1 mx-auto">
                     <div class="col-auto">
@@ -181,6 +181,21 @@
 
                 <div class="row g-3 align-items-center mb-3 mx-auto">
                     <div class="col-auto">
+                    <label for="gammaSemiParam" class="col-form-label">Gamma</label>
+                    </div>
+                    <div class="col-auto">
+                    <input type="text" id="gammaSemiParam" class="form-control" aria-describedby="gammaSemiParamInLine">
+                    </div>
+                    <div class="col-auto">
+                    <span id="gammaSemiParamInLine" class="form-text">
+                        Mathematic parameter
+                    </span>
+                    </div>
+                </div>
+
+
+                <div class="row g-3 align-items-center mb-3 mx-auto">
+                    <div class="col-auto">
                     <label for="meParam" class="col-form-label">me [kg]</label>
                     </div>
                     <div class="col-auto">
@@ -206,6 +221,26 @@
                     </span>
                     </div>
                 </div>
+            
+            </div>
+
+
+            <div id="advancedParametersMetal" hidden style="border-style:solid;padding-left:10px;border-radius:9px" class="mb-3">
+
+                <div class="row g-3 align-items-center mb-3 mt-1 mx-auto">
+                    <div class="col-auto">
+                    <label for="gammaMetalParam" class="col-form-label">Gamma</label>
+                    </div>
+                    <div class="col-auto">
+                    <input type="text" id="gammaMetalParam" class="form-control" aria-describedby="gammaMetalParamInLine">
+                    </div>
+                    <div class="col-auto">
+                    <span id="gammaMetalParamInLine" class="form-text">
+                        Mathematic parameter
+                    </span>
+                    </div>
+                </div>
+
             
             </div>
 
@@ -244,20 +279,13 @@
                     </div>
                 </div>
 
-                <div class="input-group mb-3">
+                <!-- <div class="input-group mb-3">
                     <div class="input-group-prepend">
                         <span class="input-group-text">Gamma</span>
                     </div>
                     <input type="text" class="form-control" aria-label="" id="gamma_in"
                     placeholder="">
-                    <!-- <div class="input-group-append">
-                        <select class="bg-light custom-select btn-outline-secondary dropdown-toggle" id="current_mult_in" style="width:70px">
-                            <option value="1">[A]</option>
-                            <option value="0.001">[mA]</option>
-                            <option value="1000">[kA]</option>
-                        </select>
-                    </div> -->
-                </div>
+                </div> -->
 
                 <div class="input-group mb-3">
                     <div class="input-group-prepend">
