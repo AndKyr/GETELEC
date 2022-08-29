@@ -186,7 +186,7 @@ function updatePropertiesPresets(){
 
             break;
 
-        case "3":
+        case "4":
 
             fieldDiv.placeholder = fieldShort;
             radiusDiv.placeholder = radiusShort;
@@ -195,7 +195,7 @@ function updatePropertiesPresets(){
 
             break;
 
-        case "4":
+        case "5":
 
             fieldDiv.placeholder = fieldShort;
             radiusDiv.placeholder = radiusShort;
