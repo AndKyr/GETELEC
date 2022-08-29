@@ -56,7 +56,7 @@
 
                         <option value="1">Field</option>
                         <option value="2">Radius</option>
-                        <option value="3">Gamma</option>
+                        <!-- <option value="3">Gamma</option> -->
                         <option value="4">Work Function</option>
                         <option value="5">Temperature</option>
 
@@ -64,17 +64,13 @@
 
                 </div>
 
-                <div class="container align-items-center mb-1 my-auto mx-auto">
-
-                    <label for="pickChangingVarGenerationMethod" class="col-auto">Auto-generate values</label>
-                    <select id="pickChangingVarGenerationMethod" class="custom-select btn-outline-secondary dropdown-toggle"  style="width:175px;margin-bottom:15px">
-
-                        <option value="1">Manual input</option>
-                        <option value="2">Auto-Generated</option>
-
-                    </select>
-                
+                <div class="container align-items-center mb-3 pl-3" id="autoGenerateValuesMainDiv">
+                    <input class="form-check-input" type="checkbox" id="autoGenerateValuesToggle">
+                    <label class="form-check-label" for="flexCheckDefault">
+                      Auto-generate values for sweeping parameter
+                    </label>
                 </div>
+
 
                 <div class="container align-items-center mb-3 pl-3" id="advancedModeToggleMainDiv">
                     <input class="form-check-input" type="checkbox" id="advancedModeToggle">
