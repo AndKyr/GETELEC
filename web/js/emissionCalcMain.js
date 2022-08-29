@@ -129,6 +129,7 @@ function main(){
         let advancedModeToggleDiv = document.getElementById("advancedModeToggle");
         let advancedModeToggleMainDiv = document.getElementById("advancedModeToggleMainDiv");
         let pickChangingVarDiv = document.getElementById("pickChangingVar");
+        let preselectSemiPropertiesDiv = document.getElementById("preselectSemiProperties");
 
         //advancedModeToggleMainDiv.hidden = true;
 
@@ -138,6 +139,7 @@ function main(){
         pickMaterialTypeDiv.addEventListener("change", updateWFName);
         advancedModeToggleDiv.addEventListener("change", updateAdvancedMethods);
         pickChangingVarDiv.addEventListener("change", updatePropertiesPresets);
+        preselectSemiPropertiesDiv.addEventListener("change", updatePreselectSemiProperties);
 
         updatePropertiesPresets();
         
@@ -147,6 +149,74 @@ function main(){
 
 let errorDivs = [];
 main();
+
+function updatePreselectSemiProperties(){
+
+    let preselectSemiPropertiesDiv = document.getElementById("preselectSemiProperties");
+
+    let ec = document.getElementById("ecParam");
+    let ef = document.getElementById("efParam");
+    let eg = document.getElementById("egParam");
+    let gamma = document.getElementById("gammaSemiParam");
+    let me = document.getElementById("meParam");
+    let mp = document.getElementById("mpParam");
+
+    const matPropDict = {
+
+        //[name, energygap273K, me, mp, dielectricconstant, energygap300K, fermilevel, ec]
+        1: ["Ge", 0.67, 0.2, 0.3, 16, 0.66, -0.27],
+        2: ["GaAs", 1.39, 0.072, 0.5, 13, 1.43, -0.1],
+        3: ["GaSb", 0.67, 0.047, 0.5, 15, 0.68, -0.1],
+        4: ["InSb", 0.16, 0.013, 0.6, 18, 0.17, -0.07],
+        5: ["InAs", 0.33, 0.02, 0.4, 14.5, 0.36, -0.15],
+        6: ["Si", 1.14, 0.33, 0.5, 12, 1.11, -0.6]
+
+    }
+
+    switch(preselectSemiPropertiesDiv.value){
+
+        case "1":
+            
+            setValues(1);
+            break;
+
+        case "2":
+
+            setValues(2);
+            break;
+
+        case "3":
+
+            setValues(3);
+            break;
+
+        case "4":
+
+            setValues(4);
+            break;
+
+        case "5":
+
+            setValues(5);
+            break;
+
+        case "6":
+
+            setValues(6);
+            break;
+        
+    }
+
+    function setValues(num){
+
+        eg.value = matPropDict[num][1];
+        me.value = matPropDict[num][2];
+        mp.value = matPropDict[num][3];
+        ef.value = matPropDict[num][6];
+
+    }
+
+}
 
 function updatePropertiesPresets(){
 

@@ -75,7 +75,7 @@
                 <div class="container align-items-center mb-3 pl-3" id="advancedModeToggleMainDiv">
                     <input class="form-check-input" type="checkbox" id="advancedModeToggle">
                     <label class="form-check-label" for="flexCheckDefault">
-                      Advanced Parameters
+                      Material properties
                     </label>
                 </div>
                 
@@ -133,6 +133,26 @@
 
             <div id="advancedParametersSemi" hidden style="border-style:solid;padding-left:10px;border-radius:9px" class="mb-3 advancedparams">
 
+                <div class="container align-items-center mx-auto">
+
+                    <label for="preselectSemiProperties" class="col-auto">Preselect values from standard material</label>
+                    <select id="preselectSemiProperties" class="custom-select btn-outline-secondary dropdown-toggle mt-3"  style="width:175px;margin-bottom:15px">
+
+                        <option value="0"></option>
+                        <option value="1">Ge</option>
+                        <option value="2">GaAs</option>
+                        <option value="3">GaSb</option>
+                        <option value="4">InSb</option>
+                        <option value="5">InAs</option>
+                        <option value="6">Si</option>
+
+
+
+                    </select>
+
+                </div>
+
+
                 <div class="row g-3 align-items-center mb-3 mt-1 mx-auto">
                     <div class="col-auto">
                     <label for="ecParam" class="col-form-label">Ec [eV]</label>
@@ -152,7 +172,7 @@
                     <label for="efParam" class="col-form-label">Ef [eV]</label>
                     </div>
                     <div class="col-auto">
-                    <input type="text" id="ecParam" class="form-control" aria-describedby="efParamInLine">
+                    <input type="text" id="efParam" class="form-control" aria-describedby="efParamInLine">
                     </div>
                     <div class="col-auto">
                     <span id="efParamInLine" class="form-text">
@@ -166,7 +186,7 @@
                     <label for="egParam" class="col-form-label">Eg [eV]</label>
                     </div>
                     <div class="col-auto">
-                    <input type="text" id="ecParam" class="form-control" aria-describedby="egParamInLine">
+                    <input type="text" id="egParam" class="form-control" aria-describedby="egParamInLine">
                     </div>
                     <div class="col-auto">
                     <span id="egParamInLine" class="form-text">
@@ -184,7 +204,7 @@
                     </div>
                     <div class="col-auto">
                     <span id="gammaSemiParamInLine" class="form-text">
-                        Mathematic parameter
+                        Mathematical parameter
                     </span>
                     </div>
                 </div>
@@ -192,28 +212,28 @@
 
                 <div class="row g-3 align-items-center mb-3 mx-auto">
                     <div class="col-auto">
-                    <label for="meParam" class="col-form-label">me [kg]</label>
+                    <label for="meParam" class="col-form-label">me [m*/m]</label>
                     </div>
                     <div class="col-auto">
                     <input type="text" id="meParam" class="form-control" aria-describedby="meParamInLine">
                     </div>
                     <div class="col-auto">
                     <span id="meParamInLine" class="form-text">
-                        Electron effective mass
+                        Electron effective mass as fraction of electron mass
                     </span>
                     </div>
                 </div>
 
                 <div class="row g-3 align-items-center mb-3 mx-auto">
                     <div class="col-auto">
-                    <label for="mpParam" class="col-form-label">mp [kg]</label>
+                    <label for="mpParam" class="col-form-label">mp [m*/m]</label>
                     </div>
                     <div class="col-auto">
                     <input type="text" id="mpParam" class="form-control" aria-describedby="mpParamInLine">
                     </div>
                     <div class="col-auto">
                     <span id="mpParamInLine" class="form-text">
-                        Hole effective mass
+                        Hole effective mass as fraction of electron mass
                     </span>
                     </div>
                 </div>
@@ -232,7 +252,7 @@
                     </div>
                     <div class="col-auto">
                     <span id="gammaMetalParamInLine" class="form-text">
-                        Mathematic parameter
+                        Mathematical parameter
                     </span>
                     </div>
                 </div>
