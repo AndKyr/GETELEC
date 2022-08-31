@@ -130,11 +130,15 @@ io.sockets.on('connection', function (socket) {
   socket.on('calculateEmission', (data) =>{
 
     const params = JSON.stringify({
-      "materialType": data[0], "Field": data[1],
-      "Radius": data[2], "Gamma": data[3],
-      "Work_Function": data[4], "Temperature": data[5],
-      "calculateNH": data[6], "calculateES": data[7],
-      "calculateEC": data[8]
+      
+      "materialType": data[0], "sweepParam": data[1],
+      "field": data[2], "radius": data[3],
+      "work_function": data[4], "temperature": data[5],
+      "ec": data[6], "ef": data[7], "eg": data[8],
+      "gammaMetal": data[9], "gammaSemi": data[10],
+      "me": data[11], "mp": data[12], "calculateEC": data[13],
+      "calculateES": data[14], "calculateNH": data[15]
+
     });
 
     const options = {
