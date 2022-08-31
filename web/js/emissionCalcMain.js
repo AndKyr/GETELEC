@@ -2,123 +2,256 @@ function main(){
 
     let socket = io();
 
-    let materialType, field, radius, gamma, workFunction, temperature,
-        fieldMult, radiusMult, gammaMult, workFunctionMult, temperatureMult,
-        calculateNH, calculateES, calculateEC
+    let materialType, field, radius, workFunction, temperature,
+        fieldMult, radiusMult, workFunctionMult, temperatureMult,
+        calculateNH, calculateES, calculateEC, gammaMetal, gammaSemi,
+        ec, ef, eg, me, mp, _field, _radius, _workFunction, _temperature,
+        _ec, _ef, _eg, _me, _mp, _gammaMetal, _gammaSemi, sweepParam,
+        data
 
     loadInitEventListeners();
 
     function checkValidity(){
 
-        if (errorDivs.length > 0) {
+        function removeErrorDivs(){
 
-            errorDivs.forEach(div => {
-                div.remove();
-            })
+            if (errorDivs.length > 0) {
 
-            errorDivs = [];
+                errorDivs.forEach(div => {
+                    div.remove();
+                })
+    
+                errorDivs = [];
+    
+            }
+        }
+
+        function getValuesFromUserInputFields(){
+
+            materialType = document.getElementById("pickMaterialType").value;
+            sweepParam = document.getElementById("pickChangingVar").value;
+            field = document.getElementById("field_in").value;
+            radius = document.getElementById("radius_in").value;
+            workFunction = document.getElementById("wf_in").value;
+            temperature = document.getElementById("temperature_in").value;
+    
+            fieldMult = document.getElementById("field_mult_in").value;
+            radiusMult = document.getElementById("radius_mult_in").value;
+            //gammaMult = document.getElementById("gamma_mult_in").value;
+            workFunctionMult = document.getElementById("wf_mult_in").value;
+            temperatureMult = document.getElementById("temperature_mult_in").value;
+    
+            gammaMetal = document.getElementById("gammaMetalParam").value;
+            gammaSemi = document.getElementById("gammaSemiParam").value
+    
+            ec = document.getElementById("ecParam").value;
+            ef = document.getElementById("efParam").value;
+            eg = document.getElementById("egParam").value;
+            me = document.getElementById("meParam").value;
+            mp = document.getElementById("mpParam").value;
+    
+            calculateEC = document.getElementById("chooseEC").checked;
+            calculateES = document.getElementById("chooseES").checked;
+            calculateNH = document.getElementById("chooseNH").checked;
+    
+        }
+
+        function processUserInputFields(){
+
+            if(field == "") field = "250";
+            if(radius == "") radius = "50";
+            if(gammaMetal == "") gammaMetal = "10";
+            if(gammaSemi == "") gammaSemi = "10";
+            if(workFunction == "") workFunction = "4.5";
+            if(temperature == "") temperature = "300";
+            if(ec == "") ec = "1.12";
+            if(ef == "") ef = "-0.6";
+            if(eg == "") eg = "1.14";
+            if(me == "") me = "0.33";
+            if(mp == "") mp = "0.5";
+
+            _field = processDataInput(field);
+            _radius = processDataInput(radius);
+            _gammaMetal = processDataInput(gammaMetal);
+            _gammaSemi = processDataInput(gammaSemi);
+            _workFunction = processDataInput(workFunction);
+            _temperature = processDataInput(temperature);
+            _ec = processDataInput(ec);
+            _ef = processDataInput(ef);
+            _eg = processDataInput(eg);
+            _me = processDataInput(me);
+            _mp = processDataInput(mp);
 
         }
 
-        materialType = document.getElementById("pickMaterialType").value;
-        field = document.getElementById("field_in").value;
-        radius = document.getElementById("radius_in").value;
-        gamma = document.getElementById("gamma_in").value;
-        workFunction = document.getElementById("wf_in").value;
-        temperature = document.getElementById("temperature_in").value;
+        function getWhatToCompute(){
 
-        fieldMult = document.getElementById("field_mult_in").value;
-        radiusMult = document.getElementById("radius_mult_in").value;
-        //gammaMult = document.getElementById("gamma_mult_in").value;
-        workFunctionMult = document.getElementById("wf_mult_in").value;
-        temperatureMult = document.getElementById("temperature_mult_in").value;
-
-        calculateEC = document.getElementById("chooseEC").checked;
-        calculateES = document.getElementById("chooseES").checked;
-        calculateNH = document.getElementById("chooseNH").checked;
-
-        if(field == "") field = "1, 5, 20"
-        if(radius == "") radius = "15, 25, 50"
-        if(gamma == "") gamma = "1, 10, 100"
-        if(workFunction == "") workFunction = "10, 10, 10"
-        if(temperature == "") temperature = "299.99, 300, 300.01"
-
-        let _field = processDataInput(field);
-        let _radius = processDataInput(radius);
-        let _workFunction = processDataInput(workFunction);
-        let _gamma = processDataInput(gamma);
-        let _temperature = processDataInput(temperature);
-
-        if(calculateEC){
-            calculateEC = "1";
-        } else {
-            calculateEC = "0";
+            if(calculateEC){
+                calculateEC = "1";
+            } else {
+                calculateEC = "0";
+            }
+    
+            if(calculateES){
+                calculateES = "1";
+            } else {
+                calculateES = "0";
+            }
+    
+            if(calculateNH){
+                calculateNH = "1";
+            } else {
+                calculateNH = "0";
+            }
+                
         }
 
-        if(calculateES){
-            calculateES = "1";
-        } else {
-            calculateES = "0";
+        function updateValuesUnits(){
+
+            for(let i = 0; i < _field.length; i++){
+                _field[i] = _field[i] * fieldMult;
+            }
+    
+            for(let i = 0; i < _radius.length; i++){
+                _radius[i] = _radius[i] * radiusMult;
+            }
+    
+            for(let i = 0; i < _workFunction.length; i++){
+                _workFunction[i] = _workFunction[i] * workFunctionMult;
+            }
+
+            for(let i = 0; i < _temperature.length; i++){
+                _temperature[i] = _temperature[i] * temperatureMult;
+            }
+    
         }
 
-        if(calculateNH){
-            calculateNH = "1";
-        } else {
-            calculateNH = "0";
+        function convertSweepParamToNumber(){
+
+            if(typeof(sweepParam) == 'string'){
+
+                switch(sweepParam){
+
+                    case "1":
+                        sweepParam = 1;
+                        break;
+        
+                    case "2":
+                        sweepParam = 2;
+                        break;
+        
+                    case "3":
+                        sweepParam = 3;
+                        break;
+        
+                    case "4":
+                        sweepParam = 4;
+                        break;
+        
+                }
+
+            }
+
         }
 
-        for(let i = 0; i < _field.length; i++){
-            _field[i] = _field[i] * fieldMult;
+        function covertMaterialTypeToNumber(){
+
+            if(typeof(materialType) == 'string'){
+
+                switch(materialType){
+
+                    case "1":
+                        
+                        materialType = 1;
+                        break;
+
+                    case "2":
+
+                        materialType = 2;
+                        break;
+
+                }
+
+            }
+
         }
 
-        for(let i = 0; i < _radius.length; i++){
-            _radius[i] = _radius[i] * radiusMult;
+        function checkForCanCompute(){
+
+            if(data[sweepParam + 1].length >= 3){
+
+                for(let i = 0; i < data.length; i++){
+
+                    if(i != sweepParam + 1){
+
+                        if(data[i].length > 1){
+
+                            raiseInputError("3003");
+                            return false;
+
+                        }
+
+                        return true;
+
+                    }
+
+                }
+
+            } else {
+
+
+                raiseInputError("3002");
+                return false;
+
+            }
+
+            return false;
+
         }
 
-        for(let i = 0; i < _workFunction.length; i++){
-            _workFunction[i] = _workFunction[i] * workFunctionMult;
-        }
+        removeErrorDivs();
+    
+        getValuesFromUserInputFields();
 
-        // for(let i = 0; i < _gamma.length; i++){
-        //     _gamma[i] = _gamma[i] * gammaMult;
-        // }
+        processUserInputFields();
 
-        for(let i = 0; i < _temperature.length; i++){
-            _temperature[i] = _temperature[i] * temperatureMult;
-        }
+        getWhatToCompute();
+
+        updateValuesUnits();
+
+        convertSweepParamToNumber();
+
+        covertMaterialTypeToNumber();
 
         if(materialType == "metal") materialType == 0;
         if(materialType == "semiconductor") materialType == 1;
 
-        let canCompute = true;
+        data = [materialType, sweepParam, _field, _radius, _workFunction, _temperature, _ec, _ef, _eg, _gammaMetal, _gammaSemi, _me, _mp];
 
-        //THIS IS BROKEN
-        if( (_field.length == _radius.length_ == _workFunction.length == _gamma.length == _temperature.length)){
-
-            canCompute = false;
-
-        }
+        let canCompute = checkForCanCompute();
         
-        else if(_field.length < 3 || _radius.length < 3 || _workFunction.length < 3 || _gamma.length < 3 || _temperature.length < 3){
+        if(canCompute){
 
+            socket.emit('calculateEmission', data);
+            $('#loadingModal').modal('show');
 
-            canCompute = false;
-
-        } else {
-
-            if(canCompute == true){
-
-                //HERE WILL CHECK FOR VALID INPUT RANGE
-
-                let data = [materialType, _field, _radius, _gamma, _workFunction, _temperature, calculateNH, calculateES, calculateEC];
-                
-                socket.emit('calculateEmission', data);
-                // $('#loadingModal').modal('show');
-
-            }
         }
+
+
+        //     if(canCompute == true){
+
+        //         //HERE WILL CHECK FOR VALID INPUT RANGE
+
+        //         let data = [materialType, _field, _radius, _gamma, _workFunction, _temperature, calculateNH, calculateES, calculateEC];
+                
+        //         socket.emit('calculateEmission', data);
+        //         // $('#loadingModal').modal('show');
+
+        //     }
+        // }
         
     }
+
 
     function loadInitEventListeners(){
 
@@ -140,6 +273,7 @@ function main(){
         advancedModeToggleDiv.addEventListener("change", updateAdvancedMethods);
         pickChangingVarDiv.addEventListener("change", updatePropertiesPresets);
         preselectSemiPropertiesDiv.addEventListener("change", updatePreselectSemiProperties);
+        enterButton.addEventListener("click", checkValidity);
 
         updatePropertiesPresets();
         
@@ -345,7 +479,17 @@ function autoGenerateValues(){
     let result = [];
 
     for(let i = 0; i < count; i++){
-        result.push((lowerBound + i * dSt).toFixed(3));
+
+        if(i == 0){
+
+            result.push((lowerBound + i * dSt).toFixed(2));
+
+        } else{
+
+            result.push(" " + (lowerBound + i * dSt).toFixed(2));
+
+
+        }
     }
 
     switch(varNum){
@@ -365,9 +509,6 @@ function autoGenerateValues(){
             document.getElementById("temperature_in").value = result;
             break;
     }
-
-    console.log(result);
-
 
 }
 
@@ -477,6 +618,12 @@ function raiseInputError(id) {
         case "3001":
             addErrorDiv("All input fields must have at least 3 values each");
             break;
+        case "3002":
+            addErrorDiv("Sweeping parameter must have at least 3 values");
+            break;
+        case "3003":
+            addErrorDiv("Only sweeping parameter accepts multiple values");
+            break;
     
         default:
             addErrorDiv("Unknown error");
@@ -493,7 +640,7 @@ function raiseInputError(id) {
         </section>
         `;
     
-        let relativeDiv = document.getElementById("myChart");
+        let relativeDiv = document.getElementById("TopBarView2");
         let errorDiv = document.createElement("div");
         errorDiv.innerHTML = template;
     
@@ -576,18 +723,36 @@ function processDataInput(input) {
             break;
     }
 
-    let _dsb = beautifyResult(data.data.split(sp));
+    let _dsb;
     let dsb = [];
 
-    if (cm != ".") {
+    if(data.type == 0){
+        _dsb = data.data;
+
+    } else {
+        _dsb = beautifyResult(data.data.split(sp));
+    }
+
+    if (cm == ",") {
         for (let i = 0; i < _dsb.length; i++) {
             _dsb[i] = _dsb[i].replace(cm, ".");
         }
     }
 
-    _dsb.forEach(el => {
-        dsb.push(parseFloat(el));
-    });
+    if(_dsb.separator == 99){
+
+        dsb.push(parseFloat(_dsb));
+
+    } else {
+
+        _dsb = _dsb.split(separatorDict[data.separator]);
+        beautifyResult(_dsb);
+
+        _dsb.forEach(el => {
+            dsb.push(parseFloat(el));
+        });
+        
+    }
 
     return dsb;
 }
@@ -607,10 +772,10 @@ class Input {
     processString() {
 
         if (this.separator == 99) {
-            raiseInputError("2006");
-            console.log("The following line has no separator: ");
-            console.log(this);
-            return;
+            // raiseInputError("2006");
+            // console.log("The following line has no separator: ");
+            // console.log(this);
+            // return;
         }
 
         if (this.comma == 99) {
@@ -618,8 +783,6 @@ class Input {
                         console.log(this);
                         return;*/
         }
-
-        let separator = this.separator;
 
         //this.data = beautifyResult(this.data.split(separatorDict.separator));
         //console.log(this);
@@ -661,7 +824,10 @@ function getTypeOfInput(data) {
     } else
     if (!isNaN(data[0])) {
         return 0;
-    } else {
+    } else if(
+        data[0] == "-"){
+            return 0;
+        } else {
         return 99;
     }
 
@@ -685,17 +851,17 @@ function getComma(data) {
 
     if (getSeparator(data) == 1) {
         if (data.includes(".")) {
-            return 0;
+            return 1;
         }
     } else if (getSeparator(data) == 0) {
         if (data.includes(",")) {
-            return 1;
+            return 0;
         }
     } else if (getSeparator(data) == 2) {
         if (data.includes(",")) {
-            return 1
+            return 0;
         } else if (data.includes(".")) {
-            return 0
+            return 1;
         }
     }
 
@@ -740,22 +906,42 @@ function getSeparator(data) {
                 }
             }
         }
+
     } else if (mult == 99) {
 
         let spacePos = data.indexOf(" ", 2);
 
-        if (data[spacePos - 1] == ".") {
-            return 0;
-        } else if (data[spacePos - 1] == ",") {
-            return 1
-        } else {
-            if (!isNaN(data[spacePos - 1])) {
-                return 2
+        if(spacePos != -1){
+
+            if (data[spacePos - 1] == ".") {
+
+                return 0;
+    
+            } else if (data[spacePos - 1] == ",") {
+    
+                return 1;
+    
+            } else {
+    
+                if (!isNaN(data[spacePos - 1])) {
+    
+                    return 2;
+    
+                }
+    
+                return 99;
             }
-            return 99;
+     
+        } else{
+
+            return 1;
+
         }
+
     } else {
+
         return 99;
+
     }
 
 }
