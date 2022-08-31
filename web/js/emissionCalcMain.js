@@ -180,9 +180,9 @@ function main(){
 
             if(data[sweepParam].length >= 3){
 
-                for(let i = 0; i < data.length; i++){
+                for(let i = 2; i < 5; i++){
 
-                    if(i != sweepParam + 1){
+                    if(i != sweepParam){
 
                         if(data[i].length > 1){
 
