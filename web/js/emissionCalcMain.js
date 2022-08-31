@@ -87,21 +87,21 @@ function main(){
         function getWhatToCompute(){
 
             if(calculateEC){
-                calculateEC = "1";
+                calculateEC = 1;
             } else {
-                calculateEC = "0";
+                calculateEC = 0;
             }
     
             if(calculateES){
-                calculateES = "1";
+                calculateES = 1;
             } else {
-                calculateES = "0";
+                calculateES = 0;
             }
     
             if(calculateNH){
-                calculateNH = "1";
+                calculateNH = 1;
             } else {
-                calculateNH = "0";
+                calculateNH = 0;
             }
                 
         }

@@ -41,7 +41,7 @@ def convertInput():
             result.append(line)
             
         else:
-            result.append(float(line))
+            result.append([float(line)])
     
     return result
 
@@ -67,7 +67,10 @@ def main():
     gammaMetal = data[9]
     gammaSemi = data[10]
     me = data[11]
-    mp = data[11]
+    mp = data[12]
+    calculateEC = data[13]
+    calculateES = data[14]
+    calculateNH = data[15]
     
     # for i in range(len(lines)):
     #     if "," in lines[i]:
