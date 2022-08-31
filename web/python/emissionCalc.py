@@ -48,29 +48,60 @@ def convertInput():
 
 def main():
 
-    F0 = [1., 5., 20.]
-    R0 = [15., 25., 50.]
-    gamma0 = [1., 10., 100.]
-    temp0 = [299.99999, 300., 300.01]
-
     data = convertInput()
     
-    materialType = data[0]
-    sweepParam = data[1]
+    materialType = (str(data[0][0]))[0]
+    sweepParam = (str(data[1])[0])[0]
     field = data[2]
     radius = data[3]
     wf = data[4]
     temp = data[5]
-    ec = data[6]
-    ef = data[7]
-    eg = data[8]
+    ec = data[6][0]
+    ef = data[7][0]
+    eg = data[8][0]
     gammaMetal = data[9]
     gammaSemi = data[10]
-    me = data[11]
-    mp = data[12]
-    calculateEC = data[13]
-    calculateES = data[14]
-    calculateNH = data[15]
+    me = data[11][0]
+    mp = data[12][0]
+    calculateEC = (str(data[13][0]))[0]
+    calculateES = (str(data[14][0]))[0]
+    calculateNH = (str(data[15][0]))[0]
+
+    if materialType == "1":
+
+        if calculateEC == "1":
+
+            print(field)
+            print(radius)
+            print(gammaMetal)
+            print(wf)
+            print(temp)
+
+
+        
+        if calculateES == "1":    
+            return
+
+        
+        if calculateNH == "1":
+            return
+
+    
+    elif materialType == "2":
+
+        if calculateEC == "1":
+            return
+
+        
+        if calculateES == "1":    
+            return
+
+        
+        if calculateNH == "1":
+            return
+
+
+    
     
     # for i in range(len(lines)):
     #     if "," in lines[i]:
