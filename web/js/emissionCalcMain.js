@@ -133,19 +133,19 @@ function main(){
                 switch(sweepParam){
 
                     case "1":
-                        sweepParam = 1;
-                        break;
-        
-                    case "2":
                         sweepParam = 2;
                         break;
         
-                    case "3":
+                    case "2":
                         sweepParam = 3;
                         break;
         
                     case "4":
                         sweepParam = 4;
+                        break;
+                    
+                    case "5":
+                        sweepParam = 5;
                         break;
         
                 }
@@ -178,7 +178,7 @@ function main(){
 
         function checkForCanCompute(){
 
-            if(data[sweepParam + 1].length >= 3){
+            if(data[sweepParam].length >= 3){
 
                 for(let i = 0; i < data.length; i++){
 
@@ -189,10 +189,7 @@ function main(){
                             raiseInputError("3003");
                             return false;
 
-                        }
-
-                        return true;
-
+                        } else{ return true; }
                     }
 
                 }
