@@ -154,7 +154,7 @@ function main(){
 
         }
 
-        function covertMaterialTypeToNumber(){
+        function convertMaterialTypeToNumber(){
 
             if(typeof(materialType) == 'string'){
 
@@ -221,37 +221,21 @@ function main(){
 
         convertSweepParamToNumber();
 
-        covertMaterialTypeToNumber();
+        convertMaterialTypeToNumber();
 
-        if(materialType == "metal") materialType == 0;
-        if(materialType == "semiconductor") materialType == 1;
-
-        data = [materialType, sweepParam, _field, _radius, _workFunction, _temperature, _ec, _ef, _eg, _gammaMetal, _gammaSemi, _me, _mp];
-
-        let canCompute = checkForCanCompute();
+        data = [[materialType], [sweepParam], _field, _radius, _workFunction, _temperature,
+            _ec, _ef, _eg, _gammaMetal, _gammaSemi, _me, _mp,
+            [calculateEC], [calculateES], [calculateNH]];
         
-        if(canCompute){
+        if(checkForCanCompute()){
 
             socket.emit('calculateEmission', data);
+            console.log(data);
             $('#loadingModal').modal('show');
 
         }
 
-
-        //     if(canCompute == true){
-
-        //         //HERE WILL CHECK FOR VALID INPUT RANGE
-
-        //         let data = [materialType, _field, _radius, _gamma, _workFunction, _temperature, calculateNH, calculateES, calculateEC];
-                
-        //         socket.emit('calculateEmission', data);
-        //         // $('#loadingModal').modal('show');
-
-        //     }
-        // }
-        
     }
-
 
     function loadInitEventListeners(){
 
@@ -266,7 +250,7 @@ function main(){
 
         //advancedModeToggleMainDiv.hidden = true;
 
-        //enterButton.addEventListener("click", checkValidity);
+        enterButton.addEventListener("click", checkValidity);
         pickChangingVarGenerationMethodDiv.addEventListener("change", updateAutoGenerateValuesDiv);
         generateValuesBtn.addEventListener("click", autoGenerateValues);
         pickMaterialTypeDiv.addEventListener("change", updateWFName);
@@ -278,6 +262,117 @@ function main(){
         updatePropertiesPresets();
         
     }
+
+    function loadCharts(){
+
+        const ctx1 = document.getElementById("currentChart");
+        const ctx2 = document.getElementById("heatChart");
+        const ctx3 = document.getElementById("spectrumChart");
+
+
+        const chart1 = new Chart(ctx1, {
+            type: 'line',
+            data: {
+
+                labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
+                datasets: [{
+                    label: '# of Votes',
+                    data: [12, 19, 3, 5, 2, 3],
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.2)',
+                        'rgba(54, 162, 235, 0.2)',
+                        'rgba(255, 206, 86, 0.2)',
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(153, 102, 255, 0.2)',
+                        'rgba(255, 159, 64, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+
+            },
+            options: {
+
+            }
+        });
+
+        const chart2 = new Chart(ctx2, {
+            type: 'line',
+            data: {
+
+                labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
+                datasets: [{
+                    label: '# of Votes',
+                    data: [12, 19, 3, 5, 2, 3],
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.2)',
+                        'rgba(54, 162, 235, 0.2)',
+                        'rgba(255, 206, 86, 0.2)',
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(153, 102, 255, 0.2)',
+                        'rgba(255, 159, 64, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+
+            },
+            options:{
+
+            }
+
+        });
+
+        const chart3 = new Chart(ctx3, {
+            type: 'line',
+            data: {
+
+                labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
+                datasets: [{
+                    label: '# of Votes',
+                    data: [12, 19, 3, 5, 2, 3],
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.2)',
+                        'rgba(54, 162, 235, 0.2)',
+                        'rgba(255, 206, 86, 0.2)',
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(153, 102, 255, 0.2)',
+                        'rgba(255, 159, 64, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+
+            },
+            options:{
+
+            }
+        })
+
+    }
+
+    loadCharts();
 }
 
 
@@ -973,6 +1068,3 @@ function insertAfter(newNode, existingNode) {
     existingNode.parentNode.insertBefore(newNode, existingNode.nextSibling);
 
 }
-
-
-
