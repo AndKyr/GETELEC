@@ -9,6 +9,7 @@
   "author": "rorychatt",
   "license": "MIT",
   "dependencies": {
+    "chart.js": "^3.9.1",
     "chartjs-plugin-crosshair": "^1.2.0",
     "chartjs-plugin-zoom": "^1.2.1",
     "express": "^4.18.1",

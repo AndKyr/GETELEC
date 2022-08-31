@@ -156,49 +156,60 @@ io.sockets.on('connection', function (socket) {
 
       } else if(res){
 
-        res.forEach(el =>{
 
-          if(el[0] == "{"){
 
-            try{
+        if(res.length > 1){
 
-              let _el = JSON.parse(el);
+          res.forEach(el =>{
 
-              switch(_el.type){
-
-                case "current":
-
-                  socket.emit("calculatedCurrent", _el);
-
-                  break;
-
-                case "nottighamHeat":
-
-                  socket.emit("calculatedNottinghamHeat", _el);
-
-                  break;
-
-                case "electronSpectrum":
-
-                  socket.emit("calculatedElectronSpectrum", _el);
-
-                  break;
-
+            if(el[0] == "{"){
+  
+              try{
+  
+                let _el = JSON.parse(el);
+  
+                switch(_el.type){
+  
+                  case "current":
+  
+                    socket.emit("calculatedCurrent", _el);
+  
+                    break;
+  
+                  case "nottighamHeat":
+  
+                    socket.emit("calculatedNottinghamHeat", _el);
+  
+                    break;
+  
+                  case "electronSpectrum":
+  
+                    socket.emit("calculatedElectronSpectrum", _el);
+  
+                    break;
+  
+                } 
+  
+              } catch (e) {
+  
+                console.log(updateTimeError() + e);
+  
               } 
+  
+            } else {
+  
+              console.log(updateTime() + el);
+  
+            }
+  
+          })
+  
 
-            } catch (e) {
+        } else{
+          
+          console.log(updateTime() + res);
 
-              console.log(updateTimeError() + e);
-
-            } 
-
-          } else {
-
-            console.log(updateTime() + el)
-
-          }
-
-        })
+        }
 
       }
 
@@ -314,6 +325,7 @@ function mainLoopInput(data) {
       break; //might not work
     case "help":
       console.log(updateTime() + "List of available commands: q, stop, exit, kickAll");
+      break;
 
     default:
       console.log(updateTime() + "Unknown command: " + data);
