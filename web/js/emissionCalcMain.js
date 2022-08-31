@@ -370,6 +370,14 @@ function main(){
     }
 
     loadCharts();
+
+    socket.on("calculatedEmission", (data) =>{
+
+        //updateGraph(data);
+        console.log(data);
+        $('#loadingModal').modal('hide');
+
+    })
 }
 
 

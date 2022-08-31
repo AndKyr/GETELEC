@@ -1,3 +1,4 @@
+from dataclasses import field
 import getelec_tabulator as gt_tab
 import getelec_mod as gt_mod
 import numpy as np
@@ -14,10 +15,35 @@ def current_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
 
     For more info refer to GETELEC TABULATOR's documentation
     """
+    pointCount = int(max([len(Field), len(Radius), len(Gamma), len(Workfunction), len(Temperature)]))
+    i = 0
+
+    while (i < pointCount - 1):
+        
+        if(len(Field) == i + 1):
+            Field.append(Field[i])
+
+        if(len(Radius) == i + 1):
+            Radius.append(Radius[i])
+        
+        if(len(Gamma) == i + 1):
+            Gamma.append(Gamma[i])
+
+        if(len(Workfunction) == i + 1):
+            Workfunction.append(Workfunction[i])
+
+        if(len(Temperature) == i + 1):
+            Temperature.append(Temperature[i])
+
+        i = i + 1
+
     tab = gt_tab.Tabulator()
 
-    kBoltz = 8.6173324e-5 
-    kT = kBoltz * Temperature
+    kBoltz = 8.6173324e-5
+    kT = []
+    
+    for i in range(len(Temperature)):
+        kT.append(kBoltz * Temperature[i])
     
     metal_emitter = gt_tab.Metal_Emitter(tab)
 

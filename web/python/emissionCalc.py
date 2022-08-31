@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import numpy as np
 
 mainpath,filename = os.path.split(os.path.realpath(__file__))
 
@@ -45,7 +46,6 @@ def convertInput():
     
     return result
 
-
 def main():
 
     data = convertInput()
@@ -67,65 +67,51 @@ def main():
     calculateES = (str(data[14][0]))[0]
     calculateNH = (str(data[15][0]))[0]
 
+    data1 = []
+    data2 = []
+    data3 = []
+    data4 = []
+    data5 = []
+    data6 = []
+
+
     if materialType == "1":
 
         if calculateEC == "1":
-
-            print(field)
-            print(radius)
-            print(gammaMetal)
-            print(wf)
-            print(temp)
-
-
+            data1 = current_metal_emitter(field, radius, gammaMetal, wf, temp).tolist()
         
         if calculateES == "1":    
-            return
+            data2
 
         
         if calculateNH == "1":
-            return
+            data3
 
     
     elif materialType == "2":
 
         if calculateEC == "1":
-            return
+            data4
 
         
         if calculateES == "1":    
-            return
+            data5
 
         
         if calculateNH == "1":
-            return
-
-
-    
-    
-    # for i in range(len(lines)):
-    #     if "," in lines[i]:
-    #         _values = lines[i].split(",")
-    #         for num in _values:
-    #             result[i].append(float(num))
-
-    #     else:
-    #         result.append(float(lines[i]))
+            data6
 
 
     # print(json.dumps(dataInArr))
     
 
-    # outdata1 = {"type": "current"}
+    outdata = {"materialType": materialType, "sweepParam": sweepParam,
+        "field": field, "radius": radius, "work_function": wf, "temperature": temp,
+        "ec": ec, "ef": ef, "eg": eg, "gammaMetal": gammaMetal, "gammaSemi": gammaSemi,
+        "me": me, "mp": mp, "metalEC": data1, "metalES": data2, "metalNH": data3,
+        "semiEC": data4, "semiES": data5, "semiNH": data6
+    }
 
-    # outdata2 = {"type": "nottinghamHeat"}
-
-    # outdata3 = {"type": "electronSpectrum"}
-
-
-    # print(json.dumps(outdata1))
-    # print(json.dumps(outdata2))
-    # print(json.dumps(outdata3))
-
+    print(json.dumps(outdata))
 
 main()

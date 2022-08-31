@@ -171,29 +171,11 @@ io.sockets.on('connection', function (socket) {
               try{
   
                 let _el = JSON.parse(el);
-  
-                switch(_el.type){
-  
-                  case "current":
-  
-                    socket.emit("calculatedCurrent", _el);
-  
-                    break;
-  
-                  case "nottighamHeat":
-  
-                    socket.emit("calculatedNottinghamHeat", _el);
-  
-                    break;
-  
-                  case "electronSpectrum":
-  
-                    socket.emit("calculatedElectronSpectrum", _el);
-  
-                    break;
-  
-                } 
-  
+
+                socket.emit("calculatedEmission", _el)
+
+                console.log(updateTime() + el)
+    
               } catch (e) {
   
                 console.log(updateTimeError() + e);
