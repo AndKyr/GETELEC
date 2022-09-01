@@ -114,6 +114,8 @@ def main():
         "semiEC": data4, "semiNH": data5, "semiES": data6
     }
 
+
+    # asdas
     print(json.dumps(outdata))
 
 main()
