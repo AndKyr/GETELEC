@@ -222,7 +222,7 @@ function main(){
 
         data = [[materialType], [sweepParam], _field, _radius, _workFunction, _temperature,
             _ec, _ef, _eg, _gammaMetal, _gammaSemi, _me, _mp,
-            [calculateEC], [calculateES], [calculateNH]];
+            [calculateEC], [calculateNH], [calculateES]];
         
         if(checkForCanCompute()){
 

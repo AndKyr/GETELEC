@@ -304,7 +304,7 @@ def spectrum_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature
     """
     tab = gt_tab.Tabulator()
     
-    kBoltz = 8.6173324e-5
+    kBoltz = 8.6173324e-5 
     kT = []
     
     for i in range(len(Temperature)):

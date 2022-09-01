@@ -66,8 +66,8 @@ def main():
     me = data[11][0]
     mp = data[12][0]
     calculateEC = (str(data[13][0]))[0]
-    calculateES = (str(data[14][0]))[0]
-    calculateNH = (str(data[15][0]))[0]
+    calculateES = (str(data[15][0]))[0]
+    calculateNH = (str(data[14][0]))[0]
 
     data1 = []
     data2 = []
@@ -80,13 +80,16 @@ def main():
     if materialType == "1":
 
         if calculateEC == "1":
+            print(1)
             data1 = current_metal_emitter(field, radius, gammaMetal, wf, temp).tolist()
         
-        if calculateES == "1":    
+        if calculateNH == "1":
+            print(2)
             data2 = heat_metal_emitter(field, radius, gammaMetal, wf, temp).tolist()
 
-        if calculateNH == "1":
-            data3 = spectrum_metal_emitter(field, radius, gammaMetal, wf, temp).toList()
+        if calculateES == "1":
+            print(3)
+            data3 = spectrum_metal_emitter(field, radius, gammaMetal, wf, temp)
 
     
     elif materialType == "2":
@@ -94,11 +97,11 @@ def main():
         if calculateEC == "1":
             data4 = current_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp).toList()
 
-        if calculateES == "1":    
+        if calculateNH == "1":    
             data5 = heat_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp).tolist()
   
-        if calculateNH == "1":
-            data6 = spectrum_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp).tolist()
+        if calculateES == "1":
+            data6 = spectrum_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp)
 
 
     # print(json.dumps(dataInArr))
@@ -107,8 +110,8 @@ def main():
     outdata = {"materialType": materialType, "sweepParam": sweepParam,
         "field": field, "radius": radius, "work_function": wf, "temperature": temp,
         "ec": ec, "ef": ef, "eg": eg, "gammaMetal": gammaMetal, "gammaSemi": gammaSemi,
-        "me": me, "mp": mp, "metalEC": data1, "metalES": data2, "metalNH": data3,
-        "semiEC": data4, "semiES": data5, "semiNH": data6
+        "me": me, "mp": mp, "metalEC": data1, "metalNH": data2, "metalES": data3,
+        "semiEC": data4, "semiNH": data5, "semiES": data6
     }
 
     print(json.dumps(outdata))
