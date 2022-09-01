@@ -1,4 +1,6 @@
+from distutils.file_util import write_file
 import json
+from math import gamma
 import os
 import sys
 import numpy as np
@@ -81,25 +83,22 @@ def main():
             data1 = current_metal_emitter(field, radius, gammaMetal, wf, temp).tolist()
         
         if calculateES == "1":    
-            data2
+            data2 = heat_metal_emitter(field, radius, gammaMetal, wf, temp).tolist()
 
-        
         if calculateNH == "1":
-            data3
+            data3 = spectrum_metal_emitter(field, radius, gammaMetal, wf, temp).toList()
 
     
     elif materialType == "2":
 
         if calculateEC == "1":
-            data4
+            data4 = current_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp).toList()
 
-        
         if calculateES == "1":    
-            data5
-
-        
+            data5 = heat_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp).tolist()
+  
         if calculateNH == "1":
-            data6
+            data6 = spectrum_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp).tolist()
 
 
     # print(json.dumps(dataInArr))

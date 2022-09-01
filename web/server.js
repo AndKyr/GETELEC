@@ -137,7 +137,7 @@ io.sockets.on('connection', function (socket) {
       "ec": data[6], "ef": data[7], "eg": data[8],
       "gammaMetal": data[9], "gammaSemi": data[10],
       "me": data[11], "mp": data[12], "calculateEC": data[13],
-      "calculateES": data[14], "calculateNH": data[15]
+      "calculateNH": data[14], "calculateES": data[15]
 
     });
 

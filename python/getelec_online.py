@@ -16,6 +16,7 @@ def current_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
     For more info refer to GETELEC TABULATOR's documentation
     """
     pointCount = int(max([len(Field), len(Radius), len(Gamma), len(Workfunction), len(Temperature)]))
+
     i = 0
 
     while (i < pointCount - 1):
@@ -73,10 +74,37 @@ def heat_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
 
     For more info refer to GETELEC TABULATOR's documentation
     """
+
+    pointCount = int(max([len(Field), len(Radius), len(Gamma), len(Workfunction), len(Temperature)]))
+    
+    i = 0
+
+    while (i < pointCount - 1):
+        
+        if(len(Field) == i + 1):
+            Field.append(Field[i])
+
+        if(len(Radius) == i + 1):
+            Radius.append(Radius[i])
+        
+        if(len(Gamma) == i + 1):
+            Gamma.append(Gamma[i])
+
+        if(len(Workfunction) == i + 1):
+            Workfunction.append(Workfunction[i])
+
+        if(len(Temperature) == i + 1):
+            Temperature.append(Temperature[i])
+
+        i = i + 1
+
     tab = gt_tab.Tabulator()
     
-    kBoltz = 8.6173324e-5 
-    kT = kBoltz * Temperature
+    kBoltz = 8.6173324e-5
+    kT = []
+    
+    for i in range(len(Temperature)):
+        kT.append(kBoltz * Temperature[i])
     
     metal_emitter = gt_tab.Metal_Emitter(tab)
     
@@ -105,10 +133,38 @@ def spectrum_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
 
     For more info refer to GETELEC TABULATOR's documentation
     """
+
+    pointCount = int(max([len(Field), len(Radius), len(Gamma), len(Workfunction), len(Temperature)]))
+    
+    i = 0
+
+    while (i < pointCount - 1):
+        
+        if(len(Field) == i + 1):
+            Field.append(Field[i])
+
+        if(len(Radius) == i + 1):
+            Radius.append(Radius[i])
+        
+        if(len(Gamma) == i + 1):
+            Gamma.append(Gamma[i])
+
+        if(len(Workfunction) == i + 1):
+            Workfunction.append(Workfunction[i])
+
+        if(len(Temperature) == i + 1):
+            Temperature.append(Temperature[i])
+
+        i = i + 1
+
+
     tab = gt_tab.Tabulator()
     
-    kBoltz = 8.6173324e-5 
-    kT = kBoltz * Temperature
+    kBoltz = 8.6173324e-5
+    kT = []
+    
+    for i in range(len(Temperature)):
+        kT.append(kBoltz * Temperature[i])
     
     metal_emitter = gt_tab.Metal_Emitter(tab)
     
@@ -140,10 +196,34 @@ def current_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature,
 
     For more info refer to GETELEC TABULATOR's documentation
     """
+
+    pointCount = int(max([len(Field), len(Radius), len(Gamma), len(Temperature)]))
+    
+    i = 0
+
+    while (i < pointCount - 1):
+        
+        if(len(Field) == i + 1):
+            Field.append(Field[i])
+
+        if(len(Radius) == i + 1):
+            Radius.append(Radius[i])
+        
+        if(len(Gamma) == i + 1):
+            Gamma.append(Gamma[i])
+
+        if(len(Temperature) == i + 1):
+            Temperature.append(Temperature[i])
+
+        i = i + 1
+
     tab = gt_tab.Tabulator()
     
-    kBoltz = 8.6173324e-5 
-    kT = kBoltz * Temperature
+    kBoltz = 8.6173324e-5
+    kT = []
+    
+    for i in range(len(Temperature)):
+        kT.append(kBoltz * Temperature[i])
 
     semiconductor_emitter = gt_tab.Semiconductor_Emitter(tab)
 
@@ -157,7 +237,7 @@ def current_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature,
         semiconductor_emitter.emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
         semiconductor_emitter.emitter.Interpolate_Gammow()
 
-        semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec[i], Ef[i], Eg[i], kT[i], m[i], me[i], mp[i])
+        semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec, Ef, Eg, kT[i], m[i], me, mp)
         
         j_c[i], j_v[i], j_total[i] = semiconductor_emitter.Current_Density_from_Semiconductors()
 
@@ -180,8 +260,11 @@ def heat_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature, me
     """
     tab = gt_tab.Tabulator()
     
-    kBoltz = 8.6173324e-5 
-    kT = kBoltz * Temperature
+    kBoltz = 8.6173324e-5
+    kT = []
+    
+    for i in range(len(Temperature)):
+        kT.append(kBoltz * Temperature[i])
 
     semiconductor_emitter = gt_tab.Semiconductor_Emitter(tab)
 
@@ -221,8 +304,11 @@ def spectrum_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature
     """
     tab = gt_tab.Tabulator()
     
-    kBoltz = 8.6173324e-5 
-    kT = kBoltz * Temperature
+    kBoltz = 8.6173324e-5
+    kT = []
+    
+    for i in range(len(Temperature)):
+        kT.append(kBoltz * Temperature[i])
 
     semiconductor_emitter = gt_tab.Semiconductor_Emitter(tab)
 
