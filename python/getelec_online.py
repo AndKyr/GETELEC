@@ -177,7 +177,9 @@ def spectrum_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
     
         metal_emitter.Define_Emitter_Parameters(Workfunction[i], kT[i])
     
-        energy[i], electron_count[i] = metal_emitter.Energy_Distribution()
+        energy, electron_count = metal_emitter.Energy_Distribution()
+
+        
 
     return energy, electron_count
 
