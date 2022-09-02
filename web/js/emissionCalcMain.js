@@ -373,11 +373,89 @@ function main(){
 
     socket.on("calculatedEmission", (data) =>{
 
-        //updateGraph(data);
+        updateGraphs(data);
         console.log(data);
         $('#loadingModal').modal('hide');
 
     })
+
+    function updateGraphs(data){
+
+        let _sweepParam = data.sweepParam;
+        let _materialType = data.materialType;
+        let _sweepValues;
+
+        let _field = data.field;
+        let _radius = data.radius;
+        let _wf = data.wf;
+        let _temp = data.temp;
+
+        let data1 = data.metalEC;
+        let data2 = data.metalNH;
+        let data3 = data.metalES;
+        let data4 = data.semiECl;
+        let data5 = data.semiNH;
+        let data6 = data.semiES;
+
+        updateSweepValues();
+
+        updateECGraph();
+
+        updateNHGraph();
+
+        updateESGraph();
+
+        function updateECGraph(){
+
+            if(_materialType == "1"){
+
+
+            }
+
+        }
+
+        function updateESGraph(){
+
+            return;
+
+        }
+
+        function updateNHGraph(){
+
+            return;
+
+        }
+
+        function updateSweepValues(){
+
+            switch(_sweepParam){
+
+                case "field":
+    
+                    _sweepValues = _field;
+                    break;
+    
+                case "radius":
+    
+                    _sweepValues = _radius;
+                    break;
+    
+                case "wf":
+    
+                    _sweepValues = _wf;
+                    break;
+    
+                case "temp":
+    
+                    _sweepValues = _temp;
+                    break;
+    
+            }
+    
+
+        }
+
+    }
 }
 
 

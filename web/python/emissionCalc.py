@@ -53,7 +53,7 @@ def main():
     data = convertInput()
     
     materialType = (str(data[0][0]))[0]
-    sweepParam = (str(data[1])[0])[0]
+    sweepParam = str(data[1][0])[0]
     field = data[2]
     radius = data[3]
     wf = data[4]
@@ -76,20 +76,26 @@ def main():
     data5 = []
     data6 = []
 
+    if sweepParam == "2":
+        sweepParam = "field"
+    elif sweepParam == "3":
+        sweepParam = "radius"
+    elif sweepParam == "4":
+        sweepParam = "wf"
+    elif sweepParam == "5":
+        sweepParam = "temp"
 
     if materialType == "1":
 
         if calculateEC == "1":
-            print(1)
             data1 = current_metal_emitter(field, radius, gammaMetal, wf, temp).tolist()
         
         if calculateNH == "1":
-            print(2)
             data2 = heat_metal_emitter(field, radius, gammaMetal, wf, temp).tolist()
 
         if calculateES == "1":
-            print(3)
-            data3 = spectrum_metal_emitter(field, radius, gammaMetal, wf, temp)
+            # data3 = spectrum_metal_emitter(field, radius, gammaMetal, wf, temp)
+            data3
 
     
     elif materialType == "2":
@@ -101,8 +107,8 @@ def main():
             data5 = heat_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp).tolist()
   
         if calculateES == "1":
-            data6 = spectrum_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp)
-
+            # data6 = spectrum_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp)
+            data6
 
     # print(json.dumps(dataInArr))
     

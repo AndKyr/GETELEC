@@ -331,12 +331,10 @@ def spectrum_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature
 
     return energy_c, count_c, energy_v, count_v
 
-#1st analyze iv button
 def fit_data(xML, yML, F0, W0, R0, Gamma0, Temp0):
     fit_data = gt_mod.fitML(xML, yML, F0, W0, R0, Gamma0, Temp0)
     return fit_data
 
-#notice i made approx=1
 def plot_data(xfn, beta, W0, R0, Gamma0, Temp0, approx=1):
     plot_data = gt_mod.MLplot(xfn, beta, W0, R0, Gamma0, Temp0, approx)
     return plot_data
