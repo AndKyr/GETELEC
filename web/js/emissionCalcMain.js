@@ -187,6 +187,14 @@ function main(){
 
         function checkForCanCompute(){
 
+            if(calculateEC == false && calculateES == false && calculateNH == false){
+
+                addErrorDiv("Please select what do You want to compute, ie. Emitted Current, Nottigham Heat or Electron spectrum");
+                return false;
+
+            }
+
+
             if(data[sweepParam].length >= 3){
 
                 for(let i = 2; i < 5; i++){
@@ -198,7 +206,7 @@ function main(){
                             raiseInputError("3003");
                             return false;
 
-                        } else{ return true; }
+                        } else { return true; }
                     }
 
                 }
@@ -438,11 +446,41 @@ function main(){
     
                                 }
 
+                                if (value === 0.0000000001) {
+    
+                                    return "100 [pA/nm^2]"
+    
+                                }
 
+                                if (value === 0.00000000001) {
+    
+                                    return "10 [pA/nm^2]"
+    
+                                }
 
+                                if (value === 0.000000000001) {
+    
+                                    return "1 [pA/nm^2]"
+    
+                                }
 
+                                if (value === 0.0000000000001) {
+    
+                                    return "100 [fA/nm^2]"
+    
+                                }
 
+                                if (value === 0.00000000000001) {
+    
+                                    return "10 [fA/nm^2]"
+    
+                                }
 
+                                if (value === 0.000000000000001) {
+    
+                                    return "1 [fA/nm^2]"
+    
+                                }
     
                                 return null
                             }
@@ -482,6 +520,14 @@ function main(){
 
                 plugins: {
 
+                    tooltip: {
+
+                        mode: 'interpolate',
+                        intersect: false,
+                        enabled: true
+    
+                    },
+
                     zoom: {
 
                         zoom: {
@@ -519,7 +565,19 @@ function main(){
                              }
     
                             }
+                    },
+
+                    title:{
+
+                        displayed: true,
+                        text: "Chart 1",
+                        font:{
+
+                            size: 24
+
                         }
+
+                    }
 
                 }
 
@@ -662,9 +720,41 @@ function main(){
     
                                 }
 
+                                if (value === 0.0000000001) {
+    
+                                    return "100 [pW/nm^2]"
+    
+                                }
 
+                                if (value === 0.00000000001) {
+    
+                                    return "10 [pW/nm^2]"
+    
+                                }
 
+                                if (value === 0.000000000001) {
+    
+                                    return "1 [pW/nm^2]"
+    
+                                }
 
+                                if (value === 0.0000000000001) {
+    
+                                    return "100 [fW/nm^2]"
+    
+                                }
+
+                                if (value === 0.00000000000001) {
+    
+                                    return "10 [fW/nm^2]"
+    
+                                }
+
+                                if (value === 0.000000000000001) {
+    
+                                    return "1 [fW/nm^2]"
+    
+                                }
 
 
     
@@ -706,6 +796,14 @@ function main(){
 
                 plugins: {
 
+                    tooltip: {
+
+                        mode: 'interpolate',
+                        intersect: false,
+                        enabled: true
+    
+                    },
+
                     zoom: {
 
                         zoom: {
@@ -742,8 +840,20 @@ function main(){
                                  max: 5e4
                              }
     
-                            }
                         }
+                    },
+
+                    title:{
+
+                        displayed: true,
+                        text: "Chart 2",
+                        font:{
+
+                            size: 24
+
+                        }
+
+                    }
 
                 }
 
@@ -841,6 +951,8 @@ function main(){
 
             updateSweepParameterBounds(chart1, data.sweepParam);
 
+            updateTitle(chart1, data);
+
             updatePoints(chart1, points);
 
 
@@ -880,8 +992,71 @@ function main(){
 
             updateSweepParameterBounds(chart2, data.sweepParam);
 
+            updateTitle(chart1, data);
+
             updatePoints(chart2, points);
 
+
+        }
+
+        function updateTitle(chart, data){
+
+            if(data.materialType == "1"){
+
+                switch(data.sweepParam){
+
+                    case "field":
+                        
+                        chart.options.plugins.title.text = `Radius: ${data.radius[0]} nm, Work Function: ${data.work_function[0]} eV, Temperature: ${data.temperature[0]} K` 
+                        break;
+
+                    case "radius":
+
+                        chart.options.plugins.title.text = `Field: ${data.field[0]} V/nm, Work Function: ${data.work_function[0]} eV, Temperature: ${data.temperature[0]} K` 
+                        break;
+
+                    case "workFunction":
+
+                        chart.options.plugins.title.text = `Field: ${data.field[0]} V/nm, Radius: ${data.radius[0]} nm, Temperature: ${data.temperature[0]} K` 
+                        break;
+
+                    case "temperature":
+
+                        chart.options.plugins.title.text = `Field: ${data.field[0]} V/nm, Radius: ${data.radius[0]} nm, Work Function: ${data.work_function[0]} eV` 
+                        break;
+
+
+                }
+
+            } else  {
+                
+                switch(data.sweepParam){
+
+                    case "field":
+
+                        chart.options.plugins.title.text = `Field: ${data.field[0]} V/nm, Radius: ${data.radius[0]} nm, Work Function: ${data.work_function[0]} eV, Temperature: ${data.temperature[0]} K, Ec: ${data.ec} eV, Ef: ${data.ef} eV, Eg: ${data.eg} eV, Me: ${data.me} m/me, Mp: ${data.mp} m/me`; 
+                        break;
+
+                        case "radius":
+
+                            chart.options.plugins.title.text = `Field: ${data.field[0]} V/nm, Work Function: ${data.work_function[0]} eV, Temperature: ${data.temperature[0]} K, Ec: ${data.ec} eV, Ef: ${data.ef} eV, Eg: ${data.eg} eV, Me: ${data.me} m/me, Mp: ${data.mp} m/me` 
+                            break;
+    
+                        case "workFunction":
+    
+                            chart.options.plugins.title.text = `Field: ${data.field[0]} V/nm, Radius: ${data.radius[0]} nm, Temperature: ${data.temperature[0]} K, Ec: ${data.ec} eV, Ef: ${data.ef} eV, Eg: ${data.eg} eV, Me: ${data.me} m/me, Mp: ${data.mp} m/me` 
+                            break;
+    
+                        case "temperature":
+    
+                            chart.options.plugins.title.text = `Field: ${data.field[0]} V/nm, Radius: ${data.radius[0]} nm, Work Function: ${data.work_function[0]} eV, Ec: ${data.ec} eV, Ef: ${data.ef} eV, Eg: ${data.eg} eV, Me: ${data.me} m/me, Mp: ${data.mp} m/me` 
+                            break;
+                            
+                }
+
+            }
+
+            chart.update();
 
         }
 
