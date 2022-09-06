@@ -1124,7 +1124,17 @@ function autoGenerateValues(){
 
     function checkForGoodBounds(){
 
-        result = true;
+        if (errorDivs.length > 0) {
+
+            errorDivs.forEach(div => {
+                div.remove();
+            })
+
+            errorDivs = [];
+
+        }
+
+        let result = true;
 
         const bounds = {
 
@@ -1191,50 +1201,56 @@ function autoGenerateValues(){
 
     }
 
-    const varTypeDict = {
-        1: "Field",
-        2: "Radius",
-        3: "Gamma",
-        4: "Work_Function",
-        5: "Temperature"
-    }
+    if(canCompute){
 
-    const dTot = upperBound - lowerBound;
-    const dSt = dTot / (count - 1);
-
-    let result = [];
-
-    for(let i = 0; i < count; i++){
-
-        if(i == 0){
-
-            result.push((lowerBound + i * dSt).toFixed(2));
-
-        } else{
-
-            result.push(" " + (lowerBound + i * dSt).toFixed(2));
-
-
+        const varTypeDict = {
+            1: "Field",
+            2: "Radius",
+            3: "Gamma",
+            4: "Work_Function",
+            5: "Temperature"
         }
+    
+        const dTot = upperBound - lowerBound;
+        const dSt = dTot / (count - 1);
+    
+        let result = [];
+    
+        for(let i = 0; i < count; i++){
+    
+            if(i == 0){
+    
+                result.push((lowerBound + i * dSt).toFixed(2));
+    
+            } else{
+    
+                result.push(" " + (lowerBound + i * dSt).toFixed(2));
+    
+    
+            }
+        }
+    
+        switch(varNum){
+            case "1":
+                document.getElementById("field_in").value = result;
+                break;
+            case "2":
+                document.getElementById("radius_in").value = result;
+                break;
+            case "3":
+                document.getElementById("gamma_in").value = result;
+                break;
+            case "4":
+                document.getElementById("wf_in").value = result;
+                break;
+            case "5":
+                document.getElementById("temperature_in").value = result;
+                break;
+        }
+    
+
     }
 
-    switch(varNum){
-        case "1":
-            document.getElementById("field_in").value = result;
-            break;
-        case "2":
-            document.getElementById("radius_in").value = result;
-            break;
-        case "3":
-            document.getElementById("gamma_in").value = result;
-            break;
-        case "4":
-            document.getElementById("wf_in").value = result;
-            break;
-        case "5":
-            document.getElementById("temperature_in").value = result;
-            break;
-    }
 
 }
 
