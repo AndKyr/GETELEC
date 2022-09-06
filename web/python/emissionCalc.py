@@ -110,9 +110,6 @@ def main():
             # data6 = spectrum_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp)
             data6
 
-    # print(json.dumps(dataInArr))
-    
-
     outdata = {"materialType": materialType, "sweepParam": sweepParam,
         "field": field, "radius": radius, "work_function": wf, "temperature": temp,
         "ec": ec, "ef": ef, "eg": eg, "gammaMetal": gammaMetal, "gammaSemi": gammaSemi,
@@ -120,8 +117,6 @@ def main():
         "semiEC": data4, "semiNH": data5, "semiES": data6
     }
 
-
-    # asdas
     print(json.dumps(outdata))
 
 main()

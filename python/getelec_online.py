@@ -116,7 +116,7 @@ def heat_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
     
         metal_emitter.Define_Emitter_Parameters(Workfunction[i], kT[i])
     
-        nh_metal[i] = metal_emitter.Nottingham_Heat()
+        nh_metal[i] = metal_emitter.Nottingham_Heat_educational()
 
     return nh_metal
 

@@ -179,6 +179,7 @@ io.sockets.on('connection', function (socket) {
               } catch (e) {
   
                 console.log(updateTimeError() + e);
+                console.log(el);
   
               } 
   

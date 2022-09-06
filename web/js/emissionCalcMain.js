@@ -7,7 +7,7 @@ function main(){
         calculateNH, calculateES, calculateEC, gammaMetal, gammaSemi,
         ec, ef, eg, me, mp, _field, _radius, _workFunction, _temperature,
         _ec, _ef, _eg, _me, _mp, _gammaMetal, _gammaSemi, sweepParam,
-        data
+        data, chart1, chart2, chart3
 
     loadInitEventListeners();
 
@@ -58,7 +58,7 @@ function main(){
 
         function processUserInputFields(){
 
-            if(field == "") field = "250";
+            if(field == "") field = "10";
             if(radius == "") radius = "50";
             if(gammaMetal == "") gammaMetal = "10";
             if(gammaSemi == "") gammaSemi = "10";
@@ -267,29 +267,493 @@ function main(){
         const ctx3 = document.getElementById("spectrumChart");
 
 
-        const chart1 = new Chart(ctx1, {
-            type: 'line',
+        const dddata = [{
+            x: 0.10207040421489234,
+            y: 5617.000000000002
+        }, {
+            x: 0.10559087321846734,
+            y: 4214.878587327415
+        }, {
+            x: 0.10911134222204238,
+            y: 3164.722642398102
+        },
+        {
+            x: 0.1126318112256174,
+            y: 2377.5417614456496
+        }, {
+            x: 0.11615228022919243,
+            y: 1787.0286368310246
+        }, {
+            x: 0.11967274923276744,
+            y: 1343.742827965096
+        }, {
+            x: 0.21120494332571796,
+            y: 0.8305729972325626
+        }
+    ]
+
+
+        chart1 = new Chart(ctx1, {
+            type: 'scatter',
             data: {
 
-                labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
                 datasets: [{
-                    label: '# of Votes',
-                    data: [12, 19, 3, 5, 2, 3],
+                    label: 'emitted current',
+                    data: dddata,
                     backgroundColor: [
-                        'rgba(255, 99, 132, 0.2)',
-                        'rgba(54, 162, 235, 0.2)',
-                        'rgba(255, 206, 86, 0.2)',
-                        'rgba(75, 192, 192, 0.2)',
-                        'rgba(153, 102, 255, 0.2)',
-                        'rgba(255, 159, 64, 0.2)'
+                        'rgba(255, 99, 132, 0.2)'
                     ],
                     borderColor: [
-                        'rgba(255, 99, 132, 1)',
-                        'rgba(54, 162, 235, 1)',
-                        'rgba(255, 206, 86, 1)',
-                        'rgba(75, 192, 192, 1)',
-                        'rgba(153, 102, 255, 1)',
-                        'rgba(255, 159, 64, 1)'
+                        'rgba(255, 99, 132, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+
+            },
+            options: {
+
+                fill: false,
+                lineTension: 0.1,
+                scales: {
+                    y: {
+    
+                        title: {
+    
+                            display: true,
+                            text: "Emitted current density",
+                            font:{
+                                size: 18
+                            }
+    
+                        },
+    
+                        type: "logarithmic",
+                        position: "bottom",
+                        ticks: {
+    
+                            callback: function (value, index, ticks) {
+    
+                                if (value === 1000000) {
+    
+                                    return "1 [MA/nm^2]"
+    
+                                }
+    
+                                if (value === 100000) {
+    
+                                    return "100 [kA/nm^2]"
+    
+                                }
+    
+                                if (value === 10000) {
+    
+                                    return "10 [kA/nm^2]"
+    
+                                }
+    
+                                if (value === 1000) {
+    
+                                    return "1 [kA/nm^2]"
+    
+                                }
+    
+                                if (value === 100) {
+    
+                                    return "100 [A/nm^2]"
+    
+                                }
+    
+                                if (value === 10) {
+    
+                                    return "10 [A/nm^2]"
+    
+                                }
+    
+                                if (value === 1) {
+    
+                                    return "1 [A/nm^2]"
+    
+                                }
+    
+                                if (value === 0.1) {
+    
+                                    return "100 [mA/nm^2]"
+    
+                                }
+    
+                                if (value === 0.01) {
+    
+                                    return "10 [mA/nm^2]"
+    
+                                }
+    
+                                if (value === 0.001) {
+    
+                                    return "1 [mA/nm^2]"
+    
+                                }
+
+                                if (value === 0.0001) {
+    
+                                    return "0.1 [mA/nm^2]"
+    
+                                }
+
+                                if (value === 0.00001) {
+    
+                                    return "0.01 [mA/nm^2]"
+    
+                                }
+
+                                if (value === 0.000001) {
+    
+                                    return "1000 [nA/nm^2]"
+    
+                                } 
+
+                                if (value === 0.0000001) {
+    
+                                    return "100 [nA/nm^2]"
+    
+                                }
+
+                                if (value === 0.00000001) {
+    
+                                    return "10 [nA/nm^2]"
+    
+                                }
+
+                                if (value === 0.000000001) {
+    
+                                    return "1 [nA/nm^2]"
+    
+                                }
+
+
+
+
+
+
+    
+                                return null
+                            }
+                        }
+    
+                    },
+    
+                    x: {
+    
+                        title: {
+    
+                            text: "Sweeping parameter",
+                            display: true,
+                            font:{
+                                size: 18
+                            }
+                        },
+    
+                        type: "linear",
+                        position: "bottom",
+                        ticks: {
+    
+                            callback: function (value, index, ticks) {
+    
+                                if (String(value).length > 4) {
+                                    value = Math.round(value * 100) / 100;
+                                }
+    
+                                return value;
+                            }
+    
+                        }
+    
+                    },
+                },
+    
+
+                plugins: {
+
+                    zoom: {
+
+                        zoom: {
+
+                            wheel: {
+                                enabled: true
+                            },
+                            pinch: {
+                                enabled: false
+                            },
+                            drag: {
+                                enabled: true,
+                                modifierKey: 'ctrl'
+                            },
+                            mode: 'xy'
+    
+                        },
+    
+                        pan: {
+    
+                            enabled: true,
+                            mode: 'xy'
+    
+                        },
+    
+                         limits: {
+    
+                            x: {
+                                min: -1,
+                                max: 100
+                             },
+                             y: {
+                                 min: -10,
+                                 max: 5e4
+                             }
+    
+                            }
+                        }
+
+                }
+
+            }
+        });
+
+        chart2 = new Chart(ctx2, {
+            type: 'scatter',
+            data: {
+
+                datasets: [{
+                    label: 'Nottingham heat',
+                    data: dddata,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+
+            },
+            options: {
+
+                fill: false,
+                lineTension: 0.1,
+                scales: {
+                    y: {
+    
+                        title: {
+    
+                            display: true,
+                            text: "Nottigham heat",
+                            font:{
+                                size: 18
+                            }
+    
+                        },
+    
+                        type: "logarithmic",
+                        position: "bottom",
+                        ticks: {
+    
+                            callback: function (value, index, ticks) {
+    
+                                if (value === 1000000) {
+    
+                                    return "1 [MW/nm^2]"
+    
+                                }
+    
+                                if (value === 100000) {
+    
+                                    return "100 [kW/nm^2]"
+    
+                                }
+    
+                                if (value === 10000) {
+    
+                                    return "10 [kW/nm^2]"
+    
+                                }
+    
+                                if (value === 1000) {
+    
+                                    return "1 [kW/nm^2]"
+    
+                                }
+    
+                                if (value === 100) {
+    
+                                    return "100 [W/nm^2]"
+    
+                                }
+    
+                                if (value === 10) {
+    
+                                    return "10 [W/nm^2]"
+    
+                                }
+    
+                                if (value === 1) {
+    
+                                    return "1 [W/nm^2]"
+    
+                                }
+    
+                                if (value === 0.1) {
+    
+                                    return "100 [mW/nm^2]"
+    
+                                }
+    
+                                if (value === 0.01) {
+    
+                                    return "10 [mW/nm^2]"
+    
+                                }
+    
+                                if (value === 0.001) {
+    
+                                    return "1 [mW/nm^2]"
+    
+                                }
+
+                                if (value === 0.0001) {
+    
+                                    return "0.1 [mW/nm^2]"
+    
+                                }
+
+                                if (value === 0.00001) {
+    
+                                    return "0.01 [mW/nm^2]"
+    
+                                }
+
+                                if (value === 0.000001) {
+    
+                                    return "1000 [nW/nm^2]"
+    
+                                } 
+
+                                if (value === 0.0000001) {
+    
+                                    return "100 [nW/nm^2]"
+    
+                                }
+
+                                if (value === 0.00000001) {
+    
+                                    return "10 [nW/nm^2]"
+    
+                                }
+
+                                if (value === 0.000000001) {
+    
+                                    return "1 [nW/nm^2]"
+    
+                                }
+
+
+
+
+
+
+    
+                                return null
+                            }
+                        }
+    
+                    },
+    
+                    x: {
+    
+                        title: {
+    
+                            text: "Sweeping parameter",
+                            display: true,
+                            font:{
+                                size: 18
+                            }
+                        },
+    
+                        type: "linear",
+                        position: "bottom",
+                        ticks: {
+    
+                            callback: function (value, index, ticks) {
+    
+                                if (String(value).length > 4) {
+                                    value = Math.round(value * 100) / 100;
+                                }
+    
+                                return value;
+                            }
+    
+                        }
+    
+                    },
+                },
+    
+
+                plugins: {
+
+                    zoom: {
+
+                        zoom: {
+
+                            wheel: {
+                                enabled: true
+                            },
+                            pinch: {
+                                enabled: false
+                            },
+                            drag: {
+                                enabled: true,
+                                modifierKey: 'ctrl'
+                            },
+                            mode: 'xy'
+    
+                        },
+    
+                        pan: {
+    
+                            enabled: true,
+                            mode: 'xy'
+    
+                        },
+    
+                         limits: {
+    
+                            x: {
+                                min: -1,
+                                max: 100
+                             },
+                             y: {
+                                 min: -10,
+                                 max: 5e4
+                             }
+    
+                            }
+                        }
+
+                }
+
+            }
+        });
+
+        chart3 = new Chart(ctx3, {
+            type: 'scatter',
+            data: {
+
+                labels: [],
+                datasets: [{
+                    label: 'electron spectrum',
+                    data: [],
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)'
                     ],
                     borderWidth: 1
                 }]
@@ -300,72 +764,7 @@ function main(){
             }
         });
 
-        const chart2 = new Chart(ctx2, {
-            type: 'line',
-            data: {
 
-                labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
-                datasets: [{
-                    label: '# of Votes',
-                    data: [12, 19, 3, 5, 2, 3],
-                    backgroundColor: [
-                        'rgba(255, 99, 132, 0.2)',
-                        'rgba(54, 162, 235, 0.2)',
-                        'rgba(255, 206, 86, 0.2)',
-                        'rgba(75, 192, 192, 0.2)',
-                        'rgba(153, 102, 255, 0.2)',
-                        'rgba(255, 159, 64, 0.2)'
-                    ],
-                    borderColor: [
-                        'rgba(255, 99, 132, 1)',
-                        'rgba(54, 162, 235, 1)',
-                        'rgba(255, 206, 86, 1)',
-                        'rgba(75, 192, 192, 1)',
-                        'rgba(153, 102, 255, 1)',
-                        'rgba(255, 159, 64, 1)'
-                    ],
-                    borderWidth: 1
-                }]
-
-            },
-            options:{
-
-            }
-
-        });
-
-        const chart3 = new Chart(ctx3, {
-            type: 'line',
-            data: {
-
-                labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
-                datasets: [{
-                    label: '# of Votes',
-                    data: [12, 19, 3, 5, 2, 3],
-                    backgroundColor: [
-                        'rgba(255, 99, 132, 0.2)',
-                        'rgba(54, 162, 235, 0.2)',
-                        'rgba(255, 206, 86, 0.2)',
-                        'rgba(75, 192, 192, 0.2)',
-                        'rgba(153, 102, 255, 0.2)',
-                        'rgba(255, 159, 64, 0.2)'
-                    ],
-                    borderColor: [
-                        'rgba(255, 99, 132, 1)',
-                        'rgba(54, 162, 235, 1)',
-                        'rgba(255, 206, 86, 1)',
-                        'rgba(75, 192, 192, 1)',
-                        'rgba(153, 102, 255, 1)',
-                        'rgba(255, 159, 64, 1)'
-                    ],
-                    borderWidth: 1
-                }]
-
-            },
-            options:{
-
-            }
-        })
 
     }
 
@@ -373,8 +772,8 @@ function main(){
 
     socket.on("calculatedEmission", (data) =>{
 
-        updateGraphs(data);
         console.log(data);
+        updateGraphs(data);
         $('#loadingModal').modal('hide');
 
     })
@@ -387,8 +786,8 @@ function main(){
 
         let _field = data.field;
         let _radius = data.radius;
-        let _wf = data.wf;
-        let _temp = data.temp;
+        let _wf = data.work_function;
+        let _temp = data.temperature;
 
         let data1 = data.metalEC;
         let data2 = data.metalNH;
@@ -407,10 +806,32 @@ function main(){
 
         function updateECGraph(){
 
+            // if(data1 == [] && data4 == []) return;
+
+            let points = [];
+
             if(_materialType == "1"){
 
+                for(let i = 0; i < _sweepValues.length; i++){
+
+                    points.push({x: _sweepValues[i], y: data1[i]})
+
+                }
+
+            } else {
+                
+                for(let i = 0; i < _sweepValues.length; i++){
+
+                    points.push({x: _sweepValues[i], y: data4[i]})
+
+                }
 
             }
+
+            updateSweepParameterBounds(chart1, data.sweepParam);
+
+            updatePoints(chart1, points);
+
 
         }
 
@@ -422,16 +843,70 @@ function main(){
 
         function updateNHGraph(){
 
+            // if(data1 == [] && data4 == []) return;
+
+            let points = [];
+
+            if(_materialType == "1"){
+
+                for(let i = 0; i < _sweepValues.length; i++){
+
+                    points.push({x: _sweepValues[i], y: data2[i]})
+
+                }
+
+            } else {
+                
+                for(let i = 0; i < _sweepValues.length; i++){
+
+                    points.push({x: _sweepValues[i], y: data5[i]})
+
+                }
+
+            }
+
+            updateSweepParameterBounds(chart2, data.sweepParam);
+
+            updatePoints(chart2, points);
+
+
+        }
+
+
+        //THIS IS NOT FINISHED
+        function updateSweepParameterBounds(chart, sweepParam){
+
             return;
 
         }
+
+        function updatePoints(chart, points){
+
+            chart.data.datasets.forEach((dataset) =>{
+                dataset.data = null;
+            });
+
+            chart.update();
+
+            let dataSet = chart.data.datasets[0];
+
+            points.forEach((point) => {
+
+                dataSet.data.push(point);
+
+            })
+
+            chart.update();
+
+        }
+         
 
         function updateSweepValues(){
 
             switch(_sweepParam){
 
                 case "field":
-    
+
                     _sweepValues = _field;
                     break;
     
@@ -532,8 +1007,8 @@ function updatePreselectSemiProperties(){
 
 function updatePropertiesPresets(){
 
-    const fieldLong = "2.413e+02, 2.511e+02, 2.622e+02, 2.706e+02, 2.803e+02";
-    const fieldShort = "3.000e+02";
+    const fieldLong = "4.5, 7, 9.5, 13, 15.5";
+    const fieldShort = "10";
     const radiusLong = "50, 60, 70, 80, 90";
     const radiusShort = "50";
     const wfLong = "4, 5, 6, 7, 8";
@@ -638,8 +1113,81 @@ function autoGenerateValues(){
 
     } catch (e){
 
+        
         console.log(e);
-        return;
+
+    }
+
+    let canCompute = true;
+
+    canCompute = checkForGoodBounds();
+
+    function checkForGoodBounds(){
+
+        result = true;
+
+        const bounds = {
+
+            field: {min: 0.5, max: 20},
+            radius: {min: 1, max: 995},
+            workFunction: {min: 0, max: 100},
+            temperature: {min: 10, max: 4000}
+
+            //THIS IS NOT FINISHED
+
+        }
+
+        switch(varNum){
+
+            case "1":
+
+                if(lowerBound <= bounds.field.min || upperBound >= bounds.field.max){
+
+                    addErrorDiv(`Field values must be in range of ${bounds.field.min} < x < ${bounds.field.max} V/nm`);
+                    result = false;
+
+                }
+
+                break;
+
+            case "2":
+
+                if(lowerBound <= bounds.radius.min || upperBound >= bounds.field.max){
+
+                    addErrorDiv(`Radius values must be in range of ${bounds.radius.min} < x < ${bounds.radius.max} nm`);
+                    result = false;
+
+                }
+
+                break;
+
+            case "4":
+
+                if(lowerBound <= bounds.workFunction.min || upperBound >= bounds.workFunction.max){
+
+                    addErrorDiv(`Work Function values must be in range of ${bounds.workFunction.min} < x < ${bounds.workFunction.max} eV`);
+                    result = false;
+
+                }
+
+                break;
+
+            case "5":
+
+                if(lowerBound <= bounds.temperature.min || upperBound >= bounds.temperature.max){
+
+                    addErrorDiv(`Temperature values must be in range of ${bounds.temperature.min} < x < ${bounds.temperature.max} K`);
+                    result = false;
+
+                }
+
+                break;  
+
+        }
+
+        return result;
+
+        
 
     }
 
@@ -759,6 +1307,29 @@ function updateAutoGenerateValuesDiv(){
 
 }
 
+function addErrorDiv(message) {
+
+    console.log(message);
+
+    const template = `
+    <section class="container showcase alert alert-danger alert-dismissible my-auto animated bounceInLeft">
+        <strong class="mx-2">Error!</strong> ${message}!
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </section>
+    `;
+
+    let relativeDiv = document.getElementById("TopBarView2");
+    let errorDiv = document.createElement("div");
+    errorDiv.innerHTML = template;
+
+    let section = errorDiv.children[0];
+
+    errorDivs.push(section)
+
+    insertAfter(section, relativeDiv);
+
+}
+
 function raiseInputError(id) {
 
     switch (id) {
@@ -802,32 +1373,12 @@ function raiseInputError(id) {
         case "3003":
             addErrorDiv("Only sweeping parameter accepts multiple values");
             break;
-    
+        case "3004":
+            addErrorDiv("Lower bound is too big/small for the picked parameter! Check the documentation for allowed range of values");
+            break;
+
         default:
             addErrorDiv("Unknown error");
-    }
-
-    function addErrorDiv(message) {
-
-        console.log(message);
-    
-        const template = `
-        <section class="container showcase alert alert-danger alert-dismissible my-auto animated bounceInLeft">
-            <strong class="mx-2">Error!</strong> ${message}!
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </section>
-        `;
-    
-        let relativeDiv = document.getElementById("TopBarView2");
-        let errorDiv = document.createElement("div");
-        errorDiv.innerHTML = template;
-    
-        let section = errorDiv.children[0];
-    
-        errorDivs.push(section)
-    
-        insertAfter(section, relativeDiv);
-    
     }
 
 }
