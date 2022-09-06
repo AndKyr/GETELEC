@@ -1,3 +1,12 @@
+const bounds = {
+
+    field: {min: 0.5, max: 20},
+    radius: {min: 1, max: 995},
+    workFunction: {min: 0, max: 100},
+    temperature: {min: 10, max: 4000}
+
+}
+
 function main(){
 
     let socket = io();
@@ -498,7 +507,7 @@ function main(){
     
                         },
     
-                         limits: {
+                        limits: {
     
                             x: {
                                 min: -1,
@@ -876,7 +885,26 @@ function main(){
         //THIS IS NOT FINISHED
         function updateSweepParameterBounds(chart, sweepParam){
 
-            return;
+            switch(sweepParam){
+
+                case "field":
+                    chart.options.plugins.zoom.limits.x = {min: bounds.field.min, max: bounds.field.max};
+                    break;
+                case "radius":
+                    chart.options.plugins.zoom.limits.x = {min: bounds.radius.min, max: bounds.radius.max};
+                    break;
+                case "workFunction":
+                    chart.options.plugins.zoom.limits.x = {min: bounds.workFunction.min, max: bounds.workFunction.max};
+                    break;
+                case "temperature":
+                    chart.options.plugins.zoom.limits.x = {min: bounds.temperature.min, max: bounds.temperature.max};
+                    break;
+
+            }
+
+            chart.update();
+
+
 
         }
 
@@ -1136,17 +1164,6 @@ function autoGenerateValues(){
 
         let result = true;
 
-        const bounds = {
-
-            field: {min: 0.5, max: 20},
-            radius: {min: 1, max: 995},
-            workFunction: {min: 0, max: 100},
-            temperature: {min: 10, max: 4000}
-
-            //THIS IS NOT FINISHED
-
-        }
-
         switch(varNum){
 
             case "1":
@@ -1162,7 +1179,11 @@ function autoGenerateValues(){
 
             case "2":
 
-                if(lowerBound <= bounds.radius.min || upperBound >= bounds.field.max){
+                console.log(bounds.radius);
+                console.log(lowerBound);
+                console.log(upperBound);
+
+                if(lowerBound <= bounds.radius.min || upperBound >= bounds.radius.max){
 
                     addErrorDiv(`Radius values must be in range of ${bounds.radius.min} < x < ${bounds.radius.max} nm`);
                     result = false;
