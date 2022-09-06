@@ -1,7 +1,7 @@
 const bounds = {
 
     field: {min: 0.5, max: 20},
-    radius: {min: 1, max: 995},
+    radius: {min: 0.5, max: 995},
     workFunction: {min: 0, max: 100},
     temperature: {min: 10, max: 4000}
 
@@ -837,6 +837,8 @@ function main(){
 
             }
 
+            chart1.resetZoom();
+
             updateSweepParameterBounds(chart1, data.sweepParam);
 
             updatePoints(chart1, points);
@@ -874,6 +876,8 @@ function main(){
 
             }
 
+            chart2.resetZoom();
+
             updateSweepParameterBounds(chart2, data.sweepParam);
 
             updatePoints(chart2, points);
@@ -888,24 +892,27 @@ function main(){
             switch(sweepParam){
 
                 case "field":
+                    chart.options.scales.y.title.text = "Field, [V/nm]"
                     chart.options.plugins.zoom.limits.x = {min: bounds.field.min, max: bounds.field.max};
+                    chart.update();
                     break;
                 case "radius":
+                    chart.options.scales.y.title.text = "Radius, [nm]"
                     chart.options.plugins.zoom.limits.x = {min: bounds.radius.min, max: bounds.radius.max};
+                    chart.update();
                     break;
                 case "workFunction":
+                    chart.options.scales.y.title.text = "Work Function, [eV]"
                     chart.options.plugins.zoom.limits.x = {min: bounds.workFunction.min, max: bounds.workFunction.max};
+                    chart.update();
                     break;
                 case "temperature":
+                    chart.options.scales.y.title.text = "Temperature, [K]"
                     chart.options.plugins.zoom.limits.x = {min: bounds.temperature.min, max: bounds.temperature.max};
+                    chart.update();
                     break;
 
             }
-
-            chart.update();
-
-
-
         }
 
         function updatePoints(chart, points){
@@ -1173,15 +1180,12 @@ function autoGenerateValues(){
                     addErrorDiv(`Field values must be in range of ${bounds.field.min} < x < ${bounds.field.max} V/nm`);
                     result = false;
 
+
                 }
 
                 break;
 
             case "2":
-
-                console.log(bounds.radius);
-                console.log(lowerBound);
-                console.log(upperBound);
 
                 if(lowerBound <= bounds.radius.min || upperBound >= bounds.radius.max){
 
