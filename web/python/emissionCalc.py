@@ -101,7 +101,7 @@ def main():
     elif materialType == "2":
 
         if calculateEC == "1":
-            data4 = current_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp).toList()
+            data4 = current_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp).tolist()
 
         if calculateNH == "1":    
             data5 = heat_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp).tolist()

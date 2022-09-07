@@ -524,6 +524,8 @@ function main() {
 
     socket.on('logServerSideError', (arg) => {
 
+        $('#loadingModal').modal('hide');
+
         alert("Got an error from server while computing data. Check console for more info.");
         console.log("Error server-side: ");
         console.log(arg);

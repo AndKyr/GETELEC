@@ -232,17 +232,21 @@ def current_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature,
     j_total = np.copy(Field)
     j_c = np.copy(Field)
     j_v = np.copy(Field)
-    m = np.ones(Field)*9.1093837015e-31 
+
+    m = 9.1093837015e-31
+    m1 = m * me
+    m2 = m * mp
 
     for i in range(len(Field)):
 
         semiconductor_emitter.emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
         semiconductor_emitter.emitter.Interpolate_Gammow()
 
-        semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec, Ef, Eg, kT[i], m[i], me, mp)
+        semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec, Ef, Eg, kT[i], m, m1, m2)
         
         j_c[i], j_v[i], j_total[i] = semiconductor_emitter.Current_Density_from_Semiconductors()
 
+    print(j_total)
     return j_total
 
 def heat_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature, me, mp):
@@ -273,17 +277,21 @@ def heat_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature, me
     nh_total = np.copy(Field)
     nh_c = np.copy(Field)
     nh_v = np.copy(Field)
-    m = np.ones(Field)*9.1093837015e-31 
+    m = 9.1093837015e-31 
+    m1 = m * me
+    m2 = m * mp
 
     for i in range(len(Field)):
 
         semiconductor_emitter.emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
         semiconductor_emitter.emitter.Interpolate_Gammow()
 
-        semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec[i], Ef[i], Eg[i], kT[i], m[i], me[i], mp[i])
+        semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec, Ef, Eg, kT[i], m, m1, m2)
         
         nh_c[i], nh_v[i], nh_total[i] = semiconductor_emitter.Nottingham_Heat_from_Semiconductors()
 
+    
+    #print(nh_total)
     return nh_total
 
 def spectrum_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature, me, mp):
@@ -318,7 +326,7 @@ def spectrum_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature
     count_c = np.copy(Field)
     energy_v = np.copy(Field)
     count_v = np.copy(Field)
-    m = np.ones(Field) * 9.1093837015e-31 
+    m = np.ones(len(Field)) * 9.1093837015e-31 
 
     for i in range(len(Field)):
 

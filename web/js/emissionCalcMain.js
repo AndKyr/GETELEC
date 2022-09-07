@@ -3,7 +3,7 @@ const bounds = {
     field: {min: 0.5, max: 20},
     radius: {min: 0.5, max: 995},
     workFunction: {min: 0, max: 100},
-    temperature: {min: 10, max: 4000}
+    temperature: {min: 10, max: 3000}
 
 }
 
@@ -73,10 +73,10 @@ function main(){
             if(gammaSemi == "") gammaSemi = "10";
             if(workFunction == "") workFunction = "4.5";
             if(temperature == "") temperature = "300";
-            if(ec == "") ec = "1.12";
-            if(ef == "") ef = "-0.6";
-            if(eg == "") eg = "1.14";
-            if(me == "") me = "0.33";
+            if(ec == "") ec = "4.05";
+            if(ef == "") ef = "4.61";
+            if(eg == "") eg = "1.12";
+            if(me == "") me = "0.98";
             if(mp == "") mp = "0.5";
 
             _field = processDataInput(field);
@@ -283,7 +283,6 @@ function main(){
         const ctx2 = document.getElementById("heatChart");
         const ctx3 = document.getElementById("spectrumChart");
 
-
         const dddata = [{
             x: 0.10207040421489234,
             y: 5617.000000000002
@@ -309,9 +308,8 @@ function main(){
         }
     ]
 
-
         chart1 = new Chart(ctx1, {
-            type: 'scatter',
+            type: 'line',
             data: {
 
                 datasets: [{
@@ -323,7 +321,8 @@ function main(){
                     borderColor: [
                         'rgba(255, 99, 132, 1)'
                     ],
-                    borderWidth: 1
+                    borderWidth: 1,
+                    interpolate: true
                 }]
 
             },
@@ -524,10 +523,21 @@ function main(){
 
                         mode: 'interpolate',
                         intersect: false,
-                        enabled: true
+                        enabled: true,
+                        animation: false,
+                        callbacks: {
+                            title: function(a, d) {
+                              return a[0].element.x.toFixed(2);
+                            },
+                            label: function(d) {
+                              return (
+                                d.chart.data.datasets[d.datasetIndex].label + ": " + d.element.y.toFixed(2)
+                              );
+                            }
+                        }
     
-                    },
-
+                    },                    
+                    
                     zoom: {
 
                         zoom: {
@@ -557,7 +567,7 @@ function main(){
     
                             x: {
                                 min: -1,
-                                max: 100
+                                max: 3000
                              },
                              y: {
                                  min: -10,
@@ -567,25 +577,22 @@ function main(){
                             }
                     },
 
-                    title:{
+                    title: {
 
-                        displayed: true,
+                        display: true,
                         text: "Chart 1",
-                        font:{
-
+                        font: {
                             size: 24
-
                         }
-
+    
                     }
-
                 }
 
             }
         });
 
         chart2 = new Chart(ctx2, {
-            type: 'scatter',
+            type: 'line',
             data: {
 
                 datasets: [{
@@ -833,7 +840,7 @@ function main(){
     
                             x: {
                                 min: -1,
-                                max: 100
+                                max: 3000
                              },
                              y: {
                                  min: -10,
@@ -843,17 +850,16 @@ function main(){
                         }
                     },
 
-                    title:{
+                    title: {
 
-                        displayed: true,
+                        display: true,
                         text: "Chart 2",
-                        font:{
-
+                        font: {
                             size: 24
-
                         }
-
+    
                     }
+
 
                 }
 
@@ -861,7 +867,7 @@ function main(){
         });
 
         chart3 = new Chart(ctx3, {
-            type: 'scatter',
+            type: 'line',
             data: {
 
                 labels: [],
@@ -911,7 +917,7 @@ function main(){
         let data1 = data.metalEC;
         let data2 = data.metalNH;
         let data3 = data.metalES;
-        let data4 = data.semiECl;
+        let data4 = data.semiEC;
         let data5 = data.semiNH;
         let data6 = data.semiES;
 
@@ -933,7 +939,7 @@ function main(){
 
                 for(let i = 0; i < _sweepValues.length; i++){
 
-                    points.push({x: _sweepValues[i], y: data1[i]})
+                    points.push({x: _sweepValues[i], y: Math.abs(data1[i])})
 
                 }
 
@@ -941,11 +947,13 @@ function main(){
                 
                 for(let i = 0; i < _sweepValues.length; i++){
 
-                    points.push({x: _sweepValues[i], y: data4[i]})
+                    points.push({x: _sweepValues[i], y: Math.abs(data4[i])})
 
                 }
 
             }
+
+            console.log(points);
 
             chart1.resetZoom();
 
@@ -974,7 +982,7 @@ function main(){
 
                 for(let i = 0; i < _sweepValues.length; i++){
 
-                    points.push({x: _sweepValues[i], y: data2[i]})
+                    points.push({x: _sweepValues[i], y: Math.abs(data2[i])})
 
                 }
 
@@ -982,7 +990,7 @@ function main(){
                 
                 for(let i = 0; i < _sweepValues.length; i++){
 
-                    points.push({x: _sweepValues[i], y: data5[i]})
+                    points.push({x: _sweepValues[i], y: Math.abs(data5[i])})
 
                 }
 
@@ -992,7 +1000,7 @@ function main(){
 
             updateSweepParameterBounds(chart2, data.sweepParam);
 
-            updateTitle(chart1, data);
+            updateTitle(chart2, data);
 
             updatePoints(chart2, points);
 
@@ -1034,23 +1042,23 @@ function main(){
 
                     case "field":
 
-                        chart.options.plugins.title.text = `Field: ${data.field[0]} V/nm, Radius: ${data.radius[0]} nm, Work Function: ${data.work_function[0]} eV, Temperature: ${data.temperature[0]} K, Ec: ${data.ec} eV, Ef: ${data.ef} eV, Eg: ${data.eg} eV, Me: ${data.me} m/me, Mp: ${data.mp} m/me`; 
+                        chart.options.plugins.title.text = [`Radius: ${data.radius[0]} nm, Work Function: ${data.work_function[0]} eV, Temperature: ${data.temperature[0]} K, Ec: ${data.ec} eV`, `Ef: ${data.ef} eV, Eg: ${data.eg} eV, Me: ${data.me} m/me, Mp: ${data.mp} m/me`]; 
                         break;
 
-                        case "radius":
+                    case "radius":
 
-                            chart.options.plugins.title.text = `Field: ${data.field[0]} V/nm, Work Function: ${data.work_function[0]} eV, Temperature: ${data.temperature[0]} K, Ec: ${data.ec} eV, Ef: ${data.ef} eV, Eg: ${data.eg} eV, Me: ${data.me} m/me, Mp: ${data.mp} m/me` 
-                            break;
+                        chart.options.plugins.title.text = [`Field: ${data.field[0]} V/nm, Work Function: ${data.work_function[0]} eV, Temperature: ${data.temperature[0]} K, Ec: ${data.ec} eV`, `Ef: ${data.ef} eV, Eg: ${data.eg} eV, Me: ${data.me} m/me, Mp: ${data.mp} m/me`] 
+                        break;
     
-                        case "workFunction":
+                    case "workFunction":
     
-                            chart.options.plugins.title.text = `Field: ${data.field[0]} V/nm, Radius: ${data.radius[0]} nm, Temperature: ${data.temperature[0]} K, Ec: ${data.ec} eV, Ef: ${data.ef} eV, Eg: ${data.eg} eV, Me: ${data.me} m/me, Mp: ${data.mp} m/me` 
-                            break;
+                        chart.options.plugins.title.text = [`Field: ${data.field[0]} V/nm, Radius: ${data.radius[0]} nm, Temperature: ${data.temperature[0]} K, Ec: ${data.ec} eV`, `Ef: ${data.ef} eV, Eg: ${data.eg} eV, Me: ${data.me} m/me, Mp: ${data.mp} m/me`]
+                        break;
     
-                        case "temperature":
+                    case "temperature":
     
-                            chart.options.plugins.title.text = `Field: ${data.field[0]} V/nm, Radius: ${data.radius[0]} nm, Work Function: ${data.work_function[0]} eV, Ec: ${data.ec} eV, Ef: ${data.ef} eV, Eg: ${data.eg} eV, Me: ${data.me} m/me, Mp: ${data.mp} m/me` 
-                            break;
+                        chart.options.plugins.title.text = [`Field: ${data.field[0]} V/nm, Radius: ${data.radius[0]} nm, Work Function: ${data.work_function[0]} eV, Ec: ${data.ec} eV`, `Ef: ${data.ef} eV, Eg: ${data.eg} eV, Me: ${data.me} m/me, Mp: ${data.mp} m/me`]
+                        break;
                             
                 }
 
@@ -1067,22 +1075,22 @@ function main(){
             switch(sweepParam){
 
                 case "field":
-                    chart.options.scales.y.title.text = "Field, [V/nm]"
+                    chart.options.scales.x.title.text = "Field, [V/nm]"
                     chart.options.plugins.zoom.limits.x = {min: bounds.field.min, max: bounds.field.max};
                     chart.update();
                     break;
                 case "radius":
-                    chart.options.scales.y.title.text = "Radius, [nm]"
+                    chart.options.scales.x.title.text = "Radius, [nm]"
                     chart.options.plugins.zoom.limits.x = {min: bounds.radius.min, max: bounds.radius.max};
                     chart.update();
                     break;
                 case "workFunction":
-                    chart.options.scales.y.title.text = "Work Function, [eV]"
+                    chart.options.scales.x.title.text = "Work Function, [eV]"
                     chart.options.plugins.zoom.limits.x = {min: bounds.workFunction.min, max: bounds.workFunction.max};
                     chart.update();
                     break;
                 case "temperature":
-                    chart.options.scales.y.title.text = "Temperature, [K]"
+                    chart.options.scales.x.title.text = "Temperature, [K]"
                     chart.options.plugins.zoom.limits.x = {min: bounds.temperature.min, max: bounds.temperature.max};
                     chart.update();
                     break;
@@ -1160,13 +1168,12 @@ function updatePreselectSemiProperties(){
 
     const matPropDict = {
 
-        //[name, energygap273K, me, mp, dielectricconstant, energygap300K, fermilevel, ec]
-        1: ["Ge", 0.67, 0.2, 0.3, 16, 0.66, -0.27],
-        2: ["GaAs", 1.39, 0.072, 0.5, 13, 1.43, -0.1],
-        3: ["GaSb", 0.67, 0.047, 0.5, 15, 0.68, -0.1],
-        4: ["InSb", 0.16, 0.013, 0.6, 18, 0.17, -0.07],
-        5: ["InAs", 0.33, 0.02, 0.4, 14.5, 0.36, -0.15],
-        6: ["Si", 1.14, 0.33, 0.5, 12, 1.11, -0.6]
+        //[name, energygap300K, me, mp, ef, ec, eg]
+        //Taken from Physics of Semiconductor devices 2nd edition book, S. M. Sze
+
+        1: ["Si", 1.12, 0.98, 0.49, 4.61, 4.05, 5.17],
+        2: ["Ge", 0.66, 1.64, 0.28, 4.33, 4, 4.66],
+        3: ["GaAs", 1.42, 0.067, 0.082, 4.78, 4.07, 5.49]
 
     }
 
@@ -1186,22 +1193,6 @@ function updatePreselectSemiProperties(){
 
             setValues(3);
             break;
-
-        case "4":
-
-            setValues(4);
-            break;
-
-        case "5":
-
-            setValues(5);
-            break;
-
-        case "6":
-
-            setValues(6);
-            break;
-        
     }
 
     function setValues(num){
@@ -1209,7 +1200,10 @@ function updatePreselectSemiProperties(){
         eg.value = matPropDict[num][1];
         me.value = matPropDict[num][2];
         mp.value = matPropDict[num][3];
-        ef.value = matPropDict[num][6];
+        ef.value = matPropDict[num][4];
+        ec.value = matPropDict[num][5];
+        gamma.value = 10;
+        
 
     }
 
@@ -1458,7 +1452,8 @@ function updateWFName(){
 
     let pickMaterialTypeDiv = document.getElementById("pickMaterialType");
     let pickChangingVarDiv = document.getElementById("pickChangingVar");
-    let wfName = document.getElementById("wf_name");
+    let wfMain = document.getElementById("wf_main");
+    let wfSelectId = document.getElementById("wfSelectId");
     let advancedModeToggleMainDiv = document.getElementById("advancedModeToggleMainDiv");
     let advancedModeToggle = document.getElementById("advancedModeToggle");
     let advancedModeSemi = document.getElementById("advancedParametersSemi");
@@ -1471,6 +1466,9 @@ function updateWFName(){
         //wfName.textContent = "Work Function";
         //pickChangingVarDiv.options[3].textContent = "Work Function";
         //advancedModeToggleMainDiv.hidden = true;
+
+        wfMain.hidden = false;
+        wfSelectId.hidden = false;
 
         if(advancedModeToggle.checked == true){
 
@@ -1488,6 +1486,8 @@ function updateWFName(){
 
         //wfName.textContent = "Work Function";
         //pickChangingVarDiv.options[3].textContent = "Work Function";
+        wfMain.hidden = true;
+        wfSelectId.hidden = true;
         
         if(advancedModeToggle.checked == true){
 

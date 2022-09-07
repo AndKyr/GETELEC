@@ -152,10 +152,13 @@ io.sockets.on('connection', function (socket) {
 
       if(err){
 
+        socket.emit('logServerSideError', err);
+
         console.log(updateTimeError() + socket.id + " " + err);
+        console.log(err);
+
         let errorMsg = updateTimeError() + err;
         logger.log('error', errorMsg);
-        socket.emit('logServerSideError', err);
 
 
       } else if(res){
@@ -172,11 +175,13 @@ io.sockets.on('connection', function (socket) {
   
                 let _el = JSON.parse(el);
 
-                socket.emit("calculatedEmission", _el)
+                socket.emit("calculatedEmission", _el);
 
-                console.log(updateTime() + el)
+                console.log(updateTime() + el);
     
               } catch (e) {
+
+                socket.emit("logServerSideError", e);
   
                 console.log(updateTimeError() + e);
                 console.log(el);
@@ -184,8 +189,8 @@ io.sockets.on('connection', function (socket) {
               } 
   
             } else {
-  
-              console.log(updateTime() + el);
+
+              console.log(updateTimeError() + el);
   
             }
   
