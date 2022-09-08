@@ -246,7 +246,6 @@ def current_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature,
         
         j_c[i], j_v[i], j_total[i] = semiconductor_emitter.Current_Density_from_Semiconductors()
 
-    print(j_total)
     return j_total
 
 def heat_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature, me, mp):
