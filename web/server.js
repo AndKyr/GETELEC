@@ -85,6 +85,7 @@ io.sockets.on('connection', function (socket) {
       if (err) {
 
         console.log(updateTimeError() + socket.id + " " + err);
+        console.log(err);
         let errorMsg = updateTimeError() + err;
         logger.log('error', errorMsg);
         socket.emit('logServerSideError', err);
@@ -113,6 +114,7 @@ io.sockets.on('connection', function (socket) {
             } catch (e){
 
               console.log(updateTimeError() + e);
+              console.log(e);
 
             }
 

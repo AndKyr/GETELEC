@@ -71,7 +71,7 @@ def main():
 with cProfile.Profile() as pr:
     main()
 
-stats = pstats.Stats(pr)
-stats.sort_stats(pstats.SortKey.TIME)
-stats.print_stats()
+#stats = pstats.Stats(pr)
+#stats.sort_stats(pstats.SortKey.TIME)
+#stats.print_stats()
 #stats.dump_stats(filename='ivCalcProfiling.prof')
