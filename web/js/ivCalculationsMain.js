@@ -369,8 +369,8 @@ function main() {
                     limits: {
 
                         x: {
-                            min: 0.1,
-                            max: 1
+                            min: 0,
+                            max: 3
                         },
                         y: {
                             min: -100,

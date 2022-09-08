@@ -279,9 +279,132 @@ function main(){
 
     function loadCharts(){
 
+        const indicatorOptions = {
+
+            radius: 4,
+            borderWidth: 1,
+            borderColor: 'red',
+            backgroundColor: 'transparent'
+    
+        };
+    
+        const getLabelAndValue = Chart.controllers.line.prototype.getLabelAndValue;
+    
+        Chart.controllers.line.prototype.getLabelAndValue = function (index) {
+    
+            if (index === -1) {
+    
+                const meta = this.getMeta();
+                const pt = meta._pt;
+                const vScale = meta.vScale;
+                const xScale = meta.xScale;
+    
+                return {
+    
+                    label: '',
+                    value: "x: " + Math.round(xScale.getValueForPixel(pt.x) * 10000) / 10000 +
+                        ", y: " + Math.round(vScale.getValueForPixel(pt.y) * 10000) / 10000
+    
+                };
+    
+            }
+    
+            return getLabelAndValue.call(this, index);
+    
+        }
+    
+        // The interaction mode
+        Chart.Interaction.modes.interpolate = function (chart, e, option) {
+    
+            const x = e.x;
+            const items = [];
+            const metas = chart.getSortedVisibleDatasetMetas();
+    
+            for (let i = 0; i < metas.length; i++) {
+    
+                const meta = metas[i];
+                const pt = meta.dataset.interpolate({
+                    x
+                }, "x");
+    
+                if (pt) {
+    
+                    const element = new Chart.elements.PointElement({
+                        ...pt,
+                        options: {
+                            ...indicatorOptions
+                        }
+                    });
+    
+                    meta._pt = element;
+    
+                    items.push({
+    
+                        element,
+                        index: -1,
+                        datasetIndex: meta.index
+    
+                    });
+    
+                } else {
+    
+                    meta._pt = null;
+    
+                }
+            }
+    
+            return items;
+    
+        };
+    
+        // Plugin to draw the indicators
+        Chart.register({
+    
+            id: 'indicators',
+    
+            afterDraw(chart) {
+    
+                const metas = chart.getSortedVisibleDatasetMetas();
+    
+                for (let i = 0; i < metas.length; i++) {
+    
+                    const meta = metas[i];
+    
+                    if (meta._pt) {
+    
+                        meta._pt.draw(chart.ctx);
+    
+                    }
+    
+                }
+    
+            },
+    
+            afterEvent(chart, args) {
+    
+                if (args.event.type === 'mouseout') {
+    
+                    const metas = chart.getSortedVisibleDatasetMetas();
+    
+                    for (let i = 0; i < metas.length; i++) {
+    
+                        metas[i]._pt = null;
+    
+                    }
+    
+                    args.changed = true;
+    
+                }
+    
+            }
+        })
+    
+
         const ctx1 = document.getElementById("currentChart");
         const ctx2 = document.getElementById("heatChart");
         const ctx3 = document.getElementById("spectrumChart");
+
+
 
         const dddata = [{
             x: 0.10207040421489234,
