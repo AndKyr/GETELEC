@@ -497,10 +497,10 @@ function main() {
 
                 };
 
-                let data = [_voltage, _current, _workFunction];
+                inData = [_voltage, _current, _workFunction];
 
                 if (canCompute) {
-                    socket.emit('calculateIv', data);
+                    socket.emit('calculateIv', inData);
                     $('#loadingModal').modal('show');
                 }
 
@@ -639,23 +639,17 @@ loadEventListeners();
 
 function downloadData(){
 
-    if(inData != null){ 
 
-       download(inData, "data", "json")
+    download();
 
-    } else{
 
-        raiseInputError("2008");
+    function download(filename) {
 
-    }
-
-    function download(data, filename) {
-
-        var file = new Blob([JSON.stringify(data)], {type : 'application/json'});
+        var file = new Blob([JSON.stringify(inData)], {type : 'application/json'});
 
         if (window.navigator.msSaveOrOpenBlob) // IE10+
 
-            window.navigator.msSaveOrOpenBlob(file, filename);
+            window.navigator.msSaveOrOpenBlob("data", "data.json");
 
         else { // Others
 
