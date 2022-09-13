@@ -203,7 +203,7 @@ function main(){
 
                         if(data[i].length > 1){
 
-                            raiseInputError("3003");
+                            addErrorDiv("Only sweeping parameter accepts multiple values");
                             return false;
 
                         } else { return true; }
@@ -214,7 +214,7 @@ function main(){
             } else {
 
 
-                raiseInputError("3002");
+                addErrorDiv("Sweeping parameter must have at least 3 values");
                 return false;
 
             }
@@ -1547,59 +1547,6 @@ function addErrorDiv(message) {
 
 }
 
-function raiseInputError(id) {
-
-    switch (id) {
-
-        case "2000":
-            addErrorDiv("Can not create graph as in voltage data there are more points than in current data");
-            break;
-        case "2001":
-            addErrorDiv("Can not create graph as in current data there are more points than in voltage data");
-            break;
-        case "2002":
-            addErrorDiv("One of the voltage values is out of bounds 0 < x < 100'000 V");
-            break;
-        case "2003":
-            addErrorDiv("One of the current values is out of bounds 0 < x < 10'000 A");
-            break;
-        case "2004":
-            addErrorDiv("Work function value is out of bounds 0.5 < x < 10 eV");
-            break;
-        case "2005":
-            addErrorDiv("One must enter at least 3 points for voltage and current data");
-            break;
-        case "2006":
-            addErrorDiv("One of the input lines has no separator between values! Check console for more info");
-            break;
-        case "2007":
-            addErrorDiv("One of the input lines has a data of unknown type! Check console for more info");
-            break;
-        case "2008":
-            addErrorDiv("Can not download data file as there is no data to download. (Did you click on Enter button?)");
-            break;
-        case "3000":
-            addErrorDiv("Can not create graph as all inputs must have equal amount of data points");
-            break;
-        case "3001":
-            addErrorDiv("All input fields must have at least 3 values each");
-            break;
-        case "3002":
-            addErrorDiv("Sweeping parameter must have at least 3 values");
-            break;
-        case "3003":
-            addErrorDiv("Only sweeping parameter accepts multiple values");
-            break;
-        case "3004":
-            addErrorDiv("Lower bound is too big/small for the picked parameter! Check the documentation for allowed range of values");
-            break;
-
-        default:
-            addErrorDiv("Unknown error");
-    }
-
-}
-
 const typeDict = {
     0: "String",
     1: "Array",
@@ -1749,7 +1696,7 @@ class Input {
 
     processUnknownInput() {
 
-        raiseInputError("2007");
+        addErrorDiv("One of the input lines has a data of unknown type! Check console for more info");
         console.log("Unknown data: ");
         console.log(this);
 
