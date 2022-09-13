@@ -596,7 +596,7 @@ function main(){
             data: {
 
                 datasets: [{
-                    label: 'Nottingham heat',
+                    label: 'positive Nottingham heat',
                     data: dddata,
                     backgroundColor: [
                         'rgba(255, 99, 132, 0.2)'
@@ -606,11 +606,26 @@ function main(){
                     ],
                     borderWidth: 1,
                     interpolate: true
-                }]
+                },
+
+                {
+                    label: 'negative Nottingham heat',
+                    data: dddata,
+                    backgroundColor: [
+                        'rgba(0, 32, 255, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(0, 32, 255, 1)'
+                    ],
+                    borderWidth: 1,
+                    interpolate: true
+                }
+                
+            ]
 
             },
             options: {
-
+                spanGaps: true,
                 fill: false,
                 lineTension: 0.1,
                 scales: {
@@ -940,7 +955,7 @@ function main(){
 
                 for(let i = 0; i < _sweepValues.length; i++){
 
-                    points.push({x: _sweepValues[i], y: Math.abs(data1[i])})
+                    points.push({x: _sweepValues[i], y: data1[i]});
 
                 }
 
@@ -948,13 +963,11 @@ function main(){
                 
                 for(let i = 0; i < _sweepValues.length; i++){
 
-                    points.push({x: _sweepValues[i], y: Math.abs(data4[i])})
+                    points.push({x: _sweepValues[i], y: data4[i]});
 
                 }
 
             }
-
-            console.log(points);
 
             chart1.resetZoom();
 
@@ -983,7 +996,7 @@ function main(){
 
                 for(let i = 0; i < _sweepValues.length; i++){
 
-                    points.push({x: _sweepValues[i], y: Math.abs(data2[i])})
+                    points.push({x: _sweepValues[i], y: data2[i]})
 
                 }
 
@@ -991,11 +1004,13 @@ function main(){
                 
                 for(let i = 0; i < _sweepValues.length; i++){
 
-                    points.push({x: _sweepValues[i], y: Math.abs(data5[i])})
+                    points.push({x: _sweepValues[i], y: data5[i]})
 
                 }
 
             }
+
+            console.log
 
             chart2.resetZoom();
 
@@ -1107,15 +1122,43 @@ function main(){
 
             chart.update();
 
-            let dataSet = chart.data.datasets[0];
+            if(chart.data.datasets.length > 1){
 
-            points.forEach((point) => {
+                let posDataSet = chart.data.datasets[0];
+                let negDataSet = chart.data.datasets[1];
+    
+                points.forEach((point) => {
+    
+                    if(point.y > 0){
+                        posDataSet.data.push(point);
+                        negDataSet.data.push({x: point.x, y: null});
+    
+                    } else{
+    
+                        negDataSet.data.push({x: point.x, y: -point.y});
+                        posDataSet.data.push({x: point.x, y: null});
+    
+                        
+                    }
 
-                dataSet.data.push(point);
+    
+                });
 
-            })
+            } else{
+
+                let dataSet = chart.data.datasets[0];
+
+                points.forEach((point) => {
+
+                    dataSet.data.push(point);
+
+                })
+
+            }
 
             chart.update();
+
+            console.log(chart.data.datasets);
 
         }
          
