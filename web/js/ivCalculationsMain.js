@@ -446,13 +446,13 @@ function main() {
 
             if (_voltage.length > _current.length) {
 
-                raiseInputError("2000");
+                addErrorDiv("Can not create graph as in voltage data there are more points than in current data");
                 canCompute = false;
 
             } else if (_current.length > _voltage.length) {
 
                 canCompute = false;
-                raiseInputError("2001");
+                addErrorDiv("Can not create graph as in current data there are more points than in voltage data");
 
             }
 
@@ -460,7 +460,7 @@ function main() {
         } else if ((_current.length < 3 || _voltage.length < 3) && (canCompute == true)) {
 
             canCompute = false;
-            raiseInputError("2005");
+            addErrorDiv("One must enter at least 3 points for voltage and current data");
 
 
         } else {
@@ -472,7 +472,7 @@ function main() {
                     if ((voltage < 0 || voltage > 100000) && (canCompute == true)) {
 
                         canCompute = false;
-                        raiseInputError("2002");
+                        addErrorDiv("One of the voltage values is out of bounds 0 < x < 100'000 V");
 
                     }
 
@@ -484,7 +484,7 @@ function main() {
                     if ((current < 0 || current > 10000) && (canCompute == true)) {
 
                         canCompute = false;
-                        raiseInputError("2003");
+                        addErrorDiv("One of the current values is out of bounds 0 < x < 10'000 A");
 
                     };
 
@@ -492,7 +492,7 @@ function main() {
 
                 if ((parseFloat(_workFunction) < 0.5 || parseFloat(_workFunction) > 10) && (canCompute == true)) {
 
-                    raiseInputError("2004");
+                    addErrorDiv("Work function value is out of bounds 0.5 < x < 10 eV");
                     canCompute = false;
 
                 };
@@ -705,74 +705,6 @@ function loadEventListeners() {
     })
 
 }
-
-export function raiseInputError(id) {
-
-    switch (id) {
-
-        case "2000":
-            addErrorDiv("Can not create graph as in voltage data there are more points than in current data");
-            break;
-        case "2001":
-            addErrorDiv("Can not create graph as in current data there are more points than in voltage data");
-            break;
-        case "2002":
-            addErrorDiv("One of the voltage values is out of bounds 0 < x < 100'000 V");
-            break;
-        case "2003":
-            addErrorDiv("One of the current values is out of bounds 0 < x < 10'000 A");
-            break;
-        case "2004":
-            addErrorDiv("Work function value is out of bounds 0.5 < x < 10 eV");
-            break;
-        case "2005":
-            addErrorDiv("One must enter at least 3 points for voltage and current data");
-            break;
-        case "2006":
-            addErrorDiv("One of the input lines has no separator between values! Check console for more info");
-            break;
-        case "2007":
-            addErrorDiv("One of the input lines has a data of unknown type! Check console for more info");
-            break;
-        case "2008":
-            addErrorDiv("Can not download data file as there is no data to download. (Did you click on Enter button?)");
-            break;
-        case "3000":
-            addErrorDiv("Can not create graph as all inputs must have equal amount of data points");
-            break;
-        case "3001":
-            addErrorDiv("All input fields must have at least 3 values each");
-            break;
-    
-        default:
-            addErrorDiv("Unknown error");
-    }
-
-    function addErrorDiv(message) {
-
-        console.log(message);
-    
-        const template = `
-        <section class="container showcase alert alert-danger alert-dismissible my-auto animated bounceInLeft">
-            <strong class="mx-2">Error!</strong> ${message}!
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </section>
-        `;
-    
-        let relativeDiv = document.getElementById("myChart");
-        let errorDiv = document.createElement("div");
-        errorDiv.innerHTML = template;
-    
-        let section = errorDiv.children[0];
-    
-        errorDivs.push(section)
-    
-        insertAfter(section, relativeDiv);
-    
-    }
-
-}
-
 
 function addHelpDiv(){
 
@@ -1007,7 +939,7 @@ class Input {
     processString() {
 
         if (this.separator == 99) {
-            // raiseInputError("2006");
+            // addErrorDiv("One of the input lines has no separator between values! Check console for more info");
             // console.log("The following line has no separator: ");
             // console.log(this);
             // return;
@@ -1038,7 +970,7 @@ class Input {
 
     processUnknownInput() {
 
-        raiseInputError("2007");
+        addErrorDiv("One of the input lines has a data of unknown type! Check console for more info");
         console.log("Unknown data: ");
         console.log(this);
 
