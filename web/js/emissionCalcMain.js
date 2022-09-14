@@ -1,3 +1,5 @@
+// Lower and upper parameters for frontend. If user enters out of bounds number, error msg should appear.
+
 const bounds = {
 
     field: {min: 0.5, max: 20},
@@ -9,7 +11,13 @@ const bounds = {
 
 function main(){
 
+
+    // Connection with node.js socket.io server
+
     let socket = io();
+
+
+    //local global variables for main function
 
     let materialType, field, radius, workFunction, temperature,
         fieldMult, radiusMult, workFunctionMult, temperatureMult,
@@ -18,11 +26,20 @@ function main(){
         _ec, _ef, _eg, _me, _mp, _gammaMetal, _gammaSemi, sweepParam,
         data, chart1, chart2, chart3
     
+
+    // boolean used to load charts only when users inputs data
+
     let chartsLoaded = false;
+
+    //Loads event listener when user loads the page
 
     loadInitEventListeners();
 
+    //Big function that aims to check if data can be sent to server
+
     function checkValidity(){
+
+        //Removes old errors so new can be displayed without stacking
 
         function removeErrorDivs(){
 
@@ -36,6 +53,8 @@ function main(){
     
             }
         }
+
+        //Get values that user typed into input fields. Loads all fields. Syncs them with main global vars.
 
         function getValuesFromUserInputFields(){
 
@@ -67,6 +86,8 @@ function main(){
     
         }
 
+        //Applies default values if fields are empty, proccesses inputs
+
         function processUserInputFields(){
 
             if(field == "") field = "10";
@@ -95,6 +116,9 @@ function main(){
 
         }
 
+
+        //Binarize the booleans so its smaller packets to send
+
         function getWhatToCompute(){
 
             if(calculateEC){
@@ -117,6 +141,9 @@ function main(){
                 
         }
 
+        //BUG temperature should probably be not multiplied
+        //This function updates all the values considering picked multipliers (i.e Units) in the fields prompts.
+
         function updateValuesUnits(){
 
             for(let i = 0; i < _field.length; i++){
@@ -137,6 +164,7 @@ function main(){
     
         }
 
+        //This function converts sweepparam to an integer, for smaller packets
         function convertSweepParamToNumber(){
 
             if(typeof(sweepParam) == 'string'){
@@ -165,6 +193,8 @@ function main(){
 
         }
 
+        //This function converts material type to an integer, for smaller packets
+
         function convertMaterialTypeToNumber(){
 
             if(typeof(materialType) == 'string'){
@@ -186,6 +216,8 @@ function main(){
             }
 
         }
+
+        //Main logic spot. Checks if data can be sent to server
 
         function checkForCanCompute(){
 
@@ -225,6 +257,8 @@ function main(){
 
         }
 
+        //Below are functions that are ran once main is called
+
         removeErrorDivs();
     
         getValuesFromUserInputFields();
@@ -239,10 +273,15 @@ function main(){
 
         convertMaterialTypeToNumber();
 
+        //data object that is to be sent to server, can be jsoned etc.
+
         data = [[materialType], [sweepParam], _field, _radius, _workFunction, _temperature,
             _ec, _ef, _eg, _gammaMetal, _gammaSemi, _me, _mp,
             [calculateEC], [calculateNH], [calculateES]];
         
+    
+        //if all conditions are met, send data to server. Displays loading modal
+
         if(checkForCanCompute()){
 
             socket.emit('calculateEmission', data);
@@ -285,6 +324,9 @@ function main(){
         const ctx2 = document.getElementById("heatChart");
         const ctx3 = document.getElementById("spectrumChart");
 
+
+        //Data used for debugging, can see it as first data before anything loads
+
         const dddata = [{
             x: 0.10207040421489234,
             y: 5617.000000000002
@@ -309,6 +351,9 @@ function main(){
             y: 0.8305729972325626
         }
     ]
+
+
+        //Emitted current chart object
 
         chart1 = new Chart(ctx1, {
             type: 'line',
@@ -592,6 +637,8 @@ function main(){
 
             }
         });
+
+        //Nottingham heat chart object
 
         chart2 = new Chart(ctx2, {
             type: 'line',
@@ -884,6 +931,8 @@ function main(){
             }
         });
 
+        //Electron spectrum chart object
+
         chart3 = new Chart(ctx3, {
             type: 'line',
             data: {
@@ -911,6 +960,9 @@ function main(){
 
     }
 
+
+    //Listens for data from server. Once received, updates graphs with given data. Hides loading modal
+
     socket.on("calculatedEmission", (data) =>{
 
         if(!chartsLoaded){
@@ -924,6 +976,8 @@ function main(){
         $('#loadingModal').modal('hide');
 
     })
+
+    //Big function that updates graphs with given data.
 
     function updateGraphs(data){
 
@@ -943,11 +997,20 @@ function main(){
         let data5 = data.semiNH;
         let data6 = data.semiES;
 
+
+        //For ease, copies the array values of parameters to a new array, so that its easier to access right data.
+
         updateSweepValues();
+
+        //Updates everything on Emitted Current graph
 
         updateECGraph();
 
+        //Updates everything on Nottingham heat graph
+
         updateNHGraph();
+
+        //Updates everything on Electron Spectrum graph
 
         updateESGraph();
 
@@ -1166,7 +1229,6 @@ function main(){
             chart.update();
         }
          
-
         function updateSweepValues(){
 
             switch(_sweepParam){
@@ -1199,9 +1261,16 @@ function main(){
     }
 }
 
+//Global var, used to store all error message divs for quick access
 
 let errorDivs = [];
+
+//Main function call
+
 main();
+
+//Function that is used to predefine properties for predetermined materials for the user.
+//Its goal is to give a set of materials and apply their values to corresponding fields.
 
 function updatePreselectSemiProperties(){
 
@@ -1256,6 +1325,10 @@ function updatePreselectSemiProperties(){
     }
 
 }
+
+
+//This function is used to predefine default values for some input fields if user does not enter anything
+//Also is an example for user of what data they can enter
 
 function updatePropertiesPresets(){
 
@@ -1318,6 +1391,8 @@ function updatePropertiesPresets(){
 
 }
 
+//Hide or display the material properties window
+
 function updateAdvancedMethods(){
 
     let advancedModeToggleDiv = document.getElementById("advancedModeToggle");
@@ -1348,6 +1423,9 @@ function updateAdvancedMethods(){
     }
 
 }
+
+
+//Function used to generate n values from a to b. Checks for good bounds inside. Returns array of numbers!
 
 function autoGenerateValues(){
 
@@ -1496,6 +1574,9 @@ function autoGenerateValues(){
 
 }
 
+
+//In case of semiconductors Work Function makes no sence, so remove it when user picks semi, and display when metals are picked
+
 function updateWFName(){
 
     let pickMaterialTypeDiv = document.getElementById("pickMaterialType");
@@ -1553,6 +1634,9 @@ function updateWFName(){
 
 }
 
+
+//Hides or displays the window where user can define parameters to generate an array of equally distanced numbers (auto-gen values for sweep param)
+
 function updateAutoGenerateValuesDiv(){
 
     let autoGenerateValuesDiv = document.getElementById("autoGeneratedInput");
@@ -1570,6 +1654,9 @@ function updateAutoGenerateValuesDiv(){
     }
 
 }
+
+
+//A general function used to display error divs on the page. Takes string as argument. Pushes div to errorDivs!
 
 function addErrorDiv(message) {
 
@@ -1594,11 +1681,15 @@ function addErrorDiv(message) {
 
 }
 
+//Used to store types as integers for smaller packets
+
 const typeDict = {
     0: "String",
     1: "Array",
     99: "Unknown"
 }
+
+//Used to store separator as integers for smaller packets. A separator is something that separates two numbers, not a comma/dot in a single number!
 
 const separatorDict = {
     0: ".",
@@ -1607,11 +1698,16 @@ const separatorDict = {
     99: "Unknown"
 }
 
+
+//Used to store multiplies as integers for smaller packets. 
+
 const multDict = {
     0: "*",
     1: "e",
     99: "Unknown"
 }
+
+//Used to store commas as integers for smaller packets. A comma is something that can be found inside a single number, and separates the whole part and fraction.
 
 const commaDict = {
     0: ",",
@@ -1697,6 +1793,8 @@ function processDataInput(input) {
     return dsb;
 }
 
+//A class for input, used for better OOP
+
 class Input {
 
     constructor(input) {
@@ -1734,12 +1832,16 @@ class Input {
 
     }
 
+    //Removes "[" and "]"
+
     processArray() {
 
         this.data = this.data.slice(1, -1);
         this.processString();
 
     }
+
+    //If cant determine type, log an error
 
     processUnknownInput() {
 
@@ -1749,6 +1851,8 @@ class Input {
 
     }
 
+    //Log instance of class
+
     logProperties() {
 
         console.log(this);
@@ -1756,6 +1860,8 @@ class Input {
     }
 
 }
+
+//returns type of data considering dataTypeDict
 
 function getTypeOfInput(data) {
 
@@ -1773,6 +1879,8 @@ function getTypeOfInput(data) {
 
 }
 
+//returns type of multiplier considering dataMultDict
+
 function getMult(data) {
 
     if (data.includes("*", 1)) {
@@ -1786,6 +1894,8 @@ function getMult(data) {
     return 99;
 
 }
+
+//returnc type of comma in a number considering dataCommaDict
 
 function getComma(data) {
 
@@ -1808,6 +1918,8 @@ function getComma(data) {
 
     return 99;
 }
+
+//returns type of separator between different numbers considering dataSeparatorDict
 
 function getSeparator(data) {
 
@@ -1886,6 +1998,8 @@ function getSeparator(data) {
 
 }
 
+//Basically this functions removes spaces
+
 function beautifyResult(data) {
 
     for(let i = 0; i < data.length; i++){
@@ -1902,11 +2016,17 @@ function beautifyResult(data) {
     return data;
 }
 
+
+//Checks if string ends with a given string
+
 function endsWith(str, suffix) {
 
     return str.indexOf(suffix, str.length - suffix.length) !== -1;
 
 }
+
+
+//Inserts one HTML div right after the other
 
 function insertAfter(newNode, existingNode) {
 
