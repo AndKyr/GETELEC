@@ -17,6 +17,8 @@ function main(){
         ec, ef, eg, me, mp, _field, _radius, _workFunction, _temperature,
         _ec, _ef, _eg, _me, _mp, _gammaMetal, _gammaSemi, sweepParam,
         data, chart1, chart2, chart3
+    
+    let chartsLoaded = false;
 
     loadInitEventListeners();
 
@@ -909,9 +911,13 @@ function main(){
 
     }
 
-    loadCharts();
-
     socket.on("calculatedEmission", (data) =>{
+
+        if(!chartsLoaded){
+
+            loadCharts();
+            chartsLoaded = true;
+        }
 
         console.log(data);
         updateGraphs(data);
@@ -1084,8 +1090,6 @@ function main(){
 
         }
 
-
-        //THIS IS NOT FINISHED
         function updateSweepParameterBounds(chart, sweepParam){
 
             switch(sweepParam){
