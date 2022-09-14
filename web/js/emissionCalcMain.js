@@ -2,8 +2,8 @@ const bounds = {
 
     field: {min: 0.5, max: 20},
     radius: {min: 0.5, max: 995},
-    workFunction: {min: 0, max: 100},
-    temperature: {min: 10, max: 3000}
+    workFunction: {min: 0, max: 101},
+    temperature: {min: 10, max: 3001}
 
 }
 
@@ -1088,6 +1088,8 @@ function main(){
         //THIS IS NOT FINISHED
         function updateSweepParameterBounds(chart, sweepParam){
 
+            console.log(sweepParam);
+
             switch(sweepParam){
 
                 case "field":
@@ -1095,17 +1097,20 @@ function main(){
                     chart.options.plugins.zoom.limits.x = {min: bounds.field.min, max: bounds.field.max};
                     chart.update();
                     break;
+
                 case "radius":
                     chart.options.scales.x.title.text = "Radius, [nm]"
                     chart.options.plugins.zoom.limits.x = {min: bounds.radius.min, max: bounds.radius.max};
                     chart.update();
                     break;
-                case "workFunction":
+
+                case "wf":
                     chart.options.scales.x.title.text = "Work Function, [eV]"
                     chart.options.plugins.zoom.limits.x = {min: bounds.workFunction.min, max: bounds.workFunction.max};
                     chart.update();
                     break;
-                case "temperature":
+                    
+                case "temp":
                     chart.options.scales.x.title.text = "Temperature, [K]"
                     chart.options.plugins.zoom.limits.x = {min: bounds.temperature.min, max: bounds.temperature.max};
                     chart.update();
