@@ -1039,12 +1039,12 @@ function main(){
                         chart.options.plugins.title.text = `Field: ${data.field[0]} V/nm, Work Function: ${data.work_function[0]} eV, Temperature: ${data.temperature[0]} K` 
                         break;
 
-                    case "workFunction":
+                    case "wf":
 
                         chart.options.plugins.title.text = `Field: ${data.field[0]} V/nm, Radius: ${data.radius[0]} nm, Temperature: ${data.temperature[0]} K` 
                         break;
 
-                    case "temperature":
+                    case "temp":
 
                         chart.options.plugins.title.text = `Field: ${data.field[0]} V/nm, Radius: ${data.radius[0]} nm, Work Function: ${data.work_function[0]} eV` 
                         break;
@@ -1066,12 +1066,12 @@ function main(){
                         chart.options.plugins.title.text = [`Field: ${data.field[0]} V/nm, Work Function: ${data.work_function[0]} eV, Temperature: ${data.temperature[0]} K, Ec: ${data.ec} eV`, `Ef: ${data.ef} eV, Eg: ${data.eg} eV, Me: ${data.me} m/me, Mp: ${data.mp} m/me`] 
                         break;
     
-                    case "workFunction":
+                    case "wf":
     
                         chart.options.plugins.title.text = [`Field: ${data.field[0]} V/nm, Radius: ${data.radius[0]} nm, Temperature: ${data.temperature[0]} K, Ec: ${data.ec} eV`, `Ef: ${data.ef} eV, Eg: ${data.eg} eV, Me: ${data.me} m/me, Mp: ${data.mp} m/me`]
                         break;
     
-                    case "temperature":
+                    case "temp":
     
                         chart.options.plugins.title.text = [`Field: ${data.field[0]} V/nm, Radius: ${data.radius[0]} nm, Work Function: ${data.work_function[0]} eV, Ec: ${data.ec} eV`, `Ef: ${data.ef} eV, Eg: ${data.eg} eV, Me: ${data.me} m/me, Mp: ${data.mp} m/me`]
                         break;
@@ -1087,8 +1087,6 @@ function main(){
 
         //THIS IS NOT FINISHED
         function updateSweepParameterBounds(chart, sweepParam){
-
-            console.log(sweepParam);
 
             switch(sweepParam){
 
