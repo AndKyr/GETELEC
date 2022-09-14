@@ -87,6 +87,8 @@ def main():
     data4 = []
     data5 = []
     data6 = []
+    data3e = []
+    data6e = []
 
     if sweepParam == "2":
 
@@ -116,8 +118,9 @@ def main():
 
         if calculateES == "1":
 
-            # data3 = spectrum_metal_emitter(field, radius, gammaMetal, wf, temp)
-            data3
+            energy, electronCount = spectrum_metal_emitter(field, radius, gammaMetal, wf, temp)
+            data3 = energy.tolist()
+            data3e = electronCount.tolist()
 
     
     elif materialType == "2":
@@ -131,14 +134,16 @@ def main():
             data5 = heat_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp).tolist()
   
         if calculateES == "1":
-            # data6 = spectrum_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp)
-            data6
+            energy, electronCount = spectrum_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp).tolist()
+            data6 = energy.tolist()
+            data6e = electronCount.tolist()
 
     outdata = {"materialType": materialType, "sweepParam": sweepParam,
         "field": field, "radius": radius, "work_function": wf, "temperature": temp,
         "ec": ec, "ef": ef, "eg": eg, "gammaMetal": gammaMetal, "gammaSemi": gammaSemi,
-        "me": me, "mp": mp, "metalEC": data1, "metalNH": data2, "metalES": data3,
-        "semiEC": data4, "semiNH": data5, "semiES": data6
+        "me": me, "mp": mp, "metalEC": data1, "metalNH": data2, "metalESenergy": data3,
+        "metalESelcount": data3e, "semiEC": data4, "semiNH": data5, "semiESenergy": data6,
+        "semiESelcount": data6e
     }
 
     print(json.dumps(outdata))
