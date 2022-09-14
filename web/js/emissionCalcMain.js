@@ -3,7 +3,7 @@ const bounds = {
     field: {min: 0.5, max: 20},
     radius: {min: 0.5, max: 995},
     workFunction: {min: 0, max: 101},
-    temperature: {min: 10, max: 3001}
+    temperature: {min: 9, max: 3001}
 
 }
 
@@ -1164,9 +1164,6 @@ function main(){
             }
 
             chart.update();
-
-            console.log(chart.data.datasets);
-
         }
          
 
