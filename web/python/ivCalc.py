@@ -63,7 +63,7 @@ def main():
     outdata = { "type": "ivCalc",
                 "xplot_mrk": xplot.tolist(), "yplot_mrk": dataInArr[1], \
                 "xplot_line": xplot_th.tolist(), "yplot_line": yth.tolist(), \
-                "beta": popt[0], "Radius": popt[2], "sigma_Aeff": 1e-9*np.exp(-yshift), \
+                "beta": popt[0], "Radius": popt[2], "sigma_Aeff": np.exp(-yshift), \
                 "xAxisUnit": "1 / (Local Field [V/nm])", "yAxisUnit": "Current [Amps]"}
 
     print(json.dumps(outdata))

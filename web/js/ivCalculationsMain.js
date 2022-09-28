@@ -1,4 +1,5 @@
 ﻿let inData = null;
+let graphData = null;
 
 function main() {
 
@@ -34,7 +35,8 @@ function main() {
 
                 label: '',
                 value: "x: " + Math.round(xScale.getValueForPixel(pt.x) * 10000) / 10000 +
-                    ", y: " + Math.round(vScale.getValueForPixel(pt.y) * 10000) / 10000
+                    //", y: " + Math.round(vScale.getValueForPixel(pt.y) * 10000) / 10000
+                    ", y: " + vScale.getValueForPixel(pt.y).toExponential(4)
 
             };
 
@@ -130,30 +132,7 @@ function main() {
         }
     })
 
-    const data = [{
-            x: 0.10207040421489234,
-            y: 5617.000000000002
-        }, {
-            x: 0.10559087321846734,
-            y: 4214.878587327415
-        }, {
-            x: 0.10911134222204238,
-            y: 3164.722642398102
-        },
-        {
-            x: 0.1126318112256174,
-            y: 2377.5417614456496
-        }, {
-            x: 0.11615228022919243,
-            y: 1787.0286368310246
-        }, {
-            x: 0.11967274923276744,
-            y: 1343.742827965096
-        }, {
-            x: 0.21120494332571796,
-            y: 0.8305729972325626
-        }
-    ]
+    const data = [{x: 0.09747321398292647, y: 0.00005653999999999998}, {x: 0.10166524343024846, y: 0.0000354075119705509}, {x: 0.10585727287757045, y: 0.000022046283752204346}, {x: 0.11004930232489243, y: 0.000013643221928263145}, {x: 0.11424133177221442, y: 0.000008388666961697198}, {x: 0.11843336121953642, y: 0.000005122791752667756}, {x: 0.12262539066685842, y: 0.000003106062691860675}, {x: 0.1268174201141804, y: 0.0000018691917259290598}]
 
     let regressionData;
 
@@ -227,7 +206,7 @@ function main() {
                         callback: function (value, index, ticks) {
 
                             if (value === 1000000) {
-
+    
                                 return "1 [MA]"
 
                             }
@@ -283,6 +262,78 @@ function main() {
                             if (value === 0.001) {
 
                                 return "1 [mA]"
+
+                            }
+
+                            if (value === 0.0001) {
+
+                                return "0.1 [mA]"
+
+                            }
+
+                            if (value === 0.00001) {
+
+                                return "0.01 [mA]"
+
+                            }
+
+                            if (value === 0.000001) {
+
+                                return "1000 [nA]"
+
+                            } 
+
+                            if (value === 0.0000001) {
+
+                                return "100 [nA]"
+
+                            }
+
+                            if (value === 0.00000001) {
+
+                                return "10 [nA]"
+
+                            }
+
+                            if (value === 0.000000001) {
+
+                                return "1 [nA]"
+
+                            }
+
+                            if (value === 0.0000000001) {
+
+                                return "100 [pA]"
+
+                            }
+
+                            if (value === 0.00000000001) {
+
+                                return "10 [pA]"
+
+                            }
+
+                            if (value === 0.000000000001) {
+
+                                return "1 [pA]"
+
+                            }
+
+                            if (value === 0.0000000000001) {
+
+                                return "100 [fA]"
+
+                            }
+
+                            if (value === 0.00000000000001) {
+
+                                return "10 [fA]"
+
+                            }
+
+                            if (value === 0.000000000000001) {
+
+                                return "1 [fA]"
 
                             }
 
@@ -421,8 +472,8 @@ function main() {
         workFunctionMult = document.getElementById("work_function_mult_in").value;
 
 
-        if (voltage == "") voltage = "2.413e+02, 2.511e+02, 2.622e+02, 2.706e+02, 2.803e+02, 2.915e+02, 2.999e+02, 3.096e+02, 3.208e+02, 3.305e+02, 3.403e+02, 3.515e+02, 3.612e+02, 3.710e+02, 3.808e+02, 3.891e+02, 4.003e+02, 4.100e+02, 4.184e+02, 4.338e+02, 4.491e+02, 4.644e+02, 4.826e+02, 4.993e+02";
-        if (current == "") current = "8.719e-01, 1.582e+00, 2.967e+00, 5.038e+00, 8.555e+00, 1.406e+01, 2.309e+01, 3.670e+01, 5.643e+01, 8.678e+01, 1.249e+02, 1.797e+02, 2.502e+02, 3.371e+02, 4.540e+02, 6.116e+02, 7.459e+02, 9.720e+02, 1.267e+03, 1.764e+03, 2.376e+03, 3.096e+03, 4.310e+03, 5.617e+03";
+        if (voltage == "") voltage = "6666.66666667, 6528.49740933, 6395.93908629, 6268.65671642, 6146.34146341, 6028.70813397, 5915.49295775, 5806.4516129, 5701.35746606, 5600, 5502.18340611, 5407.72532189, 5316.4556962, 5228.21576763, 5142.85714286, 5060.24096386, 4980.23715415, 4902.72373541, 4827.5862069 , 4754.71698113, 4684.01486989, 4615.38461538, 4548.73646209, 4483.98576512, 4421.05263158, 4359.8615917 , 4300.34129693, 4242.42424242, 4186.04651163, 4131.14754098, 4077.66990291, 4025.55910543, 3925.23364486, 3876.92307692, 3829.78723404, 3783.78378378, 3738.87240356, 3695.01466276, 3652.17391304, 3610.31518625, 3569.40509915, 3529.41176471, 3490.30470914, 3452.05479452, 3414.63414634, 3378.01608579, 3342.17506631, 3307.08661417, 3272.72727273, 3239.07455013, 3206.10687023, 3173.80352645, 3142.1446384 , 3111.11111111, 3080.68459658, 3050.84745763, 3021.58273381, 2992.87410926, 2964.70588235, 2937.06293706, 2909.93071594, 2883.29519451, 2857.14285714";
+        if (current == "") current = "5.65354016e-05, 4.28464283e-05, 3.24541251e-05, 2.45683389e-05, 1.85875533e-05, 1.40539879e-05, 1.06193664e-05, 8.01882052e-06, 6.05098032e-06, 4.56287757e-06, 3.43825950e-06, 2.58892706e-06, 1.94793392e-06, 1.46451644e-06, 1.10020423e-06, 8.25856631e-07, 6.19415049e-07, 4.64192603e-07, 3.47574447e-07, 2.60030670e-07, 1.94366991e-07, 1.45156296e-07, 1.08307623e-07, 8.07395611e-08, 6.01329743e-08, 4.47437594e-08, 3.32614033e-08, 2.47019853e-08, 1.83274191e-08, 1.35845100e-08, 1.00590041e-08, 7.44096972e-09, 4.05929377e-09, 2.99355710e-09, 2.20530977e-09, 1.62290148e-09, 1.19302882e-09, 8.76074733e-10, 6.42626597e-10, 4.70867981e-10, 3.44633799e-10, 2.51960496e-10, 1.83999483e-10, 1.34216889e-10, 9.77911792e-11, 7.11688901e-11, 5.17338317e-11, 3.75620267e-11, 2.72401384e-11, 1.97311118e-11, 1.42748585e-11, 1.03149269e-11, 7.44441693e-12, 5.36613434e-12, 3.86326821e-12, 2.77783297e-12, 1.99486455e-12, 1.43077440e-12, 1.02488643e-12, 7.33204336e-13, 5.23857148e-13, 3.73798141e-13, 2.66375053e-13";
         if (workFunction == "") workFunction = "4.5";
 
         let _voltage = processDataInput(voltage);
@@ -512,6 +563,7 @@ function main() {
 
     socket.on('calculatedData', (data) => {
 
+        graphData = data;
         updateGraph(data);
         $('#loadingModal').modal('hide');
         console.log(data);
@@ -639,33 +691,79 @@ loadEventListeners();
 
 function downloadData(){
 
+    let jsonFields = ['Radius', 'beta', 'sigma_Aeff', 'type', 'xAxisUnit', 'xplot_line', 'xplot_mrk', 'yAxisUnit', 'yplot_line', 'yplot_mrk']
 
-    download();
+    //let csv = arrayToCsv(inData);
 
+    downloadCsv(jsonToCsv(graphData));
 
-    function download(filename) {
+    // function download(filename) {
 
-        var file = new Blob([JSON.stringify(inData)], {type : 'application/json'});
+    //     var file = new Blob([JSON.stringify(inData)], {type : 'application/json'});
 
-        if (window.navigator.msSaveOrOpenBlob) // IE10+
+    //     if (window.navigator.msSaveOrOpenBlob) // IE10+
 
-            window.navigator.msSaveOrOpenBlob("data", "data.json");
+    //         window.navigator.msSaveOrOpenBlob("data", "data.json");
 
-        else { // Others
+    //     else { // Others
 
-            var a = document.createElement("a"),
-                    url = URL.createObjectURL(file);
+    //         var a = document.createElement("a"),
+    //                 url = URL.createObjectURL(file);
                     
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
+    //         a.href = url;
+    //         a.download = filename;
+    //         document.body.appendChild(a);
+    //         a.click();
             
-            setTimeout(function() {
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);  
-            }, 0); 
-        }
+    //         setTimeout(function() {
+    //             document.body.removeChild(a);
+    //             window.URL.revokeObjectURL(url);  
+    //         }, 0); 
+    //     }
+    // }
+
+    function arrayToCsv(data){
+        return Object.keys(data).map(function(k){
+            return data[k];
+        }).join(',');
+    }
+
+    function jsonToCsv(json) {
+
+        let csvStr = jsonFields.join(",") + "\n";
+
+        console.log(json);
+    
+        json.forEach(element => {
+
+            let _radius = element.Radius;
+            let _beta = element.beta;
+            let _sigma_Aeff = element.sigmaAeff;
+            let _type = element.type;
+            let _xAxisUnit = element.xAxisUnit;
+            let _yAxisUnit = element.yAxisUnit;
+            
+            console.log(element)
+
+            element.inbound.forEach(inboundELe => {
+                let _xplot_line = inboundELe.xplot_line;
+                let _yplot_line = inboundELe.yplot_line;
+                let _xplot_mrk = inboundELe.xplot_mrk;
+                let _yplot_mrk = inboundELe.yplot_mrk;
+                csvStr += _radius + ',' + _beta + ',' + _sigma_Aeff + ',' + _type + ',' + _xAxisUnit  + ',' + _yAxisUnit  + ',' + _xplot_line + ',' + _yplot_line  + ',' +  _xplot_mrk + ',' + _yplot_mrk + "\n";
+            })
+        })
+
+        return csvStr;
+    }
+
+    function downloadCsv(csvStr) {
+
+        var hiddenElement = document.createElement('a');
+        hiddenElement.href = 'data:text/csv;charset=utf-8,' + encodeURI(csvStr);
+        hiddenElement.target = '_blank';
+        hiddenElement.download = 'output.csv';
+        hiddenElement.click();
     }
     
 }
