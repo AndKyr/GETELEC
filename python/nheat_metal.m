@@ -1,4 +1,4 @@
-function n_heat = nheat_metal(field,radius,gamma,workf,temp)
+function n_heat = nheat_metal(field,radius,gamma,workf,t)
 
     %Checking and initialising Python environment
     pe = pyenv;
@@ -6,7 +6,8 @@ function n_heat = nheat_metal(field,radius,gamma,workf,temp)
         % pass
     else 
         disp("Initialising Python enviroment");
-        pyenv("Version","/home/salva/Documents/getelec_priv/python/venv/bin/python3.8")
+        %pyenv("Version","/home/salva/Documents/getelec_priv/python/venv/bin/python3.8")
+        pyenv("Version","/usr/bin/python3.10")
         pyenv("ExecutionMode","OutOfProcess");
     end
     
@@ -23,7 +24,7 @@ function n_heat = nheat_metal(field,radius,gamma,workf,temp)
 
     %Calculating current density from GETELEC
     disp('Calculating Nottigham heat metal emitter')
-    n_heat = double(getelec.heat_metal_emitter(py.numpy.array(field),py.numpy.array(radius),py.numpy.array(gamma),py.numpy.array(workf), py.numpy.array(temp)));
+    n_heat = double(getelec.heat_metal_emitter(py.numpy.array(field),py.numpy.array(radius),py.numpy.array(gamma),py.numpy.array(workf), py.numpy.array(t))*1E18);
 
     
 end

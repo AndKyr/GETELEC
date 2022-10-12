@@ -1,5 +1,5 @@
-function current_density = current_semi(field,radius,gamma,ec,ef,eg,t)
-    
+function electrons = spectra_semi(field, radius, gamma, ec, ef, eg, temp)
+
     %Checking and initialising Python environment
     pe = pyenv;
     if pe.Status == 'Loaded'
@@ -20,14 +20,14 @@ function current_density = current_semi(field,radius,gamma,ec,ef,eg,t)
     end
 
     %Importing GETELEC
-    getelec = py.importlib.import_module('getelec_tabulator');
+    getelec = py.importlib.import_module('data_analysis');
 
     %Calculating current density from GETELEC
-    disp('Calculating J semi emitter')
+    disp('Calculating emitter energy spectrum')
     
     % field is transformed from a double to np, so GETELEC can handle it
     % GETELEC outcomes are transformed to double for COMSOL
     % in A/m^2
-    current_density = double(getelec.current_semiconductor_emitter(py.numpy.array(field),py.numpy.array(radius),py.numpy.array(gamma),py.numpy.array(ec),py.numpy.array(ef),py.numpy.array(eg),py.numpy.array(t))*1E18);
+    electrons = double(getelec.spectra_semiconductor_emitter(py.numpy.array(field),py.numpy.array(radius),py.numpy.array(gamma),py.numpy.array(ec),py.numpy.array(ef),py.numpy.array(eg),py.numpy.array(temp)));
 
 end

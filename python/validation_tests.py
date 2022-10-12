@@ -10,7 +10,7 @@ import datetime
 
 # region One data point calculation routine
     # This routine calculates the current density from semiconductors (two methods) and metals, as well as the plotting of the energy distributions
-
+"""
 Npoly = 5
 NGi = 512
 zs = 1.6183e-4
@@ -18,10 +18,10 @@ kBoltz = 8.6173324e-5
 
 tab = gtab.Tabulator()
 
-Workfunction = 2
+Workfunction = 4.7
 Ef = Workfunction
 Eg = 0.661
-Ec = 4.7
+Ec = 4.5
 m = 9.1093837015e-31 
 me = 1.59*m # effective electron mass @300K, https://doi.org/10.1142/S0219749909005833
 mp = 0.33*m # effective hole mass @300k, https://doi.org/10.1142/S0219749909005833
@@ -38,17 +38,6 @@ metal_emitter.Define_Emitter_Parameters(Workfunction, kT)
 j_metal = metal_emitter.Current_Density()
 pn_metal = metal_emitter.Nottingham_Heat()
 energy_space_metal, distribution_metal = metal_emitter.Energy_Distribution()
-
-
-metal_emitter.emitter.Define_Barrier_Parameters(7., 10., 10.)
-metal_emitter.emitter.Interpolate_Gammow()
-metal_emitter.Define_Emitter_Parameters(4.5, kT)
-energy_space_metal1, distribution_metal1 = metal_emitter.Energy_Distribution()
-
-metal_emitter.emitter.Define_Barrier_Parameters(2., 10., 10.)
-metal_emitter.emitter.Interpolate_Gammow()
-metal_emitter.Define_Emitter_Parameters(2, kT)
-energy_space_metal2, distribution_metal2 = metal_emitter.Energy_Distribution()
 
 semiconductor_emitter = gtab.Semiconductor_Emitter(tab)
 
@@ -80,32 +69,32 @@ print("current_semi", j_total, j_total2, "relative error:", total_rel_error)
 print("current_metal", j_metal)
 
 
-font = 60
-x = 40
-y = 17
+font = 120
+x = 52
+y = 40
 
 
 mb.rcParams["font.size"] = font
 mb.rcParams["axes.labelsize"] = font
 mb.rcParams["xtick.labelsize"] = font
 mb.rcParams["ytick.labelsize"] = font+5
-mb.rcParams["legend.fontsize"] = font
+mb.rcParams["legend.fontsize"] = font/1.5
 mb.rcParams["lines.linewidth"] = 7
 
 fig, ax = plt.subplots(figsize=(x,y))
 ax.ticklabel_format(scilimits=[-1,1])
-plt.plot(energy_space_metal1-4.5, distribution_metal1, color = "steelblue", label = "electrons from metal WF=4.5") 
-plt.plot(energy_space_metal2-4.5, distribution_metal2, color = "orange", label = "electrons from metal WF=2") 
-#plt.plot(energy_space_metal2-Workfunction, distribution_metal2/max(distribution_metal2), color = "steelblue", label = "electrons from metal") #
-#plt.plot(energy_c-Ef, distribution_c/max(distribution_c), color = "orange", label = "electrons from conduction band") 
-#plt.plot(energy_v-Ef, distribution_v/max(distribution_v), color = "green", label = "electrons from valence band") 
+#plt.plot(energy_space_metal1-4.5, distribution_metal1, color = "steelblue", label = "electrons from metal WF=4.5") 
+#plt.plot(energy_space_metal2-4.5, distribution_metal2, color = "orange", label = "electrons from metal WF=2") 
+plt.plot(energy_space_metal-Workfunction, distribution_metal/max(distribution_metal), color = "steelblue", label = "electrons from metal") #
+plt.plot(energy_c-Ef, distribution_c/max(distribution_c), color = "orange", label = "electrons from conduction band") 
+plt.plot(energy_v-Ef, distribution_v/max(distribution_v), color = "green", label = "electrons from valence band") 
 plt.legend()
 plt.grid("True")
 plt.xlabel("Energy (eV)")
 plt.ylabel("$J_{eN}$(E) (A$nm^{-2}$$eV^{-1}$)")
 plt.title("Normalised electron energy distribution")
 plt.savefig("Normalised electron energy distribution.svg")
-plt.savefig("IVNC Electron energy distribution.png")
+plt.savefig("Normalised electron energy distribution.png")
 
 fig, ax = plt.subplots(figsize=(x,y))
 ax.ticklabel_format(scilimits=[-1,1])
@@ -139,7 +128,7 @@ plt.ylabel("$J_e$(E) (A$nm^{-2}$$eV^{-1}$)")
 plt.title("Electron energy distribution from valence band")
 plt.savefig("Electron energy distribution from valence band.svg")
 plt.savefig("Electron energy distribution from valence band.png")
-
+"""
 # endregion
 
 # region Multiple data point calculation routine - metal
@@ -414,3 +403,102 @@ file.write("\r\nMax relative error = %e\r\n" % (total_max))
 file.close()
 """
 # endregion
+#comsol_data =  np.array([-3.704766376545930000E+00,-3.710674031866700000E+00,-3.720906416070840000E+00,-3.732116601817530000E+00,-3.740652716975520000E+00,-3.751598406358010000E+00,-3.761510201146620000E+00,-3.770604439815580000E+00,-3.780260163707000000E+00,-3.791351630345240000E+00,-3.800263660657250000E+00,-3.811481390616470000E+00,-3.822632072265170000E+00,-3.830607338695320000E+00,-3.840082463019220000E+00,-3.850422700845510000E+00,-3.860524243732050000E+00,-3.870099020687190000E+00,-3.880047324080420000E+00,-3.890040198098470000E+00,-3.900573044943670000E+00,-3.904948391402420000E+00])
+
+Npoly = 5
+NGi = 128
+zs = 1.6183e-4
+kBoltz = 8.6173324e-5 
+
+tab = gtab.Tabulator()
+Ec = np.array([5.07E+00,5.05E+00,4.96E+00,4.91E+00,4.89E+00])
+Ef = np.array([4.783503100772620000E+00,4.781818198377520000E+00,4.778199674411920000E+00,4.772537667287590000E+00,4.766705287842640000E+00])
+Eg = 1.12
+Temp = np.array([5E+02,10E+02,4.79E+02,4.61E+02,4.46E+02])
+Field = np.array([6.24E+00,5.69E+00,3.63E+00,2.68E+00,2.29E+00])
+m = 9.1093837015e-31 
+me = 1.64*m # effective electron mass @300K, https://doi.org/10.1142/S0219749909005833
+mp = 0.28*m # effective hole mass @300k, https://doi.org/10.1142/S0219749909005833
+kT = kBoltz * Temp
+
+resolution = len(Field)
+
+j_c = np.zeros(resolution) 
+j_v = np.zeros(resolution) 
+j_total = np.zeros(resolution) 
+j_c2 = np.zeros(resolution) 
+j_v2 = np.zeros(resolution) 
+j_total2 = np.zeros(resolution) 
+pn_c = np.zeros(resolution) 
+pn_v = np.zeros(resolution) 
+pn_total = np.zeros(resolution) 
+Bottom_Ec = np.zeros(resolution) 
+j_metal = np.zeros(resolution) 
+pn_metal = np.zeros(resolution)
+c_rel_error = np.zeros(resolution)
+v_rel_error = np.zeros(resolution)
+total_rel_error = np.zeros(resolution)
+
+
+
+semiconductor_emitter = gtab.Semiconductor_Emitter(tab)
+
+semiconductor_emitter.emitter.Define_Barrier_Parameters(Field[0], 20., 10.)
+semiconductor_emitter.emitter.Interpolate_Gammow()
+semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec[0], Ef[0], Eg, kT[0], m, me, mp)
+energy_c0, distribution_c0, energy_v0, distribution_v0 = semiconductor_emitter.Energy_Distribution_from_Semiconductors()
+
+semiconductor_emitter.emitter.Define_Barrier_Parameters(Field[2], 20., 10.)
+semiconductor_emitter.emitter.Interpolate_Gammow()
+semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec[2], Ef[2], Eg, kT[2], m, me, mp)
+energy_c2, distribution_c2, energy_v2, distribution_v2 = semiconductor_emitter.Energy_Distribution_from_Semiconductors()
+
+semiconductor_emitter.emitter.Define_Barrier_Parameters(Field[4], 20., 10.)
+semiconductor_emitter.emitter.Interpolate_Gammow()
+semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec[4], Ef[4], Eg, kT[4], m, me, mp)
+energy_c4, distribution_c4, energy_v4, distribution_v4 = semiconductor_emitter.Energy_Distribution_from_Semiconductors()
+
+font = 60
+x = 40
+y = 17
+
+mb.rcParams["font.size"] = font
+mb.rcParams["axes.labelsize"] = font
+mb.rcParams["xtick.labelsize"] = font
+mb.rcParams["ytick.labelsize"] = font+5
+mb.rcParams["legend.fontsize"] = font
+mb.rcParams["lines.linewidth"] = 5
+
+
+fig = plt.figure(figsize=(x,y))
+
+plt.plot(energy_c0-Ef[0]/2, distribution_c0/max(distribution_c0), color = "steelblue", label = "emission from apex")
+#plt.plot(energy_v0, distribution_v0/max(distribution_v0), color = "steelblue")
+plt.plot(energy_c2-Ef[2]/2, distribution_c2/max(distribution_c2), color = "green", label = "emission from 1/4 arc")
+#plt.plot(energy_v2, distribution_v2/max(distribution_v2), color = "green")
+plt.plot(energy_c4-Ef[4]/2, distribution_c4/max(distribution_c4), color = "orange", label = "emission from half arc")
+#plt.plot(energy_v4, distribution_v4/max(distribution_v4), color = "orange")
+
+plt.legend()
+plt.grid("True")
+plt.xlabel("Energy (eV)")
+plt.ylabel("$J_e$(E) (A$nm^{-2}$$eV^{-1}$)")
+plt.title("Normalised electron energy distribution")
+plt.savefig("Energy_Distribution.png")
+plt.savefig("Energy_Distribution.svg")
+
+#fig, ax = plt.subplots(figsize=(x,y))
+#ax.ticklabel_format(scilimits=[-1,1])
+#plt.semilogy(Bottom_Ec, j_c, color = "steelblue", label = "electrons from conduction band")
+#plt.semilogy(Bottom_Ec, j_v, color = "green", label = "electrons from valence band")
+#plt.semilogy(Bottom_Ec, j_total, color = "orange", label = "total emitted electrons")
+##plt.plot(Bottom_Ec, j_metal)
+#plt.yscale("symlog", linscale=-1)
+#plt.legend()
+#plt.grid("True")
+#plt.xlabel("Bottom of conduction band (eV)")
+#plt.ylabel("$J_{e}$ (A$nm^{-2}$)")
+#plt.title("Current density as function of band bending")
+#plt.savefig("Detail.png")
+#plt.savefig("Detail.svg")
+

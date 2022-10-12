@@ -1,4 +1,4 @@
-function current_density = current_semi(field,radius,gamma,ec,ef,eg,t)
+function heat_density = nheat_semi(field,radius,gamma,ec,ef,eg,t)
     
     %Checking and initialising Python environment
     pe = pyenv;
@@ -28,6 +28,6 @@ function current_density = current_semi(field,radius,gamma,ec,ef,eg,t)
     % field is transformed from a double to np, so GETELEC can handle it
     % GETELEC outcomes are transformed to double for COMSOL
     % in A/m^2
-    current_density = double(getelec.current_semiconductor_emitter(py.numpy.array(field),py.numpy.array(radius),py.numpy.array(gamma),py.numpy.array(ec),py.numpy.array(ef),py.numpy.array(eg),py.numpy.array(t))*1E18);
+    heat_density = double(getelec.heat_semiconductor_emitter(py.numpy.array(field),py.numpy.array(radius),py.numpy.array(gamma),py.numpy.array(ec),py.numpy.array(ef),py.numpy.array(eg),py.numpy.array(t))*1E18);
 
 end

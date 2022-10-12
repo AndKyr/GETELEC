@@ -1,6 +1,8 @@
 
 from array import array
 import ctypes as ct
+from importlib.metadata import distribution
+from re import T
 #from importlib.metadata import distribution
 #from pickle import TRUE
 #from tkinter.ttk import LabeledScale
@@ -596,13 +598,14 @@ class Metal_Emitter:
         Returns:
             float: Resulted Nottigham from the emission of electrons from an infinitesinal area (J)
         """
-        
+
         args = tuple([self.workfunction] + [self.kT] + [self.emitter._energy_top_barrier] + [self.emitter._energy_bottom_barrier] + [self.emitter._gammow_derivative_top_barrier] + [self.emitter._gammow_derivative_bottom_barrier] + list(self.emitter._gammow_coefficients))
         try:
             integ, abserr = ig.quad(integrator.intfun_Pn, self.energy[0], self.energy[-1], args, full_output = 0)
-        except(IntegrationWarning):
-            integ = 0.
-        return -zs * self.kT * integ
+        except:
+            return 0.
+        
+        return -zs * self.kT * integ    
     
     def Current_Density_educational(self, plot = False):
         """Calculates the field emitted current density from metals on a clear equation to code manner"""
@@ -920,17 +923,21 @@ class Semiconductor_Emitter:
     def Nottingham_Heat_from_Conduction_Band(self): #NEED MODIFICATIONS
         """Calculates the contribution of the conduction band to the Nottingham heat resulted from field emitted electrons from semicoductors"""
         """the fuction will be replaced by the full code from the function, if we agree the function works well"""
-        energy_distribution = self.Energy_Distribution_from_Conduction_Band()*self._energy_conduction_band
+        energy, distribution = self.Energy_Distribution_from_Conduction_Band()
         
-        return -zs* self._kT * np.sum(energy_distribution)
+        heat = energy
+        
+        return -zs* self._kT * np.sum(heat*distribution)
     
     def Nottingham_Heat_from_Valence_Band(self): #NEED MOFICATIONS
         """Calculates the contribution of the valence band to the Nottingham heat resulted from field emitted electrons from semicoductors"""
         """the fuction will be replaced by the full code from the function, if we agree the function works well"""
-        energy_distribution = self.Energy_Distribution_from_Valence_Band()*self._energy_valence_band
-        
-        return -zs * self._kT * np.sum(energy_distribution)
-    
+        energy, distribution = self.Energy_Distribution_from_Valence_Band()#*self._energy_valence_band
+
+        heat = energy
+
+        return -zs * self._kT * np.sum(heat*distribution)
+
     def Nottingham_Heat_from_Replacement_Electrons(self):
         """To be calculated from COMSOL"""
         return 0
@@ -951,9 +958,11 @@ class Semiconductor_Emitter:
         energy_distribution = self.emitter.Fermi_Dirac_Distribution(self._energy_conduction_band, self._kT) * cumulative_transmission 
 
         return self._energy_conduction_band , energy_distribution
-    # endregion
+    # endregiondata
 
-def current_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
+
+
+def current_metal_emitter(Field:array, Radius:array, Gamma:array, Workfunction:array, Temperature:array):
  
     tab = Tabulator()
 
@@ -975,7 +984,7 @@ def current_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
         
     return j_metal
 
-def heat_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
+def heat_metal_emitter(Field:array, Radius:array, Gamma:array, Workfunction:array, Temperature:array):
     
     tab = Tabulator()
     
@@ -996,19 +1005,38 @@ def heat_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
 
     return nh_metal
 
-def current_semiconductor_emitter(Field:float ,Ec:float, Ef:float, Eg:float):
-    debug = 1
+def heat_metal_emitter2(Field:array, Radius:array, Gamma:array, Workfunction:array, Temperature:array):
+    
     tab = Tabulator()
     
     kBoltz = 8.6173324e-5 
-    Temperature = 300
-    kt = kBoltz * Temperature
+    kT = kBoltz * Temperature
+    
+    metal_emitter = Metal_Emitter(tab)
+    
+    nh_metal = np.copy(Field)
+
+    for i in range(len(Field)):
+        metal_emitter.emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
+        metal_emitter.emitter.Interpolate_Gammow()
+    
+        metal_emitter.Define_Emitter_Parameters(Workfunction[i], kT[i])
+    
+        nh_metal[i] = metal_emitter.Nottingham_Heat_educational()
+
+    return nh_metal
+
+def current_semiconductor_emitter(Field:array, Radius:array, Gamma:array ,Ec:array, Ef:array, Eg:array, Temperature:array):
+    
+    tab = Tabulator()
+    
+    kBoltz = 8.6173324e-5 
+
+    kT = kBoltz * Temperature
     
     mass_e = 9.1093837015e-31 
     effec_e = 0.98*mass_e
     effec_p = 0.59*mass_e
-    radius = 20
-    gamma = 10
     
     semiconductor_emitter = Semiconductor_Emitter(tab)
 
@@ -1017,9 +1045,6 @@ def current_semiconductor_emitter(Field:float ,Ec:float, Ef:float, Eg:float):
     j_v = np.copy(Field)
 
 
-    Radius = np.ones(len(Field))*radius
-    Gamma = np.ones(len(Field))*gamma
-    kT = np.ones(len(Field))*kt
     m = np.ones(len(Field))*mass_e
     me = np.ones(len(Field))*effec_e
     mp = np.ones(len(Field))*effec_p
@@ -1032,12 +1057,55 @@ def current_semiconductor_emitter(Field:float ,Ec:float, Ef:float, Eg:float):
         semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec[i], Ef[i], Eg[i], kT[i], m[i], me[i], mp[i])
         
         j_c[i], j_v[i], j_total[i] = semiconductor_emitter.Current_Density_from_Semiconductors()
-        #pn_c, pn_v, pn_total = semiconductor_emitter.Nottingham_Heat_from_Semiconductors()
-    #energy_c, distribution_c, energy_v, distribution_v = semiconductor_emitter.Energy_Distribution_from_Semiconductors()
-    
-    #if debug == 1:
-    #y = time.time()
+ 
+    """
+    file = open("Field_Emission_COMSOL_Debugging_Data.txt", "a")
+    file.write("Array length = %d" % len(Field))
+    file.write("\r\nArray length = %d" % len(Ec))
+    file.write("\r\nCurrent density        Field    Radius    Gamma     Ec    Ef    Eg     kT            m                    me                   mp\r\n")
+        
 
+    for i in range(len(Field)):
+            #file.write("\r\n%e %e %e %e %e %e %e %e %e %e " % (j_total[i]) (Field[i]) (Radius[i]) (Gamma[i]) (Ec[i]) (Ef[i]) (Eg[i]) (m[i]) (me[i]) (mp[i]))
+        L = [str(j_total[i]),"   ",str(Field[i]), "     ",str(Radius[i]), "     ",str(Gamma[i]),"     ", str(Ec[i]),"   ", str(Ef[i]),"   ", str(Eg[i]), "   ", str(kT[i]/kBoltz), "   ",str(m[i]), "   ",str(me[i]),"   ", str(mp[i])] 
+        file.writelines(L) 
+        file.write("\r\n")
+    file.close()"""
+    
+    return j_total
+
+def heat_semiconductor_emitter(Field:array, Radius:array, Gamma:array ,Ec:array, Ef:array, Eg:array, Temperature:array):
+
+    tab = Tabulator()
+    
+    kBoltz = 8.6173324e-5 
+    kT = kBoltz * Temperature
+    
+    mass_e = 9.1093837015e-31 
+    effec_e = 0.98*mass_e
+    effec_p = 0.59*mass_e
+    
+    semiconductor_emitter = Semiconductor_Emitter(tab)
+
+    pn_total = np.copy(Field)
+    pn_c = np.copy(Field)
+    pn_v = np.copy(Field)
+
+
+    m = np.ones(len(Field))*mass_e
+    me = np.ones(len(Field))*effec_e
+    mp = np.ones(len(Field))*effec_p
+
+    for i in range(len(Field)):
+
+        semiconductor_emitter.emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
+        semiconductor_emitter.emitter.Interpolate_Gammow()
+
+        semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec[i], Ef[i], Eg[i], kT[i], m[i], me[i], mp[i])
+        
+        pn_c[i], pn_v[i], pn_total[i] = semiconductor_emitter.Nottingham_Heat_from_Semiconductors()
+
+    """
     file = open("Field_Emission_COMSOL_Debugging_Data.txt", "a")
     file.write("Array length = %d" % len(Field))
     file.write("\r\nArray length = %d" % len(Ec))
@@ -1050,12 +1118,11 @@ def current_semiconductor_emitter(Field:float ,Ec:float, Ef:float, Eg:float):
         file.writelines(L) 
         file.write("\r\n")
     file.close()
+    """
+    return pn_total
 
-    return j_total
 
-"""Add Pn for semi and e- energy distributions"""
+#data = current_semiconductor_emitter(np.ones(1)*5, np.ones(1)*50, np.ones(1)*10, np.ones(1)*3.,np.ones(1)*4.5,np.ones(1)*1,  np.ones(1)*200)
+#data = heat_metal_emitter(np.ones(1)*5, np.ones(1)*50, np.ones(1)*10,np.ones(1)*4.5, np.ones(1)*200)
 
-#data = current_metal_emitter(np.ones(10)*10, np.ones(10)*20,np.ones(10)*10,np.ones(10)*4.5, np.ones(10)*300)
-#end = time.time()
 #print(data)
-
