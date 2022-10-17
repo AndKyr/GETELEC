@@ -674,7 +674,6 @@ function main() {
         let enterButton = document.getElementById("enterButton");
         let helpButton = document.getElementById("helpIcon");
 
-
         try {helpButton.addEventListener("click", addHelpDiv);} catch (e) {console.log(e)};
         try {enterButton.addEventListener("click", checkValidity);} catch (e) {console.log(e)};
     
@@ -688,85 +687,6 @@ let helpButton, docDiv;
 
 main();
 loadEventListeners();
-
-function downloadData(){
-
-    let jsonFields = ['Radius', 'beta', 'sigma_Aeff', 'type', 'xAxisUnit', 'xplot_line', 'xplot_mrk', 'yAxisUnit', 'yplot_line', 'yplot_mrk']
-
-    //let csv = arrayToCsv(inData);
-
-    downloadCsv(jsonToCsv(graphData));
-
-    // function download(filename) {
-
-    //     var file = new Blob([JSON.stringify(inData)], {type : 'application/json'});
-
-    //     if (window.navigator.msSaveOrOpenBlob) // IE10+
-
-    //         window.navigator.msSaveOrOpenBlob("data", "data.json");
-
-    //     else { // Others
-
-    //         var a = document.createElement("a"),
-    //                 url = URL.createObjectURL(file);
-                    
-    //         a.href = url;
-    //         a.download = filename;
-    //         document.body.appendChild(a);
-    //         a.click();
-            
-    //         setTimeout(function() {
-    //             document.body.removeChild(a);
-    //             window.URL.revokeObjectURL(url);  
-    //         }, 0); 
-    //     }
-    // }
-
-    function arrayToCsv(data){
-        return Object.keys(data).map(function(k){
-            return data[k];
-        }).join(',');
-    }
-
-    function jsonToCsv(json) {
-
-        let csvStr = jsonFields.join(",") + "\n";
-
-        console.log(json);
-    
-        json.forEach(element => {
-
-            let _radius = element.Radius;
-            let _beta = element.beta;
-            let _sigma_Aeff = element.sigmaAeff;
-            let _type = element.type;
-            let _xAxisUnit = element.xAxisUnit;
-            let _yAxisUnit = element.yAxisUnit;
-            
-            console.log(element)
-
-            element.inbound.forEach(inboundELe => {
-                let _xplot_line = inboundELe.xplot_line;
-                let _yplot_line = inboundELe.yplot_line;
-                let _xplot_mrk = inboundELe.xplot_mrk;
-                let _yplot_mrk = inboundELe.yplot_mrk;
-                csvStr += _radius + ',' + _beta + ',' + _sigma_Aeff + ',' + _type + ',' + _xAxisUnit  + ',' + _yAxisUnit  + ',' + _xplot_line + ',' + _yplot_line  + ',' +  _xplot_mrk + ',' + _yplot_mrk + "\n";
-            })
-        })
-
-        return csvStr;
-    }
-
-    function downloadCsv(csvStr) {
-
-        var hiddenElement = document.createElement('a');
-        hiddenElement.href = 'data:text/csv;charset=utf-8,' + encodeURI(csvStr);
-        hiddenElement.target = '_blank';
-        hiddenElement.download = 'output.csv';
-        hiddenElement.click();
-    }
-    
-}
 
 function loadEventListeners() {
 
@@ -796,11 +716,10 @@ function loadEventListeners() {
 
     });
 
-    let canvasButton = document.getElementById("canvasButton");
+    let downloadButton = document.getElementById('downloadDataBtn');
+    downloadButton.addEventListener("click", downloadData);
 
-    canvasButton.addEventListener('click', function(){
-        downloadData();
-    })
+
 
 }
 
@@ -1239,3 +1158,34 @@ function insertAfter(newNode, existingNode) {
 
 }
 
+function downloadData() {
+
+    const blob = new Blob([csvmaker(graphData)], { type: 'text/csv' });
+ 
+    const url = window.URL.createObjectURL(blob);
+ 
+    const a = document.createElement('a');
+ 
+    a.setAttribute('href', url);
+ 
+    a.setAttribute('download', 'download.csv');
+
+    a.click();
+}
+ 
+const csvmaker = function (data) {
+ 
+    // Empty array for storing the values
+    let csvRows = [];
+    
+    const headers = Object.keys(data);
+
+    for(let key of headers){
+
+        const line = data[key]
+        csvRows.push(key + "," + line);
+
+    }
+ 
+    return csvRows.join('\n')
+}

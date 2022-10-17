@@ -1272,7 +1272,19 @@ function main(){
 
         function updateESGraph(){
 
-            return;
+            let energies = [];
+
+            let electronCounts = [];
+
+            if(_materialType == "1"){
+
+                for(let i = 0; i < _sweepValues.length; i++){
+
+                    //
+
+                }
+
+            }
 
         }
 
@@ -2415,3 +2427,4 @@ function insertAfter(newNode, existingNode) {
     existingNode.parentNode.insertBefore(newNode, existingNode.nextSibling);
 
 }
+
