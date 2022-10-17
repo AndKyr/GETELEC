@@ -813,7 +813,7 @@ function addHelpDiv(){
 </section>
     `
 
-    let relativeDiv = document.getElementById("canvasButton");
+    let relativeDiv = document.getElementById("downloadButton");
     let errorDiv = document.createElement("section");
     docDiv = document.createElement("section");
     docDiv.innerHTML = template2;
