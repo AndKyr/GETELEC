@@ -1168,7 +1168,7 @@ function downloadData() {
  
     a.setAttribute('href', url);
  
-    a.setAttribute('download', 'download.csv');
+    a.setAttribute('download', 'data.csv');
 
     a.click();
 }
