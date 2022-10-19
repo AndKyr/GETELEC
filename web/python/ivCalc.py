@@ -31,7 +31,7 @@ emissionpath,mainfolder = os.path.split(emissionpath)
 pythonpath = emissionpath + '/python'
 sys.path.append(pythonpath)
 
-from getelec_online import fit_data, plot_data
+from getelec_online import fit_data
 
 outdata = {}
 
@@ -39,31 +39,33 @@ def main():
 
     print(json.dumps(dataInArr))
 
-    F0 = [1., 5., 20.]
-    R0 = [1., 5., 50.]
-    gamma0 = [1., 10., 100.]
-    temp0 = [299.99999, 300., 300.01]
-
     xdata = 1./np.array(dataInArr[0])
     ydata = np.log(np.array(dataInArr[1]))
-    W0 = np.array([1.-1e-4, 1., 1.+1e-4]) * float(dataInArr[2][0])
+    workFunction = float(dataInArr[2][0])
 
-    fit = fit_data(xdata, ydata, F0, W0, R0, gamma0, temp0)
-
-    popt = fit.x
-    yopt = plot_data(xdata, popt[0], popt[1], popt[2], popt[3], popt[4])
-    yshift = max(yopt) - max(ydata)
-
-    xth = np.linspace(min(xdata),max(xdata),32)
-    yth = np.exp(plot_data(xth, popt[0], popt[1], popt[2], popt[3], popt[4]) - yshift)
-
-    xplot = xdata / popt[0]
-    xplot_th = xth / popt[0]
+    xplot, xplot_th, yth, beta, radius, sigmaAeff = fit_data(xdata, ydata, workFunction, mode = "simple")
 
     outdata = { "type": "ivCalc",
                 "xplot_mrk": xplot.tolist(), "yplot_mrk": dataInArr[1], \
                 "xplot_line": xplot_th.tolist(), "yplot_line": yth.tolist(), \
-                "beta": popt[0], "Radius": popt[2], "sigma_Aeff": np.exp(-yshift), \
+                "beta": beta, "sigma_Aeff": sigmaAeff, \
+                "xAxisUnit": "1 / (Local Field [V/nm])", "yAxisUnit": "Current [Amps]"}
+
+    print(json.dumps(outdata))
+
+def mainWithRadius():
+    print(json.dumps(dataInArr))
+
+    xdata = 1./np.array(dataInArr[0])
+    ydata = np.log(np.array(dataInArr[1]))
+    workFunction = float(dataInArr[2][0])
+
+    xplot, xplot_th, yth, beta, radius, sigmaAeff = fit_data(xdata, ydata, workFunction, mode = "withRadius")
+
+    outdata = { "type": "ivCalc",
+                "xplot_mrk": xplot.tolist(), "yplot_mrk": dataInArr[1], \
+                "xplot_line": xplot_th.tolist(), "yplot_line": yth.tolist(), \
+                "beta": beta, "Radius": radius, "sigma_Aeff": sigmaAeff, \
                 "xAxisUnit": "1 / (Local Field [V/nm])", "yAxisUnit": "Current [Amps]"}
 
     print(json.dumps(outdata))

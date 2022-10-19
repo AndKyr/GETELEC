@@ -338,10 +338,33 @@ def spectrum_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature
 
     return energy_c, count_c, energy_v, count_v
 
-def fit_data(xML, yML, F0, W0, R0, Gamma0, Temp0):
-    fit_data = gt_mod.fitML(xML, yML, F0, W0, R0, Gamma0, Temp0)
-    return fit_data
-
-def plot_data(xfn, beta, W0, R0, Gamma0, Temp0, approx=1):
+def plot_data(xfn, beta, W0, R0, Gamma0, Temp0, approx=2):
     plot_data = gt_mod.MLplot(xfn, beta, W0, R0, Gamma0, Temp0, approx)
     return plot_data
+
+def fit_data(xML, yML, workFunction, mode = "simple"):
+
+    F0 = [1., 5., 20.]
+    gamma0 = [10 - 1.e-5, 10., 10. + 1.e-5]
+    temp0 = [300 - 1.e-5, 300., 300 + 1.e-5] 
+    W0 = np.array([1.-1e-4, 1., 1.+1e-4]) * workFunction
+    R0 = [1., 5., 200.]
+
+    if (mode == "simple"):
+        R0 = [5.e3, 5.001e3, 5.002e3]
+    
+    fit_data = gt_mod.fitML(xML, yML, F0, W0, R0, gamma0, temp0)
+    popt = fit_data.x
+
+    yopt = gt_mod.MLplot(xML, popt[0], popt[1], popt[2], popt[3], popt[4], approx=2)
+    yshift = max(yopt) - max(yML)
+
+    xth = np.linspace(min(xML),max(xML),32)
+    yth = np.exp(gt_mod.MLplot(xth, popt[0], popt[1], popt[2], popt[3], popt[4], approx = 2) - yshift)
+
+    xplot = xML / popt[0]
+    xplot_th = xth / popt[0]
+        
+    
+    return xplot, xplot_th, yth, popt[0], popt[1], np.exp(-yshift)
+
