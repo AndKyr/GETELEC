@@ -75,7 +75,7 @@ lib/libslatec.so: $(SLATEC_OBJ)
 	$(FC) -fPIC -shared lib/slatec/obj/*.o -o $@
 	
 lib/slatec/obj/%.o: lib/slatec/src/%.f
-	$(FC) -fallow-argument-mismatch -fPIC -O3 -w -c $< -o $@ 
+	$(FC) -Wno-argument-mismatch -fPIC -O3 -w -c $< -o $@ 
 
 bin/%.out: cobj/%.o $(LIBSHARED)
 	$(CC) -L./lib -o $@ $^
