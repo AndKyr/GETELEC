@@ -37,7 +37,7 @@ outdata = {}
 
 def main():
 
-    print(json.dumps(dataInArr))
+    #print(json.dumps(dataInArr))
 
     xdata = 1./np.array(dataInArr[0])
     ydata = np.log(np.array(dataInArr[1]))
@@ -54,7 +54,8 @@ def main():
     print(json.dumps(outdata))
 
 def mainWithRadius():
-    print(json.dumps(dataInArr))
+
+    #print(json.dumps(dataInArr))
 
     xdata = 1./np.array(dataInArr[0])
     ydata = np.log(np.array(dataInArr[1]))
@@ -71,7 +72,11 @@ def mainWithRadius():
     print(json.dumps(outdata))
 
 with cProfile.Profile() as pr:
-    main()
+
+    if float(dataInArr[3][0]) == 0:
+        main()
+    if float(dataInArr[3][0]) == 1:
+        mainWithRadius()
 
 #stats = pstats.Stats(pr)
 #stats.sort_stats(pstats.SortKey.TIME)

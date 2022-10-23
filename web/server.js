@@ -70,7 +70,8 @@ io.sockets.on('connection', function (socket) {
     const params = JSON.stringify({
       "Voltage": data[0],
       "Current": data[1],
-      "Work_function": data[2]
+      "Work_function": [data[2]],
+      "CalculateR": data[3]
     });
 
     const options = {

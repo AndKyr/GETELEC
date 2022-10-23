@@ -548,7 +548,11 @@ function main() {
 
                 };
 
-                inData = [_voltage, _current, _workFunction];
+                let calculateR = document.getElementById("chooseR").checked;
+                if(calculateR == true) calculateR = 1;
+                if(calculateR == false) calculateR = 0;
+
+                inData = [_voltage, _current, _workFunction, calculateR];
 
                 if (canCompute) {
                     socket.emit('calculateIv', inData);
@@ -614,8 +618,8 @@ function main() {
         function updateTitle() {
 
             if (inVoltageMode) {
-                myChart.options.plugins.title.text = "Fitted parameters: Radius: " + rad + " nm, β: " + beta + " nm⁻¹, σAeff: " + sigmaAeff + " nm²";
-                return;
+                if(isNaN(rad) == false) myChart.options.plugins.title.text = "Fitted parameters: Radius: " + rad + " nm, β: " + beta + " nm⁻¹, σAeff: " + sigmaAeff + " nm²";
+                if(isNaN(rad) == true) myChart.options.plugins.title.text = "Fitted parameters: β: " + beta + " nm⁻¹, σAeff: " + sigmaAeff + " nm²";
             } else {
                 myChart.options.plugins.title.text = "Fitted parameters: Radius: " + rad + " nm, β: " + beta + ", σAeff: " + sigmaAeff + " nm²";
             }
