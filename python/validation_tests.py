@@ -6,6 +6,71 @@ import matplotlib.pyplot as plt
 import datetime
 import os
 
+def _Load_Semiconductor_Data():
+    try:
+        field = np.load("tests/20221024_semiconductor_test_data/semi_field.npy")
+        radius = np.load("tests/20221024_semiconductor_test_data/semi_radius.npy")
+        gamma = np.load("tests/20221024_semiconductor_test_data/semi_gamma.npy")
+        ec = np.load("tests/20221024_semiconductor_test_data/semi_ec.npy")
+        ef = np.load("tests/20221024_semiconductor_test_data/semi_ef.npy")
+        eg = np.load("tests/20221024_semiconductor_test_data/semi_eg.npy")
+        temp = np.load("tests/20221024_semiconductor_test_data/semi_temp.npy")
+        current = np.load("tests/20221024_semiconductor_test_data/semi_current.npy")
+        heat = np.load("tests/20221024_semiconductor_test_data/semi_heat.npy")
+        return field, radius, gamma, ec, ef, eg, temp, current, heat
+
+    except(IOError):
+        print("Semiconductor test data not found")
+        return False
+   
+def _Load_Metal_Data():
+    try:
+        field = np.load("tests/20221024_metal_test_data/metal_field.npy")
+        radius = np.load("tests/20221024_metal_test_data/metal_radius.npy")
+        gamma = np.load("tests/20221024_metal_test_data/metal_gamma.npy")
+        ef = np.load("tests/20221024_metal_test_data/metal_ef.npy")
+        temp = np.load("tests/20221024_metal_test_data/metal_temp.npy")
+        current = np.load("tests/20221024_metal_test_data/metal_current.npy")
+        heat = np.load("tests/20221024_metal_test_data/metal_heat.npy")
+        return field, radius, gamma, ef, temp, current, heat
+
+    except(IOError):
+        print("Metal test data not found")
+        return False
+   
+def _Save_Table_to_Files():
+    path_to_file = "/home/salva/Documents/getelec_priv/python/spectra"
+    data = np.loadtxt(path_to_file)
+
+    field = data[:,0]
+    radius = data[:,1]
+    gamma = data[:,2]
+    ec = data[:,3]
+    ef = data[:,4]
+    eg = data[:,5]
+    temp = data[:,6]
+
+    try:
+        os.mkdir("tests/20221024_metal_test_data")
+    except:
+        pass
+
+    np.save("tests/20221024_metal_test_data/metal_field", field)
+    np.save("tests/20221024_metal_test_data/metal_radius", radius)
+    np.save("tests/20221024_metal_test_data/metal_gamma", gamma)
+    #np.save("tests/20221024_semiconductor_test_data/semi_ec", ec)
+    np.save("tests/20221024_metal_test_data/metal_ef", ef)
+    #np.save("tests/20221024_semiconductor_test_data/semi_eg", eg)
+    np.save("tests/20221024_metal_test_data/metal_temp", temp)
+    
+    current=gtab.current_metal_emitter(field,radius,gamma,ef,temp)
+    heat=gtab.heat_metal_emitter(field,radius,gamma,ef,temp)
+
+    np.save("tests/20221024_metal_test_data/metal_current",current)
+    np.save("tests/20221024_metal_test_data/metal_heat",heat)
+
+    return True
+
 def _Tabulator_Test():
 
     tab = gtab.Tabulator()
@@ -33,7 +98,7 @@ def _Tabulator_Test():
 
     metal_emitter = gtab.Metal_Emitter(tab)
 
-    print("calculating from NEW GETELEC")
+    print("\nCalculating from NEW GETELEC")
     new_getelec_start = datetime.datetime.now()
     for i in range(len(Field)):
         metal_emitter.emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
@@ -43,7 +108,7 @@ def _Tabulator_Test():
         Pn_new_getelec[i] = metal_emitter.Nottingham_Heat()
     new_getelec_end = datetime.datetime.now()
 
-    print("calculating from REF GETELEC\n")
+    print("\nCalculating from REF GETELEC\n")
     ref_getelec_start = datetime.datetime.now()
     em = gt.emission_create(approx=2)
     for i in range(len(Field)):   
@@ -72,7 +137,7 @@ def _Tabulator_Test():
     if J_rms_error.any() > 0.001:
         print("\nTabulator current test: NOT PASSED")
         if len(J_bad)!=0:
-            print("WARNING!\nSome values do not complie with the rms error tolerance.\nDebug your installation or seek assistance.\n")
+            print("WARNING!\nSome values do not complie with the rms error tolerance.\nDebug your code or seek assistance.\n")
             print("\nrms error in J = ", J_rms_error)
             print("J bad = ", J_bad)
             for i in J_bad:
@@ -154,71 +219,6 @@ def _Tabulator_Test():
     plt.title("Comparing heat from new and old GETELEC")
     plt.savefig("Validation_test: Pn.png")
     #plt.show()
-    return True
-
-def _Load_Semiconductor_Data():
-    try:
-        field = np.load("tests/20221024_semiconductor_test_data/semi_field.npy")
-        radius = np.load("tests/20221024_semiconductor_test_data/semi_radius.npy")
-        gamma = np.load("tests/20221024_semiconductor_test_data/semi_gamma.npy")
-        ec = np.load("tests/20221024_semiconductor_test_data/semi_ec.npy")
-        ef = np.load("tests/20221024_semiconductor_test_data/semi_ef.npy")
-        eg = np.load("tests/20221024_semiconductor_test_data/semi_eg.npy")
-        temp = np.load("tests/20221024_semiconductor_test_data/semi_temp.npy")
-        current = np.load("tests/20221024_semiconductor_test_data/semi_current.npy")
-        heat = np.load("tests/20221024_semiconductor_test_data/semi_heat.npy")
-        return field, radius, gamma, ec, ef, eg, temp, current, heat
-
-    except(IOError):
-        print("Semiconductor test data not found")
-        return False
-   
-def _Load_Metal_Data():
-    try:
-        field = np.load("tests/20221024_metal_test_data/metal_field.npy")
-        radius = np.load("tests/20221024_metal_test_data/metal_radius.npy")
-        gamma = np.load("tests/20221024_metal_test_data/metal_gamma.npy")
-        ef = np.load("tests/20221024_metal_test_data/metal_ef.npy")
-        temp = np.load("tests/20221024_metal_test_data/metal_temp.npy")
-        current = np.load("tests/20221024_metal_test_data/metal_current.npy")
-        heat = np.load("tests/20221024_metal_test_data/metal_heat.npy")
-        return field, radius, gamma, ef, temp, current, heat
-
-    except(IOError):
-        print("Metal test data not found")
-        return False
-   
-def _Save_Table_to_Files():
-    path_to_file = "/home/salva/Documents/getelec_priv/python/spectra"
-    data = np.loadtxt(path_to_file)
-
-    field = data[:,0]
-    radius = data[:,1]
-    gamma = data[:,2]
-    ec = data[:,3]
-    ef = data[:,4]
-    eg = data[:,5]
-    temp = data[:,6]
-
-    try:
-        os.mkdir("tests/20221024_metal_test_data")
-    except:
-        pass
-
-    np.save("tests/20221024_metal_test_data/metal_field", field)
-    np.save("tests/20221024_metal_test_data/metal_radius", radius)
-    np.save("tests/20221024_metal_test_data/metal_gamma", gamma)
-    #np.save("tests/20221024_semiconductor_test_data/semi_ec", ec)
-    np.save("tests/20221024_metal_test_data/metal_ef", ef)
-    #np.save("tests/20221024_semiconductor_test_data/semi_eg", eg)
-    np.save("tests/20221024_metal_test_data/metal_temp", temp)
-    
-    current=gtab.current_metal_emitter(field,radius,gamma,ef,temp)
-    heat=gtab.heat_metal_emitter(field,radius,gamma,ef,temp)
-
-    np.save("tests/20221024_metal_test_data/metal_current",current)
-    np.save("tests/20221024_metal_test_data/metal_heat",heat)
-
     return True
 
 def _Getelec_Installation_Semiconductor_Test():
