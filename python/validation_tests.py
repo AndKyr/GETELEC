@@ -71,7 +71,7 @@ def _Save_Table_to_Files():
 
     return True
 
-def _Tabulator_Test():
+def Tabulator_Test():
 
     tab = gtab.Tabulator()
 
@@ -438,7 +438,7 @@ def _Getelec_Installation_Metal_Test():
 def Getelec_Installation_Test():
     _Getelec_Installation_Metal_Test()
     _Getelec_Installation_Semiconductor_Test()
-    _Tabulator_Test()
+    Tabulator_Test()
     return True
 
 Getelec_Installation_Test()
