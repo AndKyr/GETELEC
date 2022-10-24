@@ -534,6 +534,9 @@ class Metal_Emitter:
         
         Returns:
             array: Energy space for which the electron emission and Notigham heat are going to be evaluated in (eV)
+
+
+        
         """
         
         resolution = NGi #128
@@ -1122,7 +1125,7 @@ def heat_semiconductor_emitter(Field:array, Radius:array, Gamma:array ,Ec:array,
     return pn_total
 
 
-#data = current_semiconductor_emitter(np.ones(1)*5, np.ones(1)*50, np.ones(1)*10, np.ones(1)*3.,np.ones(1)*4.5,np.ones(1)*1,  np.ones(1)*200)
+data = current_semiconductor_emitter(np.ones(1)*0.5, np.ones(1)*20, np.ones(1)*10, np.ones(1)*4.05,np.ones(1)*4.5,np.ones(1)*1.12,  np.ones(1)*300)
 #data = heat_metal_emitter(np.ones(1)*5, np.ones(1)*50, np.ones(1)*10,np.ones(1)*4.5, np.ones(1)*200)
 
 #print(data)

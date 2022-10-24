@@ -1,12 +1,448 @@
-from cProfile import label
-from pkgutil import get_data
-from turtle import color
 import getelec_tabulator as gtab
 import getelec_mod as gt
 import numpy as np
 import matplotlib as mb
 import matplotlib.pyplot as plt
 import datetime
+import os
+
+def _Tabulator_Test():
+
+    tab = gtab.Tabulator()
+
+    Fmax = 1/tab.Finv[0]
+    Fmin = 1/tab.Finv[-1]
+    Rmax = 1/tab.Rinv[0]
+    Rmin = 1/tab.Rinv[-1]
+    gammax = 1/tab.gaminv[0]
+    gammin = 1/tab.gaminv[-1]
+
+    Np = 8096
+
+    Field = np.random.rand(Np) * (Fmax - Fmin) + Fmin
+    Radius = np.random.rand(Np) * (Rmax - Rmin) + Rmin
+    Gamma = np.random.rand(Np) * (gammax - gammin) + gammin
+    Workfunction = np.random.rand(Np) * (7.5 - 2.5) + 2.5
+    Temperature = np.random.rand(Np) * (3000 - 100) + 100
+    kT = Temperature * 8.6173324e-5 
+
+    J_new_getelec = np.copy(Field)
+    Pn_new_getelec = np.copy(Field)
+    J_ref_getelec = np.copy(Field)
+    Pn_ref_getelec = np.copy(Field)
+
+    metal_emitter = gtab.Metal_Emitter(tab)
+
+    print("calculating from NEW GETELEC")
+    new_getelec_start = datetime.datetime.now()
+    for i in range(len(Field)):
+        metal_emitter.emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
+        metal_emitter.emitter.Interpolate_Gammow()
+        metal_emitter.Define_Emitter_Parameters(Workfunction[i], kT[i])
+        J_new_getelec[i] = metal_emitter.Current_Density()
+        Pn_new_getelec[i] = metal_emitter.Nottingham_Heat()
+    new_getelec_end = datetime.datetime.now()
+
+    print("calculating from REF GETELEC\n")
+    ref_getelec_start = datetime.datetime.now()
+    em = gt.emission_create(approx=2)
+    for i in range(len(Field)):   
+        em.F = Field[i]
+        em.W = Workfunction[i]
+        em.Temp = Temperature[i]
+        em.gamma = Gamma[i]
+        em.R = Radius[i]
+        em.cur_dens()
+        J_ref_getelec[i] = em.Jem
+        Pn_ref_getelec[i] = em.heat
+    ref_getelec_end = datetime.datetime.now()
+
+
+    J_absolute_error = abs(J_new_getelec - J_ref_getelec)
+    J_relative_error = J_absolute_error / J_ref_getelec
+    J_bad = np.where(np.logical_and(J_relative_error > 0.5, J_absolute_error > 1.e-25))[0]
+
+    Pn_absolute_error = abs(Pn_new_getelec - Pn_ref_getelec)
+    Pn_relative_error = Pn_absolute_error / Pn_ref_getelec
+    Pn_bad = np.where(np.logical_and(Pn_relative_error > 0.5, Pn_absolute_error > 1.e-25))[0]
+
+    J_rms_error = np.sqrt(np.mean(J_relative_error[J_absolute_error > 1.e-25]**2))
+    Pn_rms_error = np.sqrt(np.mean(Pn_relative_error[Pn_absolute_error > 1.e-25]**2))
+
+    if J_rms_error.any() > 0.001:
+        print("\nTabulator current test: NOT PASSED")
+        if len(J_bad)!=0:
+            print("WARNING!\nSome values do not complie with the rms error tolerance.\nDebug your installation or seek assistance.\n")
+            print("\nrms error in J = ", J_rms_error)
+            print("J bad = ", J_bad)
+            for i in J_bad:
+               print("J_old_getelec_bad", J_ref_getelec[i]," J_new_getelec_bad", J_new_getelec[i])
+               print("     Parametres:",Field[i], Radius[i], Gamma[i], Workfunction[i], Temperature[i])
+               #em.set(Field[i], Radius[i], Gamma[i])
+               #em.interpolate()
+               #em.get_lims(Workfunction[i], kT[i])
+               #em.integrate_quad(Workfunction[i], kT[i])
+               #em.integrate_quad_Nottingham(Workfunction[i], kT[i])
+        else:
+            pass
+    else:
+        print("\nTabulator current test: PASS")
+
+    if Pn_rms_error.any() > 0.001:
+        print("\n\nTabulator Nottigham heat test: NOT PASSED")
+        if len(Pn_bad) !=0:
+            print("WARNING!\nSome values do not complie with the rms error tolerance.\nDebug your code or seek assistance.\n")
+            print("\nrms error in Pn = ", Pn_rms_error)
+            print("Pn bad = ", Pn_bad)
+            for i in Pn_bad:
+               print("Pn_old_getelec_bad", Pn_ref_getelec[i]," Pn_new_getelec_bad", Pn_new_getelec[i])
+               print("     Parametres:",Field[i], Radius[i], Gamma[i], Workfunction[i], Temperature[i])
+               #em.set(Field[i], Radius[i], Gamma[i])
+               #em.interpolate()
+               #em.get_lims(Workfunction[i], kT[i])
+               #em.integrate_quad(Workfunction[i], kT[i])
+               #em.integrate_quad_Nottingham(Workfunction[i], kT[i])
+        else:
+            pass
+    else:
+        print("\n\nTabulator Nottigham heat test: PASSED")
+
+    if len(J_bad)==0 and len(Pn_bad)==0 and Pn_rms_error.all()<0.001 and J_rms_error.all()<0.001:
+        print("\nTabulator within the tolerance")
+    else:
+        print("\nTabulator out of tolerance") 
+
+    print("\nRef GETELEC running time =", ref_getelec_end-ref_getelec_start)
+    print("New GETELEC running time =", new_getelec_end-new_getelec_start)
+
+    font = 20
+    x = 15
+    y = x
+
+    mb.rcParams["font.size"] = font
+    mb.rcParams["axes.labelsize"] = font
+    mb.rcParams["xtick.labelsize"] = font
+    mb.rcParams["ytick.labelsize"] = font
+    #mb.rcParams["legend.fontsize"] = font
+    mb.rcParams["lines.linewidth"] = 2
+
+    fig1, ax = plt.subplots(figsize=(x,y)) 
+    #ax.ticklabel_format(scilimits=[-1,1])
+    plt.loglog(J_ref_getelec, J_new_getelec, '.' ,color = "steelblue")
+    plt.loglog(abs(J_ref_getelec), abs(J_new_getelec), '.',color = "steelblue")
+    plt.loglog([1.e-80, 1.], [1.e-80, 1.], color = "orange", label = "1to1 line")
+    plt.grid("True")
+    plt.legend()
+    plt.xlim([10E-90,10E0])
+    plt.ylim([10E-90,10E0])
+    plt.xlabel("Old GETELEC current densities (A$nm^{-2}$)")
+    plt.ylabel("New GETELEC current densities (A$nm^{-2}$)")
+    plt.title("Comparing current from new and old GETELEC")
+    plt.savefig("Validation_test: J.png")
+    #plt.show()
+
+    fig2, ax = plt.subplots(figsize=(x,y))
+    plt.loglog(Pn_ref_getelec, Pn_new_getelec, '.',color = "steelblue")
+    plt.loglog(abs(Pn_ref_getelec), abs(Pn_new_getelec), '.',color = "steelblue")
+    plt.loglog([1.e-80, 1.], [1.e-80, 1.],color = "orange", label = "1to1 line")
+    plt.grid("True")
+    plt.legend()
+    plt.xlim([10E-90,10E0])
+    plt.ylim([10E-90,10E0])
+    plt.xlabel("Old GETELEC Nottigham heat (W$nm^{-2}$)")
+    plt.ylabel("New GETELEC Nottigham heat (W$nm^{-2}$)")
+    plt.title("Comparing heat from new and old GETELEC")
+    plt.savefig("Validation_test: Pn.png")
+    #plt.show()
+    return True
+
+def _Load_Semiconductor_Data():
+    try:
+        field = np.load("tests/20221024_semiconductor_test_data/semi_field.npy")
+        radius = np.load("tests/20221024_semiconductor_test_data/semi_radius.npy")
+        gamma = np.load("tests/20221024_semiconductor_test_data/semi_gamma.npy")
+        ec = np.load("tests/20221024_semiconductor_test_data/semi_ec.npy")
+        ef = np.load("tests/20221024_semiconductor_test_data/semi_ef.npy")
+        eg = np.load("tests/20221024_semiconductor_test_data/semi_eg.npy")
+        temp = np.load("tests/20221024_semiconductor_test_data/semi_temp.npy")
+        current = np.load("tests/20221024_semiconductor_test_data/semi_current.npy")
+        heat = np.load("tests/20221024_semiconductor_test_data/semi_heat.npy")
+        return field, radius, gamma, ec, ef, eg, temp, current, heat
+
+    except(IOError):
+        print("Semiconductor test data not found")
+        return False
+   
+def _Load_Metal_Data():
+    try:
+        field = np.load("tests/20221024_metal_test_data/metal_field.npy")
+        radius = np.load("tests/20221024_metal_test_data/metal_radius.npy")
+        gamma = np.load("tests/20221024_metal_test_data/metal_gamma.npy")
+        ef = np.load("tests/20221024_metal_test_data/metal_ef.npy")
+        temp = np.load("tests/20221024_metal_test_data/metal_temp.npy")
+        current = np.load("tests/20221024_metal_test_data/metal_current.npy")
+        heat = np.load("tests/20221024_metal_test_data/metal_heat.npy")
+        return field, radius, gamma, ef, temp, current, heat
+
+    except(IOError):
+        print("Metal test data not found")
+        return False
+   
+def _Save_Table_to_Files():
+    path_to_file = "/home/salva/Documents/getelec_priv/python/spectra"
+    data = np.loadtxt(path_to_file)
+
+    field = data[:,0]
+    radius = data[:,1]
+    gamma = data[:,2]
+    ec = data[:,3]
+    ef = data[:,4]
+    eg = data[:,5]
+    temp = data[:,6]
+
+    try:
+        os.mkdir("tests/20221024_metal_test_data")
+    except:
+        pass
+
+    np.save("tests/20221024_metal_test_data/metal_field", field)
+    np.save("tests/20221024_metal_test_data/metal_radius", radius)
+    np.save("tests/20221024_metal_test_data/metal_gamma", gamma)
+    #np.save("tests/20221024_semiconductor_test_data/semi_ec", ec)
+    np.save("tests/20221024_metal_test_data/metal_ef", ef)
+    #np.save("tests/20221024_semiconductor_test_data/semi_eg", eg)
+    np.save("tests/20221024_metal_test_data/metal_temp", temp)
+    
+    current=gtab.current_metal_emitter(field,radius,gamma,ef,temp)
+    heat=gtab.heat_metal_emitter(field,radius,gamma,ef,temp)
+
+    np.save("tests/20221024_metal_test_data/metal_current",current)
+    np.save("tests/20221024_metal_test_data/metal_heat",heat)
+
+    return True
+
+def _Getelec_Installation_Semiconductor_Test():
+    
+    ref_field, ref_radius, ref_gamma, ref_ec, ref_ef, ref_eg, ref_temp, J_ref_getelec, Pn_ref_getelec = _Load_Semiconductor_Data()
+
+    J_new_getelec = gtab.current_semiconductor_emitter(ref_field, ref_radius, ref_gamma, ref_ec, ref_ef, ref_eg, ref_temp)
+    Pn_new_getelec = gtab.heat_semiconductor_emitter(ref_field, ref_radius, ref_gamma, ref_ec, ref_ef, ref_eg, ref_temp)
+
+    J_absolute_error = abs(J_new_getelec - J_ref_getelec)
+
+    if J_absolute_error.any() != 0:
+        J_relative_error = J_absolute_error / J_ref_getelec
+        J_bad = np.where(np.logical_and(J_relative_error > 0.5, J_absolute_error > 1.e-25))[0]
+        J_rms_error = np.sqrt(np.mean(J_relative_error[J_absolute_error > 1.e-25]**2))
+    else:
+        J_relative_error = np.zeros(len(J_absolute_error))
+        J_bad = np.where(np.logical_and(J_relative_error > 0.5, J_absolute_error > 1.e-25))[0]
+        J_rms_error = np.zeros(len(J_absolute_error))
+    
+    Pn_absolute_error = abs(Pn_new_getelec - Pn_ref_getelec)
+    if Pn_absolute_error.any() !=0:
+        Pn_relative_error = Pn_absolute_error / Pn_ref_getelec
+        Pn_bad = np.where(np.logical_and(Pn_relative_error > 0.5, Pn_absolute_error > 1.e-25))[0]
+        Pn_rms_error = np.sqrt(np.mean(Pn_relative_error[Pn_absolute_error > 1.e-25]**2))
+    else:
+        Pn_relative_error = np.zeros(len(Pn_absolute_error))
+        Pn_bad = np.where(np.logical_and(Pn_relative_error > 0.5, Pn_absolute_error > 1.e-25))[0]
+        Pn_rms_error = np.zeros(len(Pn_absolute_error))
+    
+    
+
+    if J_rms_error.any() != 0:
+        print("\nSemiconductor current test: NOT PASSED\nDebug your installation or seek assistance.")
+        print("\nrms error in J = ", J_rms_error)
+        print("J bad = ", J_bad)
+        for i in J_bad:
+            print("J_ref_getelec_bad", J_ref_getelec[i]," J_new_getelec_bad", J_new_getelec[i])
+            print("     Parametres:",ref_field[i], ref_radius[i], ref_gamma[i], ref_ec[i], ref_ef[i], ref_eg[i], ref_temp[i])
+            #em.set(Field[i], Radius[i], Gamma[i])
+            #em.interpolate()
+            #em.get_lims(Workfunction[i], kT[i])
+            #em.integrate_quad(Workfunction[i], kT[i])
+            #em.integrate_quad_Nottingham(Workfunction[i], kT[i])
+    else:
+        print("\nSemiconductor current test: PASSED")
+
+    if Pn_rms_error.any() != 0:
+        print("\n\nSemiconductor Nottighamm heat test: NOT PASSED\nDebug your installation or seek assistance.")
+        print("\nrms error in Pn = ", Pn_rms_error)
+        print("Pn bad = ", Pn_bad)
+        for i in Pn_bad:
+            print("Pn_ref_getelec_bad", Pn_ref_getelec[i]," Pn_new_getelec_bad", Pn_new_getelec[i])
+            print("     Parametres:",ref_field[i], ref_radius[i], ref_gamma[i], ref_ec[i], ref_ef[i], ref_eg[i], ref_temp[i])
+            #em.set(Field[i], Radius[i], Gamma[i])
+            #em.interpolate()
+            #em.get_lims(Workfunction[i], kT[i])
+            #em.integrate_quad(Workfunction[i], kT[i])
+            #em.integrate_quad_Nottingham(Workfunction[i], kT[i])
+    else:
+        print("\nSemiconductor Nottigham heat test: PASSED")        
+
+    if len(J_bad)==0 and len(Pn_bad)==0 and Pn_rms_error.all()==0 and J_rms_error.all()==0:
+        print("\nSemiconductor installation successful") 
+    else:
+        print("Semiconductor intstallation unsuccessful. Debug yout installation or seek assistance")
+
+        font = 20
+        x = 15
+        y = x
+
+        mb.rcParams["font.size"] = font
+        mb.rcParams["axes.labelsize"] = font
+        mb.rcParams["xtick.labelsize"] = font
+        mb.rcParams["ytick.labelsize"] = font
+        #mb.rcParams["legend.fontsize"] = font
+        mb.rcParams["lines.linewidth"] = 2
+
+        fig1, ax = plt.subplots(figsize=(x,y)) 
+        #ax.ticklabel_format(scilimits=[-1,1])
+        plt.loglog(J_ref_getelec, J_new_getelec, '.' ,color = "steelblue")
+        plt.loglog(abs(J_ref_getelec), abs(J_new_getelec), '.',color = "steelblue")
+        plt.loglog([1.e-80, 1.], [1.e-80, 1.], color = "orange", label = "1to1 line")
+        plt.grid("True")
+        plt.legend()
+        plt.xlim([10E-25,10E0])
+        plt.ylim([10E-25,10E0])
+        plt.xlabel("Ref GETELEC current densities (A$nm^{-2}$)")
+        plt.ylabel("New GETELEC current densities (A$nm^{-2}$)")
+        plt.title("Comparing current from new and ref GETELEC")
+        plt.savefig("Installation_test: J.png")
+        #plt.show()
+
+        fig2, ax = plt.subplots(figsize=(x,y))
+        plt.loglog(Pn_ref_getelec, Pn_new_getelec, '.',color = "steelblue")
+        plt.loglog(abs(Pn_ref_getelec), abs(Pn_new_getelec), '.',color = "steelblue")
+        plt.loglog([1.e-80, 1.], [1.e-80, 1.],color = "orange", label = "1to1 line")
+        plt.grid("True")
+        plt.legend()
+        plt.xlim([10E-25,10E0])
+        plt.ylim([10E-25,10E0])
+        plt.xlabel("Ref GETELEC Nottigham heat (W$nm^{-2}$)")
+        plt.ylabel("New GETELEC Nottigham heat (W$nm^{-2}$)")
+        plt.title("Comparing heat from new and ref GETELEC")
+        plt.savefig("Installation_test: Pn.png")
+        #plt.show()
+
+    return True
+
+def _Getelec_Installation_Metal_Test():
+    
+    ref_field, ref_radius, ref_gamma, ref_ef, ref_temp, J_ref_getelec, Pn_ref_getelec = _Load_Metal_Data()
+
+    J_new_getelec = gtab.current_metal_emitter(ref_field, ref_radius, ref_gamma, ref_ef, ref_temp)
+    Pn_new_getelec = gtab.heat_metal_emitter(ref_field, ref_radius, ref_gamma, ref_ef, ref_temp)
+
+    J_absolute_error = abs(J_new_getelec - J_ref_getelec)
+
+    if J_absolute_error.any() != 0:
+        J_relative_error = J_absolute_error / J_ref_getelec
+        J_bad = np.where(np.logical_and(J_relative_error > 0.5, J_absolute_error > 1.e-25))[0]
+        J_rms_error = np.sqrt(np.mean(J_relative_error[J_absolute_error > 1.e-25]**2))
+    else:
+        J_relative_error = np.zeros(len(J_absolute_error))
+        J_bad = np.where(np.logical_and(J_relative_error > 0.5, J_absolute_error > 1.e-25))[0]
+        J_rms_error = np.zeros(len(J_absolute_error))
+    
+    Pn_absolute_error = abs(Pn_new_getelec - Pn_ref_getelec)
+    if Pn_absolute_error.any() !=0:
+        Pn_relative_error = Pn_absolute_error / Pn_ref_getelec
+        Pn_bad = np.where(np.logical_and(Pn_relative_error > 0.5, Pn_absolute_error > 1.e-25))[0]
+        Pn_rms_error = np.sqrt(np.mean(Pn_relative_error[Pn_absolute_error > 1.e-25]**2))
+    else:
+        Pn_relative_error = np.zeros(len(Pn_absolute_error))
+        Pn_bad = np.where(np.logical_and(Pn_relative_error > 0.5, Pn_absolute_error > 1.e-25))[0]
+        Pn_rms_error = np.zeros(len(Pn_absolute_error))
+    
+    
+
+    if J_rms_error.any() != 0:
+        print("\nMetal current test: NOT PASSED\nDebug your installation or seek assistance.")
+        print("\nrms error in J = ", J_rms_error)
+        print("J bad = ", J_bad)
+        for i in J_bad:
+            print("J_ref_getelec_bad", J_ref_getelec[i]," J_new_getelec_bad", J_new_getelec[i])
+            print("     Parametres:",ref_field[i], ref_radius[i], ref_gamma[i], ref_ef[i], ref_temp[i])
+            #em.set(Field[i], Radius[i], Gamma[i])
+            #em.interpolate()
+            #em.get_lims(Workfunction[i], kT[i])
+            #em.integrate_quad(Workfunction[i], kT[i])
+            #em.integrate_quad_Nottingham(Workfunction[i], kT[i])
+    else:
+        print("\nMetal current test: PASSED")
+
+    if Pn_rms_error.any() != 0:
+        print("\n\nMetal Nottighamm heat test: NOT PASSED\nDebug your installation or seek assistance.")
+        print("\nrms error in Pn = ", Pn_rms_error)
+        print("Pn bad = ", Pn_bad)
+        for i in Pn_bad:
+            print("Pn_ref_getelec_bad", Pn_ref_getelec[i]," Pn_new_getelec_bad", Pn_new_getelec[i])
+            print("     Parametres:",ref_field[i], ref_radius[i], ref_gamma[i], ref_ef[i], ref_temp[i])
+            #em.set(Field[i], Radius[i], Gamma[i])
+            #em.interpolate()
+            #em.get_lims(Workfunction[i], kT[i])
+            #em.integrate_quad(Workfunction[i], kT[i])
+            #em.integrate_quad_Nottingham(Workfunction[i], kT[i])
+    else:
+        print("\nMetal Nottigham heat test: PASSED")        
+
+    if len(J_bad)==0 and len(Pn_bad)==0 and Pn_rms_error.all()==0 and J_rms_error.all()==0:
+        print("\nMetal installation successful") 
+    else:
+        print("Metal intstallation unsuccessful. Debug yout installation or seek assistance")
+
+        font = 20
+        x = 15
+        y = x
+
+        mb.rcParams["font.size"] = font
+        mb.rcParams["axes.labelsize"] = font
+        mb.rcParams["xtick.labelsize"] = font
+        mb.rcParams["ytick.labelsize"] = font
+        #mb.rcParams["legend.fontsize"] = font
+        mb.rcParams["lines.linewidth"] = 2
+
+        fig1, ax = plt.subplots(figsize=(x,y)) 
+        #ax.ticklabel_format(scilimits=[-1,1])
+        plt.loglog(J_ref_getelec, J_new_getelec, '.' ,color = "steelblue")
+        plt.loglog(abs(J_ref_getelec), abs(J_new_getelec), '.',color = "steelblue")
+        plt.loglog([1.e-80, 1.], [1.e-80, 1.], color = "orange", label = "1to1 line")
+        plt.grid("True")
+        plt.legend()
+        plt.xlim([10E-25,10E0])
+        plt.ylim([10E-25,10E0])
+        plt.xlabel("Ref GETELEC current densities (A$nm^{-2}$)")
+        plt.ylabel("New GETELEC current densities (A$nm^{-2}$)")
+        plt.title("Comparing current from new and ref GETELEC")
+        plt.savefig("Installation_test: J.png")
+        #plt.show()
+
+        fig2, ax = plt.subplots(figsize=(x,y))
+        plt.loglog(Pn_ref_getelec, Pn_new_getelec, '.',color = "steelblue")
+        plt.loglog(abs(Pn_ref_getelec), abs(Pn_new_getelec), '.',color = "steelblue")
+        plt.loglog([1.e-80, 1.], [1.e-80, 1.],color = "orange", label = "1to1 line")
+        plt.grid("True")
+        plt.legend()
+        plt.xlim([10E-25,10E0])
+        plt.ylim([10E-25,10E0])
+        plt.xlabel("Ref GETELEC Nottigham heat (W$nm^{-2}$)")
+        plt.ylabel("New GETELEC Nottigham heat (W$nm^{-2}$)")
+        plt.title("Comparing heat from new and ref GETELEC")
+        plt.savefig("Installation_test: Pn.png")
+        #plt.show()
+
+    return True
+
+def Getelec_Installation_Test():
+    _Getelec_Installation_Metal_Test()
+    _Getelec_Installation_Semiconductor_Test()
+    _Tabulator_Test()
+    return True
+
+Getelec_Installation_Test()
+
 
 # region One data point calculation routine
     # This routine calculates the current density from semiconductors (two methods) and metals, as well as the plotting of the energy distributions
@@ -20,6 +456,7 @@ tab = gtab.Tabulator()
 
 Workfunction = 4.7
 Ef = Workfunction
+
 Eg = 0.661
 Ec = 4.5
 m = 9.1093837015e-31 
@@ -403,8 +840,10 @@ file.write("\r\nMax relative error = %e\r\n" % (total_max))
 file.close()
 """
 # endregion
-#comsol_data =  np.array([-3.704766376545930000E+00,-3.710674031866700000E+00,-3.720906416070840000E+00,-3.732116601817530000E+00,-3.740652716975520000E+00,-3.751598406358010000E+00,-3.761510201146620000E+00,-3.770604439815580000E+00,-3.780260163707000000E+00,-3.791351630345240000E+00,-3.800263660657250000E+00,-3.811481390616470000E+00,-3.822632072265170000E+00,-3.830607338695320000E+00,-3.840082463019220000E+00,-3.850422700845510000E+00,-3.860524243732050000E+00,-3.870099020687190000E+00,-3.880047324080420000E+00,-3.890040198098470000E+00,-3.900573044943670000E+00,-3.904948391402420000E+00])
 
+# region
+#comsol_data =  np.array([-3.704766376545930000E+00,-3.710674031866700000E+00,-3.720906416070840000E+00,-3.732116601817530000E+00,-3.740652716975520000E+00,-3.751598406358010000E+00,-3.761510201146620000E+00,-3.770604439815580000E+00,-3.780260163707000000E+00,-3.791351630345240000E+00,-3.800263660657250000E+00,-3.811481390616470000E+00,-3.822632072265170000E+00,-3.830607338695320000E+00,-3.840082463019220000E+00,-3.850422700845510000E+00,-3.860524243732050000E+00,-3.870099020687190000E+00,-3.880047324080420000E+00,-3.890040198098470000E+00,-3.900573044943670000E+00,-3.904948391402420000E+00])
+"""
 Npoly = 5
 NGi = 128
 zs = 1.6183e-4
@@ -502,3 +941,5 @@ plt.savefig("Energy_Distribution.svg")
 #plt.savefig("Detail.png")
 #plt.savefig("Detail.svg")
 
+"""
+# endregion

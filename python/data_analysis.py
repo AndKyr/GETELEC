@@ -1,13 +1,35 @@
+from array import array
 import getelec_tabulator as gt_tab
 import numpy as np
 from scipy import interpolate
 import matplotlib.pyplot as plt
 import matplotlib as mb
 
-def spectra_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature):
+def load_data(path_to_data:str):
+
+    data = np.loadtxt(path_to_data)
+
+    field = data[:,0]
+    radius = data[:,1]
+    gamma = data[:,2]
+    ec = data[:,3]
+    ef = data[:,4]
+    eg = data[:,5]
+    temp = data[:,6]
+
+    return field, radius, gamma, ec, ef, eg, temp
+
+def FWHW(x_axis:array, y_axis:array, frac:int):
+
+    d = y_axis - (max(y_axis) / frac) 
+    indexes = np.where(d > 0)[0] 
+
+    return abs(x_axis[indexes[-1]] - x_axis[indexes[0]])
+
+def spectra_semiconductor_emitter(field:array, radius:array, gamma:array, ec:array, ef:array, eg:array, temperature:array):
 
     kBoltz = 8.6173324e-5 
-    kT = kBoltz * Temperature
+    kT = kBoltz * temperature
 
     m = 9.1093837015e-31 
     me = 1.59*m
@@ -16,36 +38,38 @@ def spectra_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature)
     tab = gt_tab.Tabulator()
     semiconductor_emitter = gt_tab.Semiconductor_Emitter(tab)
 
-    energies = np.zeros([len(Field)*2,512])
-    counts = np.zeros([len(Field)*2,512])
+    energies = np.zeros([len(field)*2,512])
+    counts = np.zeros([len(field)*2,512])
 
 
-    for i in range(len(Field)):
+    for i in range(len(field)):
 
-        semiconductor_emitter.emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
+        semiconductor_emitter.emitter.Define_Barrier_Parameters(field[i], radius[i], gamma[i])
         semiconductor_emitter.emitter.Interpolate_Gammow()
 
-        semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec[i], Ef[i], Eg[i], kT[i], m, me, mp)
+        semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(ec[i], ef[i], eg[i], kT[i], m, me, mp)
         
         energy_c, count_c, energy_v, count_v = semiconductor_emitter.Energy_Distribution_from_Semiconductors()    
 
         energies[i,] = energy_c
-        energies[i+int((len(Field)/2)),] = energy_v
+        energies[i+int((len(field)/2)),] = energy_v
         counts[i,] = count_c
-        counts[i+int((len(Field)/2)),] = count_v
+        counts[i+int((len(field)/2)),] = count_v
 
     energy = np.linspace(np.min(energies), np.max(energies), 512)
     electrons = np.zeros(len(energy))
 
-    for i in range(len(Field)):
+    for i in range(len(field)):
             f = interpolate.interp1d(energies[i], counts[i], kind="quadratic", bounds_error=False, fill_value=0.)
             electrons = electrons + f(energy)
     
-
+    fwhm = FWHW(energy,electrons,2)
+    
     font = 60
     x = 40
     y = 17
-
+   
+    t = "FWHM = "+str(np.round(fwhm,5))+" eV"
 
     mb.rcParams["font.size"] = font
     mb.rcParams["axes.labelsize"] = font
@@ -55,7 +79,7 @@ def spectra_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature)
     mb.rcParams["lines.linewidth"] = 7
     fig, ax = plt.subplots(figsize=(x,y))
     ax.ticklabel_format(scilimits=[-1,1])
-    plt.plot(energy, electrons, '-',color = "orange", label = "total emitted electrons")
+    plt.plot(energy, electrons, '-',color = "orange", label = t)
     plt.legend()
     plt.grid("True")
     plt.xlabel("Energy (eV)")
@@ -65,6 +89,49 @@ def spectra_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature)
     plt.show()
 
     return energy, electrons
+
+def emitting_area_Forbes(emitted_current:float, max_current_density:float):
+    arc_length = emitted_current/max_current_density
+    return 2*np.pi*arc_length**2
+
+def emitting_area_Salva(current_density:array, arc_length:array):
+    indexes = np.where(current_density>=1e-15)[0]
+
+    return np.sum(2*np.pi*arc_length[indexes[:-1]]**2)
+
+def emitting_site_dynamics(potential:array, current_density:array):
+    
+    x_axis = 1/potential
+    y_axis = np.log10(abs(current_density)/potential**2)
+
+    font = 60
+    x = 40
+    y = 17
+
+    mb.rcParams["font.size"] = font
+    mb.rcParams["axes.labelsize"] = font
+    mb.rcParams["xtick.labelsize"] = font
+    mb.rcParams["ytick.labelsize"] = font+5
+    mb.rcParams["legend.fontsize"] = font/1.5
+    mb.rcParams["lines.linewidth"] = 7
+    fig, ax = plt.subplots(figsize=(x,y))
+    ax.ticklabel_format(scilimits=[-1,1])
+    plt.plot(x_axis, y_axis, '-')
+    plt.legend()
+    plt.grid("True")
+    plt.xlabel("1/V ($V^{-1}$)")
+    plt.ylabel("$J_{eN}$(E) (A$nm^{-2}$)")
+    plt.title("Emitting site dynamics")
+    plt.savefig("Emitting site dynamics.png")
+    plt.show()
+
+    return True
+
+path = "/home/salva/Documents/getelec_priv/python/spectra"
+
+field, radius, gamma, ec, ef, eg, temp = load_data(path)
+
+current_density = gt_tab.current_semiconductor_emitter(field, radius, gamma, ec, ef, eg, temp)
 
 
 """field = np.array([5,5.05,5.1,5.15,5.2,5.3])
@@ -78,35 +145,3 @@ temp = np.ones(len(field))*300
 #mp = 0.33
 
 spectra_semiconductor_emitter(field, radius, gamma, ec, ef, eg, temp)"""
-
-data = np.loadtxt("/home/salva/Documents/getelec_priv/python/spectra")
-
-field = np.zeros(len(data))
-radius = np.zeros(len(data))
-gamma = np.zeros(len(data))
-ec = np.zeros(len(data))
-ef = np.zeros(len(data))
-eg = np.zeros(len(data))
-temp = np.zeros(len(data))
-
-for i in range(len(data)):
-    field[i] = data[i,0]
-    radius[i] = data[i,1]
-    gamma[i] = data[i,2]
-    ec[i] = data[i,3]
-    ef[i] = data[i,4]
-    eg[i] = data[i,5]
-    temp[i] =data[i,6]
-
-spectra_semiconductor_emitter(field, radius, gamma, ec, ef, eg, temp)
-
-
-"""TO DO
-
-1) Implement routine to calculate and show half-width
-2) Implement routine to calculate emitter area
-3) Implemetn routine to visualise dynamics of emitting side
-4) Implement routine to calculate band bending slope and comparison with D(E)
-5) Calculate e- distribution of metal, semiconductor and non-bending semiconductor emitting same I
-
-"""
