@@ -166,10 +166,10 @@ def spectrum_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
     for i in range(len(Temperature)):
         kT.append(kBoltz * Temperature[i])
     
-    metal_emitter = gt_tab.Metal_Emitter(tab)
+    metal_emitter = gt_tab.Metal_Emitter(tab, NGi=128)
     
-    energy = np.copy(Field)
-    electron_count = np.copy(Field)
+    energy_out = [] #np.copy(Field)
+    electron_count_out = [] #= np.copy(Field)
 
     for i in range(len(Field)):
         metal_emitter.emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
@@ -178,10 +178,10 @@ def spectrum_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
         metal_emitter.Define_Emitter_Parameters(Workfunction[i], kT[i])
     
         energy, electron_count = metal_emitter.Energy_Distribution()
+        energy_out.append(np.copy(energy))
+        electron_count_out.append(np.copy(electron_count))
 
-        
-
-    return energy, electron_count
+    return energy_out, electron_count_out
 
 def current_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature, me, mp):
     """

@@ -504,13 +504,13 @@ class Metal_Emitter:
     # endregion
     
     # region initialization
-    def __init__(self, tabulator: Tabulator):
+    def __init__(self, tabulator: Tabulator, NGi = 512):
         """Initialises the function by adding the atributes of a "tabulated" barrier emitter to metals
 
         Args:
             tabulator (Tabulator): Object that contains the attributes of a x material emitter (potential barrier, transmission coefficiens and electron supply functions)
         """
-        
+        self.NGi = NGi
         self.emitter = Emitter(tabulator)
     # endregion   
     
@@ -534,7 +534,7 @@ class Metal_Emitter:
             array: Energy space for which the electron emission and Notigham heat are going to be evaluated in (eV)
         """
         
-        resolution = NGi #128
+        resolution = self.NGi #128
         self._maxbeta = np.polyval(self.emitter._gammow_derivative_coefficients, min(self.workfunction, self.emitter._energy_bottom_barrier))
         
         if (self._maxbeta * self.kT < 1.05): #field regime

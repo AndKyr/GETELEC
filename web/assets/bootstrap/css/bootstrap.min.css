@@ -11823,6 +11823,15 @@ icon-main-anim {
 
 }
 
+.hide {
+    display: none;
+}
+
+.prepForHover:hover + .hide{
+    display: block;
+    color: red;    
+}
+
 @keyframes slidein {
     from{
         opacity: 0;
