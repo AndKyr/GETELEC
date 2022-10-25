@@ -1309,7 +1309,73 @@ subroutine plot_barrier(this)
         end select
     end function bar
 end subroutine plot_barrier
+    
+    
+subroutine export_gamow_for_energy_range(F, R, gamma, Npoints, Wmin, Wmax, G) bind(c)
+    
+    use iso_c_binding  
+                                                
+    real(c_double), intent(in), value  :: F, R, gamma
+    real(c_double), intent(out) :: Wmin, Wmax !counting from vacuum level
+    
+    integer(c_int), intent(in), value  :: Npoints
+    real(c_double), intent(out)  :: G(Npoints)
+    
+    real(c_double)               :: Gf(Npoints) 
+    type(EmissionData)              :: this, new
+    integer                         :: i
+    real(dp), parameter             :: Gmax = 50.d0, inc = 1.5d0   
+    real(dp)                        :: Wa, Wb         
+    
+    
+    !copy the members of the c struct to the fortran type
+    this%F = F
+    this%R = R
+    this%gamma = gamma
+    this%W = 5.d0
 
+
+    call gamow_num(this, .true.)
+
+    !Wmin will be at the top of the barrier. Above it G goes as linear extrapolation
+    Wmin = this%W - this%Um 
+
+    !first find where G gets bigger than Gmax
+    Wmax = Wmin
+    do i=1,100
+        Wmax = Wmax * inc
+        new = this
+        new%W = Wmax
+        call gamow_general(new,.true.)
+        print *, new%Gam
+        if (new%Gam > Gmax) exit
+    enddo
+
+    ! pinpoint exactly where G = Gmax
+    Wa = Wmax / inc
+    Wb = Wmax
+    do i=1,100!bisection to find where n=1
+        Wmax=(Wb+Wa)*.5d0
+        new%W = Wmax
+        call gamow_general(new,.true.)
+        if (new%Gam > 1.02 * Gmax) then
+            Wb = Wmax
+        else if (new%Gam < .98 * Gmax) then
+            Wa = Wmax
+        else
+            exit
+        endif
+    enddo
+
+    !Run calculation between Wmin and Wmax
+    do i = 1, Npoints
+        new%W = Wmin + (Wmax - Wmin) * (i - 1) / (Npoints - 1)
+        call gamow_general(new, .true.)
+        G(i) = new%Gam
+    enddo
+    
+        
+end subroutine export_gamow_for_energy_range
 
 subroutine desetroy(this)
 !frees all the memory allocated for an Emission type "object"
