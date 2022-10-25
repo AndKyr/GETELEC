@@ -337,6 +337,8 @@ function main(){
 
         if(checkForCanCompute()){
 
+            updateSliderBounds(data[`${sweepParam}`].length);
+
             socket.emit('calculateEmission', data);
 
             console.log(data);
@@ -1144,13 +1146,11 @@ function main(){
 
             data: {
 
-                labels: [],
-
                 datasets: [{
 
                     label: 'electron spectrum',
 
-                    data: [],
+                    data: dddata,
 
                     backgroundColor: [
 
@@ -1164,13 +1164,321 @@ function main(){
 
                     ],
 
-                    borderWidth: 1
+                    borderWidth: 1,
+
+                    interpolate: true
 
                 }]
 
             },
 
             options: {
+
+                fill: false,
+
+                lineTension: 0.1,
+
+                scales: {
+
+                    y: {
+    
+                        title: {
+    
+                            display: true,
+
+                            text: "Electron count",
+
+                            font:{
+
+                                size: 18
+
+                            }
+    
+                        },
+    
+                        type: "logarithmic",
+
+                        position: "bottom",
+
+                        ticks: {
+    
+                            callback: function (value, index, ticks) {
+    
+                                if (value === 1000000) {
+    
+                                    return "1 [M]"
+    
+                                }
+    
+                                if (value === 100000) {
+    
+                                    return "100 [k]"
+    
+                                }
+    
+                                if (value === 10000) {
+    
+                                    return "10 [k]"
+    
+                                }
+    
+                                if (value === 1000) {
+    
+                                    return "1 [k]"
+    
+                                }
+    
+                                if (value === 100) {
+    
+                                    return "100 []"
+    
+                                }
+    
+                                if (value === 10) {
+    
+                                    return "10 []"
+    
+                                }
+    
+                                if (value === 1) {
+    
+                                    return "1 []"
+    
+                                }
+    
+                                if (value === 0.1) {
+    
+                                    return "100 [m]"
+    
+                                }
+    
+                                if (value === 0.01) {
+    
+                                    return "10 [m]"
+    
+                                }
+    
+                                if (value === 0.001) {
+    
+                                    return "1 [m]"
+    
+                                }
+
+                                if (value === 0.0001) {
+    
+                                    return "0.1 [m]"
+    
+                                }
+
+                                if (value === 0.00001) {
+    
+                                    return "0.01 [m]"
+    
+                                }
+
+                                if (value === 0.000001) {
+    
+                                    return "1000 [n]"
+    
+                                } 
+
+                                if (value === 0.0000001) {
+    
+                                    return "100 [n]"
+    
+                                }
+
+                                if (value === 0.00000001) {
+    
+                                    return "10 [n]"
+    
+                                }
+
+                                if (value === 0.000000001) {
+    
+                                    return "1 [n]"
+    
+                                }
+
+                                if (value === 0.0000000001) {
+    
+                                    return "100 [p]"
+    
+                                }
+
+                                if (value === 0.00000000001) {
+    
+                                    return "10 [p]"
+    
+                                }
+
+                                if (value === 0.000000000001) {
+    
+                                    return "1 [p]"
+    
+                                }
+
+                                if (value === 0.0000000000001) {
+    
+                                    return "100 [f]"
+    
+                                }
+
+                                if (value === 0.00000000000001) {
+    
+                                    return "10 [f]"
+    
+                                }
+
+                                if (value === 0.000000000000001) {
+    
+                                    return "1 [f]"
+    
+                                }
+    
+                                return null
+                            }
+                        }
+    
+                    },
+    
+                    x: {
+    
+                        title: {
+    
+                            text: "Energy space",
+
+                            display: true,
+
+                            font:{
+
+                                size: 18
+
+                            }
+
+                        },
+    
+                        type: "linear",
+
+                        position: "bottom",
+
+                        ticks: {
+    
+                            callback: function (value, index, ticks) {
+    
+                                if (String(value).length > 4) {
+
+                                    value = Math.round(value * 100) / 100;
+
+                                }
+    
+                                return value;
+                            }
+    
+                        }
+    
+                    },
+                },
+    
+
+                plugins: {
+
+                    tooltip: {
+
+                        mode: 'interpolate',
+
+                        intersect: false,
+
+                        enabled: true,
+
+                        animation: false,
+
+                        callbacks: {
+
+                            title: function(a, d) {
+
+                              return a[0].element.x.toFixed(2);
+
+                            },
+                            
+                            label: function(d) {
+
+                              return (d.chart.data.datasets[d.datasetIndex].label + ": " + d.element.y.toFixed(2));
+
+                            }
+
+                        }
+    
+                    },                    
+                    
+                    zoom: {
+
+                        zoom: {
+
+                            wheel: {
+
+                                enabled: true
+
+                            },
+                            
+                            pinch: {
+
+                                enabled: false
+                            },
+
+                            drag: {
+
+                                enabled: true,
+
+                                modifierKey: 'ctrl'
+
+                            },
+
+                            mode: 'xy'
+    
+                        },
+    
+                        pan: {
+    
+                            enabled: true,
+
+                            mode: 'xy'
+    
+                        },
+    
+                        limits: {
+    
+                            x: {
+
+                                min: -1,
+                                max: 3000
+
+                             },
+                             y: {
+
+                                 min: -10,
+                                 max: 5e4
+
+                             }
+    
+                            }
+                    },
+
+                    title: {
+
+                        display: true,
+
+                        text: "Chart 3",
+
+                        font: {
+
+                            size: 24
+
+                        }
+    
+                    }
+
+                }
 
             }
 
