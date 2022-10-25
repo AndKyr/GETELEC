@@ -361,6 +361,8 @@ function main(){
         let pickChangingVarDiv = document.getElementById("pickChangingVar");
         let preselectSemiPropertiesDiv = document.getElementById("preselectSemiProperties");
 
+        let slider = document.getElementById('myRange');
+
         //advancedModeToggleMainDiv.hidden = true;
 
         enterButton.addEventListener("click", checkValidity);
@@ -374,6 +376,8 @@ function main(){
         
         preselectSemiPropertiesDiv.addEventListener("change", updatePreselectSemiProperties);
         enterButton.addEventListener("click", checkValidity);
+
+        slider.addEventListener('input', readSliderValue);
 
         updatePropertiesPresets();
         
@@ -1539,6 +1543,24 @@ let errorDivs = [];
 
 main();
 
+
+//Used to log slider value
+
+function readSliderValue(){
+
+    let slider = document.getElementById('myRange');
+    console.log(slider.value);
+
+}
+
+//Update amount of points for slider
+function updateSliderBounds(points){
+
+    let slider = document.getElementById('myRange');
+    slider.max = `${points-1}`;
+
+}
+
 //Function that is used to predefine properties for predetermined materials for the user.
 //Its goal is to give a set of materials and apply their values to corresponding fields.
 
@@ -1878,6 +1900,8 @@ function autoGenerateValues(){
         }
     
     }
+
+    updateSliderBounds(count);
 
 }
 

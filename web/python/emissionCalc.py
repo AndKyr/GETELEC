@@ -118,9 +118,16 @@ def main():
 
         if calculateES == "1":
 
-            energy, electronCount = spectrum_metal_emitter(field, radius, gammaMetal, wf, temp)
-            data3 = energy.tolist()
-            data3e = electronCount.tolist()
+            energies, electronCounts = spectrum_metal_emitter(field, radius, gammaMetal, wf, temp)
+
+            data3 = []
+            data3e = []
+
+            for energy in energies:
+                data3.append(energy.tolist())
+
+            for electronCount in electronCounts:
+                data3e.append(electronCount.tolist())
             
     elif materialType == "2":
 
