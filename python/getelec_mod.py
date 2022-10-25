@@ -3,6 +3,7 @@ GETELEC software from python and perform electron emissino calculations"""
 
 
 import ctypes as ct
+from typing import IO
 import numpy as np
 import scipy.optimize as opt
 import scipy.integrate as ig
@@ -133,7 +134,7 @@ def emission_create(F = 5., W = 4.5, R = 5000., gamma = 10., Temp = 300., \
     
 class Tabulator():
     
-    def __init__(self, emitter, Nf = 256, Nr = 128, Ngamma = 1, Npoly = 4, NGammow = 256):
+    def __init__(self, emitter = emission_create(), Nf = 256, Nr = 128, Ngamma = 1, Npoly = 4, NGammow = 256):
         self.emitter = emitter
 
         if (self.load() != 0):
@@ -142,7 +143,7 @@ class Tabulator():
             self.tabulate_JFR()
 
 
-    def prepareTabulation(self, Nf = 256, Nr = 128, Ngamma = 1, Npoly = 4, NGammow = 256):
+    def prepareTabulation(self, Nf = 256, Nr = 128, Ngamma = 1, Npoly = 4, NGamow = 256):
         self.fieldRange = [1., 20.]
         self.minRadius = 0.5
         self.maxGamma = 1.e3
@@ -151,7 +152,7 @@ class Tabulator():
         self.numberOfRadiusValues = Nr
         self.numberOfGammaValues = Ngamma
         self.numberOfPolynomialTerms = Npoly
-        self.numberOfGammowValues = NGammow
+        self.numberOfGammowValues = NGamow
 
         self.inverseFieldValues = np.linspace(1 / self.fieldRange[1], 1. / self.fieldRange[0], self.numberOfFieldValues)
         self.inverseRadiusValues = np.linspace(1.e-4, 1 / self.minRadius, self.numberOfRadiusValues)
@@ -186,40 +187,46 @@ class Tabulator():
         np.save("tabulated/current_density_table", self.currentDensityTable)
         self.finterp = intrp.interp2d(self.inverseFieldValues, self.inverseRadiusValues, np.log(self.currentDensityTable))
     
-    def tabulateGamowTable(self):
+    def tabulateGamowTable(self, Nfield = 256, Nradius = 128, Ngamma = 1, Npoly = 4, NGamow = 256):
         """Looks for the files where the precaculate barriers are stored. Then it uses interpolation methods to make the most accurate barrier for the given 
         input (electric field, tip radius and gamma exponent). Gtab is stores the polinomial that gives its shape to the barrier.
         """
 
+        self.prepareTabulation(Nfield, Nradius, Ngamma, Npoly, NGamow)
         self.gamowTable = np.ones([self.numberOfGammaValues, self.numberOfRadiusValues, self.numberOfFieldValues, self.numberOfPolynomialTerms + 2])
 
         for i in range(self.numberOfGammaValues):
             for j in range(self.numberOfRadiusValues):
                 for k in range(self.numberOfFieldValues):
                     
-                    F = 1 / self.inverseFieldValues[k]
-                    R = 1 / self.inverseRadiusValues[j]
+                    field = 1 / self.inverseFieldValues[k]
+                    radius = 1 / self.inverseRadiusValues[j]
                     gamma = 1 / self.inverseGammaValues[i]
                     
                     minimumBarrierDepth = np.array([1.])
                     maximumBarrierDepth = np.copy(minimumBarrierDepth)
                     G = np.zeros(self.numberOfGammowValues)
                     
-                    getelec.export_gamow(
-                        ct.c_double(F), ct.c_double(R), ct.c_double(gamma), ct.c_int(self.numberOfGammowValues), \
+                    getelec.export_gamow_for_energy_range(
+                        ct.c_double(field), ct.c_double(radius), ct.c_double(gamma), ct.c_int(self.numberOfGammowValues), \
                         ct.c_void_p(minimumBarrierDepth.ctypes.data), ct.c_void_p(maximumBarrierDepth.ctypes.data), ct.c_void_p(G.ctypes.data)
                     )
                     
-                    barrierDepths = np.linspace(minimumBarrierDepth, maximumBarrierDepth, self.numberOfGammowValues)
+                    barrierDepths = np.linspace(minimumBarrierDepth[0], maximumBarrierDepth[0], self.numberOfGammowValues)
                     try:
                         fittedPolynomialCoefficients = np.polyfit(barrierDepths, G, self.numberOfPolynomialTerms - 1)
                     except(np.RankWarning):
-                        print("Rank Warning for F = %g, R = %g, gamma = %g" % (F, R, gamma))
+                        print("Rank Warning for F = %g, R = %g, gamma = %g" % (field, radius, gamma))
                         plt.plot(barrierDepths, G)
                         plt.show()
                     self.gamowTable[i, j, k, :] = np.append(fittedPolynomialCoefficients, [barrierDepths[0], barrierDepths[-1]])    
 
-        np.save("tabulated/GammowTable", self.currentDensityTable)
+        if (self.numberOfGammaValues == 1):
+            self.gamowTable = np.reshape(self.gamowTable, (self.numberOfRadiusValues, self.numberOfFieldValues, self.numberOfPolynomialTerms + 2))
+            if (self.numberOfRadiusValues == 1):
+                self.gamowTable = np.reshape(self.gamowTable, (self.numberOfFieldValues, self.numberOfPolynomialTerms + 2))
+
+        np.save("tabulated/GamowTable", self.gamowTable)
         
     def load(self):
         try:
