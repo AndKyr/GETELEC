@@ -542,7 +542,11 @@ subroutine gamow_num(this, full)
     integer                             :: i, binout(2), indxm, ixrm !
                                         ! indxm: index of xr closest to xm
     
-    ixrm = size(this%xr)
+    if (allocated(this%xr)) then 
+        ixrm = size(this%xr)
+    else
+        ixrm = 0
+    endif
     
     if (full) then ! Um is not initialized
         this%Um = -local_min(x, this%xmax, 1.d-8, 1.d-8, neg_bar, this%xm)
