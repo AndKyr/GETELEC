@@ -1417,6 +1417,8 @@ subroutine C_wrapper(passdata, ifun) bind(c)
         integer(c_int)      :: regime, sharp  !output chars showing regimes
         integer(c_int)      :: Nr, approx, mode, ierr !len of vectors xr, Vr and full
         real(c_double)      :: voltage, theta
+        type(c_ptr)         :: pfilename
+        integer(c_int)      :: pfile_length
     end type cstruct
 
     type(cstruct), intent(inout)    :: passdata
@@ -1425,7 +1427,17 @@ subroutine C_wrapper(passdata, ifun) bind(c)
     real(c_double), pointer         :: xr_fptr(:), Vr_fptr(:)
     type(EmissionData)              :: this
     integer                         :: i
-    
+    character(c_char), pointer      :: parfile_f_ptr(:)
+    character(len=128)              :: parameter_file
+
+    call c_f_pointer(passdata%pfilename, parfile_f_ptr, [passdata%pfile_length])
+
+    do i= 1, passdata%pfile_length
+        parameter_file(i:i) = parfile_f_ptr(i)
+    enddo
+
+    call read_params(parameter_file(1:passdata%pfile_length))
+
     if (ifun == 4) then
         passdata%Temp = theta_SC(passdata%F, passdata%voltage, passdata%R)
         return
@@ -1576,8 +1588,8 @@ subroutine read_params(parameter_file)
     character(len=13)   :: str
     logical             :: ex
     integer             :: fid = fidparams
-    character(len=40), parameter  :: error = &
-        'ERROR: GetelecPar.in is not correct.'
+    character(len=128), parameter  :: error = &
+        'ERROR: Parameter file is not correct.'
 
 
     if (readparams) return
