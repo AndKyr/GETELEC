@@ -1,5 +1,5 @@
-CC = gcc
-FC = gfortran
+CC = gcc-10
+FC = gfortran-10
 AR=ar rcs
 LINKLIBS = ar -rcT
 
@@ -26,7 +26,8 @@ DIRS = bin cobj mod obj modules/obj lib lib/slatec/obj modules/cobj png
 # Create version control for compiler
 FORTRANERR = 
 GNUVERSION := $(shell $(FC) -dumpversion)
-ifeq ($(GNUVERSION),11)
+
+ifeq ($(shell test $(GNUVERSION) -gt 9; echo $$?),0)
 	FORTRANERR = -fallow-argument-mismatch
 endif
 	
