@@ -42,7 +42,7 @@ real(dp), parameter     :: pi = acos(-1.d0), b = 6.83089d0, zs = 1.6183d-4, &
 
 integer, parameter     :: SHARP = 1, BLUNT = 0, FIELD = 1, INTER = 0, THERMAL = -1
 
-character(len=20), parameter   :: errorfile = trim('GetelecErr.txt'), &
+character(len=128), save   :: errorfile = trim('GetelecErr.txt'), &
                                   paramfile = trim('in/GetelecPar.in')
 ! names for the error output file and the parameters input file
 
@@ -160,10 +160,11 @@ end type EmissionData
 contains
 
 
-subroutine cur_dens(this)
+subroutine cur_dens(this, parameter_file)
 !Calculates current density, main module function
 
     type(EmissionData), intent(inout)      :: this !main data handling structure
+    character(len=*), intent(in), optional :: parameter_file
     
     real(dp)        :: Jf, Jt, n, s, E0, dE, heatf, heatt, F2, Fend, var
     real(dp)        :: nlimf, nlimt   !limits for n to distinguish regimes
@@ -171,13 +172,14 @@ subroutine cur_dens(this)
     real(dp), allocatable :: xtemp(:), Vtemp(:)
     integer         :: i, GTFerr
     character(len = 50) :: msgerr
+
     
     if (debug > 1) then
         call cpu_time(t1)
         print *, 'entering cur_dens'
     endif
     
-    if (.not. readparams) call read_params()
+    if (.not. readparams) call read_params(parameter_file)
     
     this%ierr = 0
     GTFerr = 0
@@ -1568,21 +1570,30 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, info) result(var)
 end function nlinfit
 
 
-subroutine read_params()
+subroutine read_params(parameter_file)
 
+    character(len=*), intent(in), optional :: parameter_file
     character(len=13)   :: str
     logical             :: ex
     integer             :: fid = fidparams
     character(len=40), parameter  :: error = &
         'ERROR: GetelecPar.in is not correct.'
+
+
+    if (readparams) return
+
+    if (present(parameter_file)) then
+        paramfile = trim(parameter_file)
+    endif
     
     inquire(file=paramfile, exist=ex)
     if (.not. ex) then
-        print *, 'GETELEC: Parameters input file not found. Default values used.'
+        print *, 'GETELEC: Parameters input file ', paramfile, ' not found. Default values used.'
         readparams = .true.
+        return
     endif
     
-    if (readparams) return
+    print *, 'GETELEC: Reading parameters from ', paramfile
     
     open(fid, file = paramfile, action = 'read')
     read(fid,'(2A)')

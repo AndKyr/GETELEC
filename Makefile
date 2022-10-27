@@ -1,5 +1,5 @@
-CC = gcc-10
-FC = gfortran-10
+CC = gcc
+FC = gfortran
 AR=ar rcs
 LINKLIBS = ar -rcT
 
