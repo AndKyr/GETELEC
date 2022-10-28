@@ -1430,13 +1430,19 @@ subroutine C_wrapper(passdata, ifun) bind(c)
     character(c_char), pointer      :: parfile_f_ptr(:)
     character(len=128)              :: parameter_file
 
-    call c_f_pointer(passdata%pfilename, parfile_f_ptr, [passdata%pfile_length])
+    if (.not. readparams) then
+        if (passdata%pfile_length > 128) then
+            stop "GETELEC ERROR: parameter file name should have length < 128"
+        endif
 
-    do i= 1, passdata%pfile_length
-        parameter_file(i:i) = parfile_f_ptr(i)
-    enddo
+        call c_f_pointer(passdata%pfilename, parfile_f_ptr, [passdata%pfile_length])
 
-    call read_params(parameter_file(1:passdata%pfile_length))
+        do i= 1, passdata%pfile_length
+            parameter_file(i:i) = parfile_f_ptr(i)
+        enddo
+
+        call read_params(parameter_file(:passdata%pfile_length))
+    endif
 
     if (ifun == 4) then
         passdata%Temp = theta_SC(passdata%F, passdata%voltage, passdata%R)
@@ -1598,16 +1604,16 @@ subroutine read_params(parameter_file)
         paramfile = trim(parameter_file)
     endif
     
-    inquire(file=paramfile, exist=ex)
+    inquire(file=trim(paramfile), exist=ex)
     if (.not. ex) then
-        print *, 'GETELEC: Parameters input file ', paramfile, ' not found. Default values used.'
+        print *, 'GETELEC: Parameters input file ', trim(paramfile), ' not found. Default values used.'
         readparams = .true.
         return
     endif
     
-    print *, 'GETELEC: Reading parameters from ', paramfile
+    print *, 'GETELEC: Reading parameters from ', trim(paramfile)
     
-    open(fid, file = paramfile, action = 'read')
+    open(fid, file = trim(paramfile), action = 'read')
     read(fid,'(2A)')
     
     read(fid,*) str, debug

@@ -14,7 +14,7 @@ struct emission{//struct for interoperability with fortran module getelec
                              //full: logical for full calculation
                              //mode, ierr: ints for defining mode and outputing error  .
     double voltage, theta; //data related to SC
-    char *pfilename;
+    const char *pfilename;
     int pfile_length;
 };
 
