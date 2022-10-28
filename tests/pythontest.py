@@ -13,11 +13,11 @@ emissionpath,mainfolder = os.path.split(mainpath)
 pythonpath = emissionpath + '/python'
 sys.path.append(pythonpath)
 
-import getelec_mod as gt
+import getelec_mod as getelec_old
 
 x = np.linspace(0.,3.,32)
 V = 5*x - 0.1 * x**2
 
-this = gt.emission_create(xr = x, Vr = V, mode = -10)
+this = getelec_old.emission_create(xr = x, Vr = V, mode = -10)
 this.print_C_data()
 this.print_data(True)

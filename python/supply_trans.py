@@ -1,6 +1,6 @@
 #! /usr/bin/python
 import numpy as np
-import getelec_mod as gt
+import getelec_mod as getelec_old
 
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -62,7 +62,7 @@ for k in range(len(F)):
     # ax2.set_ylabel(r'$10^4 \times N(E_z)$ [A nm$^{-2}$ eV$^{-1}$]', color = 'red')
 
 
-    this = gt.emission_create(R = 5000.)
+    this = getelec_old.emission_create(R = 5000.)
     this.approx = 2
     ax2.set_xlabel(r"$E_z-E_F$ [eV]")
     ax.set_ylabel(r"$D(E_z), L(E_z) $")

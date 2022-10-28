@@ -1,6 +1,6 @@
 #! /usr/bin/python
 import numpy as np
-import getelec_mod as gt
+import getelec_mod as getelec_old
 import matplotlib.pyplot as plt
 import matplotlib as mb
 
@@ -56,7 +56,7 @@ Itot = np.copy(Efarexp)
 print "minF = %f, maxF = %f"%(min(Efarexp)* min(betas), max(Efarexp)* max(betas))
 
 
-this = gt.emission_create(W = 4.1, R = 100., gamma = 1.1, Temp = 300., approx = -1)
+this = getelec_old.emission_create(W = 4.1, R = 100., gamma = 1.1, Temp = 300., approx = -1)
 
 for i in range(len(Efarexp)):
     Itot[i] = 0.

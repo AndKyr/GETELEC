@@ -1,6 +1,6 @@
 #! /usr/bin/python
 import numpy as np
-import getelec_mod as gt
+import getelec_mod as getelec_old
 
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -35,7 +35,7 @@ Jem = np.copy(F)
 # Jfn = np.copy(Jem)
 Jgtf = np.copy(Jem)
 
-this = gt.emission_create(gamma = 30)
+this = getelec_old.emission_create(gamma = 30)
 
 colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 this.Temp = T

@@ -1,6 +1,6 @@
 #! /usr/bin/python3
 import numpy as np
-import getelec_mod as gt
+import getelec_mod as getelec_old
 
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -25,7 +25,7 @@ plotG = False
 
 T = 300.
 
-this = gt.emission_create(R = 5000., gamma = 30)
+this = getelec_old.emission_create(R = 5000., gamma = 30)
 sfile = "output/spectra.csv"
 
 colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
