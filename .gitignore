@@ -21,6 +21,7 @@
 *.gz
 *.dvi
 *.svg
-webGUI/
+webGUI
 *.vscode
 *.npy
+

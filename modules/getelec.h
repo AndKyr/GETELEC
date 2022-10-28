@@ -14,10 +14,13 @@ struct emission{//struct for interoperability with fortran module getelec
                              //full: logical for full calculation
                              //mode, ierr: ints for defining mode and outputing error  .
     double voltage, theta; //data related to SC
+    const char *pfilename;
+    int pfile_length;
 };
 
 //external function from getelec fortran module doing all the connection
 extern void c_wrapper(struct emission * , int );
+extern void export_gamow_for_energy_range(double F, double R, double gamma, int Npoints, double *Wmin, double *Wmax, double G[]);
 
 //function that exports gamow factor as a function of energy
 extern void export_gamow(double, double, double, int, double *, double *, double []);

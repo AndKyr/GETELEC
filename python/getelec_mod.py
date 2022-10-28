@@ -3,6 +3,7 @@ GETELEC software from python and perform electron emissino calculations"""
 
 
 import ctypes as ct
+from typing import IO
 import numpy as np
 from numpy.lib.polynomial import RankWarning
 import scipy.optimize as opt
@@ -19,7 +20,7 @@ import sys
 
 pythonpath,filename = os.path.split(os.path.realpath(__file__))
 emissionpath,pythonfolder = os.path.split(pythonpath)
-libpath = emissionpath + '/lib/dynamic/libgetelec.so'
+libpath = emissionpath + '/lib/libgetelec.so'
 #libslatecpath = emissionpath + '/lib/libslatec.so'
 #ct.cdll.LoadLibrary(libslatecpath)
 print(libpath)
@@ -223,28 +224,49 @@ def calc_json(json_str):
     
 class Tabulator():
     
-    def __init__(self, emitter, Nf = 256, Nr = 256):
+    def __init__(self, emitter = emission_create(), Nf = 256, Nr = 128, Ngamma = 1, Npoly = 4, NGammow = 256):
         self.emitter = emitter
-        if (self.check_tabulated()):
-            print ("loading data from files")
-            self.load()
-        else:
-            print ("tabulating J, F, R")
-            self.tabulate_JFR(Nf, Nr)
 
-    def tabulate_JFR(self, Nf = 256, Nr = 256):
-        self.Finv = np.linspace(1./20., 1., Nf)
-        self.Rinv = np.linspace(1/100., 2., Nr)
+        if (self.load() != 0):
+            print ("tabulating J, F, R")
+            self.prepareTabulation(Nf, Nr, Ngamma, Npoly, NGammow)
+            self.tabulate_JFR()
+
+
+    def prepareTabulation(self, Nf = 256, Nr = 128, Ngamma = 1, Npoly = 4, NGamow = 256):
+        self.fieldRange = [1., 20.]
+        self.minRadius = 0.5
+        self.maxGamma = 1.e3
+
+        self.numberOfFieldValues = Nf
+        self.numberOfRadiusValues = Nr
+        self.numberOfGammaValues = Ngamma
+        self.numberOfPolynomialTerms = Npoly
+        self.numberOfGammowValues = NGamow
+
+        self.inverseFieldValues = np.linspace(1 / self.fieldRange[1], 1. / self.fieldRange[0], self.numberOfFieldValues)
+        self.inverseRadiusValues = np.linspace(1.e-4, 1 / self.minRadius, self.numberOfRadiusValues)
+        self.inverseGammaValues = np.linspace(1. / self.maxGamma, 1., self.numberOfGammaValues)
+
+        np.save("tabulated/inverseFieldValues", self.inverseFieldValues)
+
+        if (self.numberOfRadiusValues > 1):
+            np.save("tabulated/inverseRadiusValues", self.inverseRadiusValues)
         
-        self.Jmesh = np.zeros((Nr, Nf))
+        if (self.numberOfGammaValues > 1):
+            np.save("tabulated/inverseGammaValues", self.inverseGammaValues)
+     
+    def tabulate_JFR(self):
+
+        self.currentDensityTable = np.zeros((self.numberOfRadiusValues, self.numberOfFieldValues))
         
-        for i in range(Nr):
-            self.emitter.R = 1./self.Rinv[i]
-            for j in range(Nf):
-                self.emitter.F = 1./self.Finv[j]
+        for j in range(self.numberOfRadiusValues):
+            self.emitter.R = 1./self.inverseRadiusValues[j]
+            for k in range(self.numberOfFieldValues):
+                self.emitter.F = 1./self.inverseFieldValues[k]
                 self.emitter.Voltage = self.emitter.F * self.emitter.R * 0.2
                 self.emitter.cur_dens_SC()
-                self.Jmesh[i,j] = self.emitter.Jem
+                self.currentDensityTable[j, k] = self.emitter.Jem
                 if (self.emitter.Jem <= 0.):
                     self.emitter.print_data()
         try:
@@ -252,36 +274,61 @@ class Tabulator():
         except:
             pass
             
-        np.save("tabulated/current_density", self.Jmesh)
-        np.save("tabulated/Finv", self.Finv)
-        np.save("tabulated/Rinv", self.Rinv)
-        np.save("tabulated/checkcase",np.array([1./self.Finv[0], 1./self.Rinv[0], self.Jmesh[0,0]]))
-        self.finterp = intrp.interp2d(self.Finv, self.Rinv, np.log(self.Jmesh))
+        np.save("tabulated/current_density_table", self.currentDensityTable)
+        self.finterp = intrp.interp2d(self.inverseFieldValues, self.inverseRadiusValues, np.log(self.currentDensityTable))
     
-    def check_tabulated(self):
-        print ("checking tabulation")
-        try:
-            checks = np.load("tabulated/checkcase.npy")
-        except(IOError):
-            print ("tabulation check file not found")
-            return False
-            
-        self.emitter.F = checks[0]
-        self.emitter.R = checks[1]
-        
-        self.emitter.Voltage = self.emitter.F * self.emitter.R * 0.2
-        self.emitter.cur_dens_SC()
-        
-        print ("read F, R, J = ", checks)
-        print ("recalculated J = ", self.emitter.Jem)
-        
-        return self.emitter.Jem == checks[2]
+    def tabulateGamowTable(self, Nfield = 256, Nradius = 128, Ngamma = 1, Npoly = 4, NGamow = 256):
+        """Looks for the files where the precaculate barriers are stored. Then it uses interpolation methods to make the most accurate barrier for the given 
+        input (electric field, tip radius and gamma exponent). Gtab is stores the polinomial that gives its shape to the barrier.
+        """
+
+        self.prepareTabulation(Nfield, Nradius, Ngamma, Npoly, NGamow)
+        self.gamowTable = np.ones([self.numberOfGammaValues, self.numberOfRadiusValues, self.numberOfFieldValues, self.numberOfPolynomialTerms + 2])
+
+        for i in range(self.numberOfGammaValues):
+            for j in range(self.numberOfRadiusValues):
+                for k in range(self.numberOfFieldValues):
+                    
+                    field = 1 / self.inverseFieldValues[k]
+                    radius = 1 / self.inverseRadiusValues[j]
+                    gamma = 1 / self.inverseGammaValues[i]
+                    
+                    minimumBarrierDepth = np.array([1.])
+                    maximumBarrierDepth = np.copy(minimumBarrierDepth)
+                    G = np.zeros(self.numberOfGammowValues)
+                    
+                    getelec.export_gamow_for_energy_range(
+                        ct.c_double(field), ct.c_double(radius), ct.c_double(gamma), ct.c_int(self.numberOfGammowValues), \
+                        ct.c_void_p(minimumBarrierDepth.ctypes.data), ct.c_void_p(maximumBarrierDepth.ctypes.data), ct.c_void_p(G.ctypes.data)
+                    )
+                    
+                    barrierDepths = np.linspace(minimumBarrierDepth[0], maximumBarrierDepth[0], self.numberOfGammowValues)
+                    try:
+                        fittedPolynomialCoefficients = np.polyfit(barrierDepths, G, self.numberOfPolynomialTerms - 1)
+                    except(np.RankWarning):
+                        print("Rank Warning for F = %g, R = %g, gamma = %g" % (field, radius, gamma))
+                        plt.plot(barrierDepths, G)
+                        plt.show()
+                    self.gamowTable[i, j, k, :] = np.append(fittedPolynomialCoefficients, [barrierDepths[0], barrierDepths[-1]])    
+
+        if (self.numberOfGammaValues == 1):
+            self.gamowTable = np.reshape(self.gamowTable, (self.numberOfRadiusValues, self.numberOfFieldValues, self.numberOfPolynomialTerms + 2))
+            if (self.numberOfRadiusValues == 1):
+                self.gamowTable = np.reshape(self.gamowTable, (self.numberOfFieldValues, self.numberOfPolynomialTerms + 2))
+
+        np.save("tabulated/GamowTable", self.gamowTable)
         
     def load(self):
-        self.Jmesh = np.load("tabulated/current_density.npy")
-        self.Finv = np.load("tabulated/Finv.npy")
-        self.Rinv = np.load("tabulated/Rinv.npy")
-        self.finterp = intrp.interp2d(self.Finv, self.Rinv, np.log(self.Jmesh))
+        try:
+            self.Jmesh = np.load("tabulated/current_density_table.npy")
+            self.inverseFieldValues = np.load("tabulated/inverseFieldValues.npy")
+            self.inverseRadiusValues = np.load("tabulated/inverseRadiusValues.npy")
+            self.finterp = intrp.interp2d(self.inverseFieldValues, self.inverseRadiusValues, np.log(self.Jmesh))
+            print("Loaded tabulated current density data successfully")
+            return 0
+        except(IOError):
+            return 1
+
         
     def get_cur_dens(self, F, R):
         # assert (np.shape(F) == np.shape(R)), "F and R do not have the same shapes"
@@ -289,11 +336,11 @@ class Tabulator():
         Rcopy = np.copy(R)
         Fcopy = np.copy(F)
         
-        Rcopy[Rcopy > 1./self.Rinv[0]] = 1./self.Rinv[0] 
-        Rcopy[Rcopy < 1./self.Rinv[-1]] = 1./self.Rinv[-1]
+        Rcopy[Rcopy > 1./self.inverseRadiusValues[0]] = 1./self.inverseRadiusValues[0] 
+        Rcopy[Rcopy < 1./self.inverseRadiusValues[-1]] = 1./self.inverseRadiusValues[-1]
 
-        Fcopy[Fcopy > 1./self.Finv[0]] = 1./self.Finv[0]
-        Fcopy[Fcopy < 1./self.Finv[-1]] = 1./self.Finv[-1]
+        Fcopy[Fcopy > 1./self.inverseFieldValues[0]] = 1./self.inverseFieldValues[0]
+        Fcopy[Fcopy < 1./self.inverseFieldValues[-1]] = 1./self.inverseFieldValues[-1]
         
         return np.exp(self.finterp(1./Fcopy, 1./Rcopy))
         
@@ -319,7 +366,7 @@ class MultiEmitter():
         self.sigma_height = std_h
         self.mu_radii = mu_r
         self.sigma_radii = std_r
-        self.tb = Tabulator(self.emitter, 256, 128)
+        self.tb = Tabulator(self.emitter, 64, 32)
         
         
     def set_emitters(self, radii, heights = np.array([]), betas = np.array([])):

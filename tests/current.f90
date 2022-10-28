@@ -5,17 +5,18 @@ use std_mat, only: linspace
 
 type(EmissionData)      :: this
 integer                 :: i, Nx = 32
-character(len=32)       :: arg
+character(len=128)       :: arg, paramfile = "in/GetelecPar.in"
 real(dp)                :: t1,t2, kBoltz = 8.6173324d-5, voltage
+
     
 i = iargc()      
 if (i < 3) then
     print *, 'Give at least 3 floats. Field in V/nm, work function  in eV &
     and temperature in degrees Kelvin'
     print *, 'Optionally give afterwards R, mode, approximation type &
-    and gamma'
+    , gamma, input parameter file, and voltage'
     print *, "Approximation types are: 1: Full, 0: GTF, -1: FN, -2: RLD "
-    print *, "If you want space charge included give voltage [V]"
+    print *, "If you want space charge included give voltage as last argument [V]"
     stop
 endif
 
@@ -57,6 +58,12 @@ endif
 if (i >= 8) then
     call getarg(8, arg)
     arg= trim(arg)
+    read(arg,*) paramfile
+endif
+
+if (i >= 9) then
+    call getarg(9, arg)
+    arg= trim(arg)
     read(arg,*) voltage
 endif
 
@@ -68,8 +75,10 @@ if (this%mode > 0 .or. this%mode < -1) then
                 / (this%gamma * this%xr + this%R * (this%gamma - 1.d0))
 endif
 call cpu_time(t1)
-if (i>=8) call cur_dens_SC(this, voltage)
-if (i<8) call cur_dens(this)
+print *, paramfile
+call cur_dens(this, paramfile)
+if (i>=9) call cur_dens_SC(this, voltage)
+
 call cpu_time(t2)
 call print_data(this,.true.)
 if (debug > 0) then

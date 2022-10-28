@@ -42,7 +42,7 @@ real(dp), parameter     :: pi = acos(-1.d0), b = 6.83089d0, zs = 1.6183d-4, &
 
 integer, parameter     :: SHARP = 1, BLUNT = 0, FIELD = 1, INTER = 0, THERMAL = -1
 
-character(len=20), parameter   :: errorfile = trim('GetelecErr.txt'), &
+character(len=128), save   :: errorfile = trim('GetelecErr.txt'), &
                                   paramfile = trim('in/GetelecPar.in')
 ! names for the error output file and the parameters input file
 
@@ -160,10 +160,11 @@ end type EmissionData
 contains
 
 
-subroutine cur_dens(this)
+subroutine cur_dens(this, parameter_file)
 !Calculates current density, main module function
 
     type(EmissionData), intent(inout)      :: this !main data handling structure
+    character(len=*), intent(in), optional :: parameter_file
     
     real(dp)        :: Jf, Jt, n, s, E0, dE, heatf, heatt, F2, Fend, var
     real(dp)        :: nlimf, nlimt   !limits for n to distinguish regimes
@@ -171,13 +172,14 @@ subroutine cur_dens(this)
     real(dp), allocatable :: xtemp(:), Vtemp(:)
     integer         :: i, GTFerr
     character(len = 50) :: msgerr
+
     
     if (debug > 1) then
         call cpu_time(t1)
         print *, 'entering cur_dens'
     endif
     
-    if (.not. readparams) call read_params()
+    if (.not. readparams) call read_params(parameter_file)
     
     this%ierr = 0
     GTFerr = 0
@@ -542,9 +544,9 @@ subroutine gamow_num(this, full)
     integer                             :: i, binout(2), indxm, ixrm !
                                         ! indxm: index of xr closest to xm
     
-    if (allocated(this%xr)) then
+    if (allocated(this%xr)) then 
         ixrm = size(this%xr)
-    else 
+    else
         ixrm = 0
     endif
     
@@ -1312,7 +1314,72 @@ subroutine plot_barrier(this)
         end select
     end function bar
 end subroutine plot_barrier
+    
+    
+subroutine export_gamow_for_energy_range(F, R, gamma, Npoints, Wmin, Wmax, G) bind(c)
+    
+    use iso_c_binding  
+                                                
+    real(c_double), intent(in), value  :: F, R, gamma
+    real(c_double), intent(out) :: Wmin, Wmax !counting from vacuum level
+    
+    integer(c_int), intent(in), value  :: Npoints
+    real(c_double), intent(out)  :: G(Npoints)
+    
+    real(c_double)               :: Gf(Npoints) 
+    type(EmissionData)              :: this, new
+    integer                         :: i
+    real(dp), parameter             :: Gmax = 50.d0, inc = 1.5d0   
+    real(dp)                        :: Wa, Wb         
+    
+    
+    !copy the members of the c struct to the fortran type
+    this%F = F
+    this%R = R
+    this%gamma = gamma
+    this%W = 5.d0
 
+
+    call gamow_num(this, .true.)
+
+    !Wmin will be at the top of the barrier. Above it G goes as linear extrapolation
+    Wmin = this%W - this%Um 
+
+    !first find where G gets bigger than Gmax
+    Wmax = Wmin
+    do i=1,100
+        Wmax = Wmax * inc
+        new = this
+        new%W = Wmax
+        call gamow_general(new,.true.)
+        if (new%Gam > Gmax) exit
+    enddo
+
+    ! pinpoint exactly where G = Gmax
+    Wa = Wmax / inc
+    Wb = Wmax
+    do i=1,100!bisection to find where n=1
+        Wmax=(Wb+Wa)*.5d0
+        new%W = Wmax
+        call gamow_general(new,.true.)
+        if (new%Gam > 1.02 * Gmax) then
+            Wb = Wmax
+        else if (new%Gam < .98 * Gmax) then
+            Wa = Wmax
+        else
+            exit
+        endif
+    enddo
+
+    !Run calculation between Wmin and Wmax
+    do i = 1, Npoints
+        new%W = Wmin + (Wmax - Wmin) * (i - 1) / (Npoints - 1)
+        call gamow_general(new, .true.)
+        G(i) = new%Gam
+    enddo
+    
+        
+end subroutine export_gamow_for_energy_range
 
 subroutine desetroy(this)
 !frees all the memory allocated for an Emission type "object"
@@ -1412,6 +1479,8 @@ subroutine C_wrapper(passdata, ifun) bind(c)
         integer(c_int)      :: regime, sharp  !output chars showing regimes
         integer(c_int)      :: Nr, approx, mode, ierr !len of vectors xr, Vr and full
         real(c_double)      :: voltage, theta
+        type(c_ptr)         :: pfilename
+        integer(c_int)      :: pfile_length
     end type cstruct
 
     type(cstruct), intent(inout)    :: passdata
@@ -1420,7 +1489,23 @@ subroutine C_wrapper(passdata, ifun) bind(c)
     real(c_double), pointer         :: xr_fptr(:), Vr_fptr(:)
     type(EmissionData)              :: this
     integer                         :: i
-    
+    character(c_char), pointer      :: parfile_f_ptr(:)
+    character(len=128)              :: parameter_file
+
+    if (.not. readparams) then
+        if (passdata%pfile_length > 128) then
+            stop "GETELEC ERROR: parameter file name should have length < 128"
+        endif
+
+        call c_f_pointer(passdata%pfilename, parfile_f_ptr, [passdata%pfile_length])
+
+        do i= 1, passdata%pfile_length
+            parameter_file(i:i) = parfile_f_ptr(i)
+        enddo
+
+        call read_params(parameter_file(:passdata%pfile_length))
+    endif
+
     if (ifun == 4) then
         passdata%Temp = theta_SC(passdata%F, passdata%voltage, passdata%R)
         return
@@ -1565,23 +1650,32 @@ function nlinfit(fun, xdata, ydata, p0, pmin, pmax, tol, info) result(var)
 end function nlinfit
 
 
-subroutine read_params()
+subroutine read_params(parameter_file)
 
+    character(len=*), intent(in), optional :: parameter_file
     character(len=13)   :: str
     logical             :: ex
     integer             :: fid = fidparams
-    character(len=40), parameter  :: error = &
-        'ERROR: GetelecPar.in is not correct.'
-    
-    inquire(file=paramfile, exist=ex)
-    if (.not. ex) then
-        print *, 'GETELEC: Parameters input file not found. Default values used.'
-        readparams = .true.
+    character(len=128), parameter  :: error = &
+        'ERROR: Parameter file is not correct.'
+
+
+    if (readparams) return
+
+    if (present(parameter_file)) then
+        paramfile = trim(parameter_file)
     endif
     
-    if (readparams) return
+    inquire(file=trim(paramfile), exist=ex)
+    if (.not. ex) then
+        print *, 'GETELEC: Parameters input file ', trim(paramfile), ' not found. Default values used.'
+        readparams = .true.
+        return
+    endif
     
-    open(fid, file = paramfile, action = 'read')
+    print *, 'GETELEC: Reading parameters from ', trim(paramfile)
+    
+    open(fid, file = trim(paramfile), action = 'read')
     read(fid,'(2A)')
     
     read(fid,*) str, debug

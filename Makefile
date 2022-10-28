@@ -6,8 +6,7 @@ LINKLIBS = ar -rcT
 MODOBJ = modules/obj/std_mat.o modules/obj/ellfuns_tabulated.o \
   modules/obj/bspline.o modules/obj/pyplot_mod.o modules/cobj/c_interface.o
 
-  
-DEPS  = -lslatec
+
 FFLAGS = -fcheck=all -Imod -O3 -fPIC -Llib
 CFLAGS = -fbounds-check -O3 -fPIC -Imodules #-Wall -Wextra
 
@@ -19,15 +18,23 @@ PWD = $(shell pwd)
 
 LIBSTATIC=lib/libgetelec.a
 LIBDEPS=lib/libslatec.a
-LIBSHARED = lib/dynamic/libgetelec.so
+LIBSHARED = lib/libgetelec.so
 
 CINTERFACE = modules/cobj/c_interface.o
-DIRS = bin cobj mod obj modules/obj lib/slatec/obj lib/dynamic modules/cobj png
+DIRS = bin cobj mod obj modules/obj lib lib/slatec/obj modules/cobj png
+
+# Create version control for compiler
+FORTRANERR = 
+GNUVERSION := $(shell $(FC) -dumpversion)
+
+ifeq ($(shell test $(GNUVERSION) -gt 9; echo $$?),0)
+	FORTRANERR = -fallow-argument-mismatch
+endif
 	
 .PHONY: tests varyingTemp ctest KXerror
 .SECONDARY: *.o #$(MODOBJ)
 
-all: $(DIRS) $(LIBSFULL) $(LIBSHARED) python/libintegrator.so
+all: $(DIRS) $(LIBSFULL) $(LIBSHARED) lib/libslatec.so python/libintegrator.so
 
 tests: varyingTemp ctest KXerror plots fitIV  
 
@@ -80,15 +87,18 @@ $(LIBSTATIC): obj/getelec.o lib/libslatec.a $(MODOBJ)
 	
 lib/libslatec.a: $(SLATEC_OBJ)
 	$(AR) $@ lib/slatec/obj/*.o
+
+lib/libslatec.so: $(SLATEC_OBJ)
+	$(FC) -fPIC -shared lib/slatec/obj/*.o -o $@
 	
 lib/slatec/obj/%.o: lib/slatec/src/%.f
-	$(FC) -O3 -w -c $< -o $@ 
+	$(FC) $(FORTRANERR) -fPIC -O3 -w -c $< -o $@ 
 
 bin/%.out: cobj/%.o $(LIBSHARED)
-	$(CC) -L./lib -o $@ $^ #-lgetelec
+	$(CC) -L./lib -o $@ $^
 	
-bin/%.exe: obj/%.o obj/getelec.o $(MODOBJ)
-	$(FC) $(FFLAGS) -Llib $^ $(DEPS) -o $@
+bin/%.exe: obj/%.o obj/getelec.o $(LIBSHARED) $(MODOBJ)
+	$(FC) $(FFLAGS) $^ $(DEPS) -o $@
 	
 cobj/%.o : tests/%.c
 	$(CC) $(CFLAGS) $^ -c -o $@ 

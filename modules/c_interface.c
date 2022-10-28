@@ -38,6 +38,7 @@ int print_C_data(struct emission *this){
     printf("mode = %d\n", this->mode);
     printf("ierr = %d\n", this->ierr);
     printf("voltage = %e\n", this->voltage);
+    printf("parameter_string = %s\n", this->pfilename);
     
     if (this->Nr){
         printf("   i\t   xr\t  Vr\n");
