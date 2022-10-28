@@ -1,6 +1,6 @@
 #! /usr/bin/python
 import numpy as np
-import getelec_mod as gt
+import getelec_mod as getelec_old
 
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -29,7 +29,7 @@ Fmax = [5., 6., 7., 8.]
 xdata = np.linspace(0.15, 0.35, 128)
 Jem = np.copy(xdata)
 
-this = gt.emission_create(W = 4.5, R = 5000., approx = 2)
+this = getelec_old.emission_create(W = 4.5, R = 5000., approx = 2)
 
 fig1 = plt.figure(figsize=fsize)
 ax1 = fig1.gca()
@@ -59,18 +59,18 @@ for i in range(len(Works)):
     ydata = np.log(Jem)
     ax1.semilogy(xdata,Jem, label = r'W = %g eV'%this.W)
 
-    fit = gt.fitML(1./F, np.log(Jem), W0 = [4.5-1.e-8, 4.5, 4.5+1.e-8], R0 = [5000, 5001, 5002], gamma0=[10-1.e-8, 10., 10+1.e-8], Temp0=[T-1.e-8, T, T+1.e-8])
+    fit = getelec_old.fitML(1./F, np.log(Jem), W0 = [4.5-1.e-8, 4.5, 4.5+1.e-8], R0 = [5000, 5001, 5002], gamma0=[10-1.e-8, 10., 10+1.e-8], Temp0=[T-1.e-8, T, T+1.e-8])
     popt = fit.x
 
   
-    yopt = gt.MLplot(xdata, popt[0], popt[1], popt[2], popt[3], popt[4], approx=2)
+    yopt = getelec_old.MLplot(xdata, popt[0], popt[1], popt[2], popt[3], popt[4], approx=2)
     yshift = max(yopt) - max(ydata)
     # print(popt, np.exp(yshift))
 
 
 
     xth = xdata/ popt[0]
-    Jth = np.exp(gt.MLplot(xdata, popt[0], popt[1], popt[2], popt[3], popt[4]) - yshift)   
+    Jth = np.exp(getelec_old.MLplot(xdata, popt[0], popt[1], popt[2], popt[3], popt[4]) - yshift)   
     rmse = np.mean(((Jth - Jem) / Jem)**2)**0.5
     ax2.semilogy(xth, Jem, label = r'W = %g eV, $\beta$=%.4g, S = %.4g, REMSE= %.3f %s'%(this.W, popt[0]**-1, np.exp(yshift), 100 * rmse, "%"))
 

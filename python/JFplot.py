@@ -1,6 +1,6 @@
 #! /usr/bin/python
 import numpy as np
-import getelec_mod as gt
+import getelec_mod as getelec_old
 
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -25,7 +25,7 @@ F = 1./Xfn
 
 Jem = np.copy(F)
 
-this = gt.emission_create(W = 4.5, R = 5000., approx = 2)
+this = getelec_old.emission_create(W = 4.5, R = 5000., approx = 2)
 
 fig1 = plt.figure(figsize=fsize)
 ax1 = fig1.gca()

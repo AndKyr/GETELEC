@@ -6,7 +6,7 @@ import numpy as np
 import scipy.integrate as ig
 import sys
 sys.path.append("/home/kyritsak/Code/GETELEC/python")
-import getelec_mod as gt
+import getelec_mod as getelec_old
 
 
 V0 = 5.e-10
@@ -55,7 +55,7 @@ class SpaceCharge():
                 Npoints = 1024, emitter = None, Radius = 1.):
         if (emitter == None):
             print("SpaceCharge class created with default emitter")
-            self.emitter = gt.emission_create()
+            self.emitter = getelec_old.emission_create()
         else:
             self.emitter =  emitter
         

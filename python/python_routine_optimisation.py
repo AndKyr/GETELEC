@@ -4,7 +4,7 @@ import numpy as np
 from multiprocessing import Pool
 import multiprocessing as mp
 import time
-import getelec_tabulator as gtab
+import getelec_tabulator as getelec_new
 import pandas as pd
 import threading as th
 
@@ -12,20 +12,20 @@ def current(f,r,g,w,t):
 
     kBoltz = 8.6173324e-5 
 
-    tab = gtab.Tabulator()
+    tab = getelec_new.Interpolator()
 
     kT = kBoltz * t
 
-    metal_emitter = gtab.Metal_Emitter(tab)
+    metal_emitter = getelec_new.Metal_Emitter(tab)
     #j_metal = np.zeros(len(f))
 
     #for i in range(len(f)):
-    metal_emitter.emitter.Define_Barrier_Parameters(f, r, g)
-    metal_emitter.emitter.Interpolate_Gammow()
+    metal_emitter._emitter.Define_Barrier_Parameters(f, r, g)
+    metal_emitter._emitter.Interpolate_Gammow()
 
-    metal_emitter.Define_Emitter_Parameters(w, kT)
+    metal_emitter.Define_Metal_Emitter_Parameters(w, kT)
 
-    j_metal = metal_emitter.Current_Density()
+    j_metal = metal_emitter.Current_Density_from_Metals()
 
     return j_metal
 
@@ -33,20 +33,20 @@ def current2(f,r,g,w,t):
 
     kBoltz = 8.6173324e-5 
 
-    tab = gtab.Tabulator()
+    tab = getelec_new.Interpolator()
 
     kT = kBoltz * t
 
-    metal_emitter = gtab.Metal_Emitter(tab)
+    metal_emitter = getelec_new.Metal_Emitter(tab)
     j_metal = np.zeros(len(f))
 
     for i in range(len(f)):
-        metal_emitter.emitter.Define_Barrier_Parameters(f[i], r[i], g[i])
-        metal_emitter.emitter.Interpolate_Gammow()
+        metal_emitter._emitter.Define_Barrier_Parameters(f[i], r[i], g[i])
+        metal_emitter._emitter.Interpolate_Gammow()
 
-        metal_emitter.Define_Emitter_Parameters(w[i], kT[i])
+        metal_emitter.Define_Metal_Emitter_Parameters(w[i], kT[i])
 
-        j_metal[i] = metal_emitter.Current_Density()
+        j_metal[i] = metal_emitter.Current_Density_from_Metals()
 
     return j_metal
 

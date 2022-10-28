@@ -5,7 +5,7 @@
     Version of the FN equation, the GTF approximation (Jensen) and the full
     calculation by GETELEC"""
 import numpy as np
-import getelec_mod as gt
+import getelec_mod as getelec_old
 
 import matplotlib.pyplot as plt
 import matplotlib as mb
@@ -35,7 +35,7 @@ T = [600,3200]
 colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
 for j in range(len(T)):
-    this = gt.emission_create(W = 4.5, R = 5000., Temp = T[j])
+    this = getelec_old.emission_create(W = 4.5, R = 5000., Temp = T[j])
 
     for i in range(len(F)):
         this.F = F[i]

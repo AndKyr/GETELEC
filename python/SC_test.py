@@ -4,7 +4,7 @@
     according to three different calculations. The FN equation (Murphy-Good)
     the Child Langmuir-Limit, and the full self-consistent calculation GETELEC"""
 import numpy as np
-import getelec_mod as gt
+import getelec_mod as getelec_old
 
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -31,7 +31,7 @@ Jsc = np.copy(F)
 
 Vappl = 10000
 
-this = gt.emission_create(R = 5000., voltage = Vappl, approx = -1)
+this = getelec_old.emission_create(R = 5000., voltage = Vappl, approx = -1)
 
 colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
@@ -52,7 +52,7 @@ for j in range(len(F)):
     
 ax.semilogy(1/F, Jfn, '--', label = 'FN')#label = 'T = %.0f K, Full Numerical'%T[i])
 ax.semilogy(1/F, Jsc, label = 'Self consistent')#label = 'T = %.0f K, Full Numerical'%T[i])
-ax.semilogy(1/F,gt.J_ChildL(Vappl, F / Vappl), '--', label = 'CL') #linestyle = '--', label = 'T = %.0f K, F-N'%T[i])
+ax.semilogy(1/F,getelec_old.J_ChildL(Vappl, F / Vappl), '--', label = 'CL') #linestyle = '--', label = 'T = %.0f K, F-N'%T[i])
 
 ax.grid()
 ax.set_xlabel(r"$1/F[nm/V]$")

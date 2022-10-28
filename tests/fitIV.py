@@ -13,7 +13,7 @@ emissionpath,mainfolder = os.path.split(mainpath)
 pythonpath = emissionpath + '/python'
 sys.path.append(pythonpath)
 
-import getelec_mod as gt
+import getelec_mod as getelec_old
 
 
 F0 = [1., 5., 14.]
@@ -65,16 +65,16 @@ for key in data.keys():
     #print Idata
     W0 = list(np.array([1.-1e-4, 1., 1.+1e-4]) * Wi[key])
 
-    fit= gt.fitML(xdata,ydata, F0, W0, R0, gamma0, Temp0)
+    fit= getelec_old.fitML(xdata,ydata, F0, W0, R0, gamma0, Temp0)
     popt = fit.x
-    yopt = gt.MLplot(xdata, popt[0], popt[1], popt[2], popt[3], popt[4])
+    yopt = getelec_old.MLplot(xdata, popt[0], popt[1], popt[2], popt[3], popt[4])
     yshift = max(yopt) - max(ydata)
     
     print('beta = %10.3e, W = %10.3f, R = %10.3f, gamma = %10.3f, Temp = %10.3f, sigmaAeff = %10.3e' \
             % (popt[0], popt[1],  popt[2], popt[3], popt[4], 1e-9*np.exp(-yshift)))
                 
     xth = np.linspace(min(xdata),max(xdata),100)
-    yth = np.exp(gt.MLplot(xth, popt[0], popt[1], popt[2], popt[3], popt[4]) - yshift)           
+    yth = np.exp(getelec_old.MLplot(xth, popt[0], popt[1], popt[2], popt[3], popt[4]) - yshift)           
     ax.semilogy(xdata / popt[0],Idata,markers[key], \
                 label = key, markersize = mw, \
                 mec = colors[key], mfc = 'none', mew = 2)

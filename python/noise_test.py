@@ -1,6 +1,6 @@
 #! /usr/bin/python3
 import numpy as np
-import getelec_mod as gt
+import getelec_mod as getelec_old
 
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
@@ -18,7 +18,7 @@ fsize = (18,10)
 
 # cMap = plt.cm.copper
 Nrand = 2048
-em = gt.emission_create(W = 4.5, R = 4., gamma = 3.)
+em = getelec_old.emission_create(W = 4.5, R = 4., gamma = 3.)
 
 def J_noise_average(F, F_noise):
 	fi = F + np.random.randn(Nrand) * F_noise
