@@ -2,29 +2,21 @@
 from array import array
 import ctypes as ct
 from importlib.metadata import distribution
+from inspect import TPFLAGS_IS_ABSTRACT
 import numpy as np
 from numpy.lib.polynomial import RankWarning
 from scipy.integrate import IntegrationWarning
 import scipy.integrate as ig
 import os
-import matplotlib.pyplot as plt
-import scipy.interpolate as intrp
-import time
-import getelec_mod as getelec_old
+import scipy.ndimage as ndim
 
 pythonpath,filename = os.path.split(os.path.realpath(__file__))
-emissionpath,pythonfolder = os.path.split(pythonpath)
-libpath = emissionpath + '/lib/dynamic/libgetelec.so'
-print(libpath)
-ct.cdll.LoadLibrary(libpath)
-getelec = ct.CDLL(libpath)
 
 integrator = ct.CDLL(pythonpath + '/libintegrator.so') #use absolute path
 integrator.intfun.restype = ct.c_double
 integrator.intfun.argtypes = (ct.c_int, ct.c_double)
 integrator.intfun_Pn.restype = ct.c_double
 integrator.intfun_Pn.argtypes = (ct.c_int, ct.c_double)
-#integrator.intfun_Pn.argtypes = (ct.c_int, ct.c_void_p)
 integrator.Gfun.argtypes = (ct.c_int, ct.c_void_p)
 integrator.Gfun.restype = ct.c_double
 integrator.intfun_dbg.argtypes = (ct.c_int, ct.c_void_p)
@@ -100,127 +92,106 @@ class Interpolator:
         of it
 """
 
-    # region field declarations
-    _number_of_gamma_values: int
-    _number_of_radius_values: int
-    _number_of_field_values: int
-    # endregion
     
     # region initialization
-    def __init__(self, Nf=256, Nr=128, Ngamma=32):
-        """Initialises Tabulator by 1) loading the "resolution", 2) loading the maps and 3) if maps not found, calling the functions to calculate and sabe the maps
+    def __init__(self, NField = 64, NRadius = 8, Ngamma = 1):
+        """Initialises Tabulator by loading the tables from files. If maps not found, calls tabulation scripts
+        from old getelec
 
         Args:
-            Nf (int, optional): Resolution for the electric field. Defaults to 256.
-            Nr (int, optional): Resolution for the tip radius. Defaults to 128.
-            Ngamma (int, optional): Resolution for gamma. Defaults to 32.
+            tabulationFolder (int, optional): folder where to fine tabulated values
+            NField, NRadius, Ngamma (int, optional): Number of points to tabulate for electric field, radius and gamma.
+            They are relevant only in case the tabulated files are not found and the tabulation script from oldGETELEC
+            is invokes. 
         """
-        self._number_of_field_values = Nf
-        self._number_of_radius_values = Nr
-        self._number_of_gamma_values = Ngamma
-        was_table_loaded_from_files = self._Load_Table_from_Files()
-        if not was_table_loaded_from_files:
-            self._range_of_field_values = [0.5, 20.]
-            self._minimum_radius = 0.5
-            print("tabulating G, F, R, gamma")
-            self._Calculate_Table()
-            self._Save_Table_to_Files()
 
-    def _Load_Table_from_Files(self) -> bool:
-        """Looks for the files where the precaculate barriers are stored. Then it uses interpolation methods to make the most accurate barrier for the given 
-        input (electric field, tip radius and gamma exponent). Gtab is stores the polinomial that gives its shape to the barrier.
+        if self._loadTables():
+            pass
+        else:
+            tabulationScript = pythonpath + "/../oldGETELEC/python/tabulateGamow.py"
+            command = "python3 %s -nf %d -nr %d -ng %d"%(tabulationScript, NField, NRadius, Ngamma)
+            print("tabulation not found. producing tabulator by running:")
+            print(command)
+            os.system(command)
+            self._loadTables()
+
+    def _loadTables(self) -> bool:
+        """Loads the table of the Gamow factor from the files where it has been stored.
         """
         try:
-            self.Gtab = np.load("tabulated_data/Gtable.npy")
-            self.Finv = np.load("tabulated_data/Finv.npy")
-            self.Rinv = np.load("tabulated_data/Rinv.npy")
-            self.gaminv = np.load("tabulated_data/gammainv.npy")
-            #if (np.shape(self.Gtab1) == tuple([self._number_of_gamma_values, self._number_of_radius_values, self._number_of_field_values])):
-            if (np.shape(self.Gtab) == tuple([self._number_of_gamma_values, self._number_of_radius_values, self._number_of_field_values, Npoly + 2])):
-                self.interpolator = intrp.RegularGridInterpolator((self.gaminv, self.Rinv, self.Finv), self.Gtab)
-                return True
-            else:
-                print("tabulation filed cannot be interpolated")
-                return False
+            self.gamowTable = np.load("tabulated/GamowTable.npy")
+            limits = np.load("tabulated/tabLimits.npy")
         except(IOError):
             print("tabulation files not found")
             return False
-        
-    def _Calculate_Table(self):
-        """Looks for the files where the precaculate barriers are stored. Then it uses interpolation methods to make the most accurate barrier for the given 
-        input (electric field, tip radius and gamma exponent). Gtab is stores the polinomial that gives its shape to the barrier.
-        """
-        self.Finv = np.linspace(1 / self._range_of_field_values[1], 1. / self._range_of_field_values[0], self._number_of_field_values)
-        self.Rinv = np.linspace(1.e-3, 1 / self._minimum_radius, self._number_of_radius_values)
-        self.gaminv = np.linspace(1.e-3, .99, self._number_of_gamma_values)
-        self.Gtab = np.ones([self._number_of_gamma_values, self._number_of_radius_values, self._number_of_field_values, Npoly + 2])
 
-        for i in range(self._number_of_gamma_values):
-            for j in range(self._number_of_radius_values):
-                for k in range(self._number_of_field_values):
-                    
-                    F = 1 / self.Finv[k]
-                    R = 1 / self.Rinv[j]
-                    gamma = 1 / self.gaminv[i]
-                    
-                    Wmin = np.array([1.])
-                    Wmax = np.copy(Wmin)
-                    G = np.zeros(NGi)
-                    
-                    getelec.export_gamow(
-                        ct.c_double(F), ct.c_double(R), ct.c_double(gamma), ct.c_int(NGi), \
-                        ct.c_void_p(Wmin.ctypes.data), ct.c_void_p(Wmax.ctypes.data), ct.c_void_p(G.ctypes.data)
-                    )
-                    
-                    W = np.linspace(Wmin[0], Wmax[0], NGi)
-                    try:
-                        poly = np.polyfit(W, G, Npoly - 1)
-                    except(RankWarning):
-                        print("Rank Warning for F = %g, R = %g, gamma = %g" % (F, R, gamma))
-                        plt.plot(W, G)
-                        plt.show()
-                    self.Gtab[i, j, k, :] = np.append(poly, [W[0], W[-1]])
-    
-    def _Save_Table_to_Files(self):
-        """It saves the barrier maps, if any, in order to be reused in future simulations
-        """
-        try:
-            os.mkdir("tabulated_data")
-        except:
-            pass
+        #Get interpolation limits
+        self.fieldLimits = limits[:2]
+        self.radiusLimits = limits[2:4]
+        self.gammaLimits = limits[4:]
+        self.dimension = len(np.shape(self.gamowTable)) - 1
         
-        np.save("tabulated_data/Gtable", self.Gtab)
-        np.save("tabulated_data/Finv", self.Finv)
-        np.save("tabulated_data/Rinv", self.Rinv)
-        np.save("tabulated_data/gammainv", self.gaminv)
-    # endregion
+        assert self.dimension <= 3 and len(np.shape(self.gamowTable)) >=1, \
+            'The tabulated Gamow table has wrong shape: {}'.format(np.shape(self.gamowTable))
+        assert self.fieldLimits[0] < self.fieldLimits[1], \
+            'Limits of tabulated Field: {} are wrong'.format(self.fieldLimits)
+
+        self.Npolynomial = np.shape(self.gamowTable)[-1] - 2       
+        self.Nfields = np.shape(self.gamowTable)[-2]
+
+
+        if(self.dimension >= 2):
+            assert self.radiusLimits[0] < self.radiusLimits[1], \
+                'Limits of tabulated Radius: {} are wrong'.format(self.radiusLimits)
+            self.Nradius = np.shape(self.gamowTable)[-3]
+        else:
+            assert self.radiusLimits[0] == self.radiusLimits[1], \
+                'Limits of tabulated Radius: {} are wrong'.format(self.radiusLimits)
+            self.Nradius = 1
+
+        if (self.dimension == 3):
+            self.Ngamma = np.shape(self.gamowTable[0])
+            assert self.gammaLimits[0] < self.gammaLimits[1], \
+                'Limits of tabulated Gamma: {} are wrong'.format(self.gammaLimits)
+        else:
+            assert self.gammaLimits[0] == self.gammaLimits[1], \
+                'Limits of tabulated Gamma: {} are wrong'.format(self.gammaLimits)
+            self.Ngamma = 1
+        return True
+
     
+
     # region user methods
-    def Gammow_Exponent_for_Parameters(self, F: float, R: float, gamma: float):
-        """It is the public function that takes the three describing barrier parameters (field, radius, gamma) and calls the interpolator 
-        (_Load_Table_from_Files()) to calculate the polinomial that describes the barrier, as well as the energy limis (Wmin and Wmax)
-        of it
-
-        Args:
-            F (float): Value of the electric field
-            R (float): Value of the emitter tip radius
-            gamma (float): Value of gamma
-
-        Returns:
-            array: Contains the polynomial which describes the barrier, as well as the top (transmission = 1) and bottom (transmission is efectively 0) 
-            limits of this barrier
+    def interpolateForValues(self, field : float, radius : float = 1.e4, gamma : float = 10.):
         """
-        # Using __call_ because of scipy reasons
-        try:
-            outintr = self.interpolator.__call__([1 / gamma, 1. / R, 1. / F], method="linear")[0]
+        """
+        
+        paramCoordinates = np.arange(self.Npolynomial + 2)
+        fieldCoorinates = np.ones(len(paramCoordinates)) * self.Nfields * (1./field - self.fieldLimits[0]) / (self.fieldLimits[1] - self.fieldLimits[0])
 
-        except:
-            # This except is here in case the field, from comosl, is very low to prevent errors. This outintr results in a current equal to 0 A/cm2
-            print("WARNING: Field is too high/low for GETELEC. Review model/results")
-            outintr = np.array([1, 1., 500, 500, 0, 2., 2.0])
-            
-        return outintr
-    # endregion
+        if (self.dimension >= 2):
+            radiusCoordinates = np.ones(len(paramCoordinates)) * self.Nradius * (1./radius - self.radiusLimits[0] / (self.radiusLimits[1] - self.fieldLimits[0]))
+        else:
+            radiusCoordinates = np.zeros(len(paramCoordinates))
+            if (radius < 100.):
+                print("WARNING: Using tabulation without radius (planar approximation) with input radius: {} nm < 100 nm.".format(radius))
+        
+        if (self.dimension == 3):
+            gammaCoordinates = np.ones(len(paramCoordinates)) * self.Ngamma * (1./gamma - self.gammaLimits[0] / (self.gammaLimits[1] - self.gammaLimits[0]))
+        else:
+            gammaCoordinates = np.zeros(len(paramCoordinates))
+            if (gamma != 10.):
+                print("WARNING: Using tabulation without gamma with gamma: {} nm != 10. Tabulation is done with gamma = 10".format(gamma))
+
+
+        if (self.dimension == 1):
+            interpolationCoordinates = np.array([fieldCoorinates, paramCoordinates])
+        elif(self.dimension == 2):
+            interpolationCoordinates = np.array([radiusCoordinates, fieldCoorinates, paramCoordinates])
+        elif (self.dimension == 3):
+            interpolationCoordinates = np.array([gammaCoordinates, radiusCoordinates, fieldCoorinates, paramCoordinates])
+
+        return ndim.map_coordinates(self.gamowTable, interpolationCoordinates)
 
 class Barrier(Interpolator):
     """
@@ -1074,6 +1045,8 @@ def heat_semiconductor_emitter(Field:array, Radius:array, Gamma:array ,Ec:array,
     return pn_total
 
 
-data = current_metal_emitter(np.ones(1)*5, np.ones(1)*50, np.ones(1)*10,np.ones(1)*4.5, np.ones(1)*200)
 
-print(data)
+if (__name__ == "__main__"):
+    tab = Interpolator()
+
+    print(tab.interpolateForValues(5., 10., 10))
