@@ -12,7 +12,6 @@ const bounds = {
 
 function main(){
 
-
     // Connection with node.js socket.io server
 
     let socket = io();
@@ -25,7 +24,7 @@ function main(){
         calculateNH, calculateES, calculateEC, gammaMetal, gammaSemi,
         ec, ef, eg, me, mp, _field, _radius, _workFunction, _temperature,
         _ec, _ef, _eg, _me, _mp, _gammaMetal, _gammaSemi, sweepParam,
-        data, chart1, chart2, chart3
+        data, chart1, chart2, chart3, _data
     
 
     // boolean used to load charts only when users inputs data
@@ -379,7 +378,8 @@ function main(){
         preselectSemiPropertiesDiv.addEventListener("change", updatePreselectSemiProperties);
         enterButton.addEventListener("click", checkValidity);
 
-        slider.addEventListener('input', readSliderValue);
+        //slider.addEventListener('input', readSliderValue);
+        //slider.addEventListener('change', updateGraphs(data));
 
         updatePropertiesPresets();
         
@@ -681,28 +681,19 @@ function main(){
 
                     tooltip: {
 
-                        mode: 'interpolate',
-
-                        intersect: false,
-
-                        enabled: true,
-
-                        animation: false,
-
                         callbacks: {
-
-                            title: function(a, d) {
-
-                              return a[0].element.x.toFixed(2);
-
-                            },
                             
-                            label: function(d) {
-
-                              return (d.chart.data.datasets[d.datasetIndex].label + ": " + d.element.y.toFixed(2));
-
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+        
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y.toExponential(3);
+                                }
+                                return label;
                             }
-
                         }
     
                     },                    
@@ -1055,13 +1046,22 @@ function main(){
 
                     tooltip: {
 
-                        mode: 'interpolate',
-
-                        intersect: false,
-
-                        enabled: true
-    
-                    },
+                        callbacks: {
+                            
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+        
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y.toExponential(3);
+                                }
+                                return label;
+                            }
+                        }
+ 
+                    },                    
 
                     zoom: {
 
@@ -1168,7 +1168,9 @@ function main(){
 
                     interpolate: true
 
-                }]
+                }
+
+                ]
 
             },
 
@@ -1346,7 +1348,7 @@ function main(){
     
                         title: {
     
-                            text: "Energy space",
+                            text: "Energy space, [eV]",
 
                             display: true,
 
@@ -1385,29 +1387,21 @@ function main(){
 
                     tooltip: {
 
-                        mode: 'interpolate',
-
-                        intersect: false,
-
-                        enabled: true,
-
-                        animation: false,
-
                         callbacks: {
-
-                            title: function(a, d) {
-
-                              return a[0].element.x.toFixed(2);
-
-                            },
                             
-                            label: function(d) {
-
-                              return (d.chart.data.datasets[d.datasetIndex].label + ": " + d.element.y.toFixed(2));
-
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+        
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y.toExponential(3);
+                                }
+                                return label;
                             }
-
                         }
+
     
                     },                    
                     
@@ -1486,7 +1480,6 @@ function main(){
 
     }
 
-
     //Listens for data from server. Once received, updates graphs with given data. Hides loading modal
 
     socket.on("calculatedEmission", (data) =>{
@@ -1495,13 +1488,20 @@ function main(){
 
             loadCharts();
 
+            _data = data;
+
+            let slider = document.getElementById('myRange');
+
+            slider.addEventListener('input', updateGraphs);
+            //slider.addEventListener('input', readSliderValue);
+
             chartsLoaded = true;
 
         }
 
         console.log(data);
 
-        updateGraphs(data);
+        updateGraphs();
 
         $('#loadingModal').modal('hide');
 
@@ -1518,7 +1518,9 @@ function main(){
     })
     //Big function that updates graphs with given data.
 
-    function updateGraphs(data){
+    function updateGraphs(){
+        
+        data = _data;
 
         let _sweepParam = data.sweepParam;
         let _materialType = data.materialType;
@@ -1533,12 +1535,12 @@ function main(){
         let data1 = data.metalEC;
         let data2 = data.metalNH;
 
-        let data3 = data.metalES;
         let data4 = data.semiEC;
 
         let data5 = data.semiNH;
-        let data6 = data.semiES;
 
+        let data6 = data.metalESelcount;
+        let data6e = data.metalESenergy;
 
         //For ease, copies the array values of parameters to a new array, so that its easier to access right data.
 
@@ -1556,54 +1558,87 @@ function main(){
 
         updateESGraph();
 
+        let value = document.getElementById('myRangeValue');
+        let slider = document.getElementById('myRange');
+        value.value = `${data.sweepParam}: ${_sweepValues[slider.value]}`;
+
+
         function updateECGraph(){
 
-            // if(data1 == [] && data4 == []) return;
+            if((data1 === undefined || data1.length == 0) && (data4 === undefined || data4.length == 0)){
 
-            let points = [];
-
-            if(_materialType == "1"){
-
-                for(let i = 0; i < _sweepValues.length; i++){
-
-                    points.push({x: _sweepValues[i], y: data1[i]});
-
-                }
+                return;
 
             } else {
-                
-                for(let i = 0; i < _sweepValues.length; i++){
 
-                    points.push({x: _sweepValues[i], y: data4[i]});
+                let points = [];
 
+                if(_materialType == "1"){
+    
+                    for(let i = 0; i < _sweepValues.length; i++){
+    
+                        points.push({x: _sweepValues[i], y: data1[i]});
+    
+                    }
+    
+                } else {
+                    
+                    for(let i = 0; i < _sweepValues.length; i++){
+    
+                        points.push({x: _sweepValues[i], y: data4[i]});
+    
+                    }
+    
                 }
-
+    
+                chart1.resetZoom();
+    
+                updateSweepParameterBounds(chart1, data.sweepParam);
+    
+                updateTitle(chart1, data);
+    
+                updatePoints(chart1, points);    
+                
             }
-
-            chart1.resetZoom();
-
-            updateSweepParameterBounds(chart1, data.sweepParam);
-
-            updateTitle(chart1, data);
-
-            updatePoints(chart1, points);
-
 
         }
 
         function updateESGraph(){
 
-            let energies = [];
 
-            let electronCounts = [];
+            if((data6e === undefined || data6e.length == 0)){
 
-            if(_materialType == "1"){
+                return;
 
-                for(let i = 0; i < _sweepValues.length; i++){
+            } else {
 
-                    //
+                let sliderValue = document.getElementById('myRange').value;
 
+                let points = [];
+    
+                if(_materialType == "1"){
+    
+                    for(let i = 0; i < data6e[0].length; i++){
+    
+                        points.push({x: data6e[sliderValue][i], y: data6[sliderValue][i]});
+    
+                    }
+    
+                } else {
+    
+                    alert("Semiconductor electron spectrum calculations are not yet implemented");
+    
                 }
+    
+                chart3.options.plugins.zoom.limits.x = {min: -10, max: 5};
+    
+                chart3.resetZoom();
+    
+                chart3.update();
+    
+                updateTitle(chart3, data);
+    
+                updatePoints(chart3, points);    
 
             }
 
@@ -1611,38 +1646,41 @@ function main(){
 
         function updateNHGraph(){
 
-            // if(data1 == [] && data4 == []) return;
+            if((data2 === undefined || data2.length == 1) && (data5 === undefined || data5.length == 0)){
 
-            let points = [];
-
-            if(_materialType == "1"){
-
-                for(let i = 0; i < _sweepValues.length; i++){
-
-                    points.push({x: _sweepValues[i], y: data2[i]})
-
-                }
+                return;
 
             } else {
-                
-                for(let i = 0; i < _sweepValues.length; i++){
 
-                    points.push({x: _sweepValues[i], y: data5[i]})
+                let points = [];
 
+                if(_materialType == "1"){
+    
+                    for(let i = 0; i < _sweepValues.length; i++){
+    
+                        points.push({x: _sweepValues[i], y: data2[i]})
+    
+                    }
+    
+                } else {
+                    
+                    for(let i = 0; i < _sweepValues.length; i++){
+    
+                        points.push({x: _sweepValues[i], y: data5[i]})
+    
+                    }
+    
                 }
+    
+                chart2.resetZoom();
+    
+                updateSweepParameterBounds(chart2, data.sweepParam);
+    
+                updateTitle(chart2, data);
+    
+                updatePoints(chart2, points);    
 
             }
-
-            console.log
-
-            chart2.resetZoom();
-
-            updateSweepParameterBounds(chart2, data.sweepParam);
-
-            updateTitle(chart2, data);
-
-            updatePoints(chart2, points);
-
 
         }
 
@@ -1933,7 +1971,6 @@ function updatePreselectSemiProperties(){
 
 }
 
-
 //This function is used to predefine default values for some input fields if user does not enter anything
 //Also is an example for user of what data they can enter
 
@@ -2213,7 +2250,6 @@ function autoGenerateValues(){
 
 }
 
-
 //In case of semiconductors Work Function makes no sence, so remove it when user picks semi, and display when metals are picked
 
 function updateWFName(){
@@ -2276,7 +2312,6 @@ function updateWFName(){
 
 }
 
-
 //Hides or displays the window where user can define parameters to generate an array of equally distanced numbers (auto-gen values for sweep param)
 
 function updateAutoGenerateValuesDiv(){
@@ -2295,7 +2330,6 @@ function updateAutoGenerateValuesDiv(){
     }
 
 }
-
 
 //A general function used to display error divs on the page. Takes string as argument. Pushes div to errorDivs!
 
@@ -2344,7 +2378,6 @@ const separatorDict = {
     99: "Unknown"
     
 }
-
 
 //Used to store multiplies as integers for smaller packets. 
 
@@ -2751,7 +2784,6 @@ function beautifyResult(data) {
     return data;
 }
 
-
 //Checks if string ends with a given string
 
 function endsWith(str, suffix) {
@@ -2759,7 +2791,6 @@ function endsWith(str, suffix) {
     return str.indexOf(suffix, str.length - suffix.length) !== -1;
 
 }
-
 
 //Inserts one HTML div right after the other
 
