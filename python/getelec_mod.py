@@ -54,7 +54,9 @@ class Emission(ct.Structure):
                 ("mode", ct.c_int),
                 ("ierr", ct.c_int),
                 ("voltage", ct.c_double),
-                ("theta", ct.c_double)
+                ("theta", ct.c_double),
+                ("pfilename", ct.POINTER(ct.c_char)),
+                ("pfile_length", ct.c_int)
                 ]
     
     def cur_dens(self):
@@ -117,7 +119,7 @@ class Emission(ct.Structure):
         
 def emission_create(F = 5., W = 4.5, R = 5000., gamma = 10., Temp = 300., \
                 Jem = 0., heat = 0., xr = np.array([]), Vr = np.array([]), \
-                regime = 0, sharp = 1, approx = 1, mode = 0, ierr = 0, voltage = 500):
+                regime = 0, sharp = 1, approx = 1, mode = 0, ierr = 0, voltage = 500, theta = 1., paramFile = "in/GetelecPar.in"):
                     
     """Creates an Emission class object and calculates everyting. 
     Input xr ,Vr are given as numpy arrays."""
@@ -126,7 +128,11 @@ def emission_create(F = 5., W = 4.5, R = 5000., gamma = 10., Temp = 300., \
     Nr = len(xr)
     assert (Vr.size == Nr),"Check sizes of xr and Vr"
     this = Emission(F,W,R,gamma,Temp,Jem,heat,x_c,V_c,regime,sharp,Nr, \
-            approx,mode,ierr, voltage)
+            approx,mode,ierr, voltage, theta)
+
+    
+    this.pfilename = ct.create_string_buffer(paramFile.encode())
+    this.pfile_length = len(paramFile)
     this.cur_dens()
     return this
     

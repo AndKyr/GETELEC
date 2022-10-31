@@ -20,7 +20,7 @@ Npoints = 256
 
 Temps = [1.e-2, 300, 800, 1500]
 
-Xfn = np.linspace(0.12, 0.35, 256)
+Xfn = np.linspace(0.12, 0.35, Npoints)
 F = 1./Xfn
 
 Jem = np.copy(F)
