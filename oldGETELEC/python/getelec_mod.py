@@ -58,7 +58,9 @@ class Emission(ct.Structure):
                 ("mode", ct.c_int),
                 ("ierr", ct.c_int),
                 ("voltage", ct.c_double),
-                ("theta", ct.c_double)
+                ("theta", ct.c_double),
+                ("pfilename", ct.POINTER(ct.c_char)),
+                ("pfile_length", ct.c_int)
                 ]
     
     def cur_dens(self):
@@ -153,7 +155,7 @@ def make_gamow_array(Frange, Rmin, Nf, Nr, Ngam, Npoly):
 
 def emission_create(F = 5., W = 4.5, R = 5000., gamma = 1., Temp = 300., \
                 Jem = 0., heat = 0., xr = np.array([]), Vr = np.array([]), \
-                regime = 0, sharp = 1, approx = 1, mode = 0, ierr = 0, voltage = 500):
+                regime = 0, sharp = 1, approx = 1, mode = 0, ierr = 0, voltage = 500, paramFile = "in/GetelecPar.in"):
                     
     """Creates an Emission class object and calculates everyting. 
     Input xr ,Vr are given as numpy arrays."""
@@ -164,6 +166,10 @@ def emission_create(F = 5., W = 4.5, R = 5000., gamma = 1., Temp = 300., \
     this = Emission(F,W,R,gamma,Temp,Jem,heat,x_c,V_c,regime,sharp,Nr, \
             approx,mode,ierr, voltage)
     this.cur_dens()
+    this.pfilename = ct.create_string_buffer(paramFile.encode())
+    this.pfile_length = len(paramFile)
+    this.cur_dens()
+    return this
     return this
 
 
@@ -224,19 +230,21 @@ def calc_json(json_str):
     
 class Tabulator():
     
-    def __init__(self, emitter = emission_create(), Nf = 256, Nr = 128, Ngamma = 1, Npoly = 4, NGammow = 256):
+    def __init__(self, emitter = emission_create(), Nf = 256, Nr = 128, Ngamma = 1, Npoly = 4, NGamow = 256):
         self.emitter = emitter
 
-        if (self.load() != 0):
-            print ("tabulating J, F, R")
-            self.prepareTabulation(Nf, Nr, Ngamma, Npoly, NGammow)
-            self.tabulate_JFR()
+
+        self.prepareTabulation(Nf, Nr, Ngamma, Npoly, NGamow)
 
 
     def prepareTabulation(self, Nf = 256, Nr = 128, Ngamma = 1, Npoly = 4, NGamow = 256):
         self.fieldRange = [1., 20.]
         self.minRadius = 0.5
         self.maxGamma = 1.e3
+
+        #in this case the reasonable single Gamma value is 10
+        if(Ngamma == 1):
+            self.maxGamma = 10.
 
         self.numberOfFieldValues = Nf
         self.numberOfRadiusValues = Nr
@@ -248,13 +256,13 @@ class Tabulator():
         self.inverseRadiusValues = np.linspace(1.e-4, 1 / self.minRadius, self.numberOfRadiusValues)
         self.inverseGammaValues = np.linspace(1. / self.maxGamma, 1., self.numberOfGammaValues)
 
-        np.save("tabulated/inverseFieldValues", self.inverseFieldValues)
+        # np.save("tabulated/inverseFieldValues", self.inverseFieldValues)
 
-        if (self.numberOfRadiusValues > 1):
-            np.save("tabulated/inverseRadiusValues", self.inverseRadiusValues)
+        # if (self.numberOfRadiusValues > 1):
+        #     np.save("tabulated/inverseRadiusValues", self.inverseRadiusValues)
         
-        if (self.numberOfGammaValues > 1):
-            np.save("tabulated/inverseGammaValues", self.inverseGammaValues)
+        # if (self.numberOfGammaValues > 1):
+        #     np.save("tabulated/inverseGammaValues", self.inverseGammaValues)
      
     def tabulate_JFR(self):
 
@@ -277,12 +285,11 @@ class Tabulator():
         np.save("tabulated/current_density_table", self.currentDensityTable)
         self.finterp = intrp.interp2d(self.inverseFieldValues, self.inverseRadiusValues, np.log(self.currentDensityTable))
     
-    def tabulateGamowTable(self, Nfield = 256, Nradius = 128, Ngamma = 1, Npoly = 4, NGamow = 256):
+    def tabulateGamowTable(self):
         """Looks for the files where the precaculate barriers are stored. Then it uses interpolation methods to make the most accurate barrier for the given 
         input (electric field, tip radius and gamma exponent). Gtab is stores the polinomial that gives its shape to the barrier.
         """
 
-        self.prepareTabulation(Nfield, Nradius, Ngamma, Npoly, NGamow)
         self.gamowTable = np.ones([self.numberOfGammaValues, self.numberOfRadiusValues, self.numberOfFieldValues, self.numberOfPolynomialTerms + 2])
 
         for i in range(self.numberOfGammaValues):
@@ -317,6 +324,9 @@ class Tabulator():
                 self.gamowTable = np.reshape(self.gamowTable, (self.numberOfFieldValues, self.numberOfPolynomialTerms + 2))
 
         np.save("tabulated/GamowTable", self.gamowTable)
+
+        np.save("tabulated/tabLimits.npy", np.array([min(self.inverseFieldValues), max(self.inverseFieldValues), \
+                min(self.inverseRadiusValues), max(self.inverseRadiusValues), min(self.inverseGammaValues), max(self.inverseGammaValues)]))
         
     def load(self):
         try:
