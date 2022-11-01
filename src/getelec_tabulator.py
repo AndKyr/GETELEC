@@ -1,10 +1,7 @@
 
 from array import array
 import ctypes as ct
-from importlib.metadata import distribution
-from inspect import TPFLAGS_IS_ABSTRACT
 import numpy as np
-from numpy.lib.polynomial import RankWarning
 from scipy.integrate import IntegrationWarning
 import scipy.integrate as ig
 import os
@@ -23,8 +20,6 @@ integrator.Gfun.restype = ct.c_double
 integrator.intfun_dbg.argtypes = (ct.c_int, ct.c_void_p)
 integrator.intfun_dbg.restype = ct.c_double
 
-Npoly = 5
-NGi = 512
 zs = 1.6183e-4
 
 class Interpolator:
@@ -93,7 +88,7 @@ class Interpolator:
     _Npolynomial : int 
     _Nradius : int  
 
-    def __init__(self, NField = 64, NRadius = 8, Ngamma = 1, Npolynomial = 4, NGamow = 128):
+    def __init__(self, NField = 256, NRadius = 128, Ngamma = 1, Npolynomial = 4, NGamow = 128):
         """Initialises Tabulator by loading the tables from files. If maps not found, calls tabulation scripts
         from old getelec
 
@@ -130,14 +125,15 @@ class Interpolator:
         self._gammaLimits = limits[4:]
         self._dimension = len(np.shape(self._gamowTable)) - 1
         
-        assert self._dimension <= 3 and len(np.shape(self._gamowTable)) >=1, \
+        #make sure that dimensions and limits are correct
+        assert self._dimension <= 3 and self._dimension >= 1, \
             'The tabulated Gamow table has wrong shape: {}'.format(np.shape(self._gamowTable))
         assert self._fieldLimits[0] < self._fieldLimits[1], \
             'Limits of tabulated Field: {} are wrong'.format(self._fieldLimits)
 
+        #set sizes and assert that everything is consistent
         self._Npolynomial = np.shape(self._gamowTable)[-1] - 2       
         self._Nfields = np.shape(self._gamowTable)[-2]
-
 
         if(self._dimension >= 2):
             assert self._radiusLimits[0] < self._radiusLimits[1], \
@@ -156,27 +152,27 @@ class Interpolator:
             assert self._gammaLimits[0] == self._gammaLimits[1], \
                 'Limits of tabulated Gamma: {} are wrong'.format(self._gammaLimits)
             self._Ngamma = 1
+        
         return True
 
     
-
     # region user methods
     def interpolateForValues(self, field : float, radius : float = 1.e4, gamma : float = 10.):
         """
         """
         
         paramCoordinates = np.arange(self._Npolynomial + 2)
-        fieldCoorinates = np.ones(len(paramCoordinates)) * self._Nfields * (1./field - self._fieldLimits[0]) / (self._fieldLimits[1] - self._fieldLimits[0])
+        fieldCoorinates = np.ones(len(paramCoordinates)) * (self._Nfields - 1) * (1./field - self._fieldLimits[0]) / (self._fieldLimits[1] - self._fieldLimits[0])
 
         if (self._dimension >= 2):
-            radiusCoordinates = np.ones(len(paramCoordinates)) * self._Nradius * (1./radius - self._radiusLimits[0] / (self._radiusLimits[1] - self._fieldLimits[0]))
+            radiusCoordinates = np.ones(len(paramCoordinates)) * (self._Nradius - 1) * (1./radius - self._radiusLimits[0]) / (self._radiusLimits[1] - self._fieldLimits[0])
         else:
             radiusCoordinates = np.zeros(len(paramCoordinates))
             if (radius < 100.):
                 print("WARNING: Using tabulation without radius (planar approximation) with input radius: {} nm < 100 nm.".format(radius))
         
         if (self._dimension == 3):
-            gammaCoordinates = np.ones(len(paramCoordinates)) * self._Ngamma * (1./gamma - self._gammaLimits[0] / (self._gammaLimits[1] - self._gammaLimits[0]))
+            gammaCoordinates = np.ones(len(paramCoordinates)) * (self._Ngamma - 1) * (1./gamma - self._gammaLimits[0]) / (self._gammaLimits[1] - self._gammaLimits[0])
         else:
             gammaCoordinates = np.zeros(len(paramCoordinates))
             if (gamma != 10.):
@@ -187,10 +183,11 @@ class Interpolator:
             interpolationCoordinates = np.array([fieldCoorinates, paramCoordinates])
         elif(self._dimension == 2):
             interpolationCoordinates = np.array([radiusCoordinates, fieldCoorinates, paramCoordinates])
+            print(radiusCoordinates, fieldCoorinates, paramCoordinates)
         elif (self._dimension == 3):
             interpolationCoordinates = np.array([gammaCoordinates, radiusCoordinates, fieldCoorinates, paramCoordinates])
 
-        return scipy.ndimage.map_coordinates(self._gamowTable, interpolationCoordinates)
+        return scipy.ndimage.map_coordinates(self._gamowTable, interpolationCoordinates, order=1)
 
 class Barrier(Interpolator):
     """
@@ -252,7 +249,7 @@ class Barrier(Interpolator):
         print(data)
         self._minEnergyDepth = data[-2] #Wmin: This is the top of the barrier
         self._maxEnergyDepth = data[-1] #Wmax: The maximum barrier depth for which the polynomial is valid
-        self._gamowPolynomialCoefficients = data[:Npoly] #Gpoly
+        self._gamowPolynomialCoefficients = data[:self._Npolynomial] #Gpoly
         self._gamowDerivativePolynomialCoefficients = np.polyder(self._gamowPolynomialCoefficients) #dG/dW polynomial coefficients
         self._gamowDerivativeAtMinBarrierDepth = np.polyval(self._gamowDerivativePolynomialCoefficients, self._minEnergyDepth) #dG/dW @ Wmin
         self._gamowDerivativeAtMaxEnergyDepth = np.polyval(self._gamowDerivativePolynomialCoefficients, self._maxEnergyDepth) #dG/dW @ Wmax
@@ -1066,7 +1063,9 @@ def heat_semiconductor_emitter(Field:array, Radius:array, Gamma:array ,Ec:array,
 
 
 if (__name__ == "__main__"):
-    bar = Barrier(5., 10., 10.)
-    bar.plotGamow(0., 10.)
+    bar = Barrier(4., 10, 10.)
+    print(bar.calculateGamowForEnergy(4.5))
 
-    # print(bar.calculateGamowForEnergy(4.5))
+    # bar.plotGamow(0., 10., show = True)
+
+
