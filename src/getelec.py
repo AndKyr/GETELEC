@@ -39,50 +39,24 @@ class Interpolator:
     1) __init__()
         Initialises Tabulator by 1) loading the "resolution", 2) loading the maps and 3) if maps not found, calling the functions to calculate and sabe the maps
             
-    2) _Load_Table_from_Files()
+    2) _loadTables()
         Looks for the files where the precaculate barriers are stored. Then it uses interpolation methods to make the most accurate barrier for the given 
         input (electric field, tip radius and gamma exponent). Gtab is stores the polinomial that gives its shape to the barrier.
         
-    3) _Calculate_Table()
+    3) interpolateForValues()
         This function is called if the barrier maps are not found. For each field, tip radius and gamma combitation, Gtab is calculated by polynomial fitting 
         to the data points extracted from getelec.export_gamow
         For each value of the field, the radius and gamma, the Gammow coeffient (G) and the energy range (W), for such G, are evaluated
             Wmin is defined as the energy at the top of the potential barrier. Point from which G goes to 0 and tranmission cofficient equals 1
             Wmax is defined as the energy where G gets a values high enough, here G=50, so the tunnelling probability is effectively 0
         Then it tries to fit G(W) to a polynomial. Such polynomial and the energy limits are stored in Gtab
-        
-        Here a depiction of how the gammow coefficient changes with energy, as one goes from the vacuum level (E = 0 eV) to the bottom of the 
-        energy spectrum, and associated tramission coefficient.
-                    G(W)|                                                     .
-                        |                                                    .
-                        |                                                 .
-                        |                                             .
-                        |                                        .
-                        |                                .
-                        |                     .
-                        |.
-                        |_________________|_________________________|________________W (energy)
-                         W=0(Vacuum)      Wmin (Top barrier)        Wmax (G=50)
-    
-    
-               D(W) = 1 |.................                                                      
-                        |                 .                                  
-                        |                  .                                
-                        |                    .                            
-                        |                        .                       
-                        |                             .               
-                        |                                    .                
-                        |                                           .                 
-                      0 |_________________|_________________________|._______________W (energy)
-                         W=0(Vacuum)      Wmin (Top barrier)        Wmax (G=50)   
-
-"""
+    """
     #define variable types
     _gamowTable : np.ndarray
     _dimension : int
-    _fieldLimits : np.ndarray(shape=(2,), dtype=np.float64)
-    _radiusLimits : np.ndarray(shape=(2,), dtype=np.float64)
-    _gammaLimits : np.ndarray(shape=(2,), dtype=np.float64)
+    _inverseFieldLimits : np.ndarray(shape=(2,), dtype=np.float64)
+    _inverseRadiusLimits : np.ndarray(shape=(2,), dtype=np.float64)
+    _inverseGammaLimits : np.ndarray(shape=(2,), dtype=np.float64)
     _Nfields : int
     _Ngamma : int
     _Npolynomial : int 
@@ -120,59 +94,59 @@ class Interpolator:
             return False
 
         #Get interpolation limits
-        self._fieldLimits = limits[:2]
-        self._radiusLimits = limits[2:4]
-        self._gammaLimits = limits[4:]
+        self._inverseFieldLimits = limits[:2]
+        self._inverseRadiusLimits = limits[2:4]
+        self._inverseGammaLimits = limits[4:]
         self._dimension = len(np.shape(self._gamowTable)) - 1
         
         #make sure that dimensions and limits are correct
         assert self._dimension <= 3 and self._dimension >= 1, \
             'The tabulated Gamow table has wrong shape: {}'.format(np.shape(self._gamowTable))
-        assert self._fieldLimits[0] < self._fieldLimits[1], \
-            'Limits of tabulated Field: {} are wrong'.format(self._fieldLimits)
+        assert self._inverseFieldLimits[0] < self._inverseFieldLimits[1], \
+            'Limits of tabulated Field: {} are wrong'.format(self._inverseFieldLimits)
 
         #set sizes and assert that everything is consistent
         self._Npolynomial = np.shape(self._gamowTable)[-1] - 2       
         self._Nfields = np.shape(self._gamowTable)[-2]
 
         if(self._dimension >= 2):
-            assert self._radiusLimits[0] < self._radiusLimits[1], \
-                'Limits of tabulated Radius: {} are wrong'.format(self._radiusLimits)
+            assert self._inverseRadiusLimits[0] < self._inverseRadiusLimits[1], \
+                'Limits of tabulated Radius: {} are wrong'.format(self._inverseRadiusLimits)
             self._Nradius = np.shape(self._gamowTable)[-3]
         else:
-            assert self._radiusLimits[0] == self._radiusLimits[1], \
-                'Limits of tabulated Radius: {} are wrong'.format(self._radiusLimits)
+            assert self._inverseRadiusLimits[0] == self._inverseRadiusLimits[1], \
+                'Limits of tabulated Radius: {} are wrong'.format(self._inverseRadiusLimits)
             self._Nradius = 1
 
         if (self._dimension == 3):
             self._Ngamma = np.shape(self._gamowTable[0])
-            assert self._gammaLimits[0] < self._gammaLimits[1], \
-                'Limits of tabulated Gamma: {} are wrong'.format(self._gammaLimits)
+            assert self._inverseGammaLimits[0] < self._inverseGammaLimits[1], \
+                'Limits of tabulated Gamma: {} are wrong'.format(self._inverseGammaLimits)
         else:
-            assert self._gammaLimits[0] == self._gammaLimits[1], \
-                'Limits of tabulated Gamma: {} are wrong'.format(self._gammaLimits)
+            assert self._inverseGammaLimits[0] == self._inverseGammaLimits[1], \
+                'Limits of tabulated Gamma: {} are wrong'.format(self._inverseGammaLimits)
             self._Ngamma = 1
         
         return True
 
     
     # region user methods
-    def interpolateForValues(self, field : float, radius : float = 1.e4, gamma : float = 10.):
-        """
-        """
+    def interpolateForValues(self, field : float, radius : float = 1.e4, gamma : float = 10., interpolationOrder = 2.) -> np.ndarray:
+        """Interpolate for given values of field, radius and gamma. Returns an array of numbers. 
+        The first 4 numbers are the polynomial coefficient"""
         
         paramCoordinates = np.arange(self._Npolynomial + 2)
-        fieldCoorinates = np.ones(len(paramCoordinates)) * (self._Nfields - 1) * (1./field - self._fieldLimits[0]) / (self._fieldLimits[1] - self._fieldLimits[0])
+        fieldCoorinates = np.ones(len(paramCoordinates)) * (self._Nfields - 1) * (1./field - self._inverseFieldLimits[0]) / (self._inverseFieldLimits[1] - self._inverseFieldLimits[0])
 
         if (self._dimension >= 2):
-            radiusCoordinates = np.ones(len(paramCoordinates)) * (self._Nradius - 1) * (1./radius - self._radiusLimits[0]) / (self._radiusLimits[1] - self._fieldLimits[0])
+            radiusCoordinates = np.ones(len(paramCoordinates)) * (self._Nradius - 1) * (1./radius - self._inverseRadiusLimits[0]) / (self._inverseRadiusLimits[1] - self._inverseFieldLimits[0])
         else:
             radiusCoordinates = np.zeros(len(paramCoordinates))
             if (radius < 100.):
                 print("WARNING: Using tabulation without radius (planar approximation) with input radius: {} nm < 100 nm.".format(radius))
         
         if (self._dimension == 3):
-            gammaCoordinates = np.ones(len(paramCoordinates)) * (self._Ngamma - 1) * (1./gamma - self._gammaLimits[0]) / (self._gammaLimits[1] - self._gammaLimits[0])
+            gammaCoordinates = np.ones(len(paramCoordinates)) * (self._Ngamma - 1) * (1./gamma - self._inverseGammaLimits[0]) / (self._inverseGammaLimits[1] - self._inverseGammaLimits[0])
         else:
             gammaCoordinates = np.zeros(len(paramCoordinates))
             if (gamma != 10.):
@@ -187,38 +161,39 @@ class Interpolator:
         elif (self._dimension == 3):
             interpolationCoordinates = np.array([gammaCoordinates, radiusCoordinates, fieldCoorinates, paramCoordinates])
 
-        return scipy.ndimage.map_coordinates(self._gamowTable, interpolationCoordinates, order=1)
+        return scipy.ndimage.map_coordinates(self._gamowTable, interpolationCoordinates, order = interpolationOrder)
 
 class Barrier(Interpolator):
+
     """
-    This class gathers those attributes that are common to all emitters regardless of the material they are made of, and inheritage from tabulator
-    the potential barrier. Thus making an emitter. Later Emitter will be composed with the classes Metal_Emitter and Semiconductor_Emitter to complete
-    the model for the emitter
+    This class gathers those attributes that are common to all emitters regardless of the material they are made of.
+    Inherits from Interpolator, as it uses its attributes to calculate the Gamow(EnergyDepth) polynomial coefficients and the interval of validity.
     
-    This class 7 classes, of which one is private and the rest public (called later by Metal_Emitter or Semiconductor_Emitter):
-    1) __init__()
-        Initialises the class by inheritating Tabulator and setting it up as a private field to be used by Emitter
-        
-    2) Define_Barrier_Parameters()
-        This function will be called by the user to define the main parameters of the barrier they want to work with. These values will be fed to Tabulator
-        from which the total barrier shape and magnitude will be tabulated
-        
-    3) Interpolate_Gammow()
-        Here a function from Tabulator is called in order to interpolate the potential barrier. Then the top and bottom limits, as well as the polynomial
-        describing the barrier's shape, are extracted. The polinomial coefficients are derivated and evaluated at the top and bottom of the barrier to analyse
-        the barrier slope at such points - which will be required to later calculate the integration limits for the currrent density and heat intgrals
+    Here a depiction of how the gammow coefficient changes with energy, as one goes from the vacuum level (E = 0 eV) to the bottom of the 
+    energy spectrum, and associated tramission coefficient.
+                G(W)|                                                     .
+                    |                                                    .
+                    |                                                 .
+                    |                                             .
+                    |                                        .
+                    |                                .
+                    |                     .
+                    |.
+                    |_________________|_________________________|________________W (energy)
+                        W=0(Vacuum)      Wmin (Top barrier)        Wmax (G=50)
     
-    4) Tranmission_Coefficient()
-        Calculates the probability of an electron tunelling (being transmitted) through the potential barrier by means of the Kemble formula whitin the JWKB approximation
-        
-    5) Gamow()
-        Evaluates the gammow coefficients in order to provide the exponential for the Kemble formula
     
-    6) Log_Fermi_Dirac_Distribuition()
-        Returs the natural logarith of the Fermi Diract distribution
-        
-    7) Fermi_Dirac_Distribution()
-        Returns the Fermi Dirac distribution
+               D(W) = 1 |.................                                                      
+                        |                 .                                  
+                        |                  .                                
+                        |                    .                            
+                        |                        .                       
+                        |                             .               
+                        |                                    .                
+                        |                                           .                 
+                      0 |_________________|_________________________|._______________W (energy)
+                         W=0(Vacuum)      Wmin (Top barrier)        Wmax (G=50)   
+
     """
     # region field declarations
     _field: float
@@ -246,7 +221,6 @@ class Barrier(Interpolator):
         """
         
         data = self.interpolateForValues(self._field, self._radius, self._gamma)
-        print(data)
         self._minEnergyDepth = data[-2] #Wmin: This is the top of the barrier
         self._maxEnergyDepth = data[-1] #Wmax: The maximum barrier depth for which the polynomial is valid
         self._gamowPolynomialCoefficients = data[:self._Npolynomial] #Gpoly
@@ -254,14 +228,20 @@ class Barrier(Interpolator):
         self._gamowDerivativeAtMinBarrierDepth = np.polyval(self._gamowDerivativePolynomialCoefficients, self._minEnergyDepth) #dG/dW @ Wmin
         self._gamowDerivativeAtMaxEnergyDepth = np.polyval(self._gamowDerivativePolynomialCoefficients, self._maxEnergyDepth) #dG/dW @ Wmax
 
+    def calculateGamowOutOfBounds(self, energyDepth:array):
+
+        if (1./self._radius < self._inverseRadiusLimits[0]):
+            pass
+
+
     def calculateGamowForEnergy(self, energyDepth:array):
         """Evaluates the gammow coefficients in order to provide the exponential for the Kemble formula
 
-        Args:
-            energy (array): Energy, perpendicular to the emitting surface, values (eV) for which the transmission cofficients are calculated (eV)
+        Parameters:
+            energy (array): Incoming energy, perpendicular to the emitting surface, values (eV) for which the transmission cofficients are calculated (eV)
 
         Returns:
-            array: Kemble's formula exponent value for a given energy (number)
+            array: Kemble's formula Gamow exponent value for a given energy (number)
         """
         self._calculateParameters()
         
@@ -285,32 +265,33 @@ class Barrier(Interpolator):
                 return np.polyval(self._gamowPolynomialCoefficients, self._minEnergyDepth) + \
                     self._gamowDerivativeAtMinBarrierDepth * (energyDepth - self._minEnergyDepth) 
 
-    def setBarrierParameters(self, field:float, radius:float, gamma:float):
-        """This function will be called by the user to define the main parameters of the barrier they want to work with. These values will be fed to Tabulator
-        from which the total barrier shape and magnitude will be tabulated
+    def setBarrierParameters(self, field:float, radius:float = 1.e4, gamma:float = 10.):
+        """Sets the main parameters of the barrier.
 
-        Args:
-            field (float): Electric field (V/A)
-            radius (float): Emitter tip raidus (nm)
-            gamma (float): gamma coefficient (number)
+        Parameters:
+            field (float): Electric field (V/nm)
+            radius (float): Emitter tip raidus (nm). Default value 1.e4 in case it is omitted for planar approximation
+            gamma (float): gamma coefficient (number). Default value 10 in case it is omitted
         """
         
         self._field = field
         self._radius = radius
         self._gamma = gamma
     
-    def transmissionCoefficient(self, energy:array):
-        """Calculates the probability of an electron tunelling (being transmitted) through the potential barrier by means of the Kemble formula whitin the JWKB approximation
+    def transmissionCoefficient(self, energyDepth:array):
+        """Calculates the probability of an electron tunelling (being transmitted) through the potential barrier by 
+        means of the Kemble formula within the JWKB approximation
 
-        Args:
-            energy (array): Energy, perpendicular to the emitting surface, values (eV) for which the transmission cofficients are calculated (eV)
+        Parameters:
+            energyDepth (array): Energy depth of the barrier, i.e. incoming electron energy perpendicular to the emitting surface, 
+            measured downwards from vacuum level. The Energy values (eV) for which the transmission cofficients are calculated
 
         Returns:
             array: Probability of an electron with a certain kinetic energy perpendicular to the emitting surface to tunnerl through the potential barrier (number)
         """
         
-        gamow = self.calculateGamowForEnergy(energy)
-        if (isinstance(energy, np.ndarray)):
+        gamow = self.calculateGamowForEnergy(energyDepth)
+        if (isinstance(energyDepth, np.ndarray)):
             transmissionCoefficient = np.copy(gamow)
             transmissionCoefficient[gamow < 15.] = 1 / (1 + np.exp(gamow[gamow < 15.]))
             transmissionCoefficient[gamow > 15] = np.exp(-gamow[gamow > 15.])
@@ -323,6 +304,9 @@ class Barrier(Interpolator):
     
     
     def plotGamow(self, minBarrierDepth : float = 0., maxBarrierDepth : float = 0., show = False, saveFile = ""):
+        """Plots the Gamow exponent for energy depth between minBarrierDepth and maxBarrierDepth. IF saveFile is given,
+        it will save the file to the given output. If show = True, it will show the output plot."""
+        
         barrierDepths = np.linspace(minBarrierDepth, maxBarrierDepth, 256)
         gamowValues = self.calculateGamowForEnergy(barrierDepths)
         plt.plot(barrierDepths, gamowValues)
@@ -333,9 +317,20 @@ class Barrier(Interpolator):
         
         if (saveFile):
             plt.savefig(saveFile)
+
+    def plotTransmissionCoefficient(self, minBarrierDepth : float = 0., maxBarrierDepth : float = 0., show = False, saveFile = ""):
+        "Similar to plotGamow, but plots the transmission coefficient"
+        barrierDepths = np.linspace(minBarrierDepth, maxBarrierDepth, 256)
+        TValues = self.transmissionCoefficient(barrierDepths)
+        plt.plot(barrierDepths, TValues)
+        plt.xlabel("Barrier Depth [eV]")
+        plt.ylabel("Transmission Coefficient")
+        if (show):
+            plt.show()
+        
+        if (saveFile):
+            plt.savefig(saveFile)
     
-    
-    # endregion
 
 class Supply:
     # region field declaration
@@ -1065,6 +1060,7 @@ def heat_semiconductor_emitter(Field:array, Radius:array, Gamma:array ,Ec:array,
 if (__name__ == "__main__"):
     bar = Barrier(4., 10, 10.)
     print(bar.calculateGamowForEnergy(4.5))
+    # bar.plotGamow(0., 10., show = True)
 
     # bar.plotGamow(0., 10., show = True)
 
