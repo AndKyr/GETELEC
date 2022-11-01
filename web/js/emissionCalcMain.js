@@ -129,7 +129,6 @@ function main(){
 
         }
 
-
         //Binarize the booleans so its smaller packets to send
 
         function getWhatToCompute(){
@@ -287,7 +286,26 @@ function main(){
 
                         } else { 
 
-                            return true; 
+                            let pointsCount = document.getElementById('numberOfPointsInBounds').value;
+
+                            console.log(pointsCount);
+
+                            if(pointsCount != undefined){
+                                
+                                console.log(pointsCount);
+
+                                if(pointsCount > 151){
+
+                                    addErrorDiv('Please do not enter more than 151 points for sweeping parameter');
+                                    return false;
+    
+                                } else {
+    
+                                    return true; 
+    
+                                }    
+
+                            } else return true;
                         
                         }
 
@@ -377,9 +395,6 @@ function main(){
         
         preselectSemiPropertiesDiv.addEventListener("change", updatePreselectSemiProperties);
         enterButton.addEventListener("click", checkValidity);
-
-        //slider.addEventListener('input', readSliderValue);
-        //slider.addEventListener('change', updateGraphs(data));
 
         updatePropertiesPresets();
         
@@ -1497,7 +1512,7 @@ function main(){
 
             let slider = document.getElementById('myRange');
 
-            slider.addEventListener('input', updateGraphs);
+            slider.addEventListener('input', updateESGraph);
             //slider.addEventListener('input', readSliderValue);
 
             chartsLoaded = true;
@@ -1524,61 +1539,60 @@ function main(){
     })
     //Big function that updates graphs with given data.
 
-    function updateGraphs(){
+    function updateGraphs(update = 'all'){
         
         data = _data;
-
+    
         let _sweepParam = data.sweepParam;
         let _materialType = data.materialType;
         let _sweepValues;
-
+    
         let _field = data.field;
         let _radius = data.radius;
-
+    
         let _wf = data.work_function;
         let _temp = data.temperature;
-
+    
         let data1 = data.metalEC;
         let data2 = data.metalNH;
-
+    
         let data4 = data.semiEC;
-
+    
         let data5 = data.semiNH;
-
+    
         let data6 = data.metalESelcount;
         let data6e = data.metalESenergy;
-
+    
         //For ease, copies the array values of parameters to a new array, so that its easier to access right data.
-
+    
         updateSweepValues();
-
-        //Updates everything on Emitted Current graph
-
-        updateECGraph();
-
-        //Updates everything on Nottingham heat graph
-
-        updateNHGraph();
-
-        //Updates everything on Electron Spectrum graph
-
-        updateESGraph();
-
+    
+        if(update == 'all'){
+    
+            updateECGraph();
+            updateNHGraph();
+            updateESGraph();
+    
+        } else if(update == 'es'){
+    
+            updateESGraph();
+    
+        }
+    
         let value = document.getElementById('myRangeValue');
         let slider = document.getElementById('myRange');
         value.value = `${data.sweepParam}: ${_sweepValues[slider.value]}`;
-
-
+    
         function updateECGraph(){
-
+    
             if((data1 === undefined || data1.length == 0) && (data4 === undefined || data4.length == 0)){
-
+    
                 return;
-
+    
             } else {
-
+    
                 let points = [];
-
+    
                 if(_materialType == "1"){
     
                     for(let i = 0; i < _sweepValues.length; i++){
@@ -1606,20 +1620,20 @@ function main(){
                 updatePoints(chart1, points);    
                 
             }
-
+    
         }
-
+    
         function updateESGraph(){
-
-
+    
+    
             if((data6e === undefined || data6e.length == 0)){
-
+    
                 return;
-
+    
             } else {
-
+    
                 let sliderValue = document.getElementById('myRange').value;
-
+    
                 let points = [];
     
                 if(_materialType == "1"){
@@ -1645,21 +1659,21 @@ function main(){
                 updateTitle(chart3, data);
     
                 updatePoints(chart3, points);    
-
+    
             }
-
+    
         }
-
+    
         function updateNHGraph(){
-
+    
             if((data2 === undefined || data2.length == 1) && (data5 === undefined || data5.length == 0)){
-
+    
                 return;
-
+    
             } else {
-
+    
                 let points = [];
-
+    
                 if(_materialType == "1"){
     
                     for(let i = 0; i < _sweepValues.length; i++){
@@ -1685,56 +1699,56 @@ function main(){
                 updateTitle(chart2, data);
     
                 updatePoints(chart2, points);    
-
+    
             }
-
+    
         }
-
+    
         function updateTitle(chart, data){
-
+    
             if(data.materialType == "1"){
-
+    
                 switch(data.sweepParam){
-
+    
                     case "field":
                         
                         chart.options.plugins.title.text = `Radius: ${data.radius[0]} nm, Work Function: ${data.work_function[0]} eV, Temperature: ${data.temperature[0]} K` 
-
+    
                         break;
-
+    
                     case "radius":
-
+    
                         chart.options.plugins.title.text = `Field: ${data.field[0]} V/nm, Work Function: ${data.work_function[0]} eV, Temperature: ${data.temperature[0]} K` 
-
+    
                         break;
-
+    
                     case "wf":
-
+    
                         chart.options.plugins.title.text = `Field: ${data.field[0]} V/nm, Radius: ${data.radius[0]} nm, Temperature: ${data.temperature[0]} K` 
-
+    
                         break;
-
+    
                     case "temp":
-
+    
                         chart.options.plugins.title.text = `Field: ${data.field[0]} V/nm, Radius: ${data.radius[0]} nm, Work Function: ${data.work_function[0]} eV` 
-
+    
                         break;
-
-
+    
+    
                 }
-
+    
             } else  {
                 
                 switch(data.sweepParam){
-
+    
                     case "field":
-
+    
                         chart.options.plugins.title.text = [`Radius: ${data.radius[0]} nm, Work Function: ${data.work_function[0]} eV, Temperature: ${data.temperature[0]} K, Ec: ${data.ec} eV`, `Ef: ${data.ef} eV, Eg: ${data.eg} eV, Me: ${data.me} m/me, Mp: ${data.mp} m/me`]; 
                         
                         break;
-
+    
                     case "radius":
-
+    
                         chart.options.plugins.title.text = [`Field: ${data.field[0]} V/nm, Work Function: ${data.work_function[0]} eV, Temperature: ${data.temperature[0]} K, Ec: ${data.ec} eV`, `Ef: ${data.ef} eV, Eg: ${data.eg} eV, Me: ${data.me} m/me, Mp: ${data.mp} m/me`] 
                         
                         break;
@@ -1752,79 +1766,79 @@ function main(){
                         break;
                             
                 }
-
+    
             }
-
+    
             chart.update();
-
+    
         }
-
+    
         function updateSweepParameterBounds(chart, sweepParam){
-
+    
             switch(sweepParam){
-
+    
                 case "field":
                     
                     chart.options.scales.x.title.text = "Field, [V/nm]"
-
+    
                     chart.options.plugins.zoom.limits.x = {min: bounds.field.min, max: bounds.field.max};
-
+    
                     chart.update();
-
+    
                     break;
-
+    
                 case "radius":
-
+    
                     chart.options.scales.x.title.text = "Radius, [nm]"
-
+    
                     chart.options.plugins.zoom.limits.x = {min: bounds.radius.min, max: bounds.radius.max};
-
+    
                     chart.update();
-
+    
                     break;
-
+    
                 case "wf":
-
+    
                     chart.options.scales.x.title.text = "Work Function, [eV]"
-
+    
                     chart.options.plugins.zoom.limits.x = {min: bounds.workFunction.min, max: bounds.workFunction.max};
-
+    
                     chart.update();
-
+    
                     break;
                     
                 case "temp":
-
+    
                     chart.options.scales.x.title.text = "Temperature, [K]"
-
+    
                     chart.options.plugins.zoom.limits.x = {min: bounds.temperature.min, max: bounds.temperature.max};
-
+    
                     chart.update();
-
+    
                     break;
-
+    
             }
         }
-
+    
         function updatePoints(chart, points){
-
+    
             chart.data.datasets.forEach((dataset) =>{
-
+    
                 dataset.data = null;
                 
             });
-
+    
             chart.update();
-
+    
             if(chart.data.datasets.length > 1){
-
+    
                 let posDataSet = chart.data.datasets[0];
                 let negDataSet = chart.data.datasets[1];
     
                 points.forEach((point) => {
     
                     if(point.y > 0){
-
+    
                         posDataSet.data.push(point);
                         negDataSet.data.push({x: point.x, y: null});
     
@@ -1834,57 +1848,66 @@ function main(){
                         posDataSet.data.push({x: point.x, y: null});
     
                     }
-
+    
                 });
-
+    
             } else{
-
+    
                 let dataSet = chart.data.datasets[0];
-
+    
                 points.forEach((point) => {
-
+    
                     dataSet.data.push(point);
-
+    
                 })
-
+    
             }
-
+    
             chart.update();
         }
          
         function updateSweepValues(){
-
+    
             switch(_sweepParam){
-
+    
                 case "field":
-
+    
                     _sweepValues = _field;
-
+    
                     break;
     
                 case "radius":
     
                     _sweepValues = _radius;
-
+    
                     break;
     
                 case "wf":
     
                     _sweepValues = _wf;
-
+    
                     break;
     
                 case "temp":
     
                     _sweepValues = _temp;
-
+    
                     break;
     
             }
     
         }
-
+    
     }
+    
+    
+    function updateESGraph(){
+    
+        updateGraphs('es');
+    
+    }
+    
+
 }
 
 //Global var, used to store all error message divs for quick access
@@ -1894,7 +1917,6 @@ let errorDivs = [];
 //Main function call
 
 main();
-
 
 //Used to log slider value
 
@@ -2252,7 +2274,7 @@ function autoGenerateValues(){
     
     }
 
-    updateSliderBounds(count);
+    //updateSliderBounds(count);
 
 }
 
@@ -2867,8 +2889,9 @@ function memorySizeOf(obj) {
         else if(bytes < 1073741824) return(bytes / 1048576).toFixed(3) + " MiB";
 
         else return(bytes / 1073741824).toFixed(3) + " GiB";
-        
+
     };
 
     return formatByteSize(sizeOf(obj));
+
 };
