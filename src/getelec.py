@@ -152,7 +152,7 @@ class Interpolator:
 
     
     # region user methods
-    def interpolateForValues(self, field:float, radius:float = 1.e4, gamma:float = 10., interpolationOrder:int = 2) -> np.ndarray:
+    def interpolateForValues(self, field:float, radius:float = 1.e4, gamma:float = 10., interpolationOrder:int = 1) -> np.ndarray:
         """
         Interpolate for given values of field, radius and gamma. Returns an array of numbers. 
         The first 4 numbers are the polynomial coefficient

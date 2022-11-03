@@ -111,7 +111,7 @@ def _Getelec_Installation_Semiconductor_Test():
     
     
 
-    if J_rms_error.any() != 0:
+    if J_rms_error.any() > 0.1:
         print("\nSemiconductor current test: NOT PASSED\nDebug your installation or seek assistance.")
         print("\nrms error in J = ", J_rms_error)
         print("J bad = ", J_bad)
@@ -126,7 +126,7 @@ def _Getelec_Installation_Semiconductor_Test():
     else:
         print("\nSemiconductor current test: PASSED")
 
-    if Pn_rms_error.any() != 0:
+    if Pn_rms_error.any() > .1:
         print("\n\nSemiconductor Nottighamm heat test: NOT PASSED\nDebug your installation or seek assistance.")
         print("\nrms error in Pn = ", Pn_rms_error)
         print("Pn bad = ", Pn_bad)
@@ -183,7 +183,7 @@ def _Getelec_Installation_Semiconductor_Test():
         plt.xlabel("Ref GETELEC Nottigham heat (W$nm^{-2}$)")
         plt.ylabel("New GETELEC Nottigham heat (W$nm^{-2}$)")
         plt.title("Comparing heat from new and ref GETELEC")
-        plt.savefig("Installation_test: Pn.png")
+        plt.savefig("Installation_test_Pn.png")
         #plt.show()
 
     return True
@@ -218,7 +218,7 @@ def _Getelec_Installation_Metal_Test():
     
     
 
-    if J_rms_error.any() != 0:
+    if J_rms_error.any() > .1:
         print("\nMetal current test: NOT PASSED\nDebug your installation or seek assistance.")
         print("\nrms error in J = ", J_rms_error)
         print("J bad = ", J_bad)
@@ -233,7 +233,7 @@ def _Getelec_Installation_Metal_Test():
     else:
         print("\nMetal current test: PASSED")
 
-    if Pn_rms_error.any() != 0:
+    if Pn_rms_error.any() > .1:
         print("\n\nMetal Nottighamm heat test: NOT PASSED\nDebug your installation or seek assistance.")
         print("\nrms error in Pn = ", Pn_rms_error)
         print("Pn bad = ", Pn_bad)
@@ -276,7 +276,7 @@ def _Getelec_Installation_Metal_Test():
         plt.xlabel("Ref GETELEC current densities (A$nm^{-2}$)")
         plt.ylabel("New GETELEC current densities (A$nm^{-2}$)")
         plt.title("Comparing current from new and ref GETELEC")
-        plt.savefig("Installation_test: J.png")
+        plt.savefig("Installation_test_J.png")
         #plt.show()
 
         fig2, ax = plt.subplots(figsize=(x,y))
@@ -290,7 +290,7 @@ def _Getelec_Installation_Metal_Test():
         plt.xlabel("Ref GETELEC Nottigham heat (W$nm^{-2}$)")
         plt.ylabel("New GETELEC Nottigham heat (W$nm^{-2}$)")
         plt.title("Comparing heat from new and ref GETELEC")
-        plt.savefig("Installation_test: Pn.png")
+        plt.savefig("Installation_test_Pn.png")
         #plt.show()
 
     return True
@@ -427,7 +427,7 @@ def Randomised_Tabulator_Test():
     plt.xlabel("Old GETELEC current densities (A$nm^{-2}$)")
     plt.ylabel("New GETELEC current densities (A$nm^{-2}$)")
     plt.title("Comparing current from new and old GETELEC")
-    plt.savefig("Validation_test: J.png")
+    plt.savefig("Validation_test_J.png")
     #plt.show()
 
     fig2, ax = plt.subplots(figsize=(x,y))
@@ -586,7 +586,7 @@ def Referenced_Tabulator_Test():
 
 def Getelec_Installation_Test():
     _Getelec_Installation_Metal_Test()
-    _Getelec_Installation_Semiconductor_Test()
+    # _Getelec_Installation_Semiconductor_Test()
     return True
 
 Getelec_Installation_Test()
