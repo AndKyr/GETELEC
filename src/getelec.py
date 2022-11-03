@@ -62,7 +62,7 @@ class Interpolator:
     _Npolynomial : int 
     _Nradius : int  
 
-    def __init__(self, preloadedGamowTable : np.ndarray = None, preloadedLimits : np.ndarray = None):
+    def __init__(self, preloadedGamowTable : np.ndarray = None, preloadedLimits : np.ndarray = None, dataFolder = "tabulated"):
         """Initialises Tabulator by loading the tables from files. If maps not found, calls tabulation scripts
         from old getelec
 
@@ -73,10 +73,10 @@ class Interpolator:
             is invoked. 
         """
         if (preloadedGamowTable is None or preloadedLimits is None):
-            self._isTableLoaded = self._loadTablesFromFileIfPossible()
+            self._isTableLoaded = self._loadTablesFromFileIfPossible(dataFolder)
             if not self._isTableLoaded: #all the script that creates tables and try to load again
                 self.calculateAndSaveTable()
-                self._isTableLoaded = self._loadTablesFromFileIfPossible()
+                self._isTableLoaded = self._loadTablesFromFileIfPossible(dataFolder)
         else:
             self._gamowTable = preloadedGamowTable
             self._limits = preloadedLimits
@@ -93,15 +93,15 @@ class Interpolator:
         print(command)
         os.system(command)
 
-    def _loadTablesFromFileIfPossible(self) -> bool:
+    def _loadTablesFromFileIfPossible(self, dataFolder = "tabulated") -> bool:
         """Loads the table of the Gamow factor from the files where it has been stored.
 
         Returns:
             True if successful loading. False if table files not found
         """
         try:
-            self._gamowTable = np.load("tabulated/GamowTable.npy")
-            self._limits = np.load("tabulated/tabLimits.npy")
+            self._gamowTable = np.load(dataFolder + "/GamowTable.npy")
+            self._limits = np.load(dataFolder + "/tabLimits.npy")
             return True
         except(IOError):
             print("tabulation files not found")
@@ -152,7 +152,7 @@ class Interpolator:
 
     
     # region user methods
-    def interpolateForValues(self, field : float, radius : float = 1.e4, gamma : float = 10., interpolationOrder : int = 2) -> np.ndarray:
+    def interpolateForValues(self, field:float, radius:float = 1.e4, gamma:float = 10., interpolationOrder:int = 2) -> np.ndarray:
         """
         Interpolate for given values of field, radius and gamma. Returns an array of numbers. 
         The first 4 numbers are the polynomial coefficient
@@ -161,6 +161,7 @@ class Interpolator:
             field: field value for interpolation
             radius: radius value for interpolation. Default 1.e4, in case it is called for planar approximation
             gamma: gamma value for interpolation. Default 10. , in case it is called for gamma-is-irrelevant approximation
+            interpolatorOrder: order of the spline used to interpolate values. Default is 2
 
         Returns:
             Array of Npolynomial + 2 values interpolated. The first Npolynomial are the polynomial coefficients and the last 2 are 
@@ -244,9 +245,10 @@ class Barrier(Interpolator):
     # endregion
     
     # region initialization
-    def __init__(self, field:float = 5., radius:float = 1.e4, gamma:float = 10., preloadedGamowTable : np.ndarray = None, preloadedLimits = None) -> None:
+    def __init__(self, field:float = 5., radius:float = 1.e4, gamma:float = 10., \
+        preloadedGamowTable:np.ndarray = None, preloadedLimits:np.ndarray = None, tabulationFolder = 'tabulated') -> None:
 
-        super().__init__(preloadedGamowTable, preloadedLimits)
+        super().__init__(preloadedGamowTable, preloadedLimits, tabulationFolder)
         self.setBarrierParameters(field, radius, gamma)
    
     def _calculateParameters(self) -> None:
@@ -560,7 +562,7 @@ class Metal_Emitter(Emitter):
         self.kT = kT
         self.energy = self._Integration_Limits()
     
-    def Current_Density_from_Metals(self):
+    def currentDensity(self):
         """Calculates the field emitted current density from metal surfaces
 
         Returns:
@@ -965,7 +967,7 @@ def current_metal_emitter(Field:array, Radius:array, Gamma:array, Workfunction:a
     kBoltz = 8.6173324e-5 
     kT = kBoltz * Temperature
     
-    metal_emitter = Metal_Emitter(Barrier(),Supply())
+    metal_emitter = Metal_Emitter(Barrier(tabulationFolder="tabulated/2D_256x128"),Supply())
 
     j_metal = np.copy(Field)
     
@@ -974,7 +976,7 @@ def current_metal_emitter(Field:array, Radius:array, Gamma:array, Workfunction:a
         metal_emitter.barrier.setBarrierParameters(Field[i], Radius[i], Gamma[i])
         metal_emitter.barrier._calculateParameters()
         metal_emitter.Define_Metal_Emitter_Parameters(Workfunction[i], kT[i])
-        j_metal[i] = metal_emitter.Current_Density_from_Metals()
+        j_metal[i] = metal_emitter.currentDensity()
         
     return j_metal
 
@@ -1111,17 +1113,17 @@ def heat_semiconductor_emitter(Field:array, Radius:array, Gamma:array ,Ec:array,
 
 if (__name__ == "__main__"):
     print("test for normal barrier:")
-    bar = Barrier(5, 10, 10.)
+    bar = Barrier(5, 10, 10., tabulationFolder="tabulated/2D_512x256")
     print("Gamow(E=4.5) = ", bar.calculateGamow(4.5))
     bar.plotGamow(0., 10., show = True)
 
     print("test for for field over the tabulation limits")
-    bar = Barrier(25, 10, 10.)
+    bar = Barrier(25, 10, 10., preloadedGamowTable=bar._gamowTable, preloadedLimits=bar._limits)
     print("Gamow(E=4.5) = ", bar.calculateGamow(4.5))
     bar.plotGamow(0., 10., show = True)
 
     print("test for for field below the tabulation limits")
-    bar = Barrier(0.1, 10, 10.)
+    bar = Barrier(0.1, 10, 10., preloadedGamowTable=bar._gamowTable, preloadedLimits=bar._limits)
     print("Gamow(E=4.5) = ", bar.calculateGamow(4.5))
     bar.plotGamow(0., 10., show = True)
 

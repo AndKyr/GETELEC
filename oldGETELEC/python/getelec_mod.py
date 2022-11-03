@@ -285,7 +285,7 @@ class Tabulator():
         np.save("tabulated/current_density_table", self.currentDensityTable)
         self.finterp = intrp.interp2d(self.inverseFieldValues, self.inverseRadiusValues, np.log(self.currentDensityTable))
     
-    def tabulateGamowTable(self):
+    def tabulateGamowTable(self, outputFolder = 'tabulated'):
         """Looks for the files where the precaculate barriers are stored. Then it uses interpolation methods to make the most accurate barrier for the given 
         input (electric field, tip radius and gamma exponent). Gtab is stores the polinomial that gives its shape to the barrier.
         """
@@ -323,9 +323,9 @@ class Tabulator():
             if (self.numberOfRadiusValues == 1):
                 self.gamowTable = np.reshape(self.gamowTable, (self.numberOfFieldValues, self.numberOfPolynomialTerms + 2))
 
-        np.save("tabulated/GamowTable", self.gamowTable)
+        np.save(outputFolder + "/GamowTable", self.gamowTable)
 
-        np.save("tabulated/tabLimits.npy", np.array([min(self.inverseFieldValues), max(self.inverseFieldValues), \
+        np.save(outputFolder + "/tabLimits.npy", np.array([min(self.inverseFieldValues), max(self.inverseFieldValues), \
                 min(self.inverseRadiusValues), max(self.inverseRadiusValues), min(self.inverseGammaValues), max(self.inverseGammaValues)]))
         
     def load(self):

@@ -1,9 +1,6 @@
 #! /usr/bin/python
 
 import getelec_mod as gt
-import numpy as np
-
-
 import argparse
 
 
@@ -15,11 +12,9 @@ parser.add_argument("-np", "--Npolynomial", help = "Number of polynomial terms f
 
 parser.add_argument("-nG", "--NGamow", help = "Number of Gamow points to be calculated for fitting", required = False, default = "128")
 parser.add_argument("-nP", "--Nprocess", help = "Number of processes to be used for calculation", required = False, default = "1")
-parser.add_argument("-o", "--output", help = "Output folder", required = False, default = "./")
+parser.add_argument("-o", "--outputFolder", help = "Output folder", required = False, default = "./")
 
 args = parser.parse_args()
 
 tab = gt.Tabulator(Nf=int(args.Nfield), Nr = int(args.Nradius), Ngamma=int(args.Ngamma), Npoly=int(args.Npolynomial), NGamow=int(args.NGamow) )
-tab.tabulateGamowTable()
-
-print("Tabulated successfully. Shape of GamowTable = ", np.shape(np.load("tabulated/GamowTable.npy")))
+tab.tabulateGamowTable(outputFolder=args.outputFolder)

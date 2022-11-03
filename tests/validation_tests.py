@@ -13,8 +13,6 @@ sys.path.insert(0,oldGetelecPath)
 newGetelecPath = str(Path(__file__).parents[1].absolute()) + '/src'
 sys.path.insert(0,newGetelecPath)
 
-print(sys.path)
-
 import getelec as getelec_new
 import getelec_mod as getelec_old
 
@@ -330,7 +328,7 @@ def Randomised_Tabulator_Test():
         metal_emitter._emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
         metal_emitter._emitter.Interpolate_Gammow()
         metal_emitter.Define_Metal_Emitter_Parameters(Workfunction[i], kT[i])
-        J_new_getelec[i] = metal_emitter.Current_Density_from_Metals()
+        J_new_getelec[i] = metal_emitter.currentDensity()
         Pn_new_getelec[i] = metal_emitter.Nottingham_Heat_from_Metals()
     new_getelec_end = datetime.datetime.now()
 
@@ -443,7 +441,7 @@ def Randomised_Tabulator_Test():
     plt.xlabel("Old GETELEC Nottigham heat (W$nm^{-2}$)")
     plt.ylabel("New GETELEC Nottigham heat (W$nm^{-2}$)")
     plt.title("Comparing heat from new and old GETELEC")
-    plt.savefig("Validation_test: Pn.png")
+    plt.savefig("Validation_test_Pn.png")
     #plt.show()
     return True
 
@@ -463,7 +461,7 @@ def Referenced_Tabulator_Test():
     J_ref_getelec = np.copy(Field)
     Pn_ref_getelec = np.copy(Field)
 
-    metal_emitter = getelec_new.Metal_Emitter(tab)
+    metal_emitter = getelec_new.Metal_Emitter(barrier=getelec_new.Barrier(tabulationFolder='tabulated'), supply=getelec_new.Supply())
 
     print("\nCalculating from NEW GETELEC")
     new_getelec_start = datetime.datetime.now()
@@ -471,7 +469,7 @@ def Referenced_Tabulator_Test():
         metal_emitter._emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
         metal_emitter._emitter.Interpolate_Gammow()
         metal_emitter.Define_Metal_Emitter_Parameters(Workfunction[i], kT[i])
-        J_new_getelec[i] = metal_emitter.Current_Density_from_Metals()
+        J_new_getelec[i] = metal_emitter.currentDensity()
         Pn_new_getelec[i] = metal_emitter.Nottingham_Heat_from_Metals()
     new_getelec_end = datetime.datetime.now()
 
@@ -568,7 +566,7 @@ def Referenced_Tabulator_Test():
     plt.xlabel("Old GETELEC current densities (A$nm^{-2}$)")
     plt.ylabel("New GETELEC current densities (A$nm^{-2}$)")
     plt.title("Comparing current from new and old GETELEC")
-    plt.savefig("Validation_test: J.png")
+    plt.savefig("Validation_test_J.png")
     #plt.show()
 
     fig2, ax = plt.subplots(figsize=(x,y))
@@ -582,7 +580,7 @@ def Referenced_Tabulator_Test():
     plt.xlabel("Old GETELEC Nottigham heat (W$nm^{-2}$)")
     plt.ylabel("New GETELEC Nottigham heat (W$nm^{-2}$)")
     plt.title("Comparing heat from new and old GETELEC")
-    plt.savefig("Validation_test: Pn.png")
+    plt.savefig("Validation_test_Pn.png")
     #plt.show()
     return True
 
