@@ -403,7 +403,7 @@ class Supply:
     # endregion 
     
     # region user methods
-    def Log_Fermi_Dirac_Distribution(self, energy:array, kT:array):
+    def logFermiDiracFunction(self, energy:array, kT:array):
         """Returs the natural logarith of the Fermi Diract distribution.
         The energy is divided in 3 terms to prevent the computer from overfloading with large exponents 
 
@@ -434,7 +434,7 @@ class Supply:
             else:
                 return np.log(1. + np.exp(-energy / kT))
     
-    def Fermi_Dirac_Distribution(self, energy:array, kT:array):
+    def FermiDiracFunction(self, energy:array, kT:array):
         """Returns the Fermi Dirac distribution
         
         Args:
@@ -453,7 +453,7 @@ class Supply:
 class Emitter:
     
     # region initialization
-    def __init__(self, barrier: Barrier, supply:Supply):
+    def __init__(self, barrier: Barrier, supply: Supply):
         """Initialises the class by inheritating Tabulator and setting it up as a private field to be used by Emitter
 
         Args:
@@ -497,7 +497,6 @@ class Metal_Emitter(Emitter):
     """
     
     # region field declarations
-    emitter: Emitter
     kT: float
     workfunction: float
     energy: array
@@ -521,7 +520,7 @@ class Metal_Emitter(Emitter):
             array: Energy space for which the electron emission and Notigham heat are going to be evaluated in (eV)
         """
         
-        resolution = NGi #128
+        resolution = 128
         self._maxbeta = np.polyval(self.barrier._gamowDerivativePolynomialCoefficients, min(self.workfunction, self.barrier._maxEnergyDepth))
         
         if (self._maxbeta * self.kT < 1.05): #field regime
@@ -588,7 +587,7 @@ class Metal_Emitter(Emitter):
 
         cumulative_transmission = np.insert(np.cumsum((transmission_in_energy_z[1:]+transmission_in_energy_z[:-1])*(self.energy[1]-self.energy[0])/2), 0, 0)
         
-        electron_number = self.supply.Fermi_Dirac_Distribution(self.energy, self.kT) * cumulative_transmission
+        electron_number = self.supply.FermiDiracFunction(self.energy, self.kT) * cumulative_transmission
 
         return  self.energy, electron_number
   
@@ -609,7 +608,7 @@ class Metal_Emitter(Emitter):
     
     def Current_Density_from_Metals_educational(self):
         """Calculates the field emitted current density from metals on a clear equation to code manner"""
-        integ = self.supply.Log_Fermi_Dirac_Distribution(self.energy, self.kT) * self.Transmission_Coefficient(self.workfunction - self.energy)
+        integ = self.supply.logFermiDiracFunction(self.energy, self.kT) * self.Transmission_Coefficient(self.workfunction - self.energy)
         
         """if(plot):
             print("Whigh, Wlow = ", self.workfunction - self.energy[0], self.workfunction - self.energy[-1])
@@ -634,7 +633,7 @@ class Metal_Emitter(Emitter):
         for i in range(len(self.energy)-1):
             cumulative_transmission[i+1] = cumulative_transmission[i]+((self.energy[1]-self.energy[0])*(transmission_in_energy_z[i+1]+transmission_in_energy_z[i])/2)
         
-        energy_distribution = self.supply.Fermi_Dirac_Distribution(self.energy, self.kT) * cumulative_transmission
+        energy_distribution = self.supply.FermiDiracFunction(self.energy, self.kT) * cumulative_transmission
 
         return  self.energy, energy_distribution
     
@@ -648,7 +647,7 @@ class Metal_Emitter(Emitter):
         for i in range(len(self.energy)-1):
             cumulative_transmission[i+1] = cumulative_transmission[i]+((self.energy[1]-self.energy[0])*(transmission_in_energy_z[i+1]+transmission_in_energy_z[i])/2)
         
-        heat_components = self.supply.Fermi_Dirac_Distribution(self.energy, self.kT) * cumulative_transmission * self.energy
+        heat_components = self.supply.FermiDiracFunction(self.energy, self.kT) * cumulative_transmission * self.energy
         
         return -zs * np.sum(heat_components) * (self.energy[1] - self.energy[0])
     #endregion
@@ -795,7 +794,7 @@ class Semiconductor_Emitter(Emitter):
         a = self._me/self._m
         b = 1-a 
         
-        jc_integ = self.supply.Log_Fermi_Dirac_Distribution(self._energy_conduction_band, self._kT) * (self.barrier.transmissionCoefficient(-self._Ef-self._energy_conduction_band) - (b*self.barrier.transmissionCoefficient(-self._Ef-a*self._energy_conduction_band)))
+        jc_integ = self.supply.logFermiDiracFunction(self._energy_conduction_band, self._kT) * (self.barrier.transmissionCoefficient(-self._Ef-self._energy_conduction_band) - (b*self.barrier.transmissionCoefficient(-self._Ef-a*self._energy_conduction_band)))
         
         return zs * self._kT * np.sum(jc_integ) * (self._energy_conduction_band[1]-self._energy_conduction_band[0]) 
     
@@ -809,7 +808,7 @@ class Semiconductor_Emitter(Emitter):
         a = self._mp/self._m
         b = 1+a
         
-        jv_integ = self.supply.Log_Fermi_Dirac_Distribution(self._energy_valence_band, self._kT) * (self.barrier.transmissionCoefficient(-self._Ef-self._energy_valence_band) - (b*self.barrier.transmissionCoefficient(-self._Ef-b*self._energy_valence_band+a*self._Evhigh)))
+        jv_integ = self.supply.logFermiDiracFunction(self._energy_valence_band, self._kT) * (self.barrier.transmissionCoefficient(-self._Ef-self._energy_valence_band) - (b*self.barrier.transmissionCoefficient(-self._Ef-b*self._energy_valence_band+a*self._Evhigh)))
         
         return zs * self._kT * ((np.sum(jv_integ) * (self._energy_valence_band[1]-self._energy_valence_band[0])))
     
@@ -831,7 +830,7 @@ class Semiconductor_Emitter(Emitter):
 
         c_cumulative_transmission = np.insert(np.cumsum((c_transmission_in_z[1:]+c_transmission_in_z[:-1])*(self._energy_conduction_band[1]-self._energy_conduction_band[0])/2), 0, 0)
         
-        c_number_of_electrons = np.sum(self.supply.Fermi_Dirac_Distribution(self._energy_conduction_band, self._kT) * c_cumulative_transmission )
+        c_number_of_electrons = np.sum(self.supply.FermiDiracFunction(self._energy_conduction_band, self._kT) * c_cumulative_transmission )
         
         total_c = np.sum(zs * c_number_of_electrons * (self._energy_conduction_band[1]-self._energy_conduction_band[0]))
         
@@ -843,7 +842,7 @@ class Semiconductor_Emitter(Emitter):
         
         v_cumulative_transmission = np.insert(np.cumsum((v_transmission_in_z[1:]+v_transmission_in_z[:-1])*(self._energy_valence_band[1]-self._energy_valence_band[0])/2), 0, 0)
             
-        v_number_of_electrons = self.supply.Fermi_Dirac_Distribution(self._energy_valence_band, self._kT) * v_cumulative_transmission 
+        v_number_of_electrons = self.supply.FermiDiracFunction(self._energy_valence_band, self._kT) * v_cumulative_transmission 
         
         total_v = np.sum(zs * v_number_of_electrons * (self._energy_valence_band[1]-self._energy_valence_band[0]))
         
@@ -881,7 +880,7 @@ class Semiconductor_Emitter(Emitter):
 
         cumulative_transmission = np.insert(np.cumsum((transmission_in_z[1:]+transmission_in_z[:-1])*(self._energy_conduction_band[1]-self._energy_conduction_band[0])/2), 0, 0)
         
-        number_of_electrons = self.supply.Fermi_Dirac_Distribution(self._energy_conduction_band, self._kT) * cumulative_transmission 
+        number_of_electrons = self.supply.FermiDiracFunction(self._energy_conduction_band, self._kT) * cumulative_transmission 
 
         return self._energy_conduction_band , number_of_electrons
     
@@ -900,7 +899,7 @@ class Semiconductor_Emitter(Emitter):
         
         cumulative_transmission = np.insert(np.cumsum((transmission_in_z[1:]+transmission_in_z[:-1])*(self._energy_valence_band[1]-self._energy_valence_band[0])/2), 0, 0)
             
-        number_of_electrons = self.supply.Fermi_Dirac_Distribution(self._energy_valence_band, self._kT) * cumulative_transmission 
+        number_of_electrons = self.supply.FermiDiracFunction(self._energy_valence_band, self._kT) * cumulative_transmission 
       
         return self._energy_valence_band, number_of_electrons
     
@@ -955,7 +954,7 @@ class Semiconductor_Emitter(Emitter):
         for i in range(len(self._energy_conduction_band)-1):
             cumulative_transmission[i+1] = cumulative_transmission[i] + ((self._energy_conduction_band[1]-self._energy_conduction_band[0])*(transmission_in_z[i+1]+transmission_in_z[i])/2)
         
-        energy_distribution = self.supply.Fermi_Dirac_Distribution(self._energy_conduction_band, self._kT) * cumulative_transmission 
+        energy_distribution = self.supply.FermiDiracFunction(self._energy_conduction_band, self._kT) * cumulative_transmission 
 
         return self._energy_conduction_band , energy_distribution
     # endregiondata
