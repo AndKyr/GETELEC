@@ -10,7 +10,12 @@ from pathlib import Path
 oldGetelecPath = str(Path(__file__).parents[1].absolute()) + '/oldGETELEC/python'
 sys.path.insert(0,oldGetelecPath)
 
-import getelec_tabulator as getelec_new
+newGetelecPath = str(Path(__file__).parents[1].absolute()) + '/src'
+sys.path.insert(0,newGetelecPath)
+
+print(sys.path)
+
+import getelec as getelec_new
 import getelec_mod as getelec_old
 
 def _Load_Semiconductor_Data():

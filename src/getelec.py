@@ -244,7 +244,7 @@ class Barrier(Interpolator):
     # endregion
     
     # region initialization
-    def __init__(self, field : float, radius : float, gamma : float, preloadedGamowTable : np.ndarray = None, preloadedLimits = None) -> None:
+    def __init__(self, field:float = 5., radius:float = 1.e4, gamma:float = 10., preloadedGamowTable : np.ndarray = None, preloadedLimits = None) -> None:
 
         super().__init__(preloadedGamowTable, preloadedLimits)
         self.setBarrierParameters(field, radius, gamma)
@@ -761,7 +761,7 @@ class Semiconductor_Emitter(Emitter):
     
     def _Integration_Limits_for_Semiconductors(self):
         """Finds the limits of integration"""
-        resolution = NGi #128
+        resolution = 128
         self._Eclow = (self._Ec-self._Ef)
         self._Echigh = max(self._Eclow, 0) + 20 * self._kT
         self._Evhigh = (self._Ev-self._Ef)
@@ -973,9 +973,7 @@ def current_metal_emitter(Field:array, Radius:array, Gamma:array, Workfunction:a
 
         metal_emitter.barrier.setBarrierParameters(Field[i], Radius[i], Gamma[i])
         metal_emitter.barrier._calculateParameters()
-       
         metal_emitter.Define_Metal_Emitter_Parameters(Workfunction[i], kT[i])
-    
         j_metal[i] = metal_emitter.Current_Density_from_Metals()
         
     return j_metal
@@ -1126,6 +1124,8 @@ if (__name__ == "__main__"):
     bar = Barrier(0.1, 10, 10.)
     print("Gamow(E=4.5) = ", bar.calculateGamow(4.5))
     bar.plotGamow(0., 10., show = True)
+
+    print(current_metal_emitter(np.array([5., 6.]), np.array([10.,12.]), np.array([10.,10.]), np.array([4.5, 4.5]), np.array([396., 159])))
 
 
 
