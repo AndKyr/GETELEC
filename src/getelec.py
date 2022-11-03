@@ -62,41 +62,64 @@ class Interpolator:
     _Npolynomial : int 
     _Nradius : int  
 
-    def __init__(self, NField = 256, NRadius = 128, Ngamma = 1, Npolynomial = 4, NGamow = 128):
+    def __init__(self, preloadedGamowTable : np.ndarray = None, preloadedLimits : np.ndarray = None):
         """Initialises Tabulator by loading the tables from files. If maps not found, calls tabulation scripts
         from old getelec
 
-        Args:
+        Parameters:
             tabulationFolder (int, optional): folder where to fine tabulated values
             NField, NRadius, Ngamma (int, optional): Number of points to tabulate for electric field, radius and gamma.
             They are relevant only in case the tabulated files are not found and the tabulation script from oldGETELEC
-            is invokes. 
+            is invoked. 
         """
-
-        if self._loadTables():
-            pass
+        if (preloadedGamowTable is None or preloadedLimits is None):
+            self._isTableLoaded = self._loadTablesFromFileIfPossible()
+            if not self._isTableLoaded: #all the script that creates tables and try to load again
+                self.calculateAndSaveTable()
+                self._isTableLoaded = self._loadTablesFromFileIfPossible()
         else:
-            tabulationScript = pythonpath + "/../oldGETELEC/python/tabulateGamow.py"
-            command = "python3 %s -nf %d -nr %d -ng %d -np %d -nG %d"%(tabulationScript, NField, NRadius, Ngamma, Npolynomial, NGamow)
-            print("tabulation not found. producing tabulator by running:")
-            print(command)
-            os.system(command)
-            self._loadTables()
+            self._gamowTable = preloadedGamowTable
+            self._limits = preloadedLimits
+            self._isTableLoaded = True
+        
+        self._initializeTabulationVariables()
 
-    def _loadTables(self) -> bool:
+    def calculateAndSaveTable(self, NField = 256, NRadius = 128, Ngamma = 1, Npolynomial = 4, NGamow = 128):
+        """Runs old Getelec script that produces tabulation and saves it at tabulated/ folder."""
+
+        tabulationScript = pythonpath + "/../oldGETELEC/python/tabulateGamow.py"
+        command = "python3 %s -nf %d -nr %d -ng %d -np %d -nG %d"%(tabulationScript, NField, NRadius, Ngamma, Npolynomial, NGamow)
+        print("tabulation not found. producing tabulator by running:")
+        print(command)
+        os.system(command)
+
+    def _loadTablesFromFileIfPossible(self) -> bool:
         """Loads the table of the Gamow factor from the files where it has been stored.
+
+        Returns:
+            True if successful loading. False if table files not found
         """
         try:
             self._gamowTable = np.load("tabulated/GamowTable.npy")
-            limits = np.load("tabulated/tabLimits.npy")
+            self._limits = np.load("tabulated/tabLimits.npy")
+            return True
         except(IOError):
             print("tabulation files not found")
             return False
 
+    def _initializeTabulationVariables(self) -> None:
+        """Initializes class variables that facilitate tabulation operations
+        
+        Raises:
+            Assertion error if tabularized data have inconsistencies.
+        """
+
+        assert self._isTableLoaded, "Attempting to initialize tabulation variables without having loaded the tables"
+
         #Get interpolation limits
-        self._inverseFieldLimits = limits[:2]
-        self._inverseRadiusLimits = limits[2:4]
-        self._inverseGammaLimits = limits[4:]
+        self._inverseFieldLimits = self._limits[:2]
+        self._inverseRadiusLimits = self._limits[2:4]
+        self._inverseGammaLimits = self._limits[4:]
         self._dimension = len(np.shape(self._gamowTable)) - 1
         
         #make sure that dimensions and limits are correct
@@ -126,14 +149,23 @@ class Interpolator:
             assert self._inverseGammaLimits[0] == self._inverseGammaLimits[1], \
                 'Limits of tabulated Gamma: {} are wrong'.format(self._inverseGammaLimits)
             self._Ngamma = 1
-        
-        return True
 
     
     # region user methods
-    def interpolateForValues(self, field : float, radius : float = 1.e4, gamma : float = 10., interpolationOrder = 2.) -> np.ndarray:
-        """Interpolate for given values of field, radius and gamma. Returns an array of numbers. 
-        The first 4 numbers are the polynomial coefficient"""
+    def interpolateForValues(self, field : float, radius : float = 1.e4, gamma : float = 10., interpolationOrder : int = 2) -> np.ndarray:
+        """
+        Interpolate for given values of field, radius and gamma. Returns an array of numbers. 
+        The first 4 numbers are the polynomial coefficient
+        
+        Parameters:
+            field: field value for interpolation
+            radius: radius value for interpolation. Default 1.e4, in case it is called for planar approximation
+            gamma: gamma value for interpolation. Default 10. , in case it is called for gamma-is-irrelevant approximation
+
+        Returns:
+            Array of Npolynomial + 2 values interpolated. The first Npolynomial are the polynomial coefficients and the last 2 are 
+            the energyDepth limits of validity of the polynomial fitting.
+        """
         
         paramCoordinates = np.arange(self._Npolynomial + 2)
         fieldCoorinates = np.ones(len(paramCoordinates)) * (self._Nfields - 1) * (1./field - self._inverseFieldLimits[0]) / \
@@ -160,7 +192,6 @@ class Interpolator:
             interpolationCoordinates = np.array([fieldCoorinates, paramCoordinates])
         elif(self._dimension == 2):
             interpolationCoordinates = np.array([radiusCoordinates, fieldCoorinates, paramCoordinates])
-            print(radiusCoordinates, fieldCoorinates, paramCoordinates)
         elif (self._dimension == 3):
             interpolationCoordinates = np.array([gammaCoordinates, radiusCoordinates, fieldCoorinates, paramCoordinates])
 
@@ -213,13 +244,13 @@ class Barrier(Interpolator):
     # endregion
     
     # region initialization
-    def __init__(self, field : float, radius : float, gamma : float) -> None:
-        super().__init__()
+    def __init__(self, field : float, radius : float, gamma : float, preloadedGamowTable : np.ndarray = None, preloadedLimits = None) -> None:
+
+        super().__init__(preloadedGamowTable, preloadedLimits)
         self.setBarrierParameters(field, radius, gamma)
    
     def _calculateParameters(self) -> None:
-        """Interpolates the parameters necessary to evaluate the Gamow factor. 
-        """
+        """Gets the parameters necessary to evaluate the Gamow factor. """
         
         data = self.interpolateForValues(self._field, self._radius, self._gamma)
         self._minEnergyDepth = data[-2] #Wmin: This is the top of the barrier
@@ -228,7 +259,7 @@ class Barrier(Interpolator):
         self._gamowDerivativePolynomialCoefficients = np.polyder(self._gamowPolynomialCoefficients) #dG/dW polynomial coefficients
         self._gamowDerivativeAtMinBarrierDepth = np.polyval(self._gamowDerivativePolynomialCoefficients, self._minEnergyDepth) #dG/dW @ Wmin
         self._gamowDerivativeAtMaxEnergyDepth = np.polyval(self._gamowDerivativePolynomialCoefficients, self._maxEnergyDepth) #dG/dW @ Wmax
-
+    
     def _extendFieldBounds(self, energyDepth : array) -> array:
         """
         In case self._field is out of bounds of the Table, linearly extrapolates the value of Gamow for all given energies
@@ -242,20 +273,18 @@ class Barrier(Interpolator):
 
         deltaInverseField = np.diff(self._inverseFieldLimits) / (self._Nfields - 1)
 
-        if (1./self._field < self._inverseFieldLimits):
-            adgacentFieldValue = self._inverseFieldLimits[0] + deltaInverseField
-            newBarrier = Barrier(adgacentFieldValue, self._radius, self._gamma)
-            gamowDerivative = (self.calculateGamow(energyDepth) - newBarrier.calculateGamow(energyDepth)) / deltaInverseField
+        if (1./self._field < self._inverseFieldLimits[0]):
+            adgacentInverseFieldValue = self._inverseFieldLimits[0] + deltaInverseField
+            newBarrier = Barrier(1./adgacentInverseFieldValue, self._radius, self._gamma, preloadedGamowTable=self._gamowTable, preloadedLimits=self._limits)
+            gamowDerivative = (self.Gamow - newBarrier.calculateGamow(energyDepth)) / deltaInverseField
             return gamowDerivative * (1 / self._field - self._inverseFieldLimits[0])
         elif (1./self._field > self._inverseFieldLimits[1]):
-            adgacentFieldValue = self._inverseFieldLimits[1] - deltaInverseField
-            newBarrier = Barrier(adgacentFieldValue, self._radius, self._gamma)
-            gamowDerivative = (self.calculateGamow(energyDepth) - newBarrier.calculateGamow(energyDepth)) / deltaInverseField
-            return gamowDerivative * (1 / self._field - self._inverseFieldLimits[0])
+            adgacentInverseFieldValue = self._inverseFieldLimits[1] - deltaInverseField
+            newBarrier = Barrier(1./adgacentInverseFieldValue, self._radius, self._gamma, preloadedGamowTable=self._gamowTable, preloadedLimits=self._limits)
+            gamowDerivative = (self.Gamow - newBarrier.calculateGamow(energyDepth)) / deltaInverseField
+            return gamowDerivative * (1 / self._field - self._inverseFieldLimits[1])
         else:
-            return 0. * energyDepth
-        
-        
+            return 0. 
 
     def calculateGamow(self, energyDepth:array) -> array:
         """Evaluates the gammow coefficients in order to provide the exponential for the Kemble formula
@@ -269,28 +298,28 @@ class Barrier(Interpolator):
         self._calculateParameters()
         
         if (isinstance(energyDepth, np.ndarray)):
-            Gamow = np.copy(energyDepth)
+            self.Gamow = np.copy(energyDepth)
             highEnergyDepth = energyDepth > self._maxEnergyDepth
             lowEnergyDepth = energyDepth < self._minEnergyDepth
-            Gamow = np.polyval(self._gamowPolynomialCoefficients, energyDepth)
-            Gamow[highEnergyDepth] = np.polyval(self._gamowPolynomialCoefficients, self._maxEnergyDepth) + \
+            self.Gamow = np.polyval(self._gamowPolynomialCoefficients, energyDepth)
+            self.Gamow[highEnergyDepth] = np.polyval(self._gamowPolynomialCoefficients, self._maxEnergyDepth) + \
                 self._gamowDerivativeAtMaxEnergyDepth * (energyDepth[highEnergyDepth] - self._maxEnergyDepth)
-            Gamow[lowEnergyDepth] = np.polyval(self._gamowPolynomialCoefficients, self._minEnergyDepth) + \
+            self.Gamow[lowEnergyDepth] = np.polyval(self._gamowPolynomialCoefficients, self._minEnergyDepth) + \
                 self._gamowDerivativeAtMinBarrierDepth * (energyDepth[lowEnergyDepth] - self._minEnergyDepth)
         else:
             if (energyDepth > self._minEnergyDepth and energyDepth < self._maxEnergyDepth):
-                Gamow = np.polyval(self._gamowPolynomialCoefficients, energyDepth)
+                self.Gamow = np.polyval(self._gamowPolynomialCoefficients, energyDepth)
             elif(energyDepth > self._maxEnergyDepth):
-                Gamow = np.polyval(self._gamowPolynomialCoefficients, self._maxEnergyDepth) + \
+                self.Gamow = np.polyval(self._gamowPolynomialCoefficients, self._maxEnergyDepth) + \
                     self._gamowDerivativeAtMaxEnergyDepth * (energyDepth - self._maxEnergyDepth)
             else:
-                Gamow = np.polyval(self._gamowPolynomialCoefficients, self._minEnergyDepth) + \
+                self.Gamow = np.polyval(self._gamowPolynomialCoefficients, self._minEnergyDepth) + \
                     self._gamowDerivativeAtMinBarrierDepth * (energyDepth - self._minEnergyDepth) 
 
-        if (1./self._field < self._inverseFieldLimits or 1./self._field > self._inverseFieldLimits[1]):
-            Gamow += self._extendFieldBounds(energyDepth)
+        if (1./self._field < self._inverseFieldLimits[0] or 1./self._field > self._inverseFieldLimits[1]):
+            self.Gamow += self._extendFieldBounds(energyDepth)
         
-        return Gamow
+        return self.Gamow
 
     def setBarrierParameters(self, field:float, radius:float = 1.e4, gamma:float = 10.) -> None:
         """Sets the main parameters of the barrier.
@@ -328,8 +357,7 @@ class Barrier(Interpolator):
                 return 1 / (1 + np.exp(gamow))
             else:
                 return np.exp(-gamow)
-    
-    
+      
     def plotGamow(self, minBarrierDepth : float = 0., maxBarrierDepth : float = 0., show = False, saveFile = "") -> None:
         """Plots the Gamow exponent for energy depth between minBarrierDepth and maxBarrierDepth. IF saveFile is given,
         it will save the file to the given output. If show = True, it will show the output plot."""
@@ -1085,10 +1113,20 @@ def heat_semiconductor_emitter(Field:array, Radius:array, Gamma:array ,Ec:array,
 
 
 if (__name__ == "__main__"):
-    bar = Barrier(4., 10, 10.)
-    print(bar.calculateGamow(4.5))
-    # bar.plotGamow(0., 10., show = True)
+    print("test for normal barrier:")
+    bar = Barrier(5, 10, 10.)
+    print("Gamow(E=4.5) = ", bar.calculateGamow(4.5))
+    bar.plotGamow(0., 10., show = True)
 
-    # bar.plotGamow(0., 10., show = True)
+    print("test for for field over the tabulation limits")
+    bar = Barrier(25, 10, 10.)
+    print("Gamow(E=4.5) = ", bar.calculateGamow(4.5))
+    bar.plotGamow(0., 10., show = True)
+
+    print("test for for field below the tabulation limits")
+    bar = Barrier(0.1, 10, 10.)
+    print("Gamow(E=4.5) = ", bar.calculateGamow(4.5))
+    bar.plotGamow(0., 10., show = True)
+
 
 
