@@ -8,7 +8,7 @@
 #define dGmin xx[5]
 #define dGmax xx[6]
 #define poly(i) (xx[n - i - 1])
-#define Npoly n - 7
+#define Npoly n - 7 //TODO: This works only for 4 polynomial coefficients!
 
 
 double lFD(double E, double kboltzT){

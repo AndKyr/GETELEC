@@ -239,7 +239,7 @@ class Barrier(Interpolator):
     energy_top_barrier: float
     _maxEnergyDepth:float
     _gamowPolynomialCoefficients: array
-    _gamowDerivativeAtMinBarrierDepth: float
+    gamowDerivativeAtMinBarrierDepth: float
     _gamowDerivativeAtMaxEnergyDepth: float
     _gamowDerivativePolynomialCoefficients: array
     # endregion
@@ -259,7 +259,7 @@ class Barrier(Interpolator):
         self._maxEnergyDepth = data[-1] #Wmax: The maximum barrier depth for which the polynomial is valid
         self._gamowPolynomialCoefficients = data[:self._Npolynomial] #Gpoly
         self._gamowDerivativePolynomialCoefficients = np.polyder(self._gamowPolynomialCoefficients) #dG/dW polynomial coefficients
-        self._gamowDerivativeAtMinBarrierDepth = np.polyval(self._gamowDerivativePolynomialCoefficients, self._minEnergyDepth) #dG/dW @ Wmin
+        self.gamowDerivativeAtMinBarrierDepth = np.polyval(self._gamowDerivativePolynomialCoefficients, self._minEnergyDepth) #dG/dW @ Wmin
         self._gamowDerivativeAtMaxEnergyDepth = np.polyval(self._gamowDerivativePolynomialCoefficients, self._maxEnergyDepth) #dG/dW @ Wmax
     
     def _extendFieldBounds(self, energyDepth : array) -> array:
@@ -307,7 +307,7 @@ class Barrier(Interpolator):
             self.Gamow[highEnergyDepth] = np.polyval(self._gamowPolynomialCoefficients, self._maxEnergyDepth) + \
                 self._gamowDerivativeAtMaxEnergyDepth * (energyDepth[highEnergyDepth] - self._maxEnergyDepth)
             self.Gamow[lowEnergyDepth] = np.polyval(self._gamowPolynomialCoefficients, self._minEnergyDepth) + \
-                self._gamowDerivativeAtMinBarrierDepth * (energyDepth[lowEnergyDepth] - self._minEnergyDepth)
+                self.gamowDerivativeAtMinBarrierDepth * (energyDepth[lowEnergyDepth] - self._minEnergyDepth)
         else:
             if (energyDepth > self._minEnergyDepth and energyDepth < self._maxEnergyDepth):
                 self.Gamow = np.polyval(self._gamowPolynomialCoefficients, energyDepth)
@@ -316,7 +316,7 @@ class Barrier(Interpolator):
                     self._gamowDerivativeAtMaxEnergyDepth * (energyDepth - self._maxEnergyDepth)
             else:
                 self.Gamow = np.polyval(self._gamowPolynomialCoefficients, self._minEnergyDepth) + \
-                    self._gamowDerivativeAtMinBarrierDepth * (energyDepth - self._minEnergyDepth) 
+                    self.gamowDerivativeAtMinBarrierDepth * (energyDepth - self._minEnergyDepth) 
 
         if (1./self._field < self._inverseFieldLimits[0] or 1./self._field > self._inverseFieldLimits[1]):
             self.Gamow += self._extendFieldBounds(energyDepth)
@@ -447,7 +447,7 @@ class Supply:
             array: Fermi Diract distribution (number)
         """
         
-        distribution = 1/(1+np.exp(energy/kT))
+        distribution = 1. / (1. + np.exp(energy/kT))
         
         return distribution
     # endregion
@@ -500,9 +500,9 @@ class Metal_Emitter(Emitter):
     
     # region field declarations
     kT: float
-    workfunction: float
+    workFunction: float
     energy: array
-    _maxbeta: float
+    _maxGamowDerivative: float
     # endregion
     
     # region initialization
@@ -515,37 +515,37 @@ class Metal_Emitter(Emitter):
         
         super().__init__(barrier, supply)
         
-    def _Integration_Limits(self):
+    def _calculateIntegrationLimits(self, decayCutoff = 10.):
         """Finds the limits of integration. ANDREAS PLEASE MAKE A COMMENT WHY THE 3 DIFFERENT INSTANCES AND WHY THE VALUES
         
         Returns:
             array: Energy space for which the electron emission and Notigham heat are going to be evaluated in (eV)
         """
         
-        resolution = 128
-        self._maxbeta = np.polyval(self.barrier._gamowDerivativePolynomialCoefficients, min(self.workfunction, self.barrier._maxEnergyDepth))
+        #get the maximum (for energies above Fermi level) derivative of Gamow. It is capped at Wmax
+        self._maxGamowDerivative = np.polyval(self.barrier._gamowDerivativePolynomialCoefficients, min(self.workFunction, self.barrier._maxEnergyDepth))
         
-        if (self._maxbeta * self.kT < 1.05): #field regime
-            workfunction_center = 0.
-            energy_top = 10 /(1/self.kT - .85*self._maxbeta)
-            energy_bottom = -10 / self._maxbeta
-            return  np.linspace(energy_bottom, energy_top, resolution)
-        
-        elif (self.barrier._gamowDerivativeAtMinBarrierDepth * self.kT > .95):
-            workfunction_center = self.workfunction - self.barrier._minEnergyDepth
-            energy_top = workfunction_center + 10 * self.kT
-            energy_bottom = workfunction_center - 10 / self.barrier._gamowDerivativeAtMinBarrierDepth
-            return np.linspace(energy_bottom, energy_top, resolution)
-        
-        else:
-            rootpoly = np.copy(self.barrier._gamowDerivativePolynomialCoefficients)
-            rootpoly[-1] -= 1./self.kT
-            realroots = np.roots(rootpoly)
-            workfunction_center = realroots[np.nonzero(np.logical_and(realroots > self.barrier._minEnergyDepth, realroots < self.workfunction))][0]
-            #print (Wcenter)
-            energy_top = self.workfunction - workfunction_center + 10 * self.kT
-            energy_bottom = self.workfunction - workfunction_center - 25 * self.kT
-            return np.linspace(energy_bottom, energy_top, resolution)
+        if (self._maxGamowDerivative * self.kT < 1.05): #field regime. The spectrum is centered around Fermi Level
+            self._highEnergyLimit = decayCutoff / (1. / self.kT - .85 * self._maxGamowDerivative) # decayCutoff divided by decay rate
+            self._lowEnergyLimit = - decayCutoff / self._maxGamowDerivative 
+            return        
+        elif (self.barrier.gamowDerivativeAtMinBarrierDepth * self.kT > .95): #thermal regime. The spctrum is centered around the top of the barrier
+            centerOfSpectrum = self.workFunction - self.barrier._minEnergyDepth #top of the barrier (Um)
+            self._highEnergyLimit = centerOfSpectrum + decayCutoff * self.kT 
+            self._lowEnergyLimit = centerOfSpectrum - 10 / self.barrier.gamowDerivativeAtMinBarrierDepth  
+            return     
+        else: #intermediate regime. The spectrum center is approximately where dG/dE = 1/kT
+            #get the polynomial P for which the equation P(E)=0 finds the place where dG/dE = 1/kT
+            polynomialForRoots = np.copy(self.barrier._gamowDerivativePolynomialCoefficients)
+            polynomialForRoots[-1] -= 1./self.kT
+            
+            #find meaningful root of the polynomial
+            realroots = np.roots(polynomialForRoots)
+            centerOfSpectrum = realroots[np.nonzero(np.logical_and(realroots > self.barrier._minEnergyDepth, realroots < self.workFunction))][0]
+            
+            self._highEnergyLimit = self.workFunction - centerOfSpectrum + decayCutoff * self.kT
+            self._lowEnergyLimit = self.workFunction - centerOfSpectrum - 2.5 * decayCutoff * self.kT
+            return
      
     # endregion   
     
@@ -558,9 +558,9 @@ class Metal_Emitter(Emitter):
             kT (float): Energy from temperature (eV)
         """
         
-        self.workfunction = workfunction
+        self.workFunction = workfunction
         self.kT = kT
-        self.energy = self._Integration_Limits()
+        self.energy = self._calculateIntegrationLimits()
     
     def currentDensity(self):
         """Calculates the field emitted current density from metal surfaces
@@ -569,13 +569,14 @@ class Metal_Emitter(Emitter):
             float: Emitted current density being emitted from an infinitesimal flat surface area (electrons/area*time)
         """
         
-        args = tuple([self.workfunction] + [self.kT] + [self.barrier._minEnergyDepth] + [self.barrier._maxEnergyDepth] + [self.barrier._gamowDerivativeAtMinBarrierDepth] + [self.barrier._gamowDerivativeAtMaxEnergyDepth] + list(self.barrier._gamowPolynomialCoefficients))
+        args = tuple([self.workFunction, self.kT, self.barrier._minEnergyDepth, self.barrier._maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
+            self.barrier._gamowDerivativeAtMaxEnergyDepth] + list(self.barrier._gamowPolynomialCoefficients))
         try:
-            integ, abserr, info = ig.quad(integrator.intfun, self.energy[0], self.energy[-1], args, full_output = 1)
-            self.integ_points = info["alist"]
+            integral, abserr, info = ig.quad(integrator.intfun, self._lowEnergyLimit, self._highEnergyLimit, args)
         except(IntegrationWarning):
-            integ = 0.
-        return zs * self.kT * integ
+            integral = 0.
+            
+        return zs * self.kT * integral
     
     def Energy_Distribution_for_Metals(self):
         """Calculates the energy distribution of field emitted electrons from metals
@@ -585,7 +586,7 @@ class Metal_Emitter(Emitter):
             electron_number (array): Number of electrons being emitter with a certain energy (number)
         """
         
-        transmission_in_energy_z = self.barrier.transmissionCoefficient(self.workfunction - self.energy)
+        transmission_in_energy_z = self.barrier.transmissionCoefficient(self.workFunction - self.energy)
 
         cumulative_transmission = np.insert(np.cumsum((transmission_in_energy_z[1:]+transmission_in_energy_z[:-1])*(self.energy[1]-self.energy[0])/2), 0, 0)
         
@@ -600,7 +601,7 @@ class Metal_Emitter(Emitter):
             float: Resulted Nottigham from the emission of electrons from an infinitesinal area (J)
         """
 
-        args = tuple([self.workfunction] + [self.kT] + [self.barrier._minEnergyDepth] + [self.barrier._maxEnergyDepth] + [self.barrier._gamowDerivativeAtMinBarrierDepth] + [self.barrier._gamowDerivativeAtMaxEnergyDepth] + list(self.barrier._gamowPolynomialCoefficients))
+        args = tuple([self.workFunction] + [self.kT] + [self.barrier._minEnergyDepth] + [self.barrier._maxEnergyDepth] + [self.barrier.gamowDerivativeAtMinBarrierDepth] + [self.barrier._gamowDerivativeAtMaxEnergyDepth] + list(self.barrier._gamowPolynomialCoefficients))
         try:
             integ, abserr = ig.quad(integrator.intfun_Pn, self.energy[0], self.energy[-1], args, full_output = 0)
         except:
@@ -610,7 +611,7 @@ class Metal_Emitter(Emitter):
     
     def Current_Density_from_Metals_educational(self):
         """Calculates the field emitted current density from metals on a clear equation to code manner"""
-        integ = self.supply.logFermiDiracFunction(self.energy, self.kT) * self.Transmission_Coefficient(self.workfunction - self.energy)
+        integ = self.supply.logFermiDiracFunction(self.energy, self.kT) * self.Transmission_Coefficient(self.workFunction - self.energy)
         
         """if(plot):
             print("Whigh, Wlow = ", self.workfunction - self.energy[0], self.workfunction - self.energy[-1])
@@ -627,7 +628,7 @@ class Metal_Emitter(Emitter):
     
     def Energy_Distribution_of_Metals_educational(self):
         """Calculates the energy distribution of field emitted electrons from metals on a clear equation to code manner"""
-        transmission_in_energy_z = self.Transmission_Coefficient(self.workfunction - self.energy)
+        transmission_in_energy_z = self.Transmission_Coefficient(self.workFunction - self.energy)
 
         cumulative_transmission = np.copy(self.energy)
         cumulative_transmission[0] = 0
@@ -641,7 +642,7 @@ class Metal_Emitter(Emitter):
     
     def Nottingham_Heat_from_Metals_educational(self):
         """Calculates the Nottingham heat resulted from field emitted electrons from metals on a clear equation to code manner"""
-        transmission_in_energy_z = self.Transmission_Coefficient(self.workfunction - self.energy)
+        transmission_in_energy_z = self.Transmission_Coefficient(self.workFunction - self.energy)
 
         cumulative_transmission = np.copy(self.energy)
         cumulative_transmission[0] = 0
