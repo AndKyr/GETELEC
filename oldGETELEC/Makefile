@@ -34,7 +34,7 @@ endif
 .PHONY: tests varyingTemp ctest KXerror
 .SECONDARY: *.o #$(MODOBJ)
 
-all: $(DIRS) $(LIBSFULL) $(LIBSHARED) lib/libslatec.so python/libintegrator.so
+all: $(DIRS) $(LIBSFULL) $(LIBSHARED) lib/libslatec.so
 
 tests: varyingTemp ctest KXerror plots fitIV  
 
