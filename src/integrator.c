@@ -1,85 +1,87 @@
 #include <math.h>
 
-#define Energ xx[0]
-#define Work xx[1]
-#define kT xx[2]
-#define Wmin xx[3]
-#define Wmax xx[4]
-#define dGmin xx[5]
-#define dGmax xx[6]
-#define poly(i) (xx[n - i - 1])
-#define Npoly n - 7 //TODO: This works only for 4 polynomial coefficients!
+//precompiler defenitions to make life easier on referencing the dataArray
+#define energy dataArray[0]
+#define workFunction dataArray[1]
+#define kT dataArray[2]
+#define minimumEnergyDepth dataArray[3]
+#define maximumEnergyDepth dataArray[4]
+#define dGmin dataArray[5]
+#define dGmax dataArray[6]
+#define polynomial(i) (dataArray[dataArrayLength - i - 1])
+#define polynomialLength dataArrayLength - 7
 
-
-double lFD(double E, double kboltzT){
-    if (E > 20. * kboltzT)
-        return exp(-E / kboltzT);
-    else if(E < -20. * kboltzT)
-        return -E / kboltzT;
+/**
+ * Calculates the logarithm Fermi-Dirac distribution
+*/
+double logFermiDirac(double energyOverkT){
+    if (energyOverkT > 20.)
+        return exp(-energyOverkT);
+    else if(energyOverkT < -20.)
+        return -energyOverkT;
     else
-        return log(1. + exp(-E / kboltzT));
+        return log(1. + exp(-energyOverkT));
 }
 
-
-double Gfun(int n, double *xx){
-    double G = poly(0);
-    double W = Work - Energ;
-    double Wlim;
-
-
-    if (W > Wmax)
-        Wlim = Wmax;
-    else if (W < Wmin)
-        Wlim = Wmin;
-    else
-        Wlim = W;
+/**
+ * Calculates the gamow factor by evaluating the polynomial
+*/
+double gamowFunction(int dataArrayLength, double *dataArray){
+    double Gamow = polynomial(0);
+    double energyDepth = workFunction - energy;
     
-    double pow = Wlim;
-
-    for (int i = 1; i < Npoly; i++){
-        G += poly(i) * pow;
-        pow *= Wlim;
+    // set energyDepth within the limits of validity of the polynomial
+    if (energyDepth > maximumEnergyDepth)
+        energyDepth = maximumEnergyDepth;
+    else if (energyDepth < minimumEnergyDepth)
+        energyDepth = minimumEnergyDepth;
+    
+    //evaluate the polynomial
+    double power = energyDepth;
+    for (int i = 1; i < polynomialLength; i++){
+        Gamow += polynomial(i) * power;
+        power *= energyDepth;
     }
 
-    if (W > Wmax)
-        G += dGmax * (W - Wmax);
-    else if (W < Wmin)
-        G += dGmin * (W - Wmin);
+    //extrapolate in case it is out of bounds
+    if (energyDepth > maximumEnergyDepth)
+        Gamow += dGmax * (energyDepth - maximumEnergyDepth);
+    else if (energyDepth < minimumEnergyDepth)
+        Gamow += dGmin * (energyDepth - minimumEnergyDepth);
 
-    return G;
+    return Gamow;
 }
 
-double intfun(int n, double *xx){
+/**
+ * Evaluates the integrand of the current density (D(E) * lFD(E))
+*/
+double currentDensityPerNormalEnergy(int dataArrayLength, double *dataArray){
 
-    double G = Gfun(n, xx);
-    double D;
-
-    if (G > 40.)
-        D = exp(-G);
+    double Gamow = gamowFunction(dataArrayLength, dataArray);
+    
+    double transmissionCoefficient;
+    if (Gamow > 40.)
+        transmissionCoefficient = exp(-Gamow);
     else
-        D = 1. / (1. + exp(G));
+        transmissionCoefficient = 1. / (1. + exp(Gamow));
 
-    return lFD(Energ, kT) * D;
+    return logFermiDirac(energy / kT) * transmissionCoefficient;
 }
 
-double intfun_dbg(int n , double *xx){
-    return intfun(n, xx);
-}
+double nottinghamHeatInegrand(int dataArrayLength, double *dataArray){
 
-double intfun_Pn(int n, double *xx){
-
-    double G = Gfun(n, xx);
-    double D;
+    double Gamow = gamowFunction(dataArrayLength, dataArray);
+    double transmissionCoefficient;
     extern double dilog_() ;
 
-    if (G > 40.)
-        D = exp(-G);
+    if (Gamow > 40.)
+        transmissionCoefficient = exp(-Gamow);
     else
-        D = 1. / (1. + exp(G));
+        transmissionCoefficient = 1. / (1. + exp(Gamow));
 
-    double expo = -exp(-Energ / kT);
+    double exponent = -exp(-energy / kT);
 
-    return D * (lFD(Energ, kT) * Energ - kT * dilog_(&expo)) ;
+    return transmissionCoefficient * (logFermiDirac(energy / kT) * energy - kT * dilog_(&exponent)) ;
 }
 
 

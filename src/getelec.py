@@ -10,15 +10,7 @@ import matplotlib.pyplot as plt
 
 pythonpath,filename = os.path.split(os.path.realpath(__file__))
 
-integrator = ct.CDLL(pythonpath + '/libintegrator.so') #use absolute path
-integrator.intfun.restype = ct.c_double
-integrator.intfun.argtypes = (ct.c_int, ct.c_double)
-integrator.intfun_Pn.restype = ct.c_double
-integrator.intfun_Pn.argtypes = (ct.c_int, ct.c_double)
-integrator.Gfun.argtypes = (ct.c_int, ct.c_void_p)
-integrator.Gfun.restype = ct.c_double
-integrator.intfun_dbg.argtypes = (ct.c_int, ct.c_void_p)
-integrator.intfun_dbg.restype = ct.c_double
+
 
 BoltzmannConstant = 8.617333262e-5
 
@@ -498,6 +490,12 @@ class Supply:
 
 
 class Emitter:
+    fastIntegrator = ct.CDLL(pythonpath + '/libintegrator.so') #use absolute path
+    fastIntegrator.currentDensityPerNormalEnergy.restype = ct.c_double
+    fastIntegrator.currentDensityPerNormalEnergy.argtypes = (ct.c_int, ct.c_double)
+    fastIntegrator.nottinghamHeatInegrand.restype = ct.c_double
+    fastIntegrator.nottinghamHeatInegrand.argtypes = (ct.c_int, ct.c_double)
+    
     SommerfeldConstant:float = 1.618311e-4 
     # region initialization
     def __init__(self, barrier: Barrier, supply: Supply):
@@ -615,7 +613,7 @@ class MetalEmitter(Emitter):
         self.kT = kT
         self._calculateIntegrationLimits()
         
-    def currentDensityPerEnergy(self, energy, saveSpectrum = False):
+    def currentDensityPerNormalEnergy(self, energy, saveSpectrum = False):
         integrand = self.barrier.transmissionCoefficient(self.workFunction - energy) * self.supply.logFermiDiracFunction(energy, self.kT)
         if saveSpectrum:
             self._currentDensityPerEnergy.append(integrand)
@@ -632,7 +630,7 @@ class MetalEmitter(Emitter):
         args = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth, self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
             self.barrier._gamowDerivativeAtMaxEnergyDepth] + list(self.barrier._gamowPolynomialCoefficients))
         try:
-            integral, abserr, info = ig.quad(integrator.intfun, self._lowEnergyLimit, self._highEnergyLimit, args)
+            integral, abserr = ig.quad(self.fastIntegrator.currentDensityPerNormalEnergy, self._lowEnergyLimit, self._highEnergyLimit, args)
         except(IntegrationWarning):
             integral = 0.
             
@@ -648,12 +646,12 @@ class MetalEmitter(Emitter):
         try:
             if (self._highEnergyLimit == 0.):
                 breakPoints =  np.array([0., 0.5 * self._centerOfSpectrumEnergy, self._centerOfSpectrumEnergy, 0.75 * self._centerOfSpectrumEnergy + 0.25 * self._lowEnergyLimit ])
-                integral, abserr, infodict= ig.quad(self.currentDensityPerEnergy, self._lowEnergyLimit, self._highEnergyLimit, args=(saveSpectrum), full_output=True, points=breakPoints)
+                integral, abserr, infodict= ig.quad(self.currentDensityPerNormalEnergy, self._lowEnergyLimit, self._highEnergyLimit, args=(saveSpectrum), full_output=True, points=breakPoints)
                 remainder = self.kT * self.barrier.transmissionCoefficient(self.workFunction) * (0.8224670334241132 + 0.9015426773696957 * self._GamowDerivativeAtFermi)
                 integral += remainder 
                 
             else:
-                integral, abserr= ig.quad(self.currentDensityPerEnergy, self._lowEnergyLimit, self._highEnergyLimit, args=(saveSpectrum))
+                integral, abserr= ig.quad(self.currentDensityPerNormalEnergy, self._lowEnergyLimit, self._highEnergyLimit, args=(saveSpectrum))
                 
         except(IntegrationWarning):
             integral = 0.
@@ -726,7 +724,7 @@ class MetalEmitter(Emitter):
 
         args = tuple([self.workFunction] + [self.kT] + [self.barrier.minEnergyDepth] + [self.barrier.maxEnergyDepth] + [self.barrier.gamowDerivativeAtMinBarrierDepth] + [self.barrier._gamowDerivativeAtMaxEnergyDepth] + list(self.barrier._gamowPolynomialCoefficients))
         try:
-            integ, abserr = ig.quad(integrator.intfun_Pn, self.energy[0], self.energy[-1], args, full_output = 0)
+            integ, abserr = ig.quad(self.fastIntegrator.nottinghamHeatInegrand, self.energy[0], self.energy[-1], args, full_output = 0)
         except:
             return 0.
         
@@ -1263,9 +1261,8 @@ if (__name__ == "__main__"):
         kT *= 0.5
         em.setParameters(4., kT)
         Energy, electronCount = em.totalEnergyDistribution()
-        print("T = ", kT / BoltzmannConstant, "Npoints = ", len(Energy))
-        if (np.any(electronCount / max(electronCount)) < 1.e-10):
-            print("here")
+        print(em.currentDensityFast(), em.currentDensitySlow())
+
 
         plt.semilogy(Energy, electronCount, '.', markersize = 1.5)
     plt.grid()
