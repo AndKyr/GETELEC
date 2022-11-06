@@ -238,11 +238,11 @@ class Barrier(Interpolator):
     _data: array
     _energy: array
     energy_top_barrier: float
-    _maxEnergyDepth:float
+    maxEnergyDepth:float
     _gamowPolynomialCoefficients: array
     gamowDerivativeAtMinBarrierDepth: float
     _gamowDerivativeAtMaxEnergyDepth: float
-    _gamowDerivativePolynomialCoefficients: array
+    gamowDerivativePolynomial: array
     # endregion
     
     # region initialization
@@ -256,12 +256,12 @@ class Barrier(Interpolator):
         """Gets the parameters necessary to evaluate the Gamow factor. """
         
         data = self.interpolateForValues(self._field, self._radius, self._gamma)
-        self._minEnergyDepth = data[-2] #Wmin: This is the top of the barrier
-        self._maxEnergyDepth = data[-1] #Wmax: The maximum barrier depth for which the polynomial is valid
+        self.minEnergyDepth = data[-2] #Wmin: This is the top of the barrier
+        self.maxEnergyDepth = data[-1] #Wmax: The maximum barrier depth for which the polynomial is valid
         self._gamowPolynomialCoefficients = data[:self._Npolynomial] #Gpoly
-        self._gamowDerivativePolynomialCoefficients = np.polyder(self._gamowPolynomialCoefficients) #dG/dW polynomial coefficients
-        self.gamowDerivativeAtMinBarrierDepth = np.polyval(self._gamowDerivativePolynomialCoefficients, self._minEnergyDepth) #dG/dW @ Wmin
-        self._gamowDerivativeAtMaxEnergyDepth = np.polyval(self._gamowDerivativePolynomialCoefficients, self._maxEnergyDepth) #dG/dW @ Wmax
+        self.gamowDerivativePolynomial = np.polyder(self._gamowPolynomialCoefficients) #dG/dW polynomial coefficients
+        self.gamowDerivativeAtMinBarrierDepth = np.polyval(self.gamowDerivativePolynomial, self.minEnergyDepth) #dG/dW @ Wmin
+        self._gamowDerivativeAtMaxEnergyDepth = np.polyval(self.gamowDerivativePolynomial, self.maxEnergyDepth) #dG/dW @ Wmax
     
     def _extendFieldBounds(self, energyDepth : array) -> array:
         """
@@ -302,22 +302,22 @@ class Barrier(Interpolator):
         
         if (isinstance(energyDepth, np.ndarray)):
             self.Gamow = np.copy(energyDepth)
-            highEnergyDepth = energyDepth > self._maxEnergyDepth
-            lowEnergyDepth = energyDepth < self._minEnergyDepth
+            highEnergyDepth = energyDepth > self.maxEnergyDepth
+            lowEnergyDepth = energyDepth < self.minEnergyDepth
             self.Gamow = np.polyval(self._gamowPolynomialCoefficients, energyDepth)
-            self.Gamow[highEnergyDepth] = np.polyval(self._gamowPolynomialCoefficients, self._maxEnergyDepth) + \
-                self._gamowDerivativeAtMaxEnergyDepth * (energyDepth[highEnergyDepth] - self._maxEnergyDepth)
-            self.Gamow[lowEnergyDepth] = np.polyval(self._gamowPolynomialCoefficients, self._minEnergyDepth) + \
-                self.gamowDerivativeAtMinBarrierDepth * (energyDepth[lowEnergyDepth] - self._minEnergyDepth)
+            self.Gamow[highEnergyDepth] = np.polyval(self._gamowPolynomialCoefficients, self.maxEnergyDepth) + \
+                self._gamowDerivativeAtMaxEnergyDepth * (energyDepth[highEnergyDepth] - self.maxEnergyDepth)
+            self.Gamow[lowEnergyDepth] = np.polyval(self._gamowPolynomialCoefficients, self.minEnergyDepth) + \
+                self.gamowDerivativeAtMinBarrierDepth * (energyDepth[lowEnergyDepth] - self.minEnergyDepth)
         else:
-            if (energyDepth > self._minEnergyDepth and energyDepth < self._maxEnergyDepth):
+            if (energyDepth > self.minEnergyDepth and energyDepth < self.maxEnergyDepth):
                 self.Gamow = np.polyval(self._gamowPolynomialCoefficients, energyDepth)
-            elif(energyDepth > self._maxEnergyDepth):
-                self.Gamow = np.polyval(self._gamowPolynomialCoefficients, self._maxEnergyDepth) + \
-                    self._gamowDerivativeAtMaxEnergyDepth * (energyDepth - self._maxEnergyDepth)
+            elif(energyDepth > self.maxEnergyDepth):
+                self.Gamow = np.polyval(self._gamowPolynomialCoefficients, self.maxEnergyDepth) + \
+                    self._gamowDerivativeAtMaxEnergyDepth * (energyDepth - self.maxEnergyDepth)
             else:
-                self.Gamow = np.polyval(self._gamowPolynomialCoefficients, self._minEnergyDepth) + \
-                    self.gamowDerivativeAtMinBarrierDepth * (energyDepth - self._minEnergyDepth) 
+                self.Gamow = np.polyval(self._gamowPolynomialCoefficients, self.minEnergyDepth) + \
+                    self.gamowDerivativeAtMinBarrierDepth * (energyDepth - self.minEnergyDepth) 
 
         if (1./self._field < self._inverseFieldLimits[0] or 1./self._field > self._inverseFieldLimits[1]):
             self.Gamow += self._extendFieldBounds(energyDepth)
@@ -547,7 +547,9 @@ class MetalEmitter(Emitter):
     kT: float
     workFunction: float
     energy: array
-    _maxGamowDerivative: float
+    _centerOfSpectrumEnergy: float
+    _GamowDerivativeAtFermi: float
+    
     # endregion
     
     # region initialization
@@ -560,43 +562,47 @@ class MetalEmitter(Emitter):
         
         super().__init__(barrier, supply)
         
-    def _calculateIntegrationLimits(self, decayCutoff = 15.):
+    def _calculateIntegrationLimits(self, decayCutoff = 10.):
         """Finds the limits of integration, based on the regimes described by Jensen's GTF theory (see http://dx.doi.org/10.1063/1.4940721 for details)
             The limits are saved on self._highEnergyLimit and self._lowEnergyLimit
         """
         self.barrier._calculateParameters()
         #get the maximum (for energies above Fermi level) derivative of Gamow. It is capped at Wmax
-        self._maxGamowDerivative = np.polyval(self.barrier._gamowDerivativePolynomialCoefficients, min(self.workFunction, self.barrier._maxEnergyDepth))
+        self._GamowDerivativeAtFermi = np.polyval(self.barrier.gamowDerivativePolynomial, min(self.workFunction, self.barrier.maxEnergyDepth))
         
-        
-        if (self._maxGamowDerivative * self.kT < 1.05): #field regime. The spectrum is centered around Fermi Level
-            if (self._maxGamowDerivative * self.kT < 0.001):
-                self._highEnergyLimit = 0.
-            else:
-                self._highEnergyLimit = decayCutoff / (1. / self.kT - self._maxGamowDerivative) # decayCutoff divided by decay rate
-            self._lowEnergyLimit = - decayCutoff / self._maxGamowDerivative 
+        if (self._GamowDerivativeAtFermi * self.kT < 0.002): # Very low temperature and quad() misbehaves. set some help
+            self._highEnergyLimit = 0.
+            
+            #get the polynomial P for which the equation P(E)=0 finds the place where E * dG/dE = 1
+            polynomialForRoots = np.append(self.barrier.gamowDerivativePolynomial, -1.) #get W*dG/dW
+            polynomialForRoots[1:] -= self.workFunction * self.barrier.gamowDerivativePolynomial # add -phi * dG/dw
+            realroots = np.roots(polynomialForRoots)
+            self._centerOfSpectrumEnergy = self.workFunction - realroots[np.nonzero(np.logical_and(realroots > self.workFunction, realroots < self.barrier.maxEnergyDepth))][0]
+            self._lowEnergyLimit = self._centerOfSpectrumEnergy - decayCutoff / self._GamowDerivativeAtFermi 
+        elif (self._GamowDerivativeAtFermi * self.kT < 0.95): #field regime. The spectrum is centered around Fermi Level
+            self._highEnergyLimit = decayCutoff / (1. / self.kT - self._GamowDerivativeAtFermi) # decayCutoff divided by decay rate
+            self._lowEnergyLimit = - decayCutoff / self._GamowDerivativeAtFermi 
             return        
-        elif (self.barrier.gamowDerivativeAtMinBarrierDepth * self.kT > .95): #thermal regime. The spctrum is centered around the top of the barrier
-            centerOfSpectrum = self.workFunction - self.barrier._minEnergyDepth #top of the barrier (Um)
-            self._highEnergyLimit = centerOfSpectrum + decayCutoff * self.kT 
-            self._lowEnergyLimit = centerOfSpectrum - 10 / self.barrier.gamowDerivativeAtMinBarrierDepth  
+        elif (self.barrier.gamowDerivativeAtMinBarrierDepth * self.kT > 1.05): #thermal regime. The spctrum is centered around the top of the barrier
+            self._centerOfSpectrumEnergy = self.workFunction - self.barrier.minEnergyDepth #top of the barrier (Um)
+            self._highEnergyLimit = self._centerOfSpectrumEnergy + decayCutoff * self.kT 
+            self._lowEnergyLimit = self._centerOfSpectrumEnergy - 10 / self.barrier.gamowDerivativeAtMinBarrierDepth  
             return     
         else: #intermediate regime. The spectrum center is approximately where dG/dE = 1/kT
-            #get the polynomial P for which the equation P(E)=0 finds the place where dG/dE = 1/kT
-            polynomialForRoots = np.copy(self.barrier._gamowDerivativePolynomialCoefficients)
+            #get the polynomial P for which the equation P(w)=0 finds the place where dG/dw = 1/kT
+            polynomialForRoots = np.copy(self.barrier.gamowDerivativePolynomial)
             polynomialForRoots[-1] -= 1./self.kT
             
             #find meaningful root of the polynomial
             realroots = np.roots(polynomialForRoots)
-            centerOfSpectrum = realroots[np.nonzero(np.logical_and(realroots > self.barrier._minEnergyDepth, realroots < self.workFunction))][0]
+            # value of w where dG/dw = 1/kT
+            self._centerOfSpectrumEnergy = self.workFunction - realroots[np.nonzero(np.logical_and(realroots > self.barrier.minEnergyDepth, realroots < self.workFunction))][0]
             
-            self._highEnergyLimit = self.workFunction - centerOfSpectrum + decayCutoff * self.kT
-            self._lowEnergyLimit = self.workFunction - centerOfSpectrum - 2.5 * decayCutoff * self.kT
+            # find energy limits
+            self._highEnergyLimit =  self._centerOfSpectrumEnergy + decayCutoff * self.kT
+            self._lowEnergyLimit = self._centerOfSpectrumEnergy - 2.5 * decayCutoff * self.kT
             return
-     
-    # endregion   
-    
-    # region user methods 
+
     def setParameters(self, workfunction:float, kT:float):
         """Defines main emitter characteristics
 
@@ -623,7 +629,7 @@ class MetalEmitter(Emitter):
             float: Emitted current density being emitted from an infinitesimal flat surface area (electrons/area*time)
         """
         
-        args = tuple([self.workFunction, self.kT, self.barrier._minEnergyDepth, self.barrier._maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
+        args = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth, self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
             self.barrier._gamowDerivativeAtMaxEnergyDepth] + list(self.barrier._gamowPolynomialCoefficients))
         try:
             integral, abserr, info = ig.quad(integrator.intfun, self._lowEnergyLimit, self._highEnergyLimit, args)
@@ -640,7 +646,16 @@ class MetalEmitter(Emitter):
         """
         
         try:
-            integral, abserr= ig.quad(self.currentDensityPerEnergy, self._lowEnergyLimit, self._highEnergyLimit, args=(saveSpectrum))#, full_output=True)#, points=[-0.2, -.5])
+            if (self._highEnergyLimit == 0.):
+                breakPoints =  np.array([0., 0.5 * self._centerOfSpectrumEnergy, self._centerOfSpectrumEnergy, 0.75 * self._centerOfSpectrumEnergy + 0.25 * self._lowEnergyLimit ])
+                integral, abserr, infodict= ig.quad(self.currentDensityPerEnergy, self._lowEnergyLimit, self._highEnergyLimit, args=(saveSpectrum), full_output=True, points=breakPoints)
+                remainder = self.kT * self.barrier.transmissionCoefficient(self.workFunction) * (0.8224670334241132 + 0.9015426773696957 * self._GamowDerivativeAtFermi)
+                print("integral = ", integral, "remainder = ", remainder)
+                integral += remainder 
+                
+            else:
+                integral, abserr= ig.quad(self.currentDensityPerEnergy, self._lowEnergyLimit, self._highEnergyLimit, args=(saveSpectrum))
+                
         except(IntegrationWarning):
             integral = 0.
             
@@ -679,7 +694,7 @@ class MetalEmitter(Emitter):
         spectralPointArray = np.array(self._spectralEnergyPoints)
         sortIndices = np.argsort(spectralPointArray)
     
-        return  spectralPointArray[sortIndices], np.array(self._currentDensityPerEnergy)[sortIndices]
+        return  spectralPointArray[sortIndices], np.array(self._currentDensityPerEnergy)[sortIndices] * self.kT * self.SommerfeldConstant
   
     def Nottingham_Heat_from_Metals(self):
         """Calculates the Nottingham heat resulted from field emitted electrons from metals
@@ -688,7 +703,7 @@ class MetalEmitter(Emitter):
             float: Resulted Nottigham from the emission of electrons from an infinitesinal area (J)
         """
 
-        args = tuple([self.workFunction] + [self.kT] + [self.barrier._minEnergyDepth] + [self.barrier._maxEnergyDepth] + [self.barrier.gamowDerivativeAtMinBarrierDepth] + [self.barrier._gamowDerivativeAtMaxEnergyDepth] + list(self.barrier._gamowPolynomialCoefficients))
+        args = tuple([self.workFunction] + [self.kT] + [self.barrier.minEnergyDepth] + [self.barrier.maxEnergyDepth] + [self.barrier.gamowDerivativeAtMinBarrierDepth] + [self.barrier._gamowDerivativeAtMaxEnergyDepth] + list(self.barrier._gamowPolynomialCoefficients))
         try:
             integ, abserr = ig.quad(integrator.intfun_Pn, self.energy[0], self.energy[-1], args, full_output = 0)
         except:
@@ -1221,20 +1236,23 @@ if (__name__ == "__main__"):
     sup = Supply()
     em = MetalEmitter(bar, sup)
     
-    kT = BoltzmannConstant * 5.
+    kT = BoltzmannConstant * 300.
     # kT = 1.
-    for i in range(16):
-        kT *= 0.9
-        em.setParameters(4.5, kT)
+    for i in range(8):
+        kT *= 0.5
+        em.setParameters(4, kT)
 
         Energy, electronCount = em.normalEnergyDistribution()
-        print(kT / BoltzmannConstant, len(Energy))
+        print("T = ", kT / BoltzmannConstant, "Npoints = ", len(Energy))
+        if (np.any(electronCount / max(electronCount)) < 1.e-10):
+            print("here")
 
     # em.setParameters(4.5, kT)
     # Energy, electronCount = em.normalEnergyDistribution()
     # print(kT, len(Energy))
-    plt.plot(Energy, electronCount, '.')
+        plt.plot(Energy, electronCount, '.', markersize = 1.5)
     plt.grid()
+    # plt.xlim(-2, 4)
     plt.savefig("spectrum.png")
 
 
