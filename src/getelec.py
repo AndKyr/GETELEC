@@ -386,10 +386,6 @@ class Supply:
     #the limit for which different approximations of the Fermi Dirac functions apply
     exponentLimit =  - 0.5 * np.log(np.finfo(float).eps)
     
-    
-    
-    # endregion
-
     # region inisialisation
     def __init__(self):
         pass
@@ -492,6 +488,9 @@ class Emitter:
     fastIntegrator.nottinghamHeatInegrand.restype = ct.c_double
     fastIntegrator.nottinghamHeatInegrand.argtypes = (ct.c_int, ct.c_double)
     
+    barrier: Barrier
+    supply: Supply
+    
     SommerfeldConstant:float = 1.618311e-4 
     # region initialization
     def __init__(self, barrier: Barrier, supply: Supply):
@@ -506,43 +505,20 @@ class Emitter:
 
    
 class MetalEmitter(Emitter):
-    """This class will be composed along with Emitter(Tabulator) in order to create a metal field emitter. Then different functions will be executed to 
-    calculate the density, nottingham heat and energy density of the electrons being emitted.
-    
-    1) __init__()
-        Initialises the function by adding the atributes of a "tabulated" barrier emitter to metals
-        
-    2) Define_Emitter_Parameters()
-        Takes the two relevant material properties (workfucntion and temperature) and makes them available for the rest of the class
-        
-    3) _Integration_Limits()
-        Finds the limits of integration
-    
-    4) Current_Density()
-        Calculates the field emitted current density from metal surfaces
-     
-    5) Energy_Distribution()
-        Calculates the energy distribution of field emitted electrons from metals
-       
-    6) Nottingham_Heat()
-        Calculates the Nottingham heat resulted from field emitted electrons from metals
-        
-    7) Current_Density_educational()
-        Calculates the field emitted current density from metals on a clear equation to code manner
-        
-    8) Energy_Distribution_educational()
-        Calculates the energy distribution of field emitted electrons from metals on a clear equation to code manner
-        
-    9) Nottingham_Heat_educational()
-        Calculates the Nottingham heat resulted from field emitted electrons from metals on a clear equation to code manner
+    """
+    Implements calculations for electron emission from metal emitters. 
     """
     
     # region field declarations
     kT: float
     workFunction: float
-    energy: array
     _centerOfSpectrumEnergy: float
     _GamowDerivativeAtFermi: float
+    _highEnergyLimit: float
+    _lowEnergyLimit: float
+    _centerOfSpectrumEnergy: float
+    _GamowDerivativeAtFermi: float
+    _spectralEnergyPoints: list
     
     # endregion
     
@@ -555,7 +531,8 @@ class MetalEmitter(Emitter):
         """
         
         super().__init__(barrier, supply)
-        
+    
+    # endregion
     def _calculateIntegrationLimits(self, decayCutoff = 10.):
         """Finds the limits of integration, based on the regimes described by Jensen's GTF theory (see http://dx.doi.org/10.1063/1.4940721 for details)
             The limits are saved on self._highEnergyLimit and self._lowEnergyLimit
@@ -654,22 +631,6 @@ class MetalEmitter(Emitter):
             
         return self.SommerfeldConstant * self.kT * integral
     
-    def Energy_Distribution_for_Metals(self):
-        """Calculates the energy distribution of field emitted electrons from metals
-
-        Returns:
-            energy (array): Energy space for which the electron emission has been evalated (eV)
-            electron_number (array): Number of electrons being emitter with a certain energy (number)
-        """
-        
-        transmission_in_energy_z = self.barrier.transmissionCoefficient(self.workFunction - self.energy)
-
-        cumulative_transmission = np.insert(np.cumsum((transmission_in_energy_z[1:]+transmission_in_energy_z[:-1])*(self.energy[1]-self.energy[0])/2), 0, 0)
-        
-        electron_number = self.supply.FermiDiracFunction(self.energy, self.kT) * cumulative_transmission
-
-        return  self.energy, electron_number
-    
     def normalEnergyDistribution(self):
         """Calculates the perpendicular energy distribution of field emitted electrons from metals
 
@@ -680,7 +641,7 @@ class MetalEmitter(Emitter):
         self._spectralEnergyPoints = []
         self._currentDensityPerEnergy = []
         
-        currentDensity = self.currentDensitySlow(saveSpectrum=True)
+        self.currentDensitySlow(saveSpectrum=True)
         
         spectralPointArray = np.array(self._spectralEnergyPoints)
         sortIndices = np.argsort(spectralPointArray)
@@ -688,19 +649,32 @@ class MetalEmitter(Emitter):
         return  spectralPointArray[sortIndices], np.array(self._currentDensityPerEnergy)[sortIndices] * self.kT * self.SommerfeldConstant
     
     def TEDdifferentialSystem(self, energy, integrand):
+        """Differential equation system to be solved to get the total energy distribution. See Andreas' notes for details.
+        Solves the differential equation dy/dE = fFD(E) * D(E) - y(E) * exp(E/kT) / kT
+        
+        Parameters:
+            energy: absissa of the differential equation (independent variable t)
+            integrand: value of the integrand (dependent variable y)
+        Returns:
+            the derivative of the integrand as a function of the energy and the value of the integrand
+        """
         return self.supply.FermiDiracFunction(energy, self.kT) * \
             (self.barrier.transmissionCoefficient(self.workFunction - energy) - integrand * np.exp(energy/self.kT) / self.kT)
             
     def TEDJacobian(self, energy, integrand):
+        """Evaluates the Jacobian of the differential equation system of TEDdifferentialSystem"""
         return  np.array([[-self.supply.FermiDiracFunction(energy, self.kT) * np.exp(energy/self.kT) / self.kT]])
     
-    def totalEnergyDistribution(self, refinementLevel:int = 2):
+    def totalEnergyDistribution(self, refinementLevel:int = 3):
         """Calculates the total energy distribution of field emitted electrons from metals. 
-        The methodology
+        The methodology is based on solving a differential equation. See Andreas' notes for details
+        
+        Parameters: 
+            refinementLevel (int): Level by which the output energy points will be refined
         
         Returns:
             energy (array): Energy space for which the electron emission has been evalated (eV)
-            electron_number (array): Number of electrons being emitter with a certain energy (number)
+            electronNumber (array): Number of electrons being emitted with a certain total energy (number)
         """
         solution = ig.solve_ivp(self.TEDdifferentialSystem, [self._lowEnergyLimit, self._highEnergyLimit], \
             [1.e-8], method='LSODA', dense_output=True, rtol = 1.e-8, jac=self.TEDJacobian)
@@ -710,66 +684,49 @@ class MetalEmitter(Emitter):
         energypoints = np.sort(energypoints)
         return energypoints, solution.sol(energypoints)[0]
         
-  
-    def Nottingham_Heat_from_Metals(self):
-        """Calculates the Nottingham heat resulted from field emitted electrons from metals
+    def nottinghamHeatFast(self):
+        """Calculates the Nottingham heat resulted from field emitted electrons from metals. Fast implementation
+        utilizing low level C functions.
 
         Returns:
             float: Resulted Nottigham from the emission of electrons from an infinitesinal area (J)
         """
 
-        args = tuple([self.workFunction] + [self.kT] + [self.barrier.minEnergyDepth] + [self.barrier.maxEnergyDepth] + [self.barrier.gamowDerivativeAtMinBarrierDepth] + [self.barrier._gamowDerivativeAtMaxEnergyDepth] + list(self.barrier._gamowPolynomialCoefficients))
+        args = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth, self.barrier.maxEnergyDepth, \
+            self.barrier.gamowDerivativeAtMinBarrierDepth, self.barrier._gamowDerivativeAtMaxEnergyDepth] + list(self.barrier._gamowPolynomialCoefficients))
         try:
-            integ, abserr = ig.quad(self.fastIntegrator.nottinghamHeatInegrand, self.energy[0], self.energy[-1], args, full_output = 0)
+            integral, abserr = ig.quad(self.fastIntegrator.nottinghamHeatInegrand, self._lowEnergyLimit, self._highEnergyLimit, args, full_output = False)
         except:
             return 0.
         
-        return -self.SommerfeldConstant * self.kT * integ    
+        return -self.SommerfeldConstant * self.kT * integral    
     
-    def Current_Density_from_Metals_educational(self):
-        """Calculates the field emitted current density from metals on a clear equation to code manner"""
-        integ = self.supply.logFermiDiracFunction(self.energy, self.kT) * self.Transmission_Coefficient(self.workFunction - self.energy)
+    def currentDensitySimple(self, Npoints = 256):
+        """Calculates the field emitted current density from metals using a simple trapezoidal rule. Should be slow
         
-        """if(plot):
-            print("Whigh, Wlow = ", self.workfunction - self.energy[0], self.workfunction - self.energy[-1])
-            print ("Wmin, Wmax, Work = ", self.barrier.energy_bottom_barrier, self.barrier._energy_top_barrier, self.workfunction)
-            print("maxbeta, minbeta, dGmax, beta_T: ", self._maxbeta, self.barrier.gammow_derivative_bottom_barrier, self.barrier.gammow_derivative_top_barrier, 1/ self.kT)
-            plt.plot(self.energy,integ)
-            ax = plt.gca()
-            ax2 = ax.twinx()
-            ax2.plot(self.energy,self.Gamow(self.workfunction - self.energy), 'r-')
-            ax.grid()
-            plt.savefig("Jcur.png")
-            # plt.show()"""
-        return self.SommerfeldConstant * self.kT * np.sum(integ) * (self.energy[1] - self.energy[0])
+        Paramters:
+            Npoints(int): Number of points to be used for the integration. Default 256
+        Returns:
+            Calculated current density (A/nm^2)
+        """
+        energyPoints = np.linspace(self._lowEnergyLimit, self._highEnergyLimit, Npoints)
+        integrand = self.supply.logFermiDiracFunction(energyPoints, self.kT) * self.barrier.transmissionCoefficient(self.workFunction - energyPoints)
+        return self.SommerfeldConstant * self.kT * np.trapz(integrand, energyPoints)
     
-    def Energy_Distribution_of_Metals_educational(self):
-        """Calculates the energy distribution of field emitted electrons from metals on a clear equation to code manner"""
-        transmission_in_energy_z = self.Transmission_Coefficient(self.workFunction - self.energy)
-
-        cumulative_transmission = np.copy(self.energy)
-        cumulative_transmission[0] = 0
-
-        for i in range(len(self.energy)-1):
-            cumulative_transmission[i+1] = cumulative_transmission[i]+((self.energy[1]-self.energy[0])*(transmission_in_energy_z[i+1]+transmission_in_energy_z[i])/2)
+    def nottinghamHeatSimple(self, Npoints = 256):
+        """Calculates the Nottingham heat resulted from field emitted electrons from metals with simple functions
         
-        energy_distribution = self.supply.FermiDiracFunction(self.energy, self.kT) * cumulative_transmission
-
-        return  self.energy, energy_distribution
-    
-    def Nottingham_Heat_from_Metals_educational(self):
-        """Calculates the Nottingham heat resulted from field emitted electrons from metals on a clear equation to code manner"""
-        transmission_in_energy_z = self.Transmission_Coefficient(self.workFunction - self.energy)
-
-        cumulative_transmission = np.copy(self.energy)
-        cumulative_transmission[0] = 0
-
-        for i in range(len(self.energy)-1):
-            cumulative_transmission[i+1] = cumulative_transmission[i]+((self.energy[1]-self.energy[0])*(transmission_in_energy_z[i+1]+transmission_in_energy_z[i])/2)
+        Paramters:
+            Npoints(int): Number of points to be used for the integration. Default 256
+        Returns:
+            Calculated current density (A/nm^2)
+        """
         
-        heat_components = self.supply.FermiDiracFunction(self.energy, self.kT) * cumulative_transmission * self.energy
-        
-        return -self.SommerfeldConstant * np.sum(heat_components) * (self.energy[1] - self.energy[0])
+        energyPoints = np.linspace(self._lowEnergyLimit, self._highEnergyLimit, Npoints)
+        transmissionCoefficient = self.barrier.transmissionCoefficient(self.workFunction - energyPoints)
+        integralOfTransmissionCoefficient = np.cumsum(transmissionCoefficient) * (energyPoints[1] - energyPoints[0])
+        integral = np.trapz(integralOfTransmissionCoefficient * self.supply.FermiDiracFunction(energyPoints, self.kT) * energyPoints, energyPoints)
+        return -self.SommerfeldConstant * integral
     #endregion
     
 class Semiconductor_Emitter(Emitter):
@@ -1113,7 +1070,7 @@ def heat_metal_emitter(Field:array, Radius:array, Gamma:array, Workfunction:arra
     
         metal_emitter.setParameters(Workfunction[i], kT[i])
     
-        nh_metal[i] = metal_emitter.Nottingham_Heat_from_Metals()
+        nh_metal[i] = metal_emitter.nottinghamHeatFast()
 
     return nh_metal
 
@@ -1132,7 +1089,7 @@ def heat_metal_emitter2(Field:array, Radius:array, Gamma:array, Workfunction:arr
     
         metal_emitter.setParameters(Workfunction[i], kT[i])
     
-        nh_metal[i] = metal_emitter.Nottingham_Heat_from_Metals_educational()
+        nh_metal[i] = metal_emitter.nottinghamHeatSimple()
 
     return nh_metal
 
@@ -1229,40 +1186,24 @@ def heat_semiconductor_emitter(Field:array, Radius:array, Gamma:array ,Ec:array,
 
 
 
-if (__name__ == "__main__"):
-    # print("test for normal barrier:")
-    # bar = Barrier(5, 10, 10., tabulationFolder="tabulated/2D_512x256")
-    # print("Gamow(E=4.5) = ", bar.calculateGamow(4.5))
-    # bar.plotGamow(0., 10., show = True)
-
-    # print("test for for field over the tabulation limits")
-    # bar = Barrier(25, 10, 10., preloadedGamowTable=bar._gamowTable, preloadedLimits=bar._limits)
-    # print("Gamow(E=4.5) = ", bar.calculateGamow(4.5))
-    # bar.plotGamow(0., 10., show = True)
-
-    # print("test for for field below the tabulation limits")
-    # bar = Barrier(0.1, 10, 10., preloadedGamowTable=bar._gamowTable, preloadedLimits=bar._limits)
-    # print("Gamow(E=4.5) = ", bar.calculateGamow(4.5))
-    # bar.plotGamow(0., 10., show = True)
-
-    # print(current_metal_emitter(np.array([5., 6.]), np.array([10.,12.]), np.array([10.,10.]), np.array([4.5, 4.5]), np.array([396., 159])))
+if (__name__ == "__main__"): #some testing operations
     
     bar = Barrier(5, 10, 10., tabulationFolder="tabulated")
     sup = Supply()
     em = MetalEmitter(bar, sup)
-    
-    kT = BoltzmannConstant * 3000.
-    # kT = 1.
+    kT = BoltzmannConstant * 1000.
     for i in range(8):
-        kT *= 0.5
+        kT *= 0.8
         em.setParameters(4., kT)
+        print("running for temperature = ", kT / BoltzmannConstant)
         Energy, electronCount = em.totalEnergyDistribution()
-        print(em.currentDensityFast(), em.currentDensitySlow())
+        currentFromTED = em.SommerfeldConstant * np.trapz(electronCount, Energy)
+        nottinghamFromTED = -em.SommerfeldConstant * np.trapz(electronCount * Energy, Energy)
+        print("Current density from three methods:", em.currentDensityFast(), em.currentDensitySlow(), currentFromTED)
+        print("Nottingham Heat from 3 methods: ", em.nottinghamHeatFast(), em.nottinghamHeatSimple(), nottinghamFromTED)
 
-
-        plt.semilogy(Energy, electronCount, '.', markersize = 1.5)
+        plt.plot(Energy, electronCount, markersize = 1.5)
     plt.grid()
-    # plt.xlim(-2, 4)
     plt.savefig("spectrum.png")
 
 
