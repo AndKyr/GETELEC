@@ -15,10 +15,11 @@
  * Calculates the logarithm Fermi-Dirac distribution
 */
 double logFermiDirac(double energyOverkT){
+
     if (energyOverkT > 20.)
         return exp(-energyOverkT);
     else if(energyOverkT < -20.)
-        return -energyOverkT;
+        return -energyOverkT + exp(energyOverkT);
     else
         return log(1. + exp(-energyOverkT));
 }

@@ -1,4 +1,3 @@
-
 from array import array
 import ctypes as ct
 import numpy as np
@@ -10,10 +9,7 @@ import matplotlib.pyplot as plt
 
 pythonpath,filename = os.path.split(os.path.realpath(__file__))
 
-
-
 BoltzmannConstant = 8.617333262e-5
-
 
 class Interpolator:
     """
