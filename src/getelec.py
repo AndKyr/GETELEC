@@ -650,7 +650,6 @@ class MetalEmitter(Emitter):
                 breakPoints =  np.array([0., 0.5 * self._centerOfSpectrumEnergy, self._centerOfSpectrumEnergy, 0.75 * self._centerOfSpectrumEnergy + 0.25 * self._lowEnergyLimit ])
                 integral, abserr, infodict= ig.quad(self.currentDensityPerEnergy, self._lowEnergyLimit, self._highEnergyLimit, args=(saveSpectrum), full_output=True, points=breakPoints)
                 remainder = self.kT * self.barrier.transmissionCoefficient(self.workFunction) * (0.8224670334241132 + 0.9015426773696957 * self._GamowDerivativeAtFermi)
-                print("integral = ", integral, "remainder = ", remainder)
                 integral += remainder 
                 
             else:
@@ -678,7 +677,7 @@ class MetalEmitter(Emitter):
         return  self.energy, electron_number
     
     def normalEnergyDistribution(self):
-        """Calculates the energy distribution of field emitted electrons from metals
+        """Calculates the perpendicular energy distribution of field emitted electrons from metals
 
         Returns:
             energy (array): Energy space for which the electron emission has been evalated (eV)
@@ -689,12 +688,34 @@ class MetalEmitter(Emitter):
         
         currentDensity = self.currentDensitySlow(saveSpectrum=True)
         
-        print(currentDensity, self._highEnergyLimit)
-        
         spectralPointArray = np.array(self._spectralEnergyPoints)
         sortIndices = np.argsort(spectralPointArray)
     
         return  spectralPointArray[sortIndices], np.array(self._currentDensityPerEnergy)[sortIndices] * self.kT * self.SommerfeldConstant
+    
+    def TEDdifferentialSystem(self, energy, integrand):
+        return self.supply.FermiDiracFunction(energy, self.kT) * \
+            (self.barrier.transmissionCoefficient(self.workFunction - energy) - integrand * np.exp(energy/self.kT) / self.kT)
+            
+    def TEDJacobian(self, energy, integrand):
+        return  np.array([[-self.supply.FermiDiracFunction(energy, self.kT) * np.exp(energy/self.kT) / self.kT]])
+    
+    def totalEnergyDistribution(self, refinementLevel:int = 2):
+        """Calculates the total energy distribution of field emitted electrons from metals. 
+        The methodology
+        
+        Returns:
+            energy (array): Energy space for which the electron emission has been evalated (eV)
+            electron_number (array): Number of electrons being emitter with a certain energy (number)
+        """
+        solution = ig.solve_ivp(self.TEDdifferentialSystem, [self._lowEnergyLimit, self._highEnergyLimit], \
+            [1.e-8], method='LSODA', dense_output=True, rtol = 1.e-8, jac=self.TEDJacobian)
+        energypoints = solution.t
+        for i in range(refinementLevel):
+            energypoints = np.concatenate((energypoints, 0.5 * (solution.t[1:] + solution.t[:-1])))
+        energypoints = np.sort(energypoints)
+        return energypoints, solution.sol(energypoints)[0]
+        
   
     def Nottingham_Heat_from_Metals(self):
         """Calculates the Nottingham heat resulted from field emitted electrons from metals
@@ -1236,21 +1257,17 @@ if (__name__ == "__main__"):
     sup = Supply()
     em = MetalEmitter(bar, sup)
     
-    kT = BoltzmannConstant * 300.
+    kT = BoltzmannConstant * 3000.
     # kT = 1.
     for i in range(8):
         kT *= 0.5
-        em.setParameters(4, kT)
-
-        Energy, electronCount = em.normalEnergyDistribution()
+        em.setParameters(4., kT)
+        Energy, electronCount = em.totalEnergyDistribution()
         print("T = ", kT / BoltzmannConstant, "Npoints = ", len(Energy))
         if (np.any(electronCount / max(electronCount)) < 1.e-10):
             print("here")
 
-    # em.setParameters(4.5, kT)
-    # Energy, electronCount = em.normalEnergyDistribution()
-    # print(kT, len(Energy))
-        plt.plot(Energy, electronCount, '.', markersize = 1.5)
+        plt.semilogy(Energy, electronCount, '.', markersize = 1.5)
     plt.grid()
     # plt.xlim(-2, 4)
     plt.savefig("spectrum.png")
