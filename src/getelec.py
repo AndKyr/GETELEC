@@ -548,10 +548,14 @@ class MetalEmitter(Emitter):
             polynomialForRoots = np.append(self.barrier.gamowDerivativePolynomial, -1.) #get W*dG/dW
             polynomialForRoots[1:] -= self.workFunction * self.barrier.gamowDerivativePolynomial # add -phi * dG/dw
             realroots = np.roots(polynomialForRoots)
-            self._centerOfSpectrumEnergy = self.workFunction - realroots[np.nonzero(np.logical_and(realroots > self.workFunction, realroots < self.barrier.maxEnergyDepth))][0]
+            self._centerOfSpectrumEnergy = self.workFunction - \
+                realroots[np.nonzero(np.logical_and(realroots > self.workFunction, realroots < self.barrier.maxEnergyDepth))][0]
             self._lowEnergyLimit = self._centerOfSpectrumEnergy - decayCutoff / self._GamowDerivativeAtFermi 
         elif (self._GamowDerivativeAtFermi * self.kT < 1.): #field regime. The spectrum is centered around Fermi Level
-            self._highEnergyLimit = decayCutoff / (1. / self.kT - self._GamowDerivativeAtFermi) # decayCutoff divided by decay rate
+            if (self._GamowDerivativeAtFermi * self.kT < 0.95):
+                self._highEnergyLimit = decayCutoff / (1. / self.kT - self._GamowDerivativeAtFermi) # decayCutoff divided by decay rate
+            else:
+                self._highEnergyLimit = 2 * decayCutoff * self.kT # decayCutoff divided by decay rate
             self._lowEnergyLimit = - decayCutoff / self._GamowDerivativeAtFermi 
             return        
         elif (self.barrier.gamowDerivativeAtMinBarrierDepth * self.kT > 1.): #thermal regime. The spctrum is centered around the top of the barrier
@@ -568,7 +572,8 @@ class MetalEmitter(Emitter):
             realroots = np.roots(polynomialForRoots)
             # value of w where dG/dw = 1/kT
             try:
-                self._centerOfSpectrumEnergy = self.workFunction - realroots[np.nonzero(np.logical_and(realroots > self.barrier.minEnergyDepth, realroots < self.workFunction))][0]
+                self._centerOfSpectrumEnergy = self.workFunction - \
+                    realroots[np.nonzero(np.logical_and(realroots > self.barrier.minEnergyDepth, realroots < self.workFunction))][0]
             except(IndexError):
                 print("here")
             # find energy limits
@@ -626,7 +631,7 @@ class MetalEmitter(Emitter):
                 integral += remainder 
                 
             else:
-                integral, abserr= ig.quad(self.currentDensityPerNormalEnergy, self._lowEnergyLimit, self._highEnergyLimit, args=(saveSpectrum))
+                integral, abserr = ig.quad(self.currentDensityPerNormalEnergy, self._lowEnergyLimit, self._highEnergyLimit, args=(saveSpectrum))
                 
         except(IntegrationWarning):
             integral = 0.
@@ -889,7 +894,7 @@ class Semiconductor_Emitter(Emitter):
         
         jv_integ = self.supply.logFermiDiracFunction(self._energy_valence_band, self._kT) * (self.barrier.transmissionCoefficient(-self._Ef-self._energy_valence_band) - (b*self.barrier.transmissionCoefficient(-self._Ef-b*self._energy_valence_band+a*self._Evhigh)))
         
-        return self.SommerfeldConstant * self._kT * ((np.sum(jv_integ) * (self._energy_valence_band[1]-self._energy_valence_band[0])))
+        return self.SommerfeldConstant * self._kT * np.trapz(jv_integ, self._energy_valence_band)
     
     def Distributed_Current_Density_from_Semiconductors(self):
         """Calculates the current density being emitter from a semiconducting flat surface by calculating the emitted electron
@@ -1049,9 +1054,7 @@ def current_metal_emitter(Field:array, Radius:array, Gamma:array, Workfunction:a
     j_metal = np.copy(Field)
     
     for i in range(len(Field)):
-
         metal_emitter.barrier.setParameters(Field[i], Radius[i], Gamma[i])
-        metal_emitter.barrier._calculateParameters()
         metal_emitter.setParameters(Workfunction[i], kT[i])
         j_metal[i] = metal_emitter.currentDensityFast()
         
@@ -1207,7 +1210,7 @@ if (__name__ == "__main__"): #some testing operations
     #     plt.plot(Energy, electronCount, markersize = 1.5)
     # plt.grid()
     # plt.savefig("spectrum.png")
-    Ntest = 10000
+    Ntest = 100000
     fields = np.random.randn(Ntest) + 5.
     Radii = 2 * np.random.randn(Ntest) + 5.
     Temperatures = 100 * np.random.randn(Ntest) + 900.
@@ -1224,23 +1227,23 @@ if (__name__ == "__main__"): #some testing operations
         Jcur[i] = em.currentDensityFast()
 
     t1 = time.time()
+    timePerCalculation = (t1 - t0) / Ntest
+    print("time per current calculation = %e sec"%timePerCalculation)
 
-    print("elapsed time metal = ", t1 - t0)
-
-    JcurSemi = np.copy(Jcur)
-    em = Semiconductor_Emitter(bar, sup)
-    t0 = time.time()
+    # JcurSemi = np.copy(Jcur)
+    # em = Semiconductor_Emitter(bar, sup)
+    # t0 = time.time()
     
-    for i in range(Ntest):
-        bar.setParameters(field=fields[i], radius=Radii[i])
-        em.Define_Semiconductor_Emitter_Parameters(Ec=8., Ef= 4., Eg=1.2, kT= BoltzmannConstant * Temperatures[i], m=1., me=1., mp=1. )
-        JcurSemi[i] = em.Current_from_Conduction_Band()
-        if (abs(Jcur[i]/JcurSemi[i] - 1.) > 0.1):
-            print(fields[i], Radii[i], Temperatures[i], Jcur[i], JcurSemi[i])
+    # for i in range(Ntest):
+    #     bar.setParameters(field=fields[i], radius=Radii[i])
+    #     em.Define_Semiconductor_Emitter_Parameters(Ec=8., Ef= 4., Eg=1.2, kT= BoltzmannConstant * Temperatures[i], m=1., me=1., mp=1. )
+    #     JcurSemi[i] = em.Current_from_Conduction_Band()
+    #     if (abs(Jcur[i]/JcurSemi[i] - 1.) > 0.1):
+    #         print(fields[i], Radii[i], Temperatures[i], Jcur[i], JcurSemi[i])
 
-    print(np.mean(Jcur/JcurSemi), np.std(Jcur/JcurSemi))
-    t1 = time.time()
-    print ("elapsed time semiconductor = ", t1 - t0)
+    # print(np.mean(Jcur/JcurSemi), np.std(Jcur/JcurSemi))
+    # t1 = time.time()
+    # print ("elapsed time semiconductor = ", t1 - t0)
 
 
 
