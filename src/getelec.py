@@ -6,6 +6,7 @@ import scipy.integrate as ig
 import os
 import scipy.ndimage
 import matplotlib.pyplot as plt
+import scipy.optimize as opt
 
 pythonpath,filename = os.path.split(os.path.realpath(__file__))
 
@@ -493,7 +494,7 @@ class Emitter:
     
     SommerfeldConstant:float = 1.618311e-4 
     # region initialization
-    def __init__(self, barrier: Barrier, supply: Supply):
+    def __init__(self, barrier:Barrier = Barrier(), supply:Supply = Supply()):
         """Initialises the class by inheritating Tabulator and setting it up as a private field to be used by Emitter
 
         Args:
@@ -523,7 +524,7 @@ class MetalEmitter(Emitter):
     # endregion
     
     # region initialization
-    def __init__(self, barrier:Barrier, supply:Supply):
+    def __init__(self, barrier:Barrier = Barrier(), supply:Supply = Supply()):
         """Initialises the function by adding the atributes of a "tabulated" barrier emitter to metals
 
         Args:
@@ -540,8 +541,10 @@ class MetalEmitter(Emitter):
         self.barrier._calculateParameters()
         #get the maximum (for energies above Fermi level) derivative of Gamow. It is capped at Wmax
         self._GamowDerivativeAtFermi = np.polyval(self.barrier.gamowDerivativePolynomial, min(self.workFunction, self.barrier.maxEnergyDepth))
+
+        determiningParameter = self._GamowDerivativeAtFermi * self.kT
         
-        if (self._GamowDerivativeAtFermi * self.kT < 0.002): # Very low temperature and quad() misbehaves. set some help
+        if (determiningParameter < 0.002): # Very low temperature and quad() misbehaves. set some help
             self._highEnergyLimit = 0.
             
             #get the polynomial P for which the equation P(E)=0 finds the place where E * dG/dE = 1
@@ -551,18 +554,16 @@ class MetalEmitter(Emitter):
             self._centerOfSpectrumEnergy = self.workFunction - \
                 realroots[np.nonzero(np.logical_and(realroots > self.workFunction, realroots < self.barrier.maxEnergyDepth))][0]
             self._lowEnergyLimit = self._centerOfSpectrumEnergy - decayCutoff / self._GamowDerivativeAtFermi 
-        elif (self._GamowDerivativeAtFermi * self.kT < 1.): #field regime. The spectrum is centered around Fermi Level
-            if (self._GamowDerivativeAtFermi * self.kT < 0.95):
+        elif (determiningParameter < 1.): #field regime. The spectrum is centered around Fermi Level
+            if (determiningParameter < 0.95):
                 self._highEnergyLimit = decayCutoff / (1. / self.kT - self._GamowDerivativeAtFermi) # decayCutoff divided by decay rate
             else:
                 self._highEnergyLimit = 2 * decayCutoff * self.kT # decayCutoff divided by decay rate
-            self._lowEnergyLimit = - decayCutoff / self._GamowDerivativeAtFermi 
-            return        
+            self._lowEnergyLimit = - decayCutoff / self._GamowDerivativeAtFermi        
         elif (self.barrier.gamowDerivativeAtMinBarrierDepth * self.kT > 1.): #thermal regime. The spctrum is centered around the top of the barrier
             self._centerOfSpectrumEnergy = self.workFunction - self.barrier.minEnergyDepth #top of the barrier (Um)
             self._highEnergyLimit = self._centerOfSpectrumEnergy + decayCutoff * self.kT 
-            self._lowEnergyLimit = self._centerOfSpectrumEnergy - 10 / self.barrier.gamowDerivativeAtMinBarrierDepth  
-            return     
+            self._lowEnergyLimit = self._centerOfSpectrumEnergy - 10 / self.barrier.gamowDerivativeAtMinBarrierDepth     
         else: #intermediate regime. The spectrum center is approximately where dG/dE = 1/kT
             #get the polynomial P for which the equation P(w)=0 finds the place where dG/dw = 1/kT
             polynomialForRoots = np.copy(self.barrier.gamowDerivativePolynomial)
@@ -1044,22 +1045,91 @@ class Semiconductor_Emitter(Emitter):
     # endregiondata
 
 
-def current_metal_emitter(Field:array, Radius:array, Gamma:array, Workfunction:array, Temperature:array):
 
-    kBoltz = 8.6173324e-5 
-    kT = kBoltz * Temperature
-    
-    metal_emitter = MetalEmitter(Barrier(tabulationFolder="tabulated/2D_256x128"),Supply())
 
-    j_metal = np.copy(Field)
-    
-    for i in range(len(Field)):
-        metal_emitter.barrier.setParameters(Field[i], Radius[i], Gamma[i])
-        metal_emitter.setParameters(Workfunction[i], kT[i])
-        j_metal[i] = metal_emitter.currentDensityFast()
+class IVDataFitter:
+
+    def __init__(self, emitter:MetalEmitter = MetalEmitter()) -> None:
+        self.emitter = emitter
+
+    def currentDensityforVoltages(self, voltageArray:np.ndarray, fieldConversionFactor:float = 1., radius:float = 20.,\
+        gamma:float = 10., workFunction:float = 4.5, temperature:float = 300. ):
+        """ Calculates and returns the current density for a given array of voltages, assuming a field conversion factor 
+        (F=fieldConversionfactor * Voltage). 
         
-    return j_metal
+        Parameters:
+            voltageArray: array of Voltages (Volts)
+            fieldConversionFactor: ratio between local field and voltage (1/nm). Default 1.
+            radius: radius of curvature of the emitter. Default 20.
+            gamma: gamma barrier parameter. Default 10.
+            workFunction: Work function of the emitter (eV). Default 4.5
+            temperature: local temperature of the emitter (K). Default 300.
 
+        Returns:
+            currentDensity: Array of the resulting current densities for each voltage element
+        """
+        currentDensity = np.copy(voltageArray)
+    
+        for i in range(len(voltageArray)):
+            self.emitter.barrier.setParameters(field=fieldConversionFactor * voltageArray[i], radius=radius, gamma=gamma)
+            self.emitter.setParameters(workFunction, BoltzmannConstant * temperature)
+            currentDensity[i] = self.emitter.currentDensityFast()
+        
+        return currentDensity
+    
+    def logCurrentDensityError(self, parameterList, voltageData, currentDensityData):
+        """ Calculates the error between a given I-V curve and the one calculated by GETELEC for a given set of parameters.
+        The main usage of this function is to be called by external minimization function in order to find the parameterList that
+        gives the best fit to the given I-V
+
+        Parameters:
+            parameterList: list of emitter parameters (fieldConversionFactor, radius, gamma, workFunction, temperature)
+            voltageArray: input array of voltages (measured)
+            curentDensityArray: input array of current densities
+        Returns:
+            array of relative errors (in logarithmic scale) between the calculated and the given current densities, after normalizing with a multiplication
+            factor that forces them to match at their maximum
+        """
+
+        calculatedCurrentDensities = self.currentDensityforVoltages(voltageData, fieldConversionFactor = parameterList[0], \
+            radius=parameterList[1], gamma=parameterList[2], workFunction=parameterList[3], temperature=parameterList[4])
+        
+        #normalize by forcing the max values to match
+        maxValueRatio = np.max(currentDensityData) / np.max(calculatedCurrentDensities)
+        error = np.log(maxValueRatio * calculatedCurrentDensities / currentDensityData)
+        return error
+
+    def fitCurrentVoltageCurve(self, voltageData, currentData, \
+            fieldRange = [1., 12.], radiusRange = [1., 1000.], gammaRange = [10. - 1.e-10, 10. + 1.e-10], workFunctionRange = [1., 6.5], temperatureRange = [30., 5000.]):
+
+        minConversionFactor = fieldRange[0] / np.min(voltageData)
+        initialConversionFactor = np.mean(fieldRange) / np.mean(voltageData)
+        maxConversionFactor = fieldRange[1] / np.max(voltageData)
+    
+        popt = opt.least_squares(fun = self.logCurrentDensityError, args = (voltageData, currentData), \
+                x0 =     [initialConversionFactor, np.mean(radiusRange), np.mean(gammaRange), np.mean(workFunctionRange), np.mean(temperatureRange)], \
+                bounds =([minConversionFactor, radiusRange[0], gammaRange[0], workFunctionRange[0], temperatureRange[0]],\
+                        [maxConversionFactor, radiusRange[1], gammaRange[1], workFunctionRange[1], temperatureRange[1]]), \
+                method = 'trf', jac = '3-point', xtol = 1.e-15)
+        return popt.x
+
+
+def currentDensityMetalforArrays(field:np.ndarray, radius:np.ndarray, gamma:np.ndarray, \
+    workFunction:np.ndarray, temperature:np.ndarray, emitter = None):
+    """ Calculates the current density for an array of inputs 
+    """
+    if (emitter is None):
+        emitter = MetalEmitter(Barrier(),Supply())
+
+    currentDensity = np.copy(field)
+    kT = BoltzmannConstant * temperature
+    
+    for i in range(len(field)):
+        emitter.barrier.setParameters(field[i], radius[i], gamma[i])
+        emitter.setParameters(workFunction[i], kT[i])
+        currentDensity[i] = emitter.currentDensityFast()
+        
+    return currentDensity
 def heat_metal_emitter(Field:array, Radius:array, Gamma:array, Workfunction:array, Temperature:array):
     
     kBoltz = 8.6173324e-5 
@@ -1189,6 +1259,8 @@ def heat_semiconductor_emitter(Field:array, Radius:array, Gamma:array ,Ec:array,
     """
     return pn_total
 
+    
+
 
 
 if (__name__ == "__main__"): #some testing operations
@@ -1210,25 +1282,25 @@ if (__name__ == "__main__"): #some testing operations
     #     plt.plot(Energy, electronCount, markersize = 1.5)
     # plt.grid()
     # plt.savefig("spectrum.png")
-    Ntest = 100000
-    fields = np.random.randn(Ntest) + 5.
-    Radii = 2 * np.random.randn(Ntest) + 5.
-    Temperatures = 100 * np.random.randn(Ntest) + 900.
+    # Ntest = 100000
+    # fields = np.random.randn(Ntest) + 5.
+    # Radii = 2 * np.random.randn(Ntest) + 5.
+    # Temperatures = 100 * np.random.randn(Ntest) + 900.
 
-    import time
+    # import time
 
-    t0 = time.time()
+    # t0 = time.time()
 
-    Jcur = np.copy(Temperatures)
+    # Jcur = np.copy(Temperatures)
     
-    for i in range(Ntest):
-        bar.setParameters(field=fields[i], radius=Radii[i])
-        em.setParameters(4., Temperatures[i] * BoltzmannConstant)
-        Jcur[i] = em.currentDensityFast()
+    # for i in range(Ntest):
+    #     bar.setParameters(field=fields[i], radius=Radii[i])
+    #     em.setParameters(4., Temperatures[i] * BoltzmannConstant)
+    #     Jcur[i] = em.currentDensityFast()
 
-    t1 = time.time()
-    timePerCalculation = (t1 - t0) / Ntest
-    print("time per current calculation = %e sec"%timePerCalculation)
+    # t1 = time.time()
+    # timePerCalculation = (t1 - t0) / Ntest
+    # print("time per current calculation = %e sec"%timePerCalculation)
 
     # JcurSemi = np.copy(Jcur)
     # em = Semiconductor_Emitter(bar, sup)
@@ -1246,5 +1318,30 @@ if (__name__ == "__main__"): #some testing operations
     # print ("elapsed time semiconductor = ", t1 - t0)
 
 
+
+
+    xFN = np.linspace(0.15, 0.3, 32)
+
+    voltage = 1./xFN
+    currentDensity = np.copy(voltage)
+    
+    for i in range(len(voltage)):
+        bar.setParameters(field=voltage[i], radius=10.)
+        em.setParameters(4.5, 300. * BoltzmannConstant)
+        currentDensity[i] = em.currentDensityFast()
+
+    fitter = IVDataFitter()
+
+    # errors = em.logCurrentDensityError([1.2, 10., 10., 4.5, 300], voltage, currentDensity)
+
+    # print (errors)
+
+    fittedParameters = fitter.fitCurrentVoltageCurve(voltage, currentDensity, fieldRange= [2., 10.], workFunctionRange = [4.49999, 4.500001], radiusRange=[4., 200.], temperatureRange=[290., 310.])
+    plt.semilogy(voltage, currentDensity,  '.')
+    fittedCurrentdensity = fitter.currentDensityforVoltages(voltage, fittedParameters[0], fittedParameters[1], fittedParameters[2], fittedParameters[3], fittedParameters[4])
+    shift = np.max(fittedCurrentdensity) / np.max(currentDensity)
+    plt.semilogy(voltage, fittedCurrentdensity / shift)
+    plt.savefig("fittedcurve.png")
+    print(fittedParameters)
 
 

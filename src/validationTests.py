@@ -70,7 +70,7 @@ def _Save_Table_to_Files():
     #np.save("tests/20221024_semiconductor_test_data/semi_eg", eg)
     np.save("tests/20221024_metal_test_data/metal_temp", temp)
     
-    current=gt.current_metal_emitter(field,radius,gamma,ef,temp)
+    current=gt.currentDensityMetalforArrays(field,radius,gamma,ef,temp)
     heat=gt.heat_metal_emitter(field,radius,gamma,ef,temp)
 
     np.save("tests/20221024_metal_test_data/metal_current",current)
@@ -189,7 +189,7 @@ def _Getelec_Installation_Metal_Test():
     
     ref_field, ref_radius, ref_gamma, ref_ef, ref_temp, J_ref_getelec, Pn_ref_getelec = _Load_Metal_Data()
 
-    J_new_getelec = gt.current_metal_emitter(ref_field, ref_radius, ref_gamma, ref_ef, ref_temp)
+    J_new_getelec = gt.currentDensityMetalforArrays(ref_field, ref_radius, ref_gamma, ref_ef, ref_temp)
     Pn_new_getelec = gt.heat_metal_emitter(ref_field, ref_radius, ref_gamma, ref_ef, ref_temp)
 
     J_absolute_error = abs(J_new_getelec - J_ref_getelec)
