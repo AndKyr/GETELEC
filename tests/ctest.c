@@ -74,6 +74,15 @@ int main(){
 
     
     printf("theta_SC = %e\n", theta_SC(1.e-5, 1.e3, 10.));
+
+    double G[10], Wmin, Wmax;
+
+    export_gamow(5.,10.,20.,10, &Wmin, &Wmax, G);
+
+    for (int i = 0; i < 10; i++)
+        printf("%g ", G[i]);
+
+    printf("\n%g %g \n", Wmin, Wmax);
     
     
     

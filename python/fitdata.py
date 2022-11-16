@@ -53,8 +53,8 @@ popt = fit.x
 yopt = gt.MLplot(xdata, popt[0], popt[1], popt[2], popt[3], popt[4])
 yshift = max(yopt) - max(ydata)
     
-print 'beta = %10.3e, W = %10.3f, R = %10.3f, gamma = %10.3f, Temp = %10.3f, sigmaAeff = %10.3e' \
-        % (popt[0], popt[1],  popt[2], popt[3], popt[4], 1e-9*np.exp(-yshift))
+#print 'beta = %10.3e, W = %10.3f, R = %10.3f, gamma = %10.3f, Temp = %10.3f, sigmaAeff = %10.3e' 
+#        % (popt[0], popt[1],  popt[2], popt[3], popt[4], 1e-9*np.exp(-yshift))
                 
 xth = np.linspace(min(xdata),max(xdata),100)
 yth = np.exp(gt.MLplot(xth, popt[0], popt[1], popt[2], popt[3], popt[4]) - yshift)           

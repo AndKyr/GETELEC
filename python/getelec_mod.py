@@ -5,11 +5,15 @@ GETELEC software from python and perform electron emissino calculations"""
 import ctypes as ct
 from typing import IO
 import numpy as np
+from numpy.lib.polynomial import RankWarning
 import scipy.optimize as opt
 import scipy.integrate as ig
 import os
 import matplotlib.pyplot as plt
 import scipy.interpolate as intrp
+import json
+
+import warnings
 
 from io import StringIO 
 import sys
@@ -116,8 +120,40 @@ class Emission(ct.Structure):
         Area = I / Ji[0]
         
         return I, Area
-        
-def emission_create(F = 5., W = 4.5, R = 5000., gamma = 10., Temp = 300., \
+
+def get_gamow_line(F, R, gamma, Npoints):
+    Wmin = np.array([1.])
+    Wmax = np.copy(Wmin)
+    Gamow = np.zeros(Npoints)
+    getelec.export_gamow(ct.c_double(F), ct.c_double(R), ct.c_double(gamma), ct.c_int(Npoints), \
+        ct.c_void_p(Wmin.ctypes.data), ct.c_void_p(Wmax.ctypes.data), ct.c_void_p(Gamow.ctypes.data))
+    W = np.linspace(Wmin[0], Wmax[0], Npoints)
+    return W, Gamow
+    
+def make_gamow_array(Frange, Rmin, Nf, Nr, Ngam, Npoly):
+    warnings.filterwarnings("error")
+    Finv = np.linspace(1/Frange[1], 1./ Frange[0], Nf)
+    Rinv = np.linspace(1.e-5, 1/Rmin, Nr)
+    gaminv = np.linspace(1.e-5, .999, Ngam)
+    outarray = np.ones([Ngam, Nr, Nf, Npoly])
+
+    for i in range(Ngam):
+        for j in range(Nr):
+            for k in range(Nf):
+                F = 1/Finv[k]
+                R = 1/Rinv[j]
+                gamma = 1/gaminv[i]
+                W,G = get_gamow_line(F, R , gamma , 128)
+                try:
+                    poly = np.polyfit(W, G, Npoly-1)
+                except(RankWarning):
+                    print("Rank Warning for F = %g, R = %g, gamma = %g"%(F,R,gamma))
+                    plt.plot(W,G)
+                    plt.show()
+                outarray[i,j,k,:] = poly
+    return outarray
+
+def emission_create(F = 5., W = 4.5, R = 5000., gamma = 1., Temp = 300., \
                 Jem = 0., heat = 0., xr = np.array([]), Vr = np.array([]), \
                 regime = 0, sharp = 1, approx = 1, mode = 0, ierr = 0, voltage = 500, theta = 1., paramFile = "in/GetelecPar.in"):
                     
@@ -135,6 +171,60 @@ def emission_create(F = 5., W = 4.5, R = 5000., gamma = 10., Temp = 300., \
     this.pfile_length = len(paramFile)
     this.cur_dens()
     return this
+
+
+
+def calc_json(json_str):
+    """Creates an Emission class object and calculates everyting. 
+    from json imput object."""
+
+    try:
+        F = float(json_str["Field"])
+    except(KeyError):
+        F = 5.
+
+    try:
+        W = float(json_str["Work_function"])
+    except(KeyError):
+        W = 4.5
+
+    try:
+        R = float(json_str["Radius"])
+    except(KeyError):
+        R = 2000.
+
+    try:
+        gamma = float(json_str["gamma"])
+    except(KeyError):
+        gamma = 20.
+    try:
+        Temp = float(json_str["Temperature"])
+    except(KeyError):
+        Temp = 300.
+
+    try:
+        voltage = float(json_str["voltage"])
+    except(KeyError):
+        voltage=0.
+    
+    try:
+        approx = int(json_str["approximation"])
+    except(KeyError):
+        approx = 0
+
+
+    this = emission_create(F,W,R,gamma,Temp, approx=approx, voltage=voltage)
+
+    if (voltage > 0):
+        this.cur_dens_SC()
+    else:
+        this.cur_dens()
+                    
+
+    outdata = {'current_density': this.Jem, 'heat': this.heat, \
+                'regime': this.regime, 'sharpness': this.sharp, \
+                'Ierror': this.ierr}
+    return json.dumps(outdata)
     
 
     
@@ -474,11 +564,11 @@ def emit (F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300., verbose = False):
         this.print_data()
         return (this.Jem, this.heat)
         
-def MLplot (xfn, beta = 1., W = 4.5, R = 5., gamma = 10., Temp = 300.):
+def MLplot (xfn, beta = 1., W = 4.5, R = 5., gamma = 10., Temp = 300., approx = 1):
     """Take input data xfn=1/V (x axis of FN plot) and calculate the current density
     for a specific set of parameters and F = beta * V. Output in logarithmic scale """
     yfn = np.empty([len(xfn)])
-    this = emission_create(5,W,R,gamma,Temp)
+    this = emission_create(5,W,R,gamma,Temp, approx=approx)
     
     for i in range(len(xfn)):
         this.F = beta / xfn[i]
