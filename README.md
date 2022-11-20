@@ -1,4 +1,4 @@
-## GETELEC
+# GETELEC
 
 General Tool for Electron Emission Calculations - A computational tool for calculating electron emission current and Nottingham effect heat for metallic emitters.
 
@@ -8,16 +8,18 @@ Currently it is developed for Linux and OSX systems. A version that can be compi
 
 After downloading the zip file, the user needs to extract it and in the resulting folder execute ”make” (GNU make is required) to compile it and build the GETELEC static and dynamic libraries. For successful building, it is required that in the system there are installed gfortran (version 5 or later) and gcc (version 5 or later). By executing ”make tests” some test programs are compiled and executed, outputting some of the plots included in the associated paper. For those tests to produce correct results, existing installation of python (version 2.7 or later) with the accompanying libraries ”numpy” (version 0.13 or later), ”matplotlib” (version 1.3 or later) and ”scipy” (version 0.18 or later) is required. Note that this newer version of scipy is not available in the usual repositories for some systems. For downloading the newest version, information can be found in https://www.scipy.org/install.html .
 
-## HOW TO RUN
+# HOW TO RUN
 
-# Prepare library for use. Cook tables
+## Prepare library for use. Cook tables. Setting up GETELEC
+
+- [ ] Make sure to be in the main directory
 
 ```
 make clean-all
 make
 ```
 
-# Start server for web client
+## Start server for web client
 
 - [ ] Make sure to be in /web directory
 - [ ] Launch node server using following command: 
@@ -26,9 +28,12 @@ make
 node server
 ```
 
-# Server commands
+## Server commands
 
 - [ ] /q : Stop server (Alternative: /stop, /exit, q, stop, exit)
 - [ ] /kickAll : Kick all clients (WIP)
 
+## Required packages for node
 
+- [ ] npm install winston
+- [ ] npm install socket.io
