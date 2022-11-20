@@ -21,6 +21,8 @@ make
 
 ## Start server for web client
 
+Default port used by node server: 3000
+
 - [ ] Make sure to be in /web directory
 - [ ] Launch node server using following command: 
 
