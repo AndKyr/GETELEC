@@ -20,7 +20,9 @@
 *.pdf
 *.gz
 *.dvi
-*.svg
 web/
 *.vscode
 *.npy
+
+#Removed *.svg
+# webgui -> web/
