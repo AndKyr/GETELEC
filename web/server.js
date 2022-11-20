@@ -307,20 +307,41 @@ function mainLoopInput(data) {
 
   switch (data) {
 
+    case "/q":
+      process.exit(1);
+
+    case "/stop":
+      process.exit(1);
+
+    case "/exit":
+      process.exit(1);
+
     case "q":
       process.exit(1);
+
     case "stop":
       process.exit(1);
+
     case "exit":
       process.exit(1);
-    case "kickAll":
+
+    case "/kickAll":
+
       disconnectAllSockets();
       break; //might not work
+
+    case "kickAll":
+
+      disconnectAllSockets();
+      break; //might not work
+
     case "help":
+
       console.log(updateTime() + "List of available commands: q, stop, exit, kickAll");
       break;
 
     default:
+
       console.log(updateTime() + "Unknown command: " + data);
 
   }
