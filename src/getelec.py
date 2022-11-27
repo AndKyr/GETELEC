@@ -7,6 +7,7 @@ import os
 import scipy.ndimage
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
+import copy
 
 pythonpath,filename = os.path.split(os.path.realpath(__file__))
 
@@ -141,6 +142,9 @@ class Interpolator:
             self._Ngamma = 1
 
     
+    def getDimension(self):
+        return self._dimension
+
     # region user methods
     def interpolateForValues(self, field:float, radius:float = 1.e4, gamma:float = 10., interpolationOrder:int = 1) -> np.ndarray:
         """
@@ -175,7 +179,7 @@ class Interpolator:
                 (self._inverseGammaLimits[1] - self._inverseGammaLimits[0])
         else:
             gammaCoordinates = np.zeros(len(paramCoordinates))
-            if (gamma != 10.):
+            if (abs(gamma - 10.) > 1.e-8):
                 print("WARNING: Using tabulation without gamma with gamma: {} nm != 10. Tabulation is done with gamma = 10".format(gamma))
 
 
@@ -1048,12 +1052,23 @@ class Semiconductor_Emitter(Emitter):
 
 
 class IVDataFitter:
+    parameters: dict
+    initialParameters: dict
+    minParameters: dict
+    maxParameters: dict
 
     def __init__(self, emitter:MetalEmitter = MetalEmitter()) -> None:
         self.emitter = emitter
+        if (emitter.barrier.getDimension() == 3):
+            self.parameters = {"fieldConversionFactor": 1., "radius": 10., "gamma": 10., "workFunction": 4.5, "temperature": 300.}
+        elif (emitter.barrier.getDimension() == 2):
+            self.parameters = {"fieldConversionFactor": 1., "radius": 10.,"workFunction": 4.5, "temperature": 300.}
+        elif (emitter.barrier.getDimension() == 1):
+            self.parameters = {"fieldConversionFactor": 1., "workFunction": 4.5, "temperature": 300.}
+        else:
+            assert False, "The interpolator has wrong dimension (%d)"%emitter.barrier.getDimension()
 
-    def currentDensityforVoltages(self, voltageArray:np.ndarray, fieldConversionFactor:float = 1., radius:float = 20.,\
-        gamma:float = 10., workFunction:float = 4.5, temperature:float = 300. ):
+    def currentDensityforVoltages(self, voltageArray:np.ndarray ):
         """ Calculates and returns the current density for a given array of voltages, assuming a field conversion factor 
         (F=fieldConversionfactor * Voltage). 
         
@@ -1069,10 +1084,18 @@ class IVDataFitter:
             currentDensity: Array of the resulting current densities for each voltage element
         """
         currentDensity = np.copy(voltageArray)
+
+        radius = 1.e4
+        gamma = 10.
+        if (self.emitter.barrier.getDimension() >= 2):
+            radius = self.parameters["radius"]
+        if(self.emitter.barrier.getDimension() == 3):
+            gamma = self.parameters["gamma"]
+        
     
         for i in range(len(voltageArray)):
-            self.emitter.barrier.setParameters(field=fieldConversionFactor * voltageArray[i], radius=radius, gamma=gamma)
-            self.emitter.setParameters(workFunction, BoltzmannConstant * temperature)
+            self.emitter.barrier.setParameters(field= self.parameters["fieldConversionFactor"] * voltageArray[i], radius = radius, gamma = gamma)
+            self.emitter.setParameters(self.parameters["workFunction"], BoltzmannConstant * self.parameters["temperature"])
             currentDensity[i] = self.emitter.currentDensityFast()
         
         return currentDensity
@@ -1091,13 +1114,65 @@ class IVDataFitter:
             factor that forces them to match at their maximum
         """
 
-        calculatedCurrentDensities = self.currentDensityforVoltages(voltageData, fieldConversionFactor = parameterList[0], \
-            radius=parameterList[1], gamma=parameterList[2], workFunction=parameterList[3], temperature=parameterList[4])
+        assert len(parameterList) == len(self.parameters), "parameterList has a length of %d while it should have %d"%(len(parameterList), len(self.parameters))
+        i = 0
+        for paramName in self.parameters:
+            self.parameters[paramName] = parameterList[i]
+            i += 1
+
+
+        calculatedCurrentDensities = self.currentDensityforVoltages(voltageData)
         
         #normalize by forcing the max values to match
         maxValueRatio = np.max(currentDensityData) / np.max(calculatedCurrentDensities)
         error = np.log(maxValueRatio * calculatedCurrentDensities / currentDensityData)
         return error
+
+    def setIVcurve(self, voltageData:np.ndarray, currentData:np.ndarray):
+        self.voltageData = voltageData
+        self.currentData = currentData
+        return
+
+    def setParameterRange(self, fieldRange = [1., 6., 12.], radiusRange = [1., 20., 1000.], gammaRange = [1., 10., 1000.], \
+        workFunctionRange = [1., 4.5, 7.5], temperatureRange = [30., 300., 5000.]):
+        self.minParameters = copy.deepcopy(self.parameters)
+        self.maxParameters = copy.deepcopy(self.parameters)
+        self.initialParameters = copy.deepcopy(self.parameters)
+
+        self.minParameters["fieldConversionFactor"] = fieldRange[0] / np.min(self.voltageData)
+        self.initialParameters["fieldConversionFactor"] = fieldRange[1] / np.mean(self.voltageData)
+        self.maxParameters["fieldConversionFactor"] = fieldRange[2] / np.max(self.voltageData)
+        
+        self.minParameters["workFunction"] = workFunctionRange[0]
+        self.initialParameters["workFunction"] = workFunctionRange[1]
+        self.maxParameters["workFunction"] = workFunctionRange[2]
+
+        self.minParameters["temperature"] = temperatureRange[0]
+        self.initialParameters["temperature"] = temperatureRange[1]
+        self.maxParameters["temperature"] = temperatureRange[2]
+
+        if (self.emitter.barrier.getDimension() >= 2):
+            self.minParameters["radius"] = radiusRange[0]
+            self.initialParameters["radius"] = radiusRange[1]
+            self.maxParameters["radius"] = radiusRange[2]
+        if (self.emitter.barrier.getDimension() == 3):
+            self.minParameters["gamma"] = gammaRange[0]
+            self.initialParameters["gamma"] = gammaRange[1]
+            self.maxParameters["gamma"] = gammaRange[2]
+
+    def fitIVCurve(self):
+        self.optimizationData = opt.least_squares(fun = self.logCurrentDensityError, args = (self.voltageData, self.currentData), x0 = list(self.initialParameters.values()), \
+            bounds =(list(self.minParameters.values()), list(self.maxParameters.values())), method = 'trf', jac = '3-point')
+
+    def fittedCurrentCurve(self):
+        i = 0
+        for parameterName in self.parameters:
+            self.parameters[parameterName] = self.optimizationData.x[i]
+            i += 1
+
+        calculatedCurrent = self.currentDensityforVoltages(self.voltageData)
+        shift = np.max(calculatedCurrent) / np.max(self.currentData)
+        return calculatedCurrent / shift
 
     def fitCurrentVoltageCurve(self, voltageData, currentData, \
             fieldRange = [1., 12.], radiusRange = [1., 1000.], gammaRange = [10. - 1.e-10, 10. + 1.e-10], workFunctionRange = [1., 6.5], temperatureRange = [30., 5000.]):
@@ -1105,6 +1180,8 @@ class IVDataFitter:
         minConversionFactor = fieldRange[0] / np.min(voltageData)
         initialConversionFactor = np.mean(fieldRange) / np.mean(voltageData)
         maxConversionFactor = fieldRange[1] / np.max(voltageData)
+
+
     
         popt = opt.least_squares(fun = self.logCurrentDensityError, args = (voltageData, currentData), \
                 x0 =     [initialConversionFactor, np.mean(radiusRange), np.mean(gammaRange), np.mean(workFunctionRange), np.mean(temperatureRange)], \
@@ -1335,13 +1412,11 @@ if (__name__ == "__main__"): #some testing operations
     # errors = em.logCurrentDensityError([1.2, 10., 10., 4.5, 300], voltage, currentDensity)
 
     # print (errors)
-
-    fittedParameters = fitter.fitCurrentVoltageCurve(voltage, currentDensity, fieldRange= [2., 10.], workFunctionRange = [4.49999, 4.500001], radiusRange=[4., 200.], temperatureRange=[290., 310.])
+    fitter.setIVcurve(voltageData=voltage, currentData=currentDensity)
+    fitter.setParameterRange()
+    fitter.fitIVCurve()
     plt.semilogy(voltage, currentDensity,  '.')
-    fittedCurrentdensity = fitter.currentDensityforVoltages(voltage, fittedParameters[0], fittedParameters[1], fittedParameters[2], fittedParameters[3], fittedParameters[4])
-    shift = np.max(fittedCurrentdensity) / np.max(currentDensity)
-    plt.semilogy(voltage, fittedCurrentdensity / shift)
+    plt.semilogy(voltage, fitter.fittedCurrentCurve())
     plt.savefig("fittedcurve.png")
-    print(fittedParameters)
 
 
