@@ -13,7 +13,7 @@ sys.path.insert(0,oldGetelecPath)
 newGetelecPath = str(Path(__file__).parents[1].absolute()) + '/src'
 sys.path.insert(0,newGetelecPath)
 
-import getelec as getelec_new
+import getelec as gt
 import getelec_mod as getelec_old
 
 def _Load_Semiconductor_Data():
@@ -73,8 +73,8 @@ def _Save_Table_to_Files():
     #np.save("tests/20221024_semiconductor_test_data/semi_eg", eg)
     np.save("tests/20221024_metal_test_data/metal_temp", temp)
     
-    current=getelec_new.current_metal_emitter(field,radius,gamma,ef,temp)
-    heat=getelec_new.heat_metal_emitter(field,radius,gamma,ef,temp)
+    current=gt.current_metal_emitter(field,radius,gamma,ef,temp)
+    heat=gt.heat_metal_emitter(field,radius,gamma,ef,temp)
 
     np.save("tests/20221024_metal_test_data/metal_current",current)
     np.save("tests/20221024_metal_test_data/metal_heat",heat)
@@ -85,8 +85,8 @@ def _Getelec_Installation_Semiconductor_Test():
     
     ref_field, ref_radius, ref_gamma, ref_ec, ref_ef, ref_eg, ref_temp, J_ref_getelec, Pn_ref_getelec = _Load_Semiconductor_Data()
 
-    J_new_getelec = getelec_new.current_semiconductor_emitter(ref_field, ref_radius, ref_gamma, ref_ec, ref_ef, ref_eg, ref_temp)
-    Pn_new_getelec = getelec_new.heat_semiconductor_emitter(ref_field, ref_radius, ref_gamma, ref_ec, ref_ef, ref_eg, ref_temp)
+    J_new_getelec = gt.current_semiconductor_emitter(ref_field, ref_radius, ref_gamma, ref_ec, ref_ef, ref_eg, ref_temp)
+    Pn_new_getelec = gt.heat_semiconductor_emitter(ref_field, ref_radius, ref_gamma, ref_ec, ref_ef, ref_eg, ref_temp)
 
     J_absolute_error = abs(J_new_getelec - J_ref_getelec)
 
@@ -192,8 +192,8 @@ def _Getelec_Installation_Metal_Test():
     
     ref_field, ref_radius, ref_gamma, ref_ef, ref_temp, J_ref_getelec, Pn_ref_getelec = _Load_Metal_Data()
 
-    J_new_getelec = getelec_new.current_metal_emitter(ref_field, ref_radius, ref_gamma, ref_ef, ref_temp)
-    Pn_new_getelec = getelec_new.heat_metal_emitter(ref_field, ref_radius, ref_gamma, ref_ef, ref_temp)
+    J_new_getelec = gt.current_metal_emitter(ref_field, ref_radius, ref_gamma, ref_ef, ref_temp)
+    Pn_new_getelec = gt.heat_metal_emitter(ref_field, ref_radius, ref_gamma, ref_ef, ref_temp)
 
     J_absolute_error = abs(J_new_getelec - J_ref_getelec)
 
@@ -297,7 +297,7 @@ def _Getelec_Installation_Metal_Test():
 
 def Randomised_Tabulator_Test():
 
-    tab = getelec_new.Interpolator()
+    tab = gt.Interpolator()
 
     Fmax = 1/tab.Finv[0]
     Fmin = 1/tab.Finv[-1]
@@ -320,7 +320,7 @@ def Randomised_Tabulator_Test():
     J_ref_getelec = np.copy(Field)
     Pn_ref_getelec = np.copy(Field)
 
-    metal_emitter = getelec_new.Metal_Emitter(tab)
+    metal_emitter = gt.Metal_Emitter(tab)
 
     print("\nCalculating from NEW GETELEC")
     new_getelec_start = datetime.datetime.now()
@@ -447,7 +447,7 @@ def Randomised_Tabulator_Test():
 
 def Referenced_Tabulator_Test():
     ref_field, ref_radius, ref_gamma, ref_ef, ref_temp, J_ref_getelec, Pn_ref_getelec = _Load_Metal_Data()
-    tab = getelec_new.Interpolator()
+    tab = gt.Interpolator()
 
     Field = ref_field
     Radius = ref_radius
@@ -461,7 +461,7 @@ def Referenced_Tabulator_Test():
     J_ref_getelec = np.copy(Field)
     Pn_ref_getelec = np.copy(Field)
 
-    metal_emitter = getelec_new.Metal_Emitter(barrier=getelec_new.Barrier(tabulationFolder='tabulated'), supply=getelec_new.Supply())
+    metal_emitter = gt.Metal_Emitter(barrier=gt.Barrier(tabulationFolder='tabulated'), supply=gt.Supply())
 
     print("\nCalculating from NEW GETELEC")
     new_getelec_start = datetime.datetime.now()

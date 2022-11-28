@@ -1,8 +1,11 @@
 import sys
 import numpy as np
-sys.path.insert(0,'/home/salva/Documents/getelec_priv/python')
-import getelec_tabulator as getelec_new
-import getelec_mod as getelec_old
+import os
+from pathlib import Path
+
+getelecPath = str(Path(__file__).parents[2].absolute()) + '/src/'
+sys.path.insert(0,getelecPath)
+import getelec as gt
 
 
 def current_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
@@ -16,12 +19,12 @@ def current_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
 
     For more info refer to GETELEC TABULATOR's documentation
     """
-    tab = getelec_new.Interpolator()
+    tab = gt.Interpolator()
 
     kBoltz = 8.6173324e-5 
     kT = kBoltz * Temperature
     
-    metal_emitter = getelec_new.Metal_Emitter(tab)
+    metal_emitter = gt.Metal_Emitter(tab)
 
     j_metal = np.copy(Field)
     
@@ -47,12 +50,12 @@ def heat_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
 
     For more info refer to GETELEC TABULATOR's documentation
     """
-    tab = getelec_new.Interpolator()
+    tab = gt.Interpolator()
     
     kBoltz = 8.6173324e-5 
     kT = kBoltz * Temperature
     
-    metal_emitter = getelec_new.Metal_Emitter(tab)
+    metal_emitter = gt.Metal_Emitter(tab)
     
     nh_metal = np.copy(Field)
 
@@ -78,12 +81,12 @@ def spectrum_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
 
     For more info refer to GETELEC TABULATOR's documentation
     """
-    tab = getelec_new.Interpolator()
+    tab = gt.Interpolator()
     
     kBoltz = 8.6173324e-5 
     kT = kBoltz * Temperature
     
-    metal_emitter = getelec_new.Metal_Emitter(tab)
+    metal_emitter = gt.Metal_Emitter(tab)
     
     energy = np.copy(Field)
     electron_count = np.copy(Field)
@@ -113,12 +116,12 @@ def current_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature,
 
     For more info refer to GETELEC TABULATOR's documentation
     """
-    tab = getelec_new.Interpolator()
+    tab = gt.Interpolator()
     
     kBoltz = 8.6173324e-5 
     kT = kBoltz * Temperature
 
-    semiconductor_emitter = getelec_new.Semiconductor_Emitter(tab)
+    semiconductor_emitter = gt.Semiconductor_Emitter(tab)
 
     j_total = np.copy(Field)
     j_c = np.copy(Field)
@@ -151,12 +154,12 @@ def heat_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature, me
 
     For more info refer to GETELEC TABULATOR's documentation
     """
-    tab = getelec_new.Interpolator()
+    tab = gt.Interpolator()
     
     kBoltz = 8.6173324e-5 
     kT = kBoltz * Temperature
 
-    semiconductor_emitter = getelec_new.Semiconductor_Emitter(tab)
+    semiconductor_emitter = gt.Semiconductor_Emitter(tab)
 
     nh_total = np.copy(Field)
     nh_c = np.copy(Field)
@@ -192,12 +195,12 @@ def spectrum_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature
 
     For more info refer to GETELEC TABULATOR's documentation
     """
-    tab = getelec_new.Interpolator()
+    tab = gt.Interpolator()
     
     kBoltz = 8.6173324e-5 
     kT = kBoltz * Temperature
 
-    semiconductor_emitter = getelec_new.Semiconductor_Emitter(tab)
+    semiconductor_emitter = gt.Semiconductor_Emitter(tab)
 
     energy_c = np.copy(Field)
     count_c = np.copy(Field)
@@ -216,15 +219,29 @@ def spectrum_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature
 
     return energy_c, count_c, energy_v, count_v
 
-def fit_data(xML, yML, F0, W0, R0, Gamma0, Temp0):
-    fit_data = getelec_old.fitML(xML, yML, F0, W0, R0, Gamma0, Temp0)
-    return fit_data
 
-def plot_data(xfn, beta, W0, R0, Gamma0, Temp0, approx):
-    plot_data = getelec_old.MLplot(xfn, beta, W0, R0, Gamma0, Temp0, approx)
+def plot_data(xfn, beta, W0, R0, Gamma0, Temp0, approx=2):
+    plot_data = gt.MLplot(xfn, beta, W0, R0, Gamma0, Temp0, approx)
     return plot_data
 
-#data = current_semiconductor_emitter(np.ones(1)*0.5, np.ones(1)*20, np.ones(1)*10, np.ones(1)*4.05,np.ones(1)*4.5,np.ones(1)*1.12,  np.ones(1)*300)
-data = heat_metal_emitter(np.ones(1)*5, np.ones(1)*50, np.ones(1)*10,np.ones(1)*4.5, np.ones(1)*200)
+def fit_data(xML, yML, workFunction, mode = "simple"):
+    
+    voltage = 1./xML
+    current = np.exp(yML)
 
-print(data)
+    fitter = gt.IVDataFitter()
+
+    fitter.setIVcurve(voltageData=voltage, currentData=current)
+    fitter.setParameterRange()
+    fitter.fitIVCurve()
+
+
+    xth = np.linspace(min(xML),max(xML),32)
+    yth = fitter.getOptCurrentCurve(1./xth)
+
+
+    xplot = xML / fitter.parameters["fieldConversionFactor"]
+    xplot_th = xth / fitter.parameters["fieldConversionFactor"]
+        
+    
+    return xplot, xplot_th, yth, fitter.parameters["fieldConversionFactor"], fitter.parameters["radius"], fitter.prefactor

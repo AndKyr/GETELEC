@@ -1,4 +1,3 @@
-from array import array
 import ctypes as ct
 import numpy as np
 from scipy.integrate import IntegrationWarning
@@ -9,9 +8,16 @@ import matplotlib.pyplot as plt
 import scipy.optimize as opt
 import copy
 
-pythonpath,filename = os.path.split(os.path.realpath(__file__))
+filePath,filename = os.path.split(os.path.realpath(__file__))
 
 BoltzmannConstant = 8.617333262e-5
+
+
+tabulationPath = "tabulated"
+
+def setTabulationPath(path:str) -> None:
+    tabulationPath = path
+
 
 class Interpolator:
     """
@@ -53,7 +59,7 @@ class Interpolator:
     _Npolynomial : int 
     _Nradius : int  
 
-    def __init__(self, preloadedGamowTable : np.ndarray = None, preloadedLimits : np.ndarray = None, dataFolder = "tabulated"):
+    def __init__(self, preloadedGamowTable : np.ndarray = None, preloadedLimits : np.ndarray = None, dataFolder = tabulationPath):
         """Initialises Tabulator by loading the tables from files. If maps not found, calls tabulation scripts
         from old getelec
 
@@ -78,13 +84,13 @@ class Interpolator:
     def calculateAndSaveTable(self, NField = 256, NRadius = 128, Ngamma = 1, Npolynomial = 4, NGamow = 128):
         """Runs old Getelec script that produces tabulation and saves it at tabulated/ folder."""
 
-        tabulationScript = pythonpath + "/../oldGETELEC/python/tabulateGamow.py"
+        tabulationScript = filePath + "/../oldGETELEC/python/tabulateGamow.py"
         command = "python3 %s -nf %d -nr %d -ng %d -np %d -nG %d"%(tabulationScript, NField, NRadius, Ngamma, Npolynomial, NGamow)
         print("Producing tabulator by running:")
         print(command)
         os.system(command)
 
-    def _loadTablesFromFileIfPossible(self, dataFolder = "tabulated") -> bool:
+    def _loadTablesFromFileIfPossible(self, dataFolder = tabulationPath) -> bool:
         """Loads the table of the Gamow factor from the files where it has been stored.
 
         Returns:
@@ -228,14 +234,14 @@ class Barrier(Interpolator):
     _field: float
     _radius: float
     _gamma: float
-    _data: array
-    _energy: array
+    _data: np.ndarray
+    _energy: np.ndarray
     energy_top_barrier: float
     maxEnergyDepth:float
-    _gamowPolynomialCoefficients: array
+    _gamowPolynomialCoefficients: np.ndarray
     gamowDerivativeAtMinBarrierDepth: float
     _gamowDerivativeAtMaxEnergyDepth: float
-    gamowDerivativePolynomial: array
+    gamowDerivativePolynomial: np.ndarray
     # endregion
     
     # region initialization
@@ -256,7 +262,7 @@ class Barrier(Interpolator):
         self.gamowDerivativeAtMinBarrierDepth = np.polyval(self.gamowDerivativePolynomial, self.minEnergyDepth) #dG/dW @ Wmin
         self._gamowDerivativeAtMaxEnergyDepth = np.polyval(self.gamowDerivativePolynomial, self.maxEnergyDepth) #dG/dW @ Wmax
     
-    def _extendFieldBounds(self, energyDepth : array) -> array:
+    def _extendFieldBounds(self, energyDepth : np.ndarray) -> np.ndarray:
         """
         In case self._field is out of bounds of the Table, linearly extrapolates the value of Gamow for all given energies
         
@@ -282,7 +288,7 @@ class Barrier(Interpolator):
         else:
             return 0. 
 
-    def calculateGamow(self, energyDepth:array) -> array:
+    def calculateGamow(self, energyDepth:np.ndarray) -> np.ndarray:
         """Evaluates the gammow coefficients in order to provide the exponential for the Kemble formula
 
         Parameters:
@@ -330,7 +336,7 @@ class Barrier(Interpolator):
         self._radius = radius
         self._gamma = gamma
     
-    def transmissionCoefficient(self, energyDepth : array) -> array:
+    def transmissionCoefficient(self, energyDepth : np.ndarray) -> np.ndarray:
         """Calculates the probability of an electron tunelling (being transmitted) through the potential barrier by 
         means of the Kemble formula within the JWKB approximation
 
@@ -397,7 +403,7 @@ class Supply:
     # endregion 
     
     # region user methods
-    def logFermiDiracFunction(self, energy:array, kT:array):
+    def logFermiDiracFunction(self, energy:np.ndarray, kT:np.ndarray):
         """Returs the natural logarith of the Fermi Diract distribution.
         The energy is divided in 3 terms to prevent the computer from overfloading with large exponents 
 
@@ -428,7 +434,7 @@ class Supply:
             else:
                 return np.log(1. + np.exp(-energy / kT))
     
-    def FermiDiracFunction(self, energy:array, kT:array):
+    def FermiDiracFunction(self, energy:np.ndarray, kT:np.ndarray):
         """Returns the Fermi Dirac distribution
         
         Args:
@@ -487,7 +493,7 @@ class Supply:
 
 
 class Emitter:
-    fastIntegrator = ct.CDLL(pythonpath + '/libintegrator.so') #use absolute path
+    fastIntegrator = ct.CDLL(filePath + '/libintegrator.so') #use absolute path
     fastIntegrator.currentDensityPerNormalEnergy.restype = ct.c_double
     fastIntegrator.currentDensityPerNormalEnergy.argtypes = (ct.c_int, ct.c_double)
     fastIntegrator.nottinghamHeatInegrand.restype = ct.c_double
@@ -795,10 +801,10 @@ class Semiconductor_Emitter(Emitter):
     
     # region field declarations
     emitter: Emitter
-    _max_energy_conduction_band: array
-    _max_energy_valence_band: array
-    _energy_conduction_band: array
-    _energy_valence_band: array
+    _max_energy_conduction_band: np.ndarray
+    _max_energy_valence_band: np.ndarray
+    _energy_conduction_band: np.ndarray
+    _energy_valence_band: np.ndarray
     _Ec: float
     _Ef: float
     _Eg: float
@@ -1160,35 +1166,27 @@ class IVDataFitter:
             self.initialParameters["gamma"] = gammaRange[1]
             self.maxParameters["gamma"] = gammaRange[2]
 
-    def fitIVCurve(self):
+    def fitIVCurve(self) -> None:
         self.optimizationData = opt.least_squares(fun = self.logCurrentDensityError, args = (self.voltageData, self.currentData), x0 = list(self.initialParameters.values()), \
             bounds =(list(self.minParameters.values()), list(self.maxParameters.values())), method = 'trf', jac = '3-point')
-
-    def fittedCurrentCurve(self):
+        
         i = 0
         for parameterName in self.parameters:
             self.parameters[parameterName] = self.optimizationData.x[i]
             i += 1
+        
+        unshiftedCurrentCurve = self.currentDensityforVoltages(self.voltageData)
+        self.prefactor = np.max(self.currentData) / np.max(unshiftedCurrentCurve)
+        self.fittedCurrent = self.prefactor * unshiftedCurrentCurve
 
-        calculatedCurrent = self.currentDensityforVoltages(self.voltageData)
-        shift = np.max(calculatedCurrent) / np.max(self.currentData)
-        return calculatedCurrent / shift
-
-    def fitCurrentVoltageCurve(self, voltageData, currentData, \
-            fieldRange = [1., 12.], radiusRange = [1., 1000.], gammaRange = [10. - 1.e-10, 10. + 1.e-10], workFunctionRange = [1., 6.5], temperatureRange = [30., 5000.]):
-
-        minConversionFactor = fieldRange[0] / np.min(voltageData)
-        initialConversionFactor = np.mean(fieldRange) / np.mean(voltageData)
-        maxConversionFactor = fieldRange[1] / np.max(voltageData)
+    def getOptCurrentCurve(self, voltageData = None) -> np.ndarray:
+        if (voltageData == None):
+            return self.fittedCurrent
+        else:
+            return self.prefactor * self.currentDensityforVoltages(voltageData)
 
 
-    
-        popt = opt.least_squares(fun = self.logCurrentDensityError, args = (voltageData, currentData), \
-                x0 =     [initialConversionFactor, np.mean(radiusRange), np.mean(gammaRange), np.mean(workFunctionRange), np.mean(temperatureRange)], \
-                bounds =([minConversionFactor, radiusRange[0], gammaRange[0], workFunctionRange[0], temperatureRange[0]],\
-                        [maxConversionFactor, radiusRange[1], gammaRange[1], workFunctionRange[1], temperatureRange[1]]), \
-                method = 'trf', jac = '3-point', xtol = 1.e-15)
-        return popt.x
+
 
 
 def currentDensityMetalforArrays(field:np.ndarray, radius:np.ndarray, gamma:np.ndarray, \
@@ -1207,7 +1205,7 @@ def currentDensityMetalforArrays(field:np.ndarray, radius:np.ndarray, gamma:np.n
         currentDensity[i] = emitter.currentDensityFast()
         
     return currentDensity
-def heat_metal_emitter(Field:array, Radius:array, Gamma:array, Workfunction:array, Temperature:array):
+def heat_metal_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.ndarray, Workfunction:np.ndarray, Temperature:np.ndarray):
     
     kBoltz = 8.6173324e-5 
     kT = kBoltz * Temperature
@@ -1226,7 +1224,7 @@ def heat_metal_emitter(Field:array, Radius:array, Gamma:array, Workfunction:arra
 
     return nh_metal
 
-def heat_metal_emitter2(Field:array, Radius:array, Gamma:array, Workfunction:array, Temperature:array):
+def heat_metal_emitter2(Field:np.ndarray, Radius:np.ndarray, Gamma:np.ndarray, Workfunction:np.ndarray, Temperature:np.ndarray):
 
     kBoltz = 8.6173324e-5 
     kT = kBoltz * Temperature
@@ -1245,7 +1243,7 @@ def heat_metal_emitter2(Field:array, Radius:array, Gamma:array, Workfunction:arr
 
     return nh_metal
 
-def current_semiconductor_emitter(Field:array, Radius:array, Gamma:array ,Ec:array, Ef:array, Eg:array, Temperature:array):
+def current_semiconductor_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.ndarray ,Ec:np.ndarray, Ef:np.ndarray, Eg:np.ndarray, Temperature:np.ndarray):
 
     kBoltz = 8.6173324e-5 
 
@@ -1291,7 +1289,7 @@ def current_semiconductor_emitter(Field:array, Radius:array, Gamma:array ,Ec:arr
     
     return j_total
 
-def heat_semiconductor_emitter(Field:array, Radius:array, Gamma:array ,Ec:array, Ef:array, Eg:array, Temperature:array):
+def heat_semiconductor_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.ndarray ,Ec:np.ndarray, Ef:np.ndarray, Eg:np.ndarray, Temperature:np.ndarray):
     
     kBoltz = 8.6173324e-5 
     kT = kBoltz * Temperature
@@ -1342,7 +1340,7 @@ def heat_semiconductor_emitter(Field:array, Radius:array, Gamma:array ,Ec:array,
 
 if (__name__ == "__main__"): #some testing operations
     
-    bar = Barrier(5, 10, 10., tabulationFolder="tabulated")
+    bar = Barrier(5, 10, 10., tabulationFolder=tabulationPath)
     sup = Supply()
     em = MetalEmitter(bar, sup)
     # kT = BoltzmannConstant * 1000.
@@ -1415,8 +1413,9 @@ if (__name__ == "__main__"): #some testing operations
     fitter.setIVcurve(voltageData=voltage, currentData=currentDensity)
     fitter.setParameterRange()
     fitter.fitIVCurve()
+    fittedCurrent = fitter.getOptCurrentCurve()
     plt.semilogy(voltage, currentDensity,  '.')
-    plt.semilogy(voltage, fitter.fittedCurrentCurve())
+    plt.semilogy(voltage, fittedCurrent)
     plt.savefig("fittedcurve.png")
 
 
