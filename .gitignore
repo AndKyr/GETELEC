@@ -20,8 +20,6 @@
 *.pdf
 *.gz
 *.dvi
-*.svg
-webGUI
 *.vscode
 *.npy
 
