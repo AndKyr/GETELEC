@@ -10,7 +10,7 @@ mainpath,filename = os.path.split(os.path.realpath(__file__))
 emissionpath,mainfolder = os.path.split(mainpath)
 emissionpath,mainfolder = os.path.split(emissionpath)
 
-pythonpath = emissionpath + '/python'
+pythonpath = emissionpath + '/interfaces/web_interface'
 sys.path.append(pythonpath)
 
 from getelec_online import current_metal_emitter, heat_metal_emitter, spectrum_metal_emitter

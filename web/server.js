@@ -80,7 +80,7 @@ io.sockets.on('connection', function (socket) {
 
     }
 
-    console.log(`${updateTime()} Got a job from ${socket.id}}: ${params}`);
+    console.log(`${updateTime()} Got a job from ${socket.id}}`);
 
     PythonShell.run("python/ivCalc.py", options, (err, res) => {
 
@@ -152,7 +152,7 @@ io.sockets.on('connection', function (socket) {
 
     }
 
-    console.log(`${updateTime()} Got a job from ${socket.id}}: ${params}`);
+    console.log(`${updateTime()} Got a job from ${socket.id}}`);
 
     PythonShell.run("python/emissionCalc.py", options, (err, res) => {
 

@@ -63,8 +63,10 @@ mainpath,filename = os.path.split(os.path.realpath(__file__))
 emissionpath,mainfolder = os.path.split(mainpath)
 emissionpath,mainfolder = os.path.split(emissionpath)
 
-pythonpath = emissionpath + '/python'
+pythonpath = emissionpath + '/interfaces/web_interface'
 sys.path.append(pythonpath)
+
+print(pythonpath)
 
 from getelec_online import fit_data
 
