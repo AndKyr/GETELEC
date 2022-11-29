@@ -597,11 +597,8 @@ class MetalEmitter(Emitter):
             #find meaningful root of the polynomial
             realroots = np.roots(polynomialForRoots)
             # value of w where dG/dw = 1/kT
-            try:
-                self._centerOfSpectrumEnergy = self.workFunction - \
+            self._centerOfSpectrumEnergy = self.workFunction - \
                     realroots[np.nonzero(np.logical_and(realroots > self.barrier.minEnergyDepth, realroots < self.workFunction))][0]
-            except(IndexError):
-                print("here")
             # find energy limits
             self._highEnergyLimit =  self._centerOfSpectrumEnergy + decayCutoff * self.kT
             self._lowEnergyLimit = self._centerOfSpectrumEnergy - 2.5 * decayCutoff * self.kT
@@ -1219,6 +1216,7 @@ def currentDensityMetalforArrays(field:np.ndarray, radius:np.ndarray, gamma:np.n
         currentDensity[i] = emitter.currentDensityFast()
         
     return currentDensity
+
 def heat_metal_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.ndarray, Workfunction:np.ndarray, Temperature:np.ndarray):
     
     kBoltz = 8.6173324e-5 
@@ -1427,7 +1425,7 @@ if (__name__ == "__main__"): #some testing operations
     fitter.setParameterRange()
     fitter.fitIVCurve()
     fittedCurrent = fitter.getOptCurrentCurve()
-    plt.semilogy(voltage, currentDensity,  '.')
+    plt.semilogy(voltage, currentDensity, '.')
     plt.semilogy(voltage, fittedCurrent)
     plt.savefig("fittedcurve.png")
 
