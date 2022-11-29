@@ -3,8 +3,8 @@ import numpy as np
 import os
 from pathlib import Path
 
-getelecPath = str(Path(__file__).parents[2].absolute()) + '/src/'
-sys.path.insert(0,getelecPath)
+getelecRootPath = str(Path(__file__).parents[2].absolute())
+sys.path.insert(0,getelecRootPath + "/src/")
 import getelec as gt
 
 
@@ -220,11 +220,12 @@ def spectrum_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature
     return energy_c, count_c, energy_v, count_v
 
 
-def plot_data(xfn, beta, W0, R0, Gamma0, Temp0, approx=2):
-    plot_data = gt.MLplot(xfn, beta, W0, R0, Gamma0, Temp0, approx)
-    return plot_data
-
 def fit_data(xML, yML, workFunction, mode = "simple"):
+
+    if mode == "simple":
+        gt.setTabulationPath(getelecRootPath + "/tabulated/1D_1024")
+    else:
+        gt.setTabulationPath(getelecRootPath + "tabulated/2D_512x256")
     
     voltage = 1./xML
     current = np.exp(yML)

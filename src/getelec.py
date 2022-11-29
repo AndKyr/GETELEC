@@ -13,10 +13,11 @@ filePath,filename = os.path.split(os.path.realpath(__file__))
 BoltzmannConstant = 8.617333262e-5
 
 
-tabulationPath = "tabulated"
+class Globals:
+    tabulationPath = "tabulated/2D_512x256"
 
 def setTabulationPath(path:str) -> None:
-    tabulationPath = path
+    Globals.tabulationPath = path
 
 
 class Interpolator:
@@ -59,21 +60,24 @@ class Interpolator:
     _Npolynomial : int 
     _Nradius : int  
 
-    def __init__(self, preloadedGamowTable : np.ndarray = None, preloadedLimits : np.ndarray = None, dataFolder = tabulationPath):
+    def __init__(self, preloadedGamowTable : np.ndarray = None, preloadedLimits : np.ndarray = None, tabulationFolder = Globals.tabulationPath, \
+        Nfield = 256, NRadius = 128, Ngamma = 1, Npolynomial = 4, NGamow = 128):
         """Initialises Tabulator by loading the tables from files. If maps not found, calls tabulation scripts
         from old getelec
 
         Parameters:
+            preloadedGamowTable, preloadedLimits (optional): already loaded tabulation to reuse in this object
             tabulationFolder (int, optional): folder where to fine tabulated values
-            NField, NRadius, Ngamma (int, optional): Number of points to tabulate for electric field, radius and gamma.
-            They are relevant only in case the tabulated files are not found and the tabulation script from oldGETELEC
-            is invoked. 
+            NField, NRadius, Ngamma, Npolyniomial, NGamow (int, optional): 
+                Number of points to tabulate for electric field, radius and gamma, number of polynomial terms, number of Gamow points for fitting.
+                Relevant in case tabulation files not found and the tabulation script from oldGETELEC is invoked. 
         """
         if (preloadedGamowTable is None or preloadedLimits is None):
-            self._isTableLoaded = self._loadTablesFromFileIfPossible(dataFolder)
+            self._isTableLoaded = self._loadTablesFromFileIfPossible(tabulationFolder)
             if not self._isTableLoaded: #all the script that creates tables and try to load again
-                self.calculateAndSaveTable()
-                self._isTableLoaded = self._loadTablesFromFileIfPossible(dataFolder)
+                self.calculateAndSaveTable(NField=Nfield, NRadius=NRadius, Ngamma=Ngamma, Npolynomial=Npolynomial, \
+                    NGamow=NGamow, dataFolder=tabulationFolder)
+                self._isTableLoaded = self._loadTablesFromFileIfPossible(tabulationFolder)
         else:
             self._gamowTable = preloadedGamowTable
             self._limits = preloadedLimits
@@ -81,16 +85,27 @@ class Interpolator:
         
         self._initializeTabulationVariables()
 
-    def calculateAndSaveTable(self, NField = 256, NRadius = 128, Ngamma = 1, Npolynomial = 4, NGamow = 128):
-        """Runs old Getelec script that produces tabulation and saves it at tabulated/ folder."""
+    def calculateAndSaveTable(self, NField = 256, NRadius = 128, Ngamma = 1, Npolynomial = 4, NGamow = 128, dataFolder = Globals.tabulationPath):
+        """Runs old Getelec script that produces and saves tabulation
+        
+        Parameters:
+            NField: Number of fields in table
+            Nradius: Number of Radii in table
+            Ngamma: Number of gammas in table
+            Npolynomial: Number of fitting polynomial terms
+            NGAmow: Number of Gamow calculation points for polynomial fitting
+            dataFolder: Folder where to save the data
+        """
 
         tabulationScript = filePath + "/../oldGETELEC/python/tabulateGamow.py"
-        command = "python3 %s -nf %d -nr %d -ng %d -np %d -nG %d"%(tabulationScript, NField, NRadius, Ngamma, Npolynomial, NGamow)
+        command = "python3 %s -nf %d -nr %d -ng %d -np %d -nG %d -o %s"%(tabulationScript, NField, NRadius, \
+            Ngamma, Npolynomial, NGamow, dataFolder)
         print("Producing tabulator by running:")
         print(command)
+        os.system("mkdir -p " + dataFolder)
         os.system(command)
 
-    def _loadTablesFromFileIfPossible(self, dataFolder = tabulationPath) -> bool:
+    def _loadTablesFromFileIfPossible(self, dataFolder = Globals.tabulationPath) -> bool:
         """Loads the table of the Gamow factor from the files where it has been stored.
 
         Returns:
@@ -101,7 +116,7 @@ class Interpolator:
             self._limits = np.load(dataFolder + "/tabLimits.npy")
             return True
         except(IOError):
-            print("tabulation files not found")
+            print("tabulation files not found in the path " + dataFolder)
             return False
 
     def _initializeTabulationVariables(self) -> None:
@@ -1056,7 +1071,6 @@ class Semiconductor_Emitter(Emitter):
 
 
 
-
 class IVDataFitter:
     parameters: dict
     initialParameters: dict
@@ -1340,9 +1354,7 @@ def heat_semiconductor_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.nda
 
 if (__name__ == "__main__"): #some testing operations
     
-    bar = Barrier(5, 10, 10., tabulationFolder=tabulationPath)
-    sup = Supply()
-    em = MetalEmitter(bar, sup)
+
     # kT = BoltzmannConstant * 1000.
     # for i in range(8):
     #     kT *= 0.8
@@ -1392,7 +1404,11 @@ if (__name__ == "__main__"): #some testing operations
     # t1 = time.time()
     # print ("elapsed time semiconductor = ", t1 - t0)
 
+    interpolator = Interpolator(tabulationFolder="tabulated/1D_1024", Nfield=1024, NRadius=1, Ngamma=1)
 
+    bar = Barrier(5, 1000, 10., tabulationFolder="tabulated/1D_1024")
+    sup = Supply()
+    em = MetalEmitter(bar, sup)
 
 
     xFN = np.linspace(0.15, 0.3, 32)
@@ -1401,15 +1417,12 @@ if (__name__ == "__main__"): #some testing operations
     currentDensity = np.copy(voltage)
     
     for i in range(len(voltage)):
-        bar.setParameters(field=voltage[i], radius=10.)
+        bar.setParameters(field=voltage[i], radius=1000.)
         em.setParameters(4.5, 300. * BoltzmannConstant)
         currentDensity[i] = em.currentDensityFast()
 
-    fitter = IVDataFitter()
+    fitter = IVDataFitter(emitter=em)
 
-    # errors = em.logCurrentDensityError([1.2, 10., 10., 4.5, 300], voltage, currentDensity)
-
-    # print (errors)
     fitter.setIVcurve(voltageData=voltage, currentData=currentDensity)
     fitter.setParameterRange()
     fitter.fitIVCurve()
