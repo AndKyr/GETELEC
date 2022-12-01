@@ -16,76 +16,32 @@ sys.path.append(pythonpath)
 from getelec_online import current_metal_emitter, heat_metal_emitter, spectrum_metal_emitter
 from getelec_online import current_semiconductor_emitter, heat_semiconductor_emitter, spectrum_semiconductor_emitter
 
-def convertInput():
-
-    dataInArr = (sys.argv[1])
-
-    data = json.dumps(dataInArr)
-    data = data.split("}")
-    data = data[0].split("{")[1]
-    data = data.split("]")
-
-    lines = []
-    result = []
-
-    for line in data:
-
-        lined = line.split(":")[1:]
-
-        for linedd in lined:
-
-            linedd = linedd[1:]
-            lines.append(linedd)
-
-    for line in lines:
-
-        if "," in line:
-
-            _line = line.split(",")
-            line = []
-
-            for el in _line:
-
-                if el[0] == "[":
-                    el = el[1:]
-
-                line.append(float(el))
-
-            result.append(line)
-            
-        else:
-            
-            if line[0] == "[":
-                line = line[1:]
-
-            result.append([float(line)])
-    
-    return result
-
 def main():
 
-    data = convertInput()
+    data = json.loads(sys.argv[1])
+
+    print(data)
     
-    materialType = (str(data[0][0]))[0]
-    sweepParam = str(data[1][0])[0]
-    field = data[2]
-    radius = data[3]
-    wf = data[4]
-    temp = data[5]
+    materialType = data['materialType']
+    sweepParam = data['sweepParam']
+    field = data['field']
+    radius = data['radius']
+    wf = data['work_function']
+    temp = data['temperature']
 
-    ec = data[6][0]
-    ef = data[7][0]
-    eg = data[8][0]
+    ec = data['ec']
+    ef = data['ef']
+    eg = data['eg']
 
-    gammaMetal = data[9]
-    gammaSemi = data[10]
+    gammaMetal = data['gammaMetal']
+    gammaSemi = data['gammaSemi']
 
-    me = data[11][0]
-    mp = data[12][0]
+    me = data['me']
+    mp = data['mp']
 
-    calculateEC = (str(data[13][0]))[0]
-    calculateES = (str(data[15][0]))[0]
-    calculateNH = (str(data[14][0]))[0]
+    calculateEC = data['calculateEC']
+    calculateES = data['calculateES']
+    calculateNH = data['calculateNH']
 
     data1 = []
     data2 = []
