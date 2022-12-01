@@ -52,33 +52,36 @@ def main():
     data3e = []
     data6e = []
 
-    if sweepParam == "2":
+    if sweepParam == 2:
 
         sweepParam = "field"
 
-    elif sweepParam == "3":
+    elif sweepParam == 3:
 
         sweepParam = "radius"
 
-    elif sweepParam == "4":
+    elif sweepParam == 4:
 
         sweepParam = "wf"
 
-    elif sweepParam == "5":
+    elif sweepParam == 5:
 
         sweepParam = "temp"
 
-    if materialType == "1":
+    if materialType == 1:
 
-        if calculateEC == "1":
+        if calculateEC == 1:
+
+            print(temp)
+            print(field)
             
-            data1 = current_metal_emitter(field, radius, gammaMetal, wf, temp).tolist()
+            #data1 = current_metal_emitter(field, radius, gammaMetal, wf, temp).tolist()
         
-        if calculateNH == "1":
+        if calculateNH == 1:
 
             data2 = heat_metal_emitter(field, radius, gammaMetal, wf, temp).tolist()
 
-        if calculateES == "1":
+        if calculateES == 1:
 
             energies, electronCounts = spectrum_metal_emitter(field, radius, gammaMetal, wf, temp)
 
@@ -91,17 +94,18 @@ def main():
             for electronCount in electronCounts:
                 data3e.append(electronCount.tolist())
             
-    elif materialType == "2":
+    elif materialType == 2:
 
-        if calculateEC == "1":
+        if calculateEC == 1:
 
             data4 = current_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp).tolist()
 
-        if calculateNH == "1":  
+        if calculateNH == 1:  
               
             data5 = heat_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp).tolist()
   
         if calculateES == "1":
+
             energy, electronCount = spectrum_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp).tolist()
             data6 = energy.tolist()
             data6e = electronCount.tolist()
