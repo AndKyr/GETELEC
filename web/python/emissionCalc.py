@@ -39,7 +39,7 @@ def main():
     data.me = np.array(data['me'])
     data.mp = np.array(data['mp'])
 
-    maxlen = np.max(len(data.materialType), len(data.sweepParam), len(data.field), len(data.radius), len(data.wf), len(data.temp), len(data.ec), len(data.ef), len(data.eg), len(data.gammaMetal), len(data.gammaSemi), len(data.me), len(data.mp))
+    data = forceSameLength(data)
 
     data1 = []
     data2 = []
@@ -111,5 +111,18 @@ def main():
     }
 
     print(json.dumps(outdata))
+
+    def forceSameLength(_data):
+
+        maxlen = np.max(len(_data.materialType), len(_data.sweepParam), len(_data.field), len(_data.radius), len(_data.wf), len(_data.temp), len(_data.ec), len(_data.ef), len(_data.eg), len(_data.gammaMetal), len(_data.gammaSemi), len(_data.me), len(_data.mp))
+
+        shortFields = [var for var in dir(_data) if (not var.startswith('__') and len(_data.var) < maxlen)]
+
+        for _field in shortFields:
+            
+            _data[f"{_field}"] = np.append(_data[f"{_field}"], np.array(_data[f"{_field}"][-1]) * (maxlen - len(_data[f"{_field}"])))
+
+        return _data
+
 
 main()
