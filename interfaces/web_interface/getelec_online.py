@@ -7,37 +7,27 @@ getelecRootPath = str(Path(__file__).parents[2].absolute())
 sys.path.insert(0,getelecRootPath + "/src/")
 import getelec as gt
 
+def getArgument(arg, index):
+    try:
+        return(arg[index])
+    except(TypeError, IndexError) as error:
+        return arg
 
-def current_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
+def currentDensityMetal(field, radius, gamma, workFunction, temperature):
+    """ Calculates the current density for an array of inputs 
     """
-    Field [nm] - Electric field
-    Radius [nm] - Emitter's tip radius
-    Gamma [int] - Math parameter
-    Workfunction [eV] - Material's workfunction
-    Temperature [K] - Emitter's temperature
-    j_metal [A/nm^2] - Emitted current density
 
-    For more info refer to GETELEC TABULATOR's documentation
-    """
-    tab = gt.Interpolator()
+    emitter = gt.MetalEmitter(gt.Barrier(), gt.Supply())
 
-    kBoltz = 8.6173324e-5 
-    kT = kBoltz * Temperature
+    currentDensity = np.copy(field)
+    kT = gt.BoltzmannConstant * temperature
     
-    metal_emitter = gt.Metal_Emitter(tab)
-
-    j_metal = np.copy(Field)
-    
-    for i in range(len(Field)):
-
-        metal_emitter._emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
-        metal_emitter._emitter.Interpolate_Gammow()
-    
-        metal_emitter.Define_Metal_Emitter_Parameters(Workfunction[i], kT[i])
-    
-        j_metal[i] = metal_emitter.Current_Density_from_Metals()
+    for i in range(len(field)):
+        emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
+        emitter.setParameters(getArgument(workFunction, i), getArgument(kT, i))
+        currentDensity[i] = emitter.currentDensityFast()
         
-    return j_metal
+    return currentDensity
 
 def heat_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
     """
@@ -246,3 +236,9 @@ def fit_data(xML, yML, workFunction, mode = "simple"):
         
     
     return xplot, xplot_th, yth, fitter.parameters["fieldConversionFactor"], fitter.parameters["radius"], fitter.prefactor
+
+
+
+field = np.linspace(3., 6., 32)
+
+print(currentDensityMetal(field, 100., 10., 4.5, 300.))
