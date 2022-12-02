@@ -7,8 +7,14 @@ import scipy.ndimage
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
 import copy
-
+import subprocess
 filePath,filename = os.path.split(os.path.realpath(__file__))
+
+
+if (not os.path.exists(filePath + '/libintegrator.so')):
+    subprocess.call("gcc -c -fPIC -O3 integrator.c -o integrator.o", cwd=filePath, shell=True)
+    subprocess.call("gfortran -c -fPIC -O3 dilog.f -o dilog.o", cwd=filePath, shell=True)
+    subprocess.call("gcc -fPIC -shared integrator.o dilog.o -o libintegrator.so && rm *.o", cwd=filePath, shell=True)
 
 BoltzmannConstant = 8.617333262e-5
 
@@ -508,7 +514,6 @@ class Supply:
 
 
 class Emitter:
-    
     fastIntegrator = ct.CDLL(filePath + '/libintegrator.so') #use absolute path
     fastIntegrator.currentDensityPerNormalEnergy.restype = ct.c_double
     fastIntegrator.currentDensityPerNormalEnergy.argtypes = (ct.c_int, ct.c_double)
