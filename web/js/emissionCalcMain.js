@@ -340,10 +340,10 @@ function main(){
 
         //data object that is to be sent to server, can be jsoned etc.
 
-        data = [[materialType], [sweepParam], _field,
+        data = [materialType, sweepParam, _field,
              _radius, _workFunction, _temperature,
             _ec, _ef, _eg, _gammaMetal, _gammaSemi, _me, _mp,
-            [calculateEC], [calculateNH], [calculateES]];
+            calculateEC, calculateNH, calculateES];
         
     
         //if all conditions are met, send data to server. Displays loading modal
