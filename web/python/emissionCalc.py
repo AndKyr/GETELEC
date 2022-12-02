@@ -13,33 +13,43 @@ emissionpath,mainfolder = os.path.split(emissionpath)
 pythonpath = emissionpath + '/interfaces/web_interface'
 sys.path.append(pythonpath)
 
-from getelec_online import current_metal_emitter, heat_metal_emitter, spectrum_metal_emitter
+from getelec_online import currentDensityMetal, heat_metal_emitter, spectrum_metal_emitter
 from getelec_online import current_semiconductor_emitter, heat_semiconductor_emitter, spectrum_semiconductor_emitter
+
+def forceSameLength(_data):
+
+        maxlen = max(len(_data['field']), len(_data['radius']), len(_data['wf']), len(_data['temp']), len(_data['ec']), len(_data['ef']), len(_data['eg']), len(_data['gammaMetal']), len(_data['gammaSemi']), len(_data['me']), len(_data['mp']))
+
+        shortFields = [var for var in _data.keys() if (var in ['field', 'radius', 'wf', 'temp', 'ec', 'ef', 'eg', 'gammaMetal', 'gammaSemi', 'me', 'mp'] and len(_data[f"{var}"]) < maxlen)]
+
+        for _field in shortFields:
+            
+            _data[f"{_field}"] = np.concatenate(_data[f"{_field}"], np.array(_data[f"{_field}"][-1]) * (maxlen - len(_data[f"{_field}"])))
+
+        return _data
 
 def main():
 
     data = json.loads(sys.argv[1])
 
-    print(data)
+    print(data)    
     
-    data.materialType = np.array(data['materialType'])
-    data.sweepParam = np.array(data['sweepParam'])
-    data.field = np.array(data['field'])
-    data.radius = np.array(data['radius'])
-    data.wf = np.array(data['work_function'])
-    data.temp = np.array(data['temperature'])
+    data['field'] = np.array(data['field'])
+    data['radius'] = np.array(data['radius'])
+    data['wf'] = np.array(data['work_function'])
+    data['temp'] = np.array(data['temperature'])
 
-    data.ec = np.array(data['ec'])
-    data.ef = np.array(data['ef'])
-    data.eg = np.array(data['eg'])
+    data['ec'] = np.array(data['ec'])
+    data['ef'] = np.array(data['ef'])
+    data['eg'] = np.array(data['eg'])
 
-    data.gammaMetal = np.array(data['gammaMetal'])
-    data.gammaSemi = np.array(data['gammaSemi'])
+    data['gammaMetal'] = np.array(data['gammaMetal'])
+    data['gammaSemi'] = np.array(data['gammaSemi'])
 
-    data.me = np.array(data['me'])
-    data.mp = np.array(data['mp'])
+    data['me'] = np.array(data['me'])
+    data['mp'] = np.array(data['mp'])
 
-    maxlen = np.max(len(data.materialType), len(data.sweepParam), len(data.field), len(data.radius), len(data.wf), len(data.temp), len(data.ec), len(data.ef), len(data.eg), len(data.gammaMetal), len(data.gammaSemi), len(data.me), len(data.mp))
+    data = forceSameLength(data)
 
     data1 = []
     data2 = []
@@ -50,35 +60,35 @@ def main():
     data3e = []
     data6e = []
 
-    if data.sweepParam == 2:
+    if data['sweepParam'] == 2:
 
-        data.sweepParam = "field"
+        data['sweepParam'] = "field"
 
-    elif data.sweepParam == 3:
+    elif data['sweepParam'] == 3:
 
-        data.sweepParam = "radius"
+        data['sweepParam'] = "radius"
 
-    elif data.sweepParam == 4:
+    elif data['sweepParam'] == 4:
 
-        data.sweepParam = "wf"
+        data['sweepParam'] = "wf"
 
-    elif data.sweepParam == 5:
+    elif data['sweepParam'] == 5:
 
-        data.sweepParam = "temp"
+        data['sweepParam'] = "temp"
 
-    if data.materialType == 1:
+    if data['materialType'] == 1:
 
-        if data.calculateEC == 1:
+        if data['calculateEC'] == 1:
             
-            data1 = current_metal_emitter(data.field, data.radius, data.gammaMetal, data.wf, data.temp).tolist()
+            data1 = currentDensityMetal(data['field'], data['radius'], data['gammaMetal'], data['wf'], data['temp']).tolist()
         
-        if data.calculateNH == 1:
+        if data['calculateNH'] == 1:
 
-            data2 = heat_metal_emitter(data.field, data.radius, data.gammaMetal, data.wf, data.temp).tolist()
+            data2 = heat_metal_emitter(data['field'], data['radius'], data['gammaMetal'], data['wf'], data['temp']).tolist()
 
-        if data.calculateES == 1:
+        if data['calculateES'] == 1:
 
-            energies, electronCounts = spectrum_metal_emitter(data.field, data.radius, data.gammaMetal, data.wf, data.temp)
+            energies, electronCounts = spectrum_metal_emitter(data['field'], data['radius'], data['gammaMetal'], data['wf'], data['temp'])
 
             data3 = []
             data3e = []
@@ -89,27 +99,26 @@ def main():
             for electronCount in electronCounts:
                 data3e.append(electronCount.tolist())
             
-    elif data.materialType == 2:
+    elif data['materialType'] == 2:
 
-        if data.calculateEC == 1:
+        if data['calculateEC'] == 1:
 
-            data4 = current_semiconductor_emitter(data.field, data.radius, data.gammaSemi, data.ec, data.ef, data.eg, data.temp, data.me, data.mp).tolist()
+            data4 = current_semiconductor_emitter(data['field'], data['radius'], data['gammaSemi'], data['ec'], data['ef'], data['eg'], data['temp'], data['me'], data['mp']).tolist()
 
-        if data.calculateNH == 1:  
+        if data['calculateNH'] == 1:  
               
-            data5 = heat_semiconductor_emitter(data.field, data.radius, data.gammaSemi, data.ec, data.ef, data.eg, data.temp, data.me, data.mp).tolist()
+            data5 = heat_semiconductor_emitter(data['field'], data['radius'], data['gammaSemi'], data['ec'], data['ef'], data['eg'], data['temp'], data['me'], data['mp']).tolist()
   
-        if data.calculateES == "1":
+        if data['calculateES'] == "1":
 
-            energy, electronCount = spectrum_semiconductor_emitter(data.field, data.radius, data.gammaSemi, data.ec, data.ef, data.eg, data.temp, data.me, data.mp).tolist()
+            energy, electronCount = spectrum_semiconductor_emitter(data['field'], data['radius'], data['gammaSemi'], data['ec'], data['ef'], data['eg'], data['temp'], data['me'], data['mp']).tolist()
             data6 = energy.tolist()
             data6e = electronCount.tolist()
 
-    outdata = {"materialType": data.materialType.tolist(), "sweepParam": data.sweepParam.tolist(), "field": data.field.tolist(), "radius": data.radius.tolist(), "work_function": data.wf.tolist(), "temperature": data.temp.tolist(),
-        "ec": data.ec.tolist(), "ef": data.ef.tolist(), "eg": data.eg.tolist(), "gammaMetal": data.gammaMetal.tolist(), "gammaSemi": data.gammaSemi.tolist(),
-        "me": data.me.tolist(), "mp": data.mp.tolist(), "metalEC": data1, "metalNH": data2, "metalESenergy": data3, "metalESelcount": data3e, "semiEC": data4, "semiNH": data5, "semiESenergy": data6, "semiESelcount": data6e
+    outdata = {"materialType": data['materialType'].tolist(), "sweepParam": data['sweepParam'].tolist(), "field": data['field'].tolist(), "radius": data['radius'].tolist(), "work_function": data['wf'].tolist(), "temperature": data['temp'].tolist(), "ec": data['ec'].tolist(), "ef": data['ef'].tolist(), "eg": data['eg'].tolist(), "gammaMetal": data['gammaMetal'].tolist(), "gammaSemi": data['gammaSemi'].tolist(), "me": data['me'].tolist(), "mp": data['mp'].tolist(), "metalEC": data1, "metalNH": data2, "metalESenergy": data3, "metalESelcount": data3e, "semiEC": data4, "semiNH": data5, "semiESenergy": data6, "semiESelcount": data6e
     }
 
     print(json.dumps(outdata))
+
 
 main()
