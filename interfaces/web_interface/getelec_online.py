@@ -7,8 +7,7 @@ getelecRootPath = str(Path(__file__).parents[2].absolute())
 sys.path.insert(0,getelecRootPath + "/src/")
 import getelec as gt
 
-
-def current_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
+def OLD_current_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
     """
     Field [nm] - Electric field
     Radius [nm] - Emitter's tip radius
@@ -24,7 +23,35 @@ def current_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
     kBoltz = 8.6173324e-5 
     kT = kBoltz * Temperature
     
-    metal_emitter = gt.Metal_Emitter(tab)
+    metal_emitter = gt.MetalEmitter(tab)
+
+    j_metal = np.copy(Field)
+    
+    for i in range(len(Field)):
+
+        metal_emitter._emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
+        metal_emitter._emitter.Interpolate_Gammow()
+    
+        metal_emitter.Define_Metal_Emitter_Parameters(Workfunction[i], kT[i])
+    
+        j_metal[i] = metal_emitter.Current_Density_from_Metals()
+        
+    return j_metal
+
+def current_metal_emitter(Field:np.array, Radius:np.array, Gamma:np.array, Workfunction:np.array, Temperature:np.array):
+
+    """
+    Field [nm] - Electric field
+    Radius [nm] - Emitter's tip radius
+    Gamma [int] - Math parameter
+    Workfunction [eV] - Material's workfunction
+    Temperature [K] - Emitter's temperature
+    j_metal [A/nm^2] - Emitted current density
+
+    For more info refer to GETELEC TABULATOR's documentation
+    """
+        
+    metal_emitter = gt.MetalEmitter()
 
     j_metal = np.copy(Field)
     

@@ -508,6 +508,7 @@ class Supply:
 
 
 class Emitter:
+    
     fastIntegrator = ct.CDLL(filePath + '/libintegrator.so') #use absolute path
     fastIntegrator.currentDensityPerNormalEnergy.restype = ct.c_double
     fastIntegrator.currentDensityPerNormalEnergy.argtypes = (ct.c_int, ct.c_double)
