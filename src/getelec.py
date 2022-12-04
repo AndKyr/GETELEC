@@ -16,11 +16,11 @@ if (not os.path.exists(filePath + '/libintegrator.so')):
     subprocess.call("gfortran -c -fPIC -O3 dilog.f -o dilog.o", cwd=filePath, shell=True)
     subprocess.call("gcc -fPIC -shared integrator.o dilog.o -o libintegrator.so && rm *.o", cwd=filePath, shell=True)
 
-BoltzmannConstant = 8.617333262e-5
 
 
 class Globals:
     tabulationPath = "tabulated/2D_512x256"
+    BoltzmannConstant = 8.617333262e-5
 
 def setTabulationPath(path:str) -> None:
     Globals.tabulationPath = path
@@ -1118,7 +1118,7 @@ class IVDataFitter:
     
         for i in range(len(voltageArray)):
             self.emitter.barrier.setParameters(field= self.parameters["fieldConversionFactor"] * voltageArray[i], radius = radius, gamma = gamma)
-            self.emitter.setParameters(self.parameters["workFunction"], BoltzmannConstant * self.parameters["temperature"])
+            self.emitter.setParameters(self.parameters["workFunction"], Globals.BoltzmannConstant * self.parameters["temperature"])
             currentDensity[i] = self.emitter.currentDensityFast()
         
         return currentDensity
@@ -1214,7 +1214,7 @@ def currentDensityMetalforArrays(field:np.ndarray, radius:np.ndarray, gamma:np.n
         emitter = MetalEmitter(Barrier(),Supply())
 
     currentDensity = np.copy(field)
-    kT = BoltzmannConstant * temperature
+    kT = Globals.BoltzmannConstant * temperature
     
     for i in range(len(field)):
         emitter.barrier.setParameters(field[i], radius[i], gamma[i])
@@ -1359,11 +1359,11 @@ def heat_semiconductor_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.nda
 if (__name__ == "__main__"): #some testing operations
     
 
-    # kT = BoltzmannConstant * 1000.
+    # kT = Globals.BoltzmannConstant * 1000.
     # for i in range(8):
     #     kT *= 0.8
     #     em.setParameters(4., kT)
-    #     print("running for temperature = ", kT / BoltzmannConstant)
+    #     print("running for temperature = ", kT / Globals.BoltzmannConstant)
     #     Energy, electronCount = em.totalEnergyDistribution()
     #     currentFromTED = em.SommerfeldConstant * np.trapz(electronCount, Energy)
     #     nottinghamFromTED = -em.SommerfeldConstant * np.trapz(electronCount * Energy, Energy)
@@ -1386,7 +1386,7 @@ if (__name__ == "__main__"): #some testing operations
     
     # for i in range(Ntest):
     #     bar.setParameters(field=fields[i], radius=Radii[i])
-    #     em.setParameters(4., Temperatures[i] * BoltzmannConstant)
+    #     em.setParameters(4., Temperatures[i] * Globals.BoltzmannConstant)
     #     Jcur[i] = em.currentDensityFast()
 
     # t1 = time.time()
@@ -1399,7 +1399,7 @@ if (__name__ == "__main__"): #some testing operations
     
     # for i in range(Ntest):
     #     bar.setParameters(field=fields[i], radius=Radii[i])
-    #     em.Define_Semiconductor_Emitter_Parameters(Ec=8., Ef= 4., Eg=1.2, kT= BoltzmannConstant * Temperatures[i], m=1., me=1., mp=1. )
+    #     em.Define_Semiconductor_Emitter_Parameters(Ec=8., Ef= 4., Eg=1.2, kT= Globals.BoltzmannConstant * Temperatures[i], m=1., me=1., mp=1. )
     #     JcurSemi[i] = em.Current_from_Conduction_Band()
     #     if (abs(Jcur[i]/JcurSemi[i] - 1.) > 0.1):
     #         print(fields[i], Radii[i], Temperatures[i], Jcur[i], JcurSemi[i])
@@ -1422,7 +1422,7 @@ if (__name__ == "__main__"): #some testing operations
     
     for i in range(len(voltage)):
         bar.setParameters(field=voltage[i], radius=1000.)
-        em.setParameters(4.5, 300. * BoltzmannConstant)
+        em.setParameters(4.5, 300. * Globals.BoltzmannConstant)
         currentDensity[i] = em.currentDensityFast()
 
     fitter = IVDataFitter(emitter=em)
