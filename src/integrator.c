@@ -8,8 +8,11 @@
 #define maximumEnergyDepth dataArray[4]
 #define dGmin dataArray[5]
 #define dGmax dataArray[6]
+#define effectiveMass dataArray[7]
+#define Ec dataArray[8]
 #define polynomial(i) (dataArray[dataArrayLength - i - 1])
-#define polynomialLength dataArrayLength - 7
+#define polynomialLength dataArrayLength - 9
+
 
 /**
  * Calculates the logarithm Fermi-Dirac distribution
@@ -24,13 +27,11 @@ double logFermiDirac(double energyOverkT){
         return log(1. + exp(-energyOverkT));
 }
 
-/**
- * Calculates the gamow factor by evaluating the polynomial
-*/
-double gamowFunction(int dataArrayLength, double *dataArray){
-    double Gamow = polynomial(0);
-    double energyDepth = workFunction - energy;
+
+double gamowFunctionForEnergy(int dataArrayLength, double *dataArray, double energyDepth){
     
+    
+    double Gamow = polynomial(0);   
     // set energyDepth within the limits of validity of the polynomial
     if (energyDepth > maximumEnergyDepth)
         energyDepth = maximumEnergyDepth;
@@ -54,26 +55,66 @@ double gamowFunction(int dataArrayLength, double *dataArray){
 }
 
 /**
+ * Calculates the gamow factor at energy by evaluating the polynomial
+*/
+double gamowFunction(int dataArrayLength, double *dataArray){
+    
+    double energyDepth = workFunction - energy;
+    return gamowFunctionForEnergy(dataArrayLength, dataArray, energyDepth);
+
+}
+
+/**
+ * Calculates the gamow factor at energy by evaluating the polynomial
+*/
+double gamowFunctionAtReducedEnergy(int dataArrayLength, double *dataArray){
+
+    double aBar = 1. - effectiveMass;
+    double energyDepth = workFunction - aBar * (energy - Ec) ;
+    
+    return gamowFunctionForEnergy(dataArrayLength, dataArray, energyDepth);
+
+}
+
+/**
+ * @brief  Calculates transmission coefficient for a given Gamow factor
+ * @param Gamow The Gamow factor
+ * @return double transmission coefficient
+ */
+double transmissionCoefficientForGamow(double Gamow){
+    if (Gamow > 40.)
+        return exp(-Gamow);
+    else
+        return 1. / (1. + exp(Gamow));
+}
+
+/**
  * Evaluates the integrand of the current density (D(E) * lFD(E))
 */
 double currentDensityPerNormalEnergy(int dataArrayLength, double *dataArray){
 
     double Gamow = gamowFunction(dataArrayLength, dataArray);
-    
-    double transmissionCoefficient;
-    if (Gamow > 40.)
-        transmissionCoefficient = exp(-Gamow);
-    else
-        transmissionCoefficient = 1. / (1. + exp(Gamow));
-
-    return logFermiDirac(energy / kT) * transmissionCoefficient;
+        
+    if (effectiveMass == 1.)
+        return logFermiDirac(energy / kT) * transmissionCoefficientForGamow(Gamow);
+    else{
+        double GamowReduced = gamowFunctionAtReducedEnergy(dataArrayLength, dataArray);
+        return logFermiDirac(energy / kT) * (transmissionCoefficientForGamow(Gamow) - (1. - effectiveMass) * transmissionCoefficientForGamow(GamowReduced));
+    }
 }
 
+/**
+ * @brief Calculates the Nottingham heat integrand
+ * 
+ * @param dataArrayLength the length of the input parameters
+ * @param dataArray array of input parameters
+ * @return double the integrand value
+ */
 double nottinghamHeatInegrand(int dataArrayLength, double *dataArray){
 
     double Gamow = gamowFunction(dataArrayLength, dataArray);
     double transmissionCoefficient;
-    extern double dilog_() ;
+    extern double dilog_();
 
     if (Gamow > 40.)
         transmissionCoefficient = exp(-Gamow);

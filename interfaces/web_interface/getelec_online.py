@@ -20,7 +20,7 @@ def currentDensityMetal(field: np.array, radius: np.array, gamma: np.array, work
 
     ##CHECK FOR INPUTS LENGTH
 
-    emitter = gt.MetalEmitter()
+    emitter = gt.ConductionBandEmitter()
 
     currentDensity = np.copy(field)
     kT = gt.BoltzmannConstant * temperature

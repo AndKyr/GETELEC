@@ -11,7 +11,7 @@ import subprocess
 filePath,filename = os.path.split(os.path.realpath(__file__))
 
 
-if (not os.path.exists(filePath + '/libintegrator.so')):
+if (not os.path.exists(filePath + '/libintegrator.so') or os.path.getmtime(filePath + "/libintegrator.so") < os.path.getmtime(filePath + "/integrator.c") ):
     subprocess.call("gcc -c -fPIC -O3 integrator.c -o integrator.o", cwd=filePath, shell=True)
     subprocess.call("gfortran -c -fPIC -O3 dilog.f -o dilog.o", cwd=filePath, shell=True)
     subprocess.call("gcc -fPIC -shared integrator.o dilog.o -o libintegrator.so && rm *.o", cwd=filePath, shell=True)
@@ -536,7 +536,7 @@ class Emitter:
     # endregion
 
    
-class MetalEmitter(Emitter):
+class ConductionBandEmitter(Emitter):
     """
     Implements calculations for electron emission from metal emitters. 
     """
@@ -544,12 +544,14 @@ class MetalEmitter(Emitter):
     # region field declarations
     kT: float
     workFunction: float
+    Ec: float
+    effectiveMass: float
     _centerOfSpectrumEnergy: float
-    _GamowDerivativeAtFermi: float
+    _maxGamowDerivative: float
     _highEnergyLimit: float
     _lowEnergyLimit: float
     _centerOfSpectrumEnergy: float
-    _GamowDerivativeAtFermi: float
+    _maxGamowDerivative: float
     _spectralEnergyPoints: list
     
     # endregion
@@ -570,10 +572,13 @@ class MetalEmitter(Emitter):
             The limits are saved on self._highEnergyLimit and self._lowEnergyLimit
         """
         self.barrier._calculateParameters()
+        
+        #the place in the zone and above fermi that the gamow derivative is maximum
+        maxBetaEnergy = min([self.workFunction, self.barrier.maxEnergyDepth, self.workFunction - self.Ec])
         #get the maximum (for energies above Fermi level) derivative of Gamow. It is capped at Wmax
-        self._GamowDerivativeAtFermi = np.polyval(self.barrier.gamowDerivativePolynomial, min(self.workFunction, self.barrier.maxEnergyDepth))
+        self._maxGamowDerivative = np.polyval(self.barrier.gamowDerivativePolynomial, maxBetaEnergy)
 
-        determiningParameter = self._GamowDerivativeAtFermi * self.kT
+        determiningParameter = self._maxGamowDerivative * self.kT
         
         if (determiningParameter < 0.002): # Very low temperature and quad() misbehaves. set some help
             self._highEnergyLimit = 0.
@@ -584,13 +589,13 @@ class MetalEmitter(Emitter):
             realroots = np.roots(polynomialForRoots)
             self._centerOfSpectrumEnergy = self.workFunction - \
                 realroots[np.nonzero(np.logical_and(realroots > self.workFunction, realroots < self.barrier.maxEnergyDepth))][0]
-            self._lowEnergyLimit = self._centerOfSpectrumEnergy - decayCutoff / self._GamowDerivativeAtFermi 
+            self._lowEnergyLimit = self._centerOfSpectrumEnergy - decayCutoff / self._maxGamowDerivative 
         elif (determiningParameter < 1.): #field regime. The spectrum is centered around Fermi Level
             if (determiningParameter < 0.95):
-                self._highEnergyLimit = decayCutoff / (1. / self.kT - self._GamowDerivativeAtFermi) # decayCutoff divided by decay rate
+                self._highEnergyLimit = decayCutoff / (1. / self.kT - self._maxGamowDerivative) # decayCutoff divided by decay rate
             else:
                 self._highEnergyLimit = 2 * decayCutoff * self.kT # decayCutoff divided by decay rate
-            self._lowEnergyLimit = - decayCutoff / self._GamowDerivativeAtFermi        
+            self._lowEnergyLimit = - decayCutoff / self._maxGamowDerivative        
         elif (self.barrier.gamowDerivativeAtMinBarrierDepth * self.kT > 1.): #thermal regime. The spctrum is centered around the top of the barrier
             self._centerOfSpectrumEnergy = self.workFunction - self.barrier.minEnergyDepth #top of the barrier (Um)
             self._highEnergyLimit = self._centerOfSpectrumEnergy + decayCutoff * self.kT 
@@ -607,10 +612,10 @@ class MetalEmitter(Emitter):
                     realroots[np.nonzero(np.logical_and(realroots > self.barrier.minEnergyDepth, realroots < self.workFunction))][0]
             # find energy limits
             self._highEnergyLimit =  self._centerOfSpectrumEnergy + decayCutoff * self.kT
-            self._lowEnergyLimit = self._centerOfSpectrumEnergy - 2.5 * decayCutoff * self.kT
+            self._lowEnergyLimit = min(self._centerOfSpectrumEnergy - 2.5 * decayCutoff * self.kT, self.Ec)
             return
 
-    def setParameters(self, workfunction:float, kT:float):
+    def setParameters(self, workfunction:float, kT:float, effectiveMass: float = 1, minBandEnergy: float = -100.):
         """Defines main emitter characteristics
 
         Args:
@@ -620,10 +625,16 @@ class MetalEmitter(Emitter):
         
         self.workFunction = workfunction
         self.kT = kT
+        self.effectiveMass = effectiveMass
+        self.Ec = minBandEnergy
         self._calculateIntegrationLimits()
         
     def currentDensityPerNormalEnergy(self, energy, saveSpectrum = False):
-        integrand = self.barrier.transmissionCoefficient(self.workFunction - energy) * self.supply.logFermiDiracFunction(energy, self.kT)
+        integrand = self.barrier.transmissionCoefficient(self.workFunction - energy) * self.supply.logFermiDiracFunction(energy, self.kT) 
+        
+        if (self.effectiveMass != 1.):
+            aBar = (1. - self.effectiveMass)
+            integrand -= aBar * self.supply.logFermiDiracFunction * self.barrier.transmissionCoefficient(aBar *(energy - self.Ec))
         if saveSpectrum:
             self._currentDensityPerEnergy.append(integrand)
             self._spectralEnergyPoints.append(energy)
@@ -637,7 +648,7 @@ class MetalEmitter(Emitter):
         """
         
         args = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth, self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
-            self.barrier._gamowDerivativeAtMaxEnergyDepth] + list(self.barrier._gamowPolynomialCoefficients))
+            self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.Ec] + list(self.barrier._gamowPolynomialCoefficients))
         try:
             integral, abserr = ig.quad(self.fastIntegrator.currentDensityPerNormalEnergy, self._lowEnergyLimit, self._highEnergyLimit, args)
         except(IntegrationWarning):
@@ -656,7 +667,7 @@ class MetalEmitter(Emitter):
             if (self._highEnergyLimit == 0.):
                 breakPoints =  np.array([0., 0.5 * self._centerOfSpectrumEnergy, self._centerOfSpectrumEnergy, 0.75 * self._centerOfSpectrumEnergy + 0.25 * self._lowEnergyLimit ])
                 integral, abserr, infodict= ig.quad(self.currentDensityPerNormalEnergy, self._lowEnergyLimit, self._highEnergyLimit, args=(saveSpectrum), full_output=True, points=breakPoints)
-                remainder = self.kT * self.barrier.transmissionCoefficient(self.workFunction) * (0.8224670334241132 + 0.9015426773696957 * self._GamowDerivativeAtFermi)
+                remainder = self.kT * self.barrier.transmissionCoefficient(self.workFunction) * (0.8224670334241132 + 0.9015426773696957 * self._maxGamowDerivative)
                 integral += remainder 
                 
             else:
@@ -907,7 +918,9 @@ class Semiconductor_Emitter(Emitter):
         a = self._me/self._m
         b = 1-a 
         
-        jc_integ = self.supply.logFermiDiracFunction(self._energy_conduction_band, self._kT) * (self.barrier.transmissionCoefficient(-self._Ef-self._energy_conduction_band) - (b*self.barrier.transmissionCoefficient(-self._Ef-a*self._energy_conduction_band)))
+        jc_integ = self.supply.logFermiDiracFunction(self._energy_conduction_band, self._kT) * \
+            (self.barrier.transmissionCoefficient(-self._Ef-self._energy_conduction_band) - \
+                (b*self.barrier.transmissionCoefficient(-self._Ef-a*self._energy_conduction_band)))
         
         return self.SommerfeldConstant * self._kT * np.trapz(jc_integ, self._energy_conduction_band)# np.sum(jc_integ) * (self._energy_conduction_band[1]-self._energy_conduction_band[0]) 
     
@@ -1080,7 +1093,7 @@ class IVDataFitter:
     minParameters: dict
     maxParameters: dict
 
-    def __init__(self, emitter:MetalEmitter = MetalEmitter()) -> None:
+    def __init__(self, emitter:ConductionBandEmitter = ConductionBandEmitter()) -> None:
         self.emitter = emitter
         if (emitter.barrier.getDimension() == 3):
             self.parameters = {"fieldConversionFactor": 1., "radius": 10., "gamma": 10., "workFunction": 4.5, "temperature": 300.}
@@ -1211,7 +1224,7 @@ def currentDensityMetalforArrays(field:np.ndarray, radius:np.ndarray, gamma:np.n
     """ Calculates the current density for an array of inputs 
     """
     if (emitter is None):
-        emitter = MetalEmitter(Barrier(),Supply())
+        emitter = ConductionBandEmitter(Barrier(),Supply())
 
     currentDensity = np.copy(field)
     kT = Globals.BoltzmannConstant * temperature
@@ -1228,7 +1241,7 @@ def heat_metal_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.ndarray, Wo
     kBoltz = 8.6173324e-5 
     kT = kBoltz * Temperature
     
-    metal_emitter = MetalEmitter(Barrier(),Supply())
+    metal_emitter = ConductionBandEmitter(Barrier(),Supply())
     
     nh_metal = np.copy(Field)
 
@@ -1247,7 +1260,7 @@ def heat_metal_emitter2(Field:np.ndarray, Radius:np.ndarray, Gamma:np.ndarray, W
     kBoltz = 8.6173324e-5 
     kT = kBoltz * Temperature
     
-    metal_emitter = MetalEmitter(Barrier(),Supply())
+    metal_emitter = ConductionBandEmitter(Barrier(),Supply())
     
     nh_metal = np.copy(Field)
 
@@ -1412,7 +1425,7 @@ if (__name__ == "__main__"): #some testing operations
 
     bar = Barrier(5, 1000, 10., tabulationFolder="tabulated/1D_1024")
     sup = Supply()
-    em = MetalEmitter(bar, sup)
+    em = ConductionBandEmitter(bar, sup)
 
 
     xFN = np.linspace(0.15, 0.3, 32)
