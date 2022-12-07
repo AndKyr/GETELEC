@@ -13,7 +13,7 @@ def getArgument(arg, index):
     except(TypeError, IndexError) as error:
         return arg
 
-def currentDensityMetal(field: np.array, radius: np.array, gamma: np.array, workFunction: np.array, temperature: np.array):
+def currentDensityMetal(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, workFunction: np.ndarray, temperature: np.ndarray):
     """ Calculates the current density for an numpy arrays of inputs
         Inputs must be same length
     """
@@ -21,6 +21,7 @@ def currentDensityMetal(field: np.array, radius: np.array, gamma: np.array, work
     emitter = gt.MetalEmitter()
 
     currentDensity = np.copy(field)
+
     kT = gt.Globals.BoltzmannConstant * temperature
     
     for i in range(len(field)):
