@@ -169,8 +169,6 @@ io.sockets.on('connection', function (socket) {
 
       } else if(res){
 
-        console.log(res)
-
         if(res.length > 1){
 
           res.forEach(el =>{
