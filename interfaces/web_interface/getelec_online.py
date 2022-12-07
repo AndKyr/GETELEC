@@ -18,12 +18,10 @@ def currentDensityMetal(field: np.array, radius: np.array, gamma: np.array, work
         Inputs must be same length
     """
 
-    ##CHECK FOR INPUTS LENGTH
-
     emitter = gt.MetalEmitter()
 
     currentDensity = np.copy(field)
-    kT = gt.BoltzmannConstant * temperature
+    kT = gt.Globals.BoltzmannConstant * temperature
     
     for i in range(len(field)):
         emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
