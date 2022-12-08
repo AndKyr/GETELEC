@@ -7,14 +7,21 @@ getelecRootPath = str(Path(__file__).parents[2].absolute())
 sys.path.insert(0,getelecRootPath + "/src/")
 import getelec as gt
 
-def getArgument(arg, index):
-    try:
-        return(arg[index])
-    except(TypeError, IndexError) as error:
-        return arg
+def getArgument(array, index):
+    """
+    Array - input data array
+    index - position of value in array
 
-def currentDensityMetal(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, workFunction: np.ndarray, temperature: np.ndarray):
-    """ Calculates the current density for an numpy arrays of inputs
+    returns value at array[index] if it exists, else returns whole array
+    
+    """
+    try:
+        return(array[index])
+    except(TypeError, IndexError):
+        return array
+
+def currentDensityMetal(field, radius, gamma, workFunction, temperature):
+    """ Calculates the current density
         Inputs must be same length
     """
 
@@ -25,13 +32,16 @@ def currentDensityMetal(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray
     kT = gt.Globals.BoltzmannConstant * temperature
     
     for i in range(len(field)):
+
         emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
+
         emitter.setParameters(getArgument(workFunction, i), getArgument(kT, i))
+
         currentDensity[i] = emitter.currentDensityFast()
         
     return currentDensity
 
-def heat_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
+def nottinghamHeatMetal(field, radius, gamma, workfunction, temperature):
     """
     Field [nm] - Electric field
     Radius [nm] - Emitter's tip radius
@@ -42,22 +52,22 @@ def heat_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
 
     For more info refer to GETELEC TABULATOR's documentation
     """
-    tab = gt.Interpolator()
-    
-    kBoltz = 8.6173324e-5 
-    kT = kBoltz * Temperature
-    
-    metal_emitter = gt.Metal_Emitter(tab)
-    
-    nh_metal = np.copy(Field)
 
-    for i in range(len(Field)):
-        metal_emitter._emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
-        metal_emitter._emitter.Interpolate_Gammow()
+    metal_emitter = gt.MetalEmitter()
+   
+    kT = gt.Globals.BoltzmannConstant * temperature
     
-        metal_emitter.Define_Metal_Emitter_Parameters(Workfunction[i], kT[i])
+    nh_metal = np.copy(field)
+
+    for i in range(len(field)):
+
+        metal_emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
+
+        #Interpolation is done in metal class automatically, right? getelec.py line 278
     
-        nh_metal[i] = metal_emitter.Nottingham_Heat_from_Metals()
+        metal_emitter.setParameters(getArgument(workfunction, i), getArgument(kT, i))
+    
+        nh_metal[i] = metal_emitter.nottinghamHeatFast()
 
     return nh_metal
 
