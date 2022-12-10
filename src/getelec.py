@@ -516,6 +516,8 @@ class Supply:
         axes[1].set_ylabel("f(E/kT)")
         axes[1].grid()
         plt.savefig("fermiDiracFunctions.png")
+     
+    #endregion
 
 
 class Emitter:
