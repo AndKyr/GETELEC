@@ -219,6 +219,7 @@ class Interpolator:
             interpolationCoordinates = np.array([gammaCoordinates, radiusCoordinates, fieldCoorinates, paramCoordinates])
 
         return scipy.ndimage.map_coordinates(self._gamowTable, interpolationCoordinates, order = interpolationOrder, mode='nearest')
+    #endregion
 
 
 class Barrier(Interpolator):
@@ -412,6 +413,8 @@ class Barrier(Interpolator):
         
         if (saveFile):
             plt.savefig(saveFile)
+
+    #endregion
     
 
 class Supply:
