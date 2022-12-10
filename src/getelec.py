@@ -21,6 +21,7 @@ if (not os.path.exists(filePath + '/libintegrator.so')):
 class Globals:
     tabulationPath = "tabulated/2D_512x256"
     BoltzmannConstant = 8.617333262e-5
+    ElectronMass = 9.1093837015e-31 
 
 def setTabulationPath(path:str) -> None:
     Globals.tabulationPath = path
@@ -218,6 +219,7 @@ class Interpolator:
             interpolationCoordinates = np.array([gammaCoordinates, radiusCoordinates, fieldCoorinates, paramCoordinates])
 
         return scipy.ndimage.map_coordinates(self._gamowTable, interpolationCoordinates, order = interpolationOrder, mode='nearest')
+
 
 class Barrier(Interpolator):
 
@@ -766,55 +768,9 @@ class MetalEmitter(Emitter):
     #endregion
     
 class Semiconductor_Emitter(Emitter):
-    """This class will be composed along with Emitter(Tabulator) in order to create a semiconductor field emitter. Then different functions will be executed to 
-    calculate the density, nottingham heat and energy density of the electrons being emitted
-    
-    1) __init__()
-        Initialises the function by adding the atributes of a "tabulated" barrier emitter to metals
-    
-    2) Define_Semiconductor_Emitter_Parameters()
-        Takes the material properties (workfucntion and temperature) and makes them available for the rest of the class
-        
-    3) _Integration_Limits_for_Semiconductors()
-        Finds the limits of integration
-    
-    4) Current_Density_from_Semicondductors()
-        Returns the field emitted current density from semiconducting surfaces, by calling two other functions
-    
-    4) Current_from_Conduction_Band()
-        Calculates the conduction band component of the emitted current
-        
-    5) Current_from_Valence_Band()
-        Calculates the valence band component of the emitter current
-     
-    6) Distributed_Current_Density_from_Semiconductors()
-        Calculates the current density being emitter from a semiconducting flat surface by calculating the emitted electron
-        energy distrubution and integrating over that distribution
-    
-    7) Energy_Distribution_from_Semiconductors()
-        Returns the energy distribution of the electrons being emitted from the conduction and valence bands
-        
-    8) Energy_Distribution_from_Conduction_Band()
-        Calculates teh energy distribution of those electrons emitted from the conduction band
-        
-    9) Energy_Distribution_from_Valence_Band()
-        Calculates teh energy distribution of those electrons emitted from the valence band
-       
-    10) Nottingham_Heat_from_Semiconductors()
-        Returns the Nottigham heat resulted from electrons being emitter fromt the conduction and valence band
-        
-    11) Nottingham_Heat_from_Conduction_Band()
-        Calculates the Nottingham heat resulted from field emitted electrons from the conduction band
-    
-    12) Nottingham_Heat_from_Valence_Band()
-        Calculates the Nottingham heat resulted from field emitted electrons from the valence band
-    
-    13) Nottingham_Heat_from_Replacement_Electrons()
-        UNDER CONSTRUCTION
-        It will return the energy of those electrons that replace the emitted ones
-    
-    14) Energy_Distribution_from_Conduction_Band_educational()
-        Calculates the contribution of the conduction band to the energy distribution of field emitted electrons from semiconductors on a clear equation to code manner
+
+    """
+    Implements calculations for electron emission from semiconductor emitters. 
     """
     
     # region field declarations
@@ -838,7 +794,7 @@ class Semiconductor_Emitter(Emitter):
     # endregion
     
     # region initialization
-    def __init__(self, barrier: Barrier, supply:Supply):
+    def __init__(self, barrier: Barrier = Barrier(), supply: Supply = Supply()):
         """Initialises the function by adding the atributes of a "tabulated" barrier emitter to metals
 
         Args:
@@ -1436,3 +1392,53 @@ if (__name__ == "__main__"): #some testing operations
     plt.savefig("fittedcurve.png")
 
 
+    """This class will be composed along with Emitter(Tabulator) in order to create a semiconductor field emitter. Then different functions will be executed to 
+    calculate the density, nottingham heat and energy density of the electrons being emitted
+    
+    1) __init__()
+        Initialises the function by adding the atributes of a "tabulated" barrier emitter to metals
+    
+    2) Define_Semiconductor_Emitter_Parameters()
+        Takes the material properties (workfucntion and temperature) and makes them available for the rest of the class
+        
+    3) _Integration_Limits_for_Semiconductors()
+        Finds the limits of integration
+    
+    4) Current_Density_from_Semicondductors()
+        Returns the field emitted current density from semiconducting surfaces, by calling two other functions
+    
+    4) Current_from_Conduction_Band()
+        Calculates the conduction band component of the emitted current
+        
+    5) Current_from_Valence_Band()
+        Calculates the valence band component of the emitter current
+     
+    6) Distributed_Current_Density_from_Semiconductors()
+        Calculates the current density being emitter from a semiconducting flat surface by calculating the emitted electron
+        energy distrubution and integrating over that distribution
+    
+    7) Energy_Distribution_from_Semiconductors()
+        Returns the energy distribution of the electrons being emitted from the conduction and valence bands
+        
+    8) Energy_Distribution_from_Conduction_Band()
+        Calculates teh energy distribution of those electrons emitted from the conduction band
+        
+    9) Energy_Distribution_from_Valence_Band()
+        Calculates teh energy distribution of those electrons emitted from the valence band
+       
+    10) Nottingham_Heat_from_Semiconductors()
+        Returns the Nottigham heat resulted from electrons being emitter fromt the conduction and valence band
+        
+    11) Nottingham_Heat_from_Conduction_Band()
+        Calculates the Nottingham heat resulted from field emitted electrons from the conduction band
+    
+    12) Nottingham_Heat_from_Valence_Band()
+        Calculates the Nottingham heat resulted from field emitted electrons from the valence band
+    
+    13) Nottingham_Heat_from_Replacement_Electrons()
+        UNDER CONSTRUCTION
+        It will return the energy of those electrons that replace the emitted ones
+    
+    14) Energy_Distribution_from_Conduction_Band_educational()
+        Calculates the contribution of the conduction band to the energy distribution of field emitted electrons from semiconductors on a clear equation to code manner
+    """
