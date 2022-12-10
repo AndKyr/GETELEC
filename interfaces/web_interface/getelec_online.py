@@ -62,8 +62,6 @@ def nottinghamHeatMetal(field, radius, gamma, workfunction, temperature):
     for i in range(len(field)):
 
         metal_emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
-
-        #Interpolation is done in metal class automatically, right? getelec.py line 278
     
         metal_emitter.setParameters(getArgument(workfunction, i), getArgument(kT, i))
     
@@ -71,7 +69,7 @@ def nottinghamHeatMetal(field, radius, gamma, workfunction, temperature):
 
     return nh_metal
 
-def spectrum_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
+def electronSpectrumMetal(field, radius, gamma, workfunction, temperature):
     """
     Field [nm] - Electric field
     Radius [nm] - Emitter's tip radius
@@ -82,28 +80,25 @@ def spectrum_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
     electron count [#] - number of electrons per energy unit (y-axis)
 
     For more info refer to GETELEC TABULATOR's documentation
-    """
-    tab = gt.Interpolator()
-    
-    kBoltz = 8.6173324e-5 
-    kT = kBoltz * Temperature
-    
-    metal_emitter = gt.Metal_Emitter(tab)
-    
-    energy = np.copy(Field)
-    electron_count = np.copy(Field)
+    """    
+    metal_emitter = gt.MetalEmitter()
 
-    for i in range(len(Field)):
-        metal_emitter._emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
-        metal_emitter._emitter.Interpolate_Gammow()
+    kT = gt.Globals.BoltzmannConstant * temperature
     
-        metal_emitter.Define_Metal_Emitter_Parameters(Workfunction[i], kT[i])
+    energy = np.copy(field)
+    electron_count = np.copy(field)
+
+    for i in range(len(field)):
+
+        metal_emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
     
-        energy[i], electron_count[i] = metal_emitter.Energy_Distribution_for_Metals()
+        metal_emitter.setParameters(getArgument(workfunction, i), getArgument(kT, i))
+    
+        energy[i], electron_count[i] = metal_emitter.normalEnergyDistribution()
 
     return energy, electron_count
 
-def current_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature, me, mp):
+def current_semiconductor_emitter(field, radius, gamma, ec, ef, eg, temperature, me, mp):
     """
     Field [nm] - Electric field
     Radius [nm] - Emitter's tip radius
@@ -118,30 +113,26 @@ def current_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature,
 
     For more info refer to GETELEC TABULATOR's documentation
     """
-    tab = gt.Interpolator()
-    
-    kBoltz = 8.6173324e-5 
-    kT = kBoltz * Temperature
+    semiconductor_emitter = gt.Semiconductor_Emitter()
 
-    semiconductor_emitter = gt.Semiconductor_Emitter(tab)
+    kT = gt.Globals.BoltzmannConstant * temperature
 
-    j_total = np.copy(Field)
-    j_c = np.copy(Field)
-    j_v = np.copy(Field)
-    m = np.ones(Field)*9.1093837015e-31 
+    j_total = np.copy(field)
+    j_c = np.copy(field)
+    j_v = np.copy(field)
+    m = np.ones(field) * gt.Globals.ElectronMass
 
-    for i in range(len(Field)):
+    for i in range(len(field)):
 
-        semiconductor_emitter.emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
-        semiconductor_emitter.emitter.Interpolate_Gammow()
+        semiconductor_emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
 
-        semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec[i], Ef[i], Eg[i], kT[i], m[i], me[i], mp[i])
+        semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(getArgument(ec, i), getArgument(ef, i), getArgument(eg, i), getArgument(kT, i), getArgument(m, i), getArgument(me, i), getArgument(mp, i))
         
         j_c[i], j_v[i], j_total[i] = semiconductor_emitter.Current_Density_from_Semiconductors()
 
     return j_total
 
-def heat_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature, me, mp):
+def heat_semiconductor_emitter(field, radius, gamma, ec, ef, eg, temperature, me, mp):
     """
     Field [nm] - Electric field
     Radius [nm] - Emitter's tip radius
@@ -156,30 +147,27 @@ def heat_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature, me
 
     For more info refer to GETELEC TABULATOR's documentation
     """
-    tab = gt.Interpolator()
-    
-    kBoltz = 8.6173324e-5 
-    kT = kBoltz * Temperature
 
-    semiconductor_emitter = gt.Semiconductor_Emitter(tab)
+    semiconductor_emitter = gt.Semiconductor_Emitter()
 
-    nh_total = np.copy(Field)
-    nh_c = np.copy(Field)
-    nh_v = np.copy(Field)
-    m = np.ones(Field)*9.1093837015e-31 
+    kT = gt.Globals.BoltzmannConstant * temperature
 
-    for i in range(len(Field)):
+    nh_total = np.copy(field)
+    nh_c = np.copy(field)
+    nh_v = np.copy(field)
+    m = np.ones(field) * gt.Globals.ElectronMass
 
-        semiconductor_emitter.emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
-        semiconductor_emitter.emitter.Interpolate_Gammow()
+    for i in range(len(field)):
 
-        semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec[i], Ef[i], Eg[i], kT[i], m[i], me[i], mp[i])
+        semiconductor_emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
+
+        semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(getArgument(ec, i), getArgument(ef, i), getArgument(eg, i), getArgument(kT, i), getArgument(m, i), getArgument(me, i), getArgument(mp, i))
         
         nh_c[i], nh_v[i], nh_total[i] = semiconductor_emitter.Nottingham_Heat_from_Semiconductors()
 
     return nh_total
 
-def spectrum_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature, me, mp):
+def spectrum_semiconductor_emitter(field, radius, gamma, ec, ef, eg, temperature, me, mp):
     """
     Field [nm] - Electric field
     Radius [nm] - Emitter's tip radius
@@ -197,30 +185,25 @@ def spectrum_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature
 
     For more info refer to GETELEC TABULATOR's documentation
     """
-    tab = gt.Interpolator()
-    
-    kBoltz = 8.6173324e-5 
-    kT = kBoltz * Temperature
+    semiconductor_emitter = gt.Semiconductor_Emitter()
 
-    semiconductor_emitter = gt.Semiconductor_Emitter(tab)
+    kT = gt.Globals.BoltzmannConstant * temperature
 
-    energy_c = np.copy(Field)
-    count_c = np.copy(Field)
-    energy_v = np.copy(Field)
-    count_v = np.copy(Field)
-    m = np.ones(Field)*9.1093837015e-31 
+    energy_c = np.copy(field)
+    count_c = np.copy(field)
+    energy_v = np.copy(field)
+    count_v = np.copy(field)
+    m = np.ones(field) * gt.Globals.ElectronMass
 
-    for i in range(len(Field)):
+    for i in range(len(field)):
 
-        semiconductor_emitter.emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
-        semiconductor_emitter.emitter.Interpolate_Gammow()
+        semiconductor_emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
 
-        semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec[i], Ef[i], Eg[i], kT[i], m[i], me[i], mp[i])
+        semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(getArgument(ec, i), getArgument(ef, i), getArgument(eg, i), getArgument(kT, i), getArgument(m, i), getArgument(me, i), getArgument(mp, i))
         
         energy_c[i], count_c[i], energy_v[i], count_v[i] = semiconductor_emitter.Energy_Distribution_from_Semiconductors()
 
     return energy_c, count_c, energy_v, count_v
-
 
 def fit_data(xML, yML, workFunction, mode = "simple"):
 
@@ -248,9 +231,3 @@ def fit_data(xML, yML, workFunction, mode = "simple"):
         
     
     return xplot, xplot_th, yth, fitter.parameters["fieldConversionFactor"], fitter.parameters["radius"], fitter.prefactor
-
-
-
-field = np.linspace(3., 6., 32)
-
-print(currentDensityMetal(field, 100., 10., 4.5, 300.))
