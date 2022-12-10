@@ -13,7 +13,7 @@ emissionpath,mainfolder = os.path.split(emissionpath)
 pythonpath = emissionpath + '/interfaces/web_interface'
 sys.path.append(pythonpath)
 
-from getelec_online import currentDensityMetal, nottinghamHeatMetal, spectrum_metal_emitter
+from getelec_online import currentDensityMetal, nottinghamHeatMetal, electronSpectrumMetal
 from getelec_online import current_semiconductor_emitter, heat_semiconductor_emitter, spectrum_semiconductor_emitter
 
 def forceSameLength(_data):
@@ -86,7 +86,7 @@ def main():
 
         if data['calculateES'] == 1:
 
-            energies, electronCounts = spectrum_metal_emitter(data['field'], data['radius'], data['gammaMetal'], data['work_function'], data['temperature'])
+            energies, electronCounts = electronSpectrumMetal(data['field'], data['radius'], data['gammaMetal'], data['work_function'], data['temperature'])
 
             data3 = []
             data3e = []
