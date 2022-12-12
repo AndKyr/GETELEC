@@ -85,8 +85,8 @@ def electronSpectrumMetal(field, radius, gamma, workfunction, temperature):
 
     kT = gt.Globals.BoltzmannConstant * temperature
     
-    energy = np.copy(field)
-    electron_count = np.copy(field)
+    energy = []
+    electron_count = []
 
     for i in range(len(field)):
 
@@ -94,7 +94,10 @@ def electronSpectrumMetal(field, radius, gamma, workfunction, temperature):
     
         metal_emitter.setParameters(getArgument(workfunction, i), getArgument(kT, i))
     
-        energy[i], electron_count[i] = metal_emitter.normalEnergyDistribution()
+        _energy, _electron_count = metal_emitter.normalEnergyDistribution()
+
+        energy.append(_energy)
+        electron_count.append(_electron_count)
 
     return energy, electron_count
 
@@ -117,9 +120,10 @@ def current_semiconductor_emitter(field, radius, gamma, ec, ef, eg, temperature,
 
     kT = gt.Globals.BoltzmannConstant * temperature
 
-    j_total = np.copy(field)
-    j_c = np.copy(field)
-    j_v = np.copy(field)
+    j_total = []
+    j_c = []
+    j_v = []
+
     m = np.ones(len(field)) * gt.Globals.ElectronMass
 
     for i in range(len(field)):
@@ -129,7 +133,12 @@ def current_semiconductor_emitter(field, radius, gamma, ec, ef, eg, temperature,
 
         semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(getArgument(ec, i), getArgument(ef, i), getArgument(eg, i), getArgument(kT, i), getArgument(m, i), getArgument(me, i), getArgument(mp, i))
         
-        j_c[i], j_v[i], j_total[i] = semiconductor_emitter.Current_Density_from_Semiconductors()
+        _j_c, _j_v, _j_total = semiconductor_emitter.Current_Density_from_Semiconductors()
+
+        j_total.append(_j_total)
+        j_c.append(_j_c)
+        j_v.append(_j_v)
+
 
     return j_total
 
