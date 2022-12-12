@@ -1132,6 +1132,7 @@ class IVDataFitter:
         if (self.emitter.barrier.getDimension() >= 2):
             self.minParameters["radius"] = radiusRange[0]
             self.initialParameters["radius"] = radiusRange[1]
+
             self.maxParameters["radius"] = radiusRange[2]
         if (self.emitter.barrier.getDimension() == 3):
             self.minParameters["gamma"] = gammaRange[0]

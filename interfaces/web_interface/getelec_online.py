@@ -120,11 +120,12 @@ def current_semiconductor_emitter(field, radius, gamma, ec, ef, eg, temperature,
     j_total = np.copy(field)
     j_c = np.copy(field)
     j_v = np.copy(field)
-    m = np.ones(field) * gt.Globals.ElectronMass
+    m = np.ones(len(field)) * gt.Globals.ElectronMass
 
     for i in range(len(field)):
 
         semiconductor_emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
+        semiconductor_emitter.barrier._calculateParameters()
 
         semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(getArgument(ec, i), getArgument(ef, i), getArgument(eg, i), getArgument(kT, i), getArgument(m, i), getArgument(me, i), getArgument(mp, i))
         
@@ -155,11 +156,12 @@ def heat_semiconductor_emitter(field, radius, gamma, ec, ef, eg, temperature, me
     nh_total = np.copy(field)
     nh_c = np.copy(field)
     nh_v = np.copy(field)
-    m = np.ones(field) * gt.Globals.ElectronMass
+    m = np.ones(len(field))  * gt.Globals.ElectronMass
 
     for i in range(len(field)):
 
         semiconductor_emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
+        semiconductor_emitter.barrier._calculateParameters()
 
         semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(getArgument(ec, i), getArgument(ef, i), getArgument(eg, i), getArgument(kT, i), getArgument(m, i), getArgument(me, i), getArgument(mp, i))
         
@@ -193,11 +195,12 @@ def spectrum_semiconductor_emitter(field, radius, gamma, ec, ef, eg, temperature
     count_c = np.copy(field)
     energy_v = np.copy(field)
     count_v = np.copy(field)
-    m = np.ones(field) * gt.Globals.ElectronMass
+    m = np.ones(len(field))  * gt.Globals.ElectronMass
 
     for i in range(len(field)):
 
         semiconductor_emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
+        semiconductor_emitter.barrier._calculateParameters()
 
         semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(getArgument(ec, i), getArgument(ef, i), getArgument(eg, i), getArgument(kT, i), getArgument(m, i), getArgument(me, i), getArgument(mp, i))
         
