@@ -615,7 +615,7 @@ class ConductionBandEmitter(Emitter):
             self._lowEnergyLimit = min(self._centerOfSpectrumEnergy - 2.5 * decayCutoff * self.kT, self.Ec)
             return
 
-    def setParameters(self, workfunction:float, kT:float, effectiveMass: float = 1, minBandEnergy: float = -100.):
+    def setParameters(self, workfunction:float = 4.5, kT:float = Globals.BoltzmannConstant * 300., effectiveMass: float = 1, Ec: float = -100.):
         """Defines main emitter characteristics
 
         Args:
@@ -626,7 +626,7 @@ class ConductionBandEmitter(Emitter):
         self.workFunction = workfunction
         self.kT = kT
         self.effectiveMass = effectiveMass
-        self.Ec = minBandEnergy
+        self.Ec = Ec
         self._calculateIntegrationLimits()
         
     def currentDensityPerNormalEnergy(self, energy, saveSpectrum = False):
@@ -634,7 +634,8 @@ class ConductionBandEmitter(Emitter):
         
         if (self.effectiveMass != 1.):
             aBar = (1. - self.effectiveMass)
-            integrand -= aBar * self.supply.logFermiDiracFunction * self.barrier.transmissionCoefficient(aBar *(energy - self.Ec))
+            integrand -= aBar * self.supply.logFermiDiracFunction(energy, self.kT) * \
+                self.barrier.transmissionCoefficient(self.workFunction - self.Ec -  aBar * (energy - self.Ec))
         if saveSpectrum:
             self._currentDensityPerEnergy.append(integrand)
             self._spectralEnergyPoints.append(energy)
@@ -663,6 +664,10 @@ class ConductionBandEmitter(Emitter):
             float: Emitted current density being emitted from an infinitesimal flat surface area (electrons/area*time)
         """
         
+        if (saveSpectrum):
+            self._currentDensityPerEnergy = []
+            self._spectralEnergyPoints = []
+            
         try:
             if (self._highEnergyLimit == 0.):
                 breakPoints =  np.array([0., 0.5 * self._centerOfSpectrumEnergy, self._centerOfSpectrumEnergy, 0.75 * self._centerOfSpectrumEnergy + 0.25 * self._lowEnergyLimit ])

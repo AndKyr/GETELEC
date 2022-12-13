@@ -70,7 +70,7 @@ double gamowFunction(int dataArrayLength, double *dataArray){
 double gamowFunctionAtReducedEnergy(int dataArrayLength, double *dataArray){
 
     double aBar = 1. - effectiveMass;
-    double energyDepth = workFunction - aBar * (energy - Ec) ;
+    double energyDepth = workFunction - Ec - aBar * (energy - Ec) ;
     
     return gamowFunctionForEnergy(dataArrayLength, dataArray, energyDepth);
 
