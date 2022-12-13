@@ -612,8 +612,10 @@ class ConductionBandEmitter(Emitter):
                     realroots[np.nonzero(np.logical_and(realroots > self.barrier.minEnergyDepth, realroots < self.workFunction))][0]
             # find energy limits
             self._highEnergyLimit =  self._centerOfSpectrumEnergy + decayCutoff * self.kT
-            self._lowEnergyLimit = min(self._centerOfSpectrumEnergy - 2.5 * decayCutoff * self.kT, self.Ec)
-            return
+            self._lowEnergyLimit = self._centerOfSpectrumEnergy - 2.5 * decayCutoff * self.kT
+        
+        #limit the low energy integration limit to the bottom of the conduction band
+        self._lowEnergyLimit = max(self._lowEnergyLimit, self.Ec)
 
     def setParameters(self, workfunction:float = 4.5, kT:float = Globals.BoltzmannConstant * 300., effectiveMass: float = 1, Ec: float = -100.):
         """Defines main emitter characteristics

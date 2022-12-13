@@ -50,7 +50,7 @@ class ConductionBandTests:
         plt.grid()
         plt.savefig("currentDensity-effectiveMass.png")
 
-    def conductionBandBottomTest(self, minEc = -5, maxEc = 1., Npoints = 8, plotSpectra = True):
+    def conductionBandBottomTest(self, minEc = -5, maxEc = 1., Npoints = 128, plotSpectra = False):
 
         arrayEc = np.linspace(minEc, maxEc, Npoints)
         currentDensity = np.copy(arrayEc)
@@ -58,7 +58,7 @@ class ConductionBandTests:
             self.emitter.setParameters(Ec=arrayEc[i])
             currentDensity[i] = self.emitter.currentDensityFast()
 
-            print("Ec = %g, J = %g"%(arrayEc[i], currentDensity[i]))
+            # print("Ec = %g, J = %g, lowEnergyLimit = %g"%(arrayEc[i], currentDensity[i], self.emitter._lowEnergyLimit))
 
             if (plotSpectra):
                 Energy, spectrum = self.emitter.normalEnergyDistribution()
