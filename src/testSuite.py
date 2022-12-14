@@ -19,7 +19,7 @@ class ConductionBandTests:
         bar = gt.Barrier(5, 1000, 10., tabulationFolder="tabulated/1D_1024")
         sup = gt.Supply()
         self.emitter = gt.ConductionBandEmitter(bar, sup)
-        self.emitter.setParameters(workfunction=4., kT=gt.Globals.BoltzmannConstant * 800., Ec=0.1, effectiveMass=1.01)
+        self.emitter.setParameters(workfunction=4., kT=gt.Globals.BoltzmannConstant * 800., Ec=0.1, effectiveMass=1.)
     
     
     def effectiveMassTest(self, minMass = 0.01, maxMass = 10., Npoints =64, plotSpectra = False):
@@ -50,7 +50,7 @@ class ConductionBandTests:
         plt.grid()
         plt.savefig("currentDensity-effectiveMass.png")
 
-    def conductionBandBottomTest(self, minEc = -5, maxEc = 1., Npoints = 128, plotSpectra = False):
+    def conductionBandBottomTest(self, minEc = -5, maxEc = 1., Npoints = 8, plotSpectra = False):
 
         arrayEc = np.linspace(minEc, maxEc, Npoints)
         currentDensity = np.copy(arrayEc)
@@ -58,11 +58,12 @@ class ConductionBandTests:
             self.emitter.setParameters(Ec=arrayEc[i])
             currentDensity[i] = self.emitter.currentDensity()
 
-            # print("Ec = %g, J = %g, lowEnergyLimit = %g"%(arrayEc[i], currentDensity[i], self.emitter._lowEnergyLimit))
+
 
             if (plotSpectra):
-                Energy, spectrum = self.emitter.normalEnergyDistribution()
-                plt.plot(Energy, spectrum, label="Ec=%.2g eV"%arrayEc[i])
+                Energy, spectrum = self.emitter.totalEnergyDistribution()
+                print("Ec = %g, J = %g, JfromTED = %g, Npoints  = %g"%(arrayEc[i], currentDensity[i], self.emitter.SommerfeldConstant * np.trapz(spectrum, Energy), len(Energy)))
+                plt.plot(Energy, spectrum, ".-", label="Ec=%.2g eV"%arrayEc[i])
 
         if (plotSpectra):
             plt.xlabel("energy[eV]")
@@ -77,9 +78,22 @@ class ConductionBandTests:
         plt.ylabel("current density [nA / nm^2]")
         plt.grid()
         plt.savefig("currentDensity-Ec.png")
+
+    def totalEnergySpectrumTest(self):
+
+        (energyPoints, spectrum) =  self.emitter.totalEnergyDistribution()
+
+        plt.plot()
+
+        plt.xlabel("energy[eV]")
+        plt.ylabel("current density per energy [A/nm^2 / eV]")
+        plt.grid()
+        plt.legend()
+        plt.savefig("spectraForDifferentEc.png")
+
         
 if (__name__ == "__main__"):
     tests = ConductionBandTests()
 
     # tests.effectiveMassTest()
-    tests.conductionBandBottomTest()
+    tests.conductionBandBottomTest(plotSpectra=True)

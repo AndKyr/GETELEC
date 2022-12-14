@@ -657,7 +657,6 @@ class ConductionBandEmitter(Emitter):
 
         return integrand
 
-
     def currentDensity(self, mode:str = "fast", saveSpectrum:bool = False) -> float:
         """Calculates the field emitted current density from metal surfaces
 
@@ -754,7 +753,7 @@ class ConductionBandEmitter(Emitter):
             electronNumber (array): Number of electrons being emitted with a certain total energy (number)
         """
         solution = ig.solve_ivp(self.TEDdifferentialSystem, [self._lowEnergyLimit, self._highEnergyLimit], \
-            [1.e-8], method='LSODA', dense_output=True, rtol = 1.e-8, jac=self.TEDJacobian)
+            [0.], method='LSODA', dense_output=True, rtol = 1.e-12, jac=self.TEDJacobian)
         energypoints = solution.t
         for i in range(refinementLevel):
             energypoints = np.concatenate((energypoints, 0.5 * (solution.t[1:] + solution.t[:-1])))
@@ -778,6 +777,14 @@ class ConductionBandEmitter(Emitter):
         
         return -self.SommerfeldConstant * self.kT * integral    
     
+    def currentDensityFromTED(self):
+        energyPoints, totalEnergyDistribution = self.totalEnergyDistribution()
+        return self.SommerfeldConstant * np.trapz(totalEnergyDistribution, energyPoints)
+    
+    def nottinahamHeatFromTED(self):
+        energyPoints, totalEnergyDistribution = self.totalEnergyDistribution()
+        return self.SommerfeldConstant * np.trapz(totalEnergyDistribution * energyPoints, energyPoints)
+
     def nottinghamHeatSimple(self, Npoints = 256):
         """Calculates the Nottingham heat resulted from field emitted electrons from metals with simple functions
         
@@ -793,6 +800,7 @@ class ConductionBandEmitter(Emitter):
         integral = np.trapz(integralOfTransmissionCoefficient * self.supply.FermiDiracFunction(energyPoints, self.kT) * energyPoints, energyPoints)
         return -self.SommerfeldConstant * integral
     #endregion
+
     
 class Semiconductor_Emitter(Emitter):
     """This class will be composed along with Emitter(Tabulator) in order to create a semiconductor field emitter. Then different functions will be executed to 
