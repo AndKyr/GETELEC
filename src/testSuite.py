@@ -72,7 +72,7 @@ class ConductionBandTests:
             plt.savefig("spectraForDifferentEc.png")
 
         plt.figure()
-        plt.plot(arrayEc, currentDensity)
+        plt.semilogy(arrayEc, currentDensity)
         plt.xlabel("Ec [eV]")
         plt.ylabel("current density [nA / nm^2]")
         plt.grid()

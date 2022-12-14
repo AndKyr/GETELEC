@@ -583,6 +583,7 @@ class ConductionBandEmitter(Emitter):
         if (determiningParameter < 0.002): # Very low temperature and quad() misbehaves. set some help
             self._highEnergyLimit = 0.
             
+            #TODO fix for the case that Ec > Ef
             #get the polynomial P for which the equation P(E)=0 finds the place where E * dG/dE = 1
             polynomialForRoots = np.append(self.barrier.gamowDerivativePolynomial, -1.) #get W*dG/dW
             polynomialForRoots[1:] -= self.workFunction * self.barrier.gamowDerivativePolynomial # add -phi * dG/dw
@@ -592,12 +593,12 @@ class ConductionBandEmitter(Emitter):
             self._lowEnergyLimit = self._centerOfSpectrumEnergy - decayCutoff / self._maxGamowDerivative 
         elif (determiningParameter < 1.): #field regime. The spectrum is centered around Fermi Level
             if (determiningParameter < 0.95):
-                self._highEnergyLimit = decayCutoff / (1. / self.kT - self._maxGamowDerivative) # decayCutoff divided by decay rate
+                self._highEnergyLimit = max(0., self.Ec) +  decayCutoff / (1. / self.kT - self._maxGamowDerivative) # decayCutoff divided by decay rate
             else:
-                self._highEnergyLimit = 2 * decayCutoff * self.kT # decayCutoff divided by decay rate
+                self._highEnergyLimit = max(0., self.Ec) + 2 * decayCutoff * self.kT # decayCutoff divided by decay rate
             self._lowEnergyLimit = - decayCutoff / self._maxGamowDerivative        
         elif (self.barrier.gamowDerivativeAtMinBarrierDepth * self.kT > 1.): #thermal regime. The spctrum is centered around the top of the barrier
-            self._centerOfSpectrumEnergy = self.workFunction - self.barrier.minEnergyDepth #top of the barrier (Um)
+            self._centerOfSpectrumEnergy = max(self.Ec, self.workFunction - self.barrier.minEnergyDepth) #top of the barrier (Um)
             self._highEnergyLimit = self._centerOfSpectrumEnergy + decayCutoff * self.kT 
             self._lowEnergyLimit = self._centerOfSpectrumEnergy - 10 / self.barrier.gamowDerivativeAtMinBarrierDepth     
         else: #intermediate regime. The spectrum center is approximately where dG/dE = 1/kT
@@ -608,8 +609,8 @@ class ConductionBandEmitter(Emitter):
             #find meaningful root of the polynomial
             realroots = np.roots(polynomialForRoots)
             # value of w where dG/dw = 1/kT
-            self._centerOfSpectrumEnergy = self.workFunction - \
-                    realroots[np.nonzero(np.logical_and(realroots > self.barrier.minEnergyDepth, realroots < self.workFunction))][0]
+            self._centerOfSpectrumEnergy = max(self.Ec, self.workFunction - \
+                    realroots[np.nonzero(np.logical_and(realroots > self.barrier.minEnergyDepth, realroots < self.workFunction))][0])
             # find energy limits
             self._highEnergyLimit =  self._centerOfSpectrumEnergy + decayCutoff * self.kT
             self._lowEnergyLimit = self._centerOfSpectrumEnergy - 2.5 * decayCutoff * self.kT
@@ -654,6 +655,8 @@ class ConductionBandEmitter(Emitter):
             self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.Ec] + list(self.barrier._gamowPolynomialCoefficients))
         try:
             integral, abserr = ig.quad(self.fastIntegrator.currentDensityPerNormalEnergy, self._lowEnergyLimit, self._highEnergyLimit, args)
+            remainder = self.kT * self.barrier.transmissionCoefficient(self.workFunction) * (0.8224670334241132 + 0.9015426773696957 * self._maxGamowDerivative)
+            integral += remainder 
         except(IntegrationWarning):
             integral = 0.
             
