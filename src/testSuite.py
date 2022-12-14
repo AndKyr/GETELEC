@@ -28,7 +28,7 @@ class ConductionBandTests:
         currentDensity = np.copy(masses)
         for i in range(len(masses)):
             self.emitter.setParameters(effectiveMass=masses[i])
-            currentDensity[i] = self.emitter.currentDensityFast()
+            currentDensity[i] = self.emitter.currentDensity()
 
             print("m* = %g, J = %g"%(masses[i], currentDensity[i]))
 
@@ -56,7 +56,7 @@ class ConductionBandTests:
         currentDensity = np.copy(arrayEc)
         for i in range(len(arrayEc)):
             self.emitter.setParameters(Ec=arrayEc[i])
-            currentDensity[i] = self.emitter.currentDensityFast()
+            currentDensity[i] = self.emitter.currentDensity()
 
             # print("Ec = %g, J = %g, lowEnergyLimit = %g"%(arrayEc[i], currentDensity[i], self.emitter._lowEnergyLimit))
 

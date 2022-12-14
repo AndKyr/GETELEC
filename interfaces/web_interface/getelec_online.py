@@ -28,7 +28,7 @@ def currentDensityMetal(field: np.array, radius: np.array, gamma: np.array, work
     for i in range(len(field)):
         emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
         emitter.setParameters(getArgument(workFunction, i), getArgument(kT, i))
-        currentDensity[i] = emitter.currentDensityFast()
+        currentDensity[i] = emitter.currentDensity()
         
     return currentDensity
 
