@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import scipy.optimize as opt
 import copy
 import subprocess
+import scipy.special
 filePath,filename = os.path.split(os.path.realpath(__file__))
 
 
@@ -631,18 +632,32 @@ class ConductionBandEmitter(Emitter):
         self.Ec = Ec
         self._calculateIntegrationLimits()
         
-    def currentDensityPerNormalEnergy(self, energy, saveSpectrum = False):
-        integrand = self.barrier.transmissionCoefficient(self.workFunction - energy) * self.supply.logFermiDiracFunction(energy, self.kT) 
+    def currentDensityIntegrand(self, energy, saveSpectrum = False):
+        integrand = self.barrier.transmissionCoefficient(self.workFunction - energy) 
         
         if (self.effectiveMass != 1.):
-            aBar = (1. - self.effectiveMass)
-            integrand -= aBar * self.supply.logFermiDiracFunction(energy, self.kT) * \
-                self.barrier.transmissionCoefficient(self.workFunction - self.Ec -  aBar * (energy - self.Ec))
+            integrand -= (1. - self.effectiveMass) * self.barrier.transmissionCoefficient(self.workFunction - self.Ec -  (1. - self.effectiveMass) * (energy - self.Ec))
+    
+        integrand *= self.supply.logFermiDiracFunction(energy, self.kT)
         if saveSpectrum:
             self._currentDensityPerEnergy.append(integrand)
             self._spectralEnergyPoints.append(energy)
         return integrand
     
+    def nottinghamHeatIntegrand(self, energy):
+        #start by getting the transmission coefficient
+        integrand = self.barrier.transmissionCoefficient(self.workFunction - energy)
+
+        #if effective mass effects, add the component
+        if (self.effectiveMass != 1.):
+            integrand -= (1. - self.effectiveMass) * self.barrier.transmissionCoefficient(self.workFunction - self.Ec -  (1. - self.effectiveMass) * (energy - self.Ec))
+        
+        multiplyingFunction = energy * self.supply.logFermiDiracFunction(energy, self.kT) - self.kT * scipy.special.spence(1. + np.exp(-energy / self.kT))
+        integrand *= multiplyingFunction
+
+        return integrand
+
+
     def currentDensity(self, mode:str = "fast", saveSpectrum:bool = False) -> float:
         """Calculates the field emitted current density from metal surfaces
 
@@ -655,7 +670,7 @@ class ConductionBandEmitter(Emitter):
             self._spectralEnergyPoints = []
 
         if (mode == "slow"):
-            integrantFunction = self.currentDensityPerNormalEnergy
+            integrantFunction = self.currentDensityIntegrand
             integratorArguments = (saveSpectrum)
         elif(mode == "fast"):
             integrantFunction = self.fastIntegrator.currentDensityPerNormalEnergy
@@ -745,7 +760,7 @@ class ConductionBandEmitter(Emitter):
             energypoints = np.concatenate((energypoints, 0.5 * (solution.t[1:] + solution.t[:-1])))
         energypoints = np.sort(energypoints)
         return energypoints, solution.sol(energypoints)[0]
-        
+
     def nottinghamHeatFast(self):
         """Calculates the Nottingham heat resulted from field emitted electrons from metals. Fast implementation
         utilizing low level C functions.

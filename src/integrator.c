@@ -108,22 +108,20 @@ double currentDensityPerNormalEnergy(int dataArrayLength, double *dataArray){
  * 
  * @param dataArrayLength the length of the input parameters
  * @param dataArray array of input parameters
- * @return double the integrand value
+ * @return the integrand value
  */
 double nottinghamHeatInegrand(int dataArrayLength, double *dataArray){
 
     double Gamow = gamowFunction(dataArrayLength, dataArray);
-    double transmissionCoefficient;
     extern double dilog_();
-
-    if (Gamow > 40.)
-        transmissionCoefficient = exp(-Gamow);
-    else
-        transmissionCoefficient = 1. / (1. + exp(Gamow));
-
     double exponent = -exp(-energy / kT);
 
-    return transmissionCoefficient * (logFermiDirac(energy / kT) * energy - kT * dilog_(&exponent)) ;
+    if (effectiveMass == 1.)
+        return (logFermiDirac(energy / kT) * energy - kT * dilog_(&exponent)) * transmissionCoefficientForGamow(Gamow);
+    else{
+        double GamowReduced = gamowFunctionAtReducedEnergy(dataArrayLength, dataArray);
+        return (logFermiDirac(energy / kT) * energy - kT * dilog_(&exponent)) * (transmissionCoefficientForGamow(Gamow) - (1. - effectiveMass) * transmissionCoefficientForGamow(GamowReduced));
+    }
 }
 
 
