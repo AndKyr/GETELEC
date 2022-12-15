@@ -2,6 +2,7 @@ import sys
 import numpy as np
 import os
 from pathlib import Path
+import scipy.integrate as ig
 
 getelecRootPath = str(Path(__file__).parents[2].absolute())
 sys.path.insert(0,getelecRootPath + "/src/")
@@ -19,7 +20,7 @@ class ConductionBandTests:
         bar = gt.Barrier(5, 1000, 10., tabulationFolder="tabulated/1D_1024")
         sup = gt.Supply()
         self.emitter = gt.ConductionBandEmitter(bar, sup)
-        self.emitter.setParameters(workfunction=4., kT=gt.Globals.BoltzmannConstant * 800., Ec=0.1, effectiveMass=1.)
+        self.emitter.setParameters(workfunction=4.5, kT=gt.Globals.BoltzmannConstant * 1500., Ec=0.1, effectiveMass=1.)
     
     
     def effectiveMassTest(self, minMass = 0.01, maxMass = 10., Npoints =64, plotSpectra = False):
@@ -50,20 +51,21 @@ class ConductionBandTests:
         plt.grid()
         plt.savefig("currentDensity-effectiveMass.png")
 
-    def conductionBandBottomTest(self, minEc = -5, maxEc = 1., Npoints = 8, plotSpectra = False):
+    def conductionBandBottomTest(self, minEc = -5, maxEc = 1., Npoints = 4, plotSpectra = False):
 
         arrayEc = np.linspace(minEc, maxEc, Npoints)
         currentDensity = np.copy(arrayEc)
         for i in range(len(arrayEc)):
-            self.emitter.setParameters(Ec=arrayEc[i])
+            self.emitter.setParameters(Ec=arrayEc[i], workfunction=4.8, kT = gt.Globals.BoltzmannConstant * 800)
             currentDensity[i] = self.emitter.currentDensity()
 
 
 
             if (plotSpectra):
                 Energy, spectrum = self.emitter.totalEnergyDistribution()
-                print("Ec = %g, J = %g, JfromTED = %g, Npoints  = %g"%(arrayEc[i], currentDensity[i], self.emitter.SommerfeldConstant * np.trapz(spectrum, Energy), len(Energy)))
-                plt.plot(Energy, spectrum, ".-", label="Ec=%.2g eV"%arrayEc[i])
+                JfromTED = self.emitter.SommerfeldConstant * np.trapz(spectrum, Energy)
+                print("Ec = %g, J = %g,  J / JTED = %g, Npoints  = %g"%(arrayEc[i], currentDensity[i], currentDensity[i]  / JfromTED, len(Energy)))
+                plt.plot(Energy, spectrum, "-", label="Ec=%.2g eV"%arrayEc[i])
 
         if (plotSpectra):
             plt.xlabel("energy[eV]")

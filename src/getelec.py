@@ -633,29 +633,17 @@ class ConductionBandEmitter(Emitter):
         self._calculateIntegrationLimits()
         
     def currentDensityIntegrand(self, energy, saveSpectrum = False):
-        integrand = self.barrier.transmissionCoefficient(self.workFunction - energy) 
-        
-        if (self.effectiveMass != 1.):
-            integrand -= (1. - self.effectiveMass) * self.barrier.transmissionCoefficient(self.workFunction - self.Ec -  (1. - self.effectiveMass) * (energy - self.Ec))
-    
-        integrand *= self.supply.logFermiDiracFunction(energy, self.kT)
+        """Calculates the function that gives the current density when integrated"""
+        integrand = self.supply.logFermiDiracFunction(energy, self.kT) * self.innerIntegralDerivative(energy)
         if saveSpectrum:
             self._currentDensityPerEnergy.append(integrand)
             self._spectralEnergyPoints.append(energy)
         return integrand
     
     def nottinghamHeatIntegrand(self, energy):
-        #start by getting the transmission coefficient
-        integrand = self.barrier.transmissionCoefficient(self.workFunction - energy)
 
-        #if effective mass effects, add the component
-        if (self.effectiveMass != 1.):
-            integrand -= (1. - self.effectiveMass) * self.barrier.transmissionCoefficient(self.workFunction - self.Ec -  (1. - self.effectiveMass) * (energy - self.Ec))
-        
-        multiplyingFunction = energy * self.supply.logFermiDiracFunction(energy, self.kT) - self.kT * scipy.special.spence(1. + np.exp(-energy / self.kT))
-        integrand *= multiplyingFunction
-
-        return integrand
+        return self.innerIntegralDerivative(energy) * (energy * self.supply.logFermiDiracFunction(energy, self.kT) - \
+            self.kT * scipy.special.spence(1. + np.exp(-energy / self.kT)))
 
     def currentDensity(self, mode:str = "fast", saveSpectrum:bool = False) -> float:
         """Calculates the field emitted current density from metal surfaces
@@ -721,6 +709,16 @@ class ConductionBandEmitter(Emitter):
     
         return  spectralPointArray[sortIndices], np.array(self._currentDensityPerEnergy)[sortIndices] * self.kT * self.SommerfeldConstant
     
+    def innerIntegralDerivative(self, energy):
+        """Calculates the derivative of the inner integral g(E) in the current density integration.
+        See Andreas' notes.
+        """
+        output = self.barrier.transmissionCoefficient(self.workFunction - energy)
+        if (self.effectiveMass != 1.):
+            output -= (1. - self.effectiveMass) * self.barrier.transmissionCoefficient(self.workFunction - self.Ec -  (1. - self.effectiveMass) * (energy - self.Ec))
+        
+        return output
+
     def TEDdifferentialSystem(self, energy, integrand):
         """Differential equation system to be solved to get the total energy distribution. See Andreas' notes for details.
         Solves the differential equation dy/dE = fFD(E) * D(E) - y(E) * exp(E/kT) / kT
@@ -731,17 +729,15 @@ class ConductionBandEmitter(Emitter):
         Returns:
             the derivative of the integrand as a function of the energy and the value of the integrand
         """
-        gDerivative = self.barrier.transmissionCoefficient(self.workFunction - energy)
-        if (self.effectiveMass != 1.):
-            gDerivative -= (1. - self.effectiveMass) * self.barrier.transmissionCoefficient(self.workFunction - self.Ec -  (1. - self.effectiveMass) * (energy - self.Ec))
 
-        return self.supply.FermiDiracFunction(energy, self.kT) * (gDerivative - integrand * np.exp(energy/self.kT) / self.kT)
+        return self.supply.FermiDiracFunction(energy, self.kT) * (self.innerIntegralDerivative(energy) - integrand * np.exp(energy/self.kT) / self.kT)
             
     def TEDJacobian(self, energy, integrand):
         """Evaluates the Jacobian of the differential equation system of TEDdifferentialSystem"""
         return  np.array([[-self.supply.FermiDiracFunction(energy, self.kT) * np.exp(energy/self.kT) / self.kT]])
     
-    def totalEnergyDistribution(self, refinementLevel:int = 3):
+    
+    def totalEnergyDistribution(self, Npoints = 128):
         """Calculates the total energy distribution of field emitted electrons from metals. 
         The methodology is based on solving a differential equation. See Andreas' notes for details
         
@@ -753,11 +749,8 @@ class ConductionBandEmitter(Emitter):
             electronNumber (array): Number of electrons being emitted with a certain total energy (number)
         """
         solution = ig.solve_ivp(self.TEDdifferentialSystem, [self._lowEnergyLimit, self._highEnergyLimit], \
-            [0.], method='LSODA', dense_output=True, rtol = 1.e-12, jac=self.TEDJacobian)
-        energypoints = solution.t
-        for i in range(refinementLevel):
-            energypoints = np.concatenate((energypoints, 0.5 * (solution.t[1:] + solution.t[:-1])))
-        energypoints = np.sort(energypoints)
+            [0.], method='LSODA', dense_output=True, rtol = 1.e-12, jac=self.TEDJacobian, max_step=(self._highEnergyLimit - self._lowEnergyLimit) / Npoints)
+        energypoints = np.sort(solution.t)
         return energypoints, solution.sol(energypoints)[0]
 
     def nottinghamHeatFast(self):
@@ -767,7 +760,6 @@ class ConductionBandEmitter(Emitter):
         Returns:
             float: Resulted Nottigham from the emission of electrons from an infinitesinal area (J)
         """
-        #TODO implement for effectiveMAss != 1.
         args = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth, self.barrier.maxEnergyDepth, \
             self.barrier.gamowDerivativeAtMinBarrierDepth, self.barrier._gamowDerivativeAtMaxEnergyDepth] + list(self.barrier._gamowPolynomialCoefficients))
         try:
