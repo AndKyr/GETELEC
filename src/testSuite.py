@@ -10,6 +10,8 @@ import getelec as gt
 
 import matplotlib.pyplot as plt
 
+showFigures = True
+
 
 
 class ConductionBandTests:
@@ -18,8 +20,7 @@ class ConductionBandTests:
 
     def __init__(self) -> None:
         bar = gt.Barrier(5, 1000, 10., tabulationFolder= getelecRootPath + "/tabulated/1D_1024")
-        sup = gt.Supply()
-        self.emitter = gt.ConductionBandEmitter(bar, sup)
+        self.emitter = gt.ConductionBandEmitter(bar)
         self.emitter.setParameters(workfunction=4.5, kT=gt.Globals.BoltzmannConstant * 1500., Ec=0.1, effectiveMass=1.)
     
     
@@ -43,6 +44,8 @@ class ConductionBandTests:
             plt.grid()
             plt.legend()
             plt.savefig("spectraForDifferentEffectiveMasses.png")
+            if (showFigures):
+                plt.show()
 
         plt.figure()
         plt.semilogx(masses, currentDensity)
@@ -50,6 +53,8 @@ class ConductionBandTests:
         plt.ylabel("current density [nA / nm^2]")
         plt.grid()
         plt.savefig("currentDensity-effectiveMass.png")
+        if (showFigures):
+            plt.show()
 
     def conductionBandBottomTest(self, minEc = -5, maxEc = 1., Npoints = 4, plotSpectra = False):
 
@@ -59,11 +64,9 @@ class ConductionBandTests:
             self.emitter.setParameters(Ec=arrayEc[i], workfunction=4.8, kT = gt.Globals.BoltzmannConstant * 800)
             currentDensity[i] = self.emitter.currentDensity()
 
-
-
             if (plotSpectra):
                 Energy, spectrum = self.emitter.totalEnergyDistribution()
-                JfromTED = self.emitter.SommerfeldConstant * np.trapz(spectrum, Energy)
+                JfromTED = gt.Globals.SommerfeldConstant * np.trapz(spectrum, Energy)
                 print("Ec = %g, J = %g,  J / JTED = %g, Npoints  = %g"%(arrayEc[i], currentDensity[i], currentDensity[i]  / JfromTED, len(Energy)))
                 plt.plot(Energy, spectrum, "-", label="Ec=%.2g eV"%arrayEc[i])
 
@@ -73,6 +76,9 @@ class ConductionBandTests:
             plt.grid()
             plt.legend()
             plt.savefig("spectraForDifferentEc.png")
+            if (showFigures):
+                plt.show()
+            plt.close()
 
         plt.figure()
         plt.semilogy(arrayEc, currentDensity)
@@ -80,22 +86,11 @@ class ConductionBandTests:
         plt.ylabel("current density [nA / nm^2]")
         plt.grid()
         plt.savefig("currentDensity-Ec.png")
-
-    def totalEnergySpectrumTest(self):
-
-        (energyPoints, spectrum) =  self.emitter.totalEnergyDistribution()
-
-        plt.plot()
-
-        plt.xlabel("energy[eV]")
-        plt.ylabel("current density per energy [A/nm^2 / eV]")
-        plt.grid()
-        plt.legend()
-        plt.savefig("spectraForDifferentEc.png")
+        if (showFigures):
+            plt.show()
 
         
 if (__name__ == "__main__"):
     tests = ConductionBandTests()
-
-    # tests.effectiveMassTest()
     tests.conductionBandBottomTest(plotSpectra=True)
+    tests.effectiveMassTest()

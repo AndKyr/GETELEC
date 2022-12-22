@@ -12,6 +12,7 @@ import scipy.special
 filePath,filename = os.path.split(os.path.realpath(__file__))
 
 
+# compile C library in case it is not available
 if (not os.path.exists(filePath + '/libintegrator.so') or os.path.getmtime(filePath + "/libintegrator.so") < os.path.getmtime(filePath + "/integrator.c") ):
     subprocess.call("gcc -c -fPIC -O3 integrator.c -o integrator.o", cwd=filePath, shell=True)
     subprocess.call("gfortran -c -fPIC -O3 dilog.f -o dilog.o", cwd=filePath, shell=True)
@@ -20,20 +21,24 @@ if (not os.path.exists(filePath + '/libintegrator.so') or os.path.getmtime(fileP
 
 
 class Globals:
-    tabulationPath = "tabulated/2D_512x256"
-    BoltzmannConstant = 8.617333262e-5
+    """Keeps global constants and variables"""
+    tabulationPath:str = "tabulated/2D_512x256"
+    BoltzmannConstant:float = 8.617333262e-5
+    SommerfeldConstant:float = 1.618311e-4 
+    
+    #the limit for which different approximations of the Fermi Dirac functions apply
+    exponentLimit =  - 0.5 * np.log(np.finfo(float).eps)
 
 def setTabulationPath(path:str) -> None:
+    """module function that sets the tabulation path where to find the tabulated barrier parameters"""
     Globals.tabulationPath = path
 
 
 class Interpolator:
     """
-    Tabulator is class designed to reduce the computational effort of GETELEC, thus enabling to allocate computationa resources into solving other problems
-    like the calculation of a semiconductor's band structure. This functionality is based on the fact that the potential barrier of an emitter is independed 
-    from the emitter's material. So this barrier can be calcualted once and to be later called when needed.
+    The Interpolator class is designed to reduce the computational effort of GETELEC, by interpolating the barrier characteristics from pre-calculated tables.
     
-    Tabulator first looks through the barrier maps (function: _Load_Table_from_File) to see if there is a pre-calculated barrier. If there is one, it passes 
+    The interpolator first tries to load the barrier tables (function: _Load_Table_from_File) to see if there is a pre-calculated barrier. If there is one, it passes 
     it to the rest of the model for further computation. If there is not, it uses the maps from whose it would infer one using tabulation 
     (function: Gammow_Exponent_for_Parameters). In the case that the maps do not exist, Tabulator calculate (function: _Calculate_Table) and save 
     (function: _Save_Table_to_Files) these maps - a process than can take several hours. 
@@ -69,8 +74,7 @@ class Interpolator:
 
     def __init__(self, preloadedGamowTable : np.ndarray = None, preloadedLimits : np.ndarray = None, tabulationFolder = Globals.tabulationPath, \
         Nfield = 256, NRadius = 128, Ngamma = 1, Npolynomial = 4, NGamow = 128):
-        """Initialises Tabulator by loading the tables from files. If maps not found, calls tabulation scripts
-        from old getelec
+        """Initialises Tabulator by loading the tables from files. If maps not found, calls tabulation scripts from old getelec that create those tables.
 
         Parameters:
             preloadedGamowTable, preloadedLimits (optional): already loaded tabulation to reuse in this object
@@ -411,21 +415,25 @@ class Barrier(Interpolator):
         if (saveFile):
             plt.savefig(saveFile)
 
+class Emitter:
+    fastIntegrator = ct.CDLL(filePath + '/libintegrator.so') #use absolute path
+    fastIntegrator.currentDensityPerNormalEnergy.restype = ct.c_double
+    fastIntegrator.currentDensityPerNormalEnergy.argtypes = (ct.c_int, ct.c_double)
+    fastIntegrator.nottinghamHeatInegrand.restype = ct.c_double
+    fastIntegrator.nottinghamHeatInegrand.argtypes = (ct.c_int, ct.c_double)
+    
+    barrier: Barrier
+    # region initialization
+    def __init__(self, barrier:Barrier = Barrier()):
+        """Initialises the class by inheritating Tabulator and setting it up as a private field to be used by Emitter
 
-class Supply:
-    # region field declaration
-   
-    #the limit for which different approximations of the Fermi Dirac functions apply
-    exponentLimit =  - 0.5 * np.log(np.finfo(float).eps)
-    
-    # region inisialisation
-    def __init__(self):
-        pass
-    # endregion 
-    
-    # region user methods
-    def logFermiDiracFunction(self, energy:np.ndarray, kT:np.ndarray):
-        """Returs the natural logarith of the Fermi Diract distribution.
+        Args:
+            tabulator (Tabulator): Object that contains the attributes to interpolate the potential barrier given the field, radius and gamma as inputs
+        """
+        self.barrier = barrier
+
+    def logFermiDiracFunction(self, energy, kT):
+        """Returs the natural logarithm of the Fermi Diract distribution.
         The energy is divided in 3 terms to prevent the computer from overfloading with large exponents 
 
         Args:
@@ -435,12 +443,12 @@ class Supply:
         Returns:
             array: Natural logarith of the Fermi Diract distribution (number)
         """
-     
+    
         if (isinstance(energy, np.ndarray)):
             functionValue = np.copy(energy)
 
-            highEnergyArea = energy > self.exponentLimit * kT
-            lowEnergyArea = energy < - self.exponentLimit * kT
+            highEnergyArea = energy > Globals.exponentLimit * kT
+            lowEnergyArea = energy < - Globals.exponentLimit * kT
             midEnergyArea = np.logical_not(highEnergyArea) * np.logical_not(lowEnergyArea)
 
             functionValue[highEnergyArea] = np.exp(-energy[highEnergyArea] / kT)
@@ -448,14 +456,14 @@ class Supply:
             functionValue[midEnergyArea] = np.log(1. + np.exp(-energy[midEnergyArea] / kT))
             return functionValue
         else:
-            if energy > self.exponentLimit * kT:
+            if energy > Globals.exponentLimit * kT:
                 return np.exp(-energy / kT)
-            elif(energy < - self.exponentLimit * kT):
+            elif(energy < - Globals.exponentLimit * kT):
                 return -energy / kT + np.exp(energy / kT)
             else:
                 return np.log(1. + np.exp(-energy / kT))
     
-    def FermiDiracFunction(self, energy:np.ndarray, kT:np.ndarray):
+    def FermiDiracFunction(self, energy, kT):
         """Returns the Fermi Dirac distribution
         
         Args:
@@ -469,8 +477,8 @@ class Supply:
         if (isinstance(energy, np.ndarray)):
             functionValue = np.copy(energy)
 
-            highEnergyArea = energy > self.exponentLimit * kT
-            lowEnergyArea = energy < - self.exponentLimit * kT
+            highEnergyArea = energy > Globals.exponentLimit * kT
+            lowEnergyArea = energy < - Globals.exponentLimit * kT
             midEnergyArea = np.logical_not(highEnergyArea) * np.logical_not(lowEnergyArea)
 
             # use approximation 1/(1+exp(x)) = exp(-x) + O(exp(-2*x)) for x->+inf, i.e. exp(x) >> 1
@@ -482,23 +490,20 @@ class Supply:
             functionValue[midEnergyArea] = 1. / (1. + np.exp(energy[midEnergyArea] / kT))
             return functionValue
         else:
-            if energy > self.exponentLimit * kT:
+            if energy > Globals.exponentLimit * kT:
                 return np.exp(-energy / kT)
-            elif(energy < - self.exponentLimit * kT):
+            elif(energy < - Globals.exponentLimit * kT):
                 return 1. - np.exp(energy / kT)
             else:
                 return 1. / (1. + np.exp(energy / kT))
         
     def plotFermiDiracFunctions(self):
         """Plots the Fermi Dirac functions. Used for testing"""
-        # x = np.linspace(-1.2 * self.exponentLimit, 1.2 * self.exponentLimit, 256)
-        # x = np.linspace(-self.exponentLimit- .01, - self.exponentLimit + .01, 256)
         x = np.linspace(-5, 5, 256)
         fermiDirac = self.FermiDiracFunction(x, 1.)
         logFermiDirac = self.logFermiDiracFunction(x, 1.)
         
         figure, axes = plt.subplots(2,1, sharex=True)
-        
         
         axes[0].plot(x, fermiDirac, label="Fermi-Dirac")
         axes[0].plot(x, logFermiDirac, label = "Log Fermi-Dirac")
@@ -511,28 +516,6 @@ class Supply:
         axes[1].set_ylabel("f(E/kT)")
         axes[1].grid()
         plt.savefig("fermiDiracFunctions.png")
-
-
-class Emitter:
-    fastIntegrator = ct.CDLL(filePath + '/libintegrator.so') #use absolute path
-    fastIntegrator.currentDensityPerNormalEnergy.restype = ct.c_double
-    fastIntegrator.currentDensityPerNormalEnergy.argtypes = (ct.c_int, ct.c_double)
-    fastIntegrator.nottinghamHeatInegrand.restype = ct.c_double
-    fastIntegrator.nottinghamHeatInegrand.argtypes = (ct.c_int, ct.c_double)
-    
-    barrier: Barrier
-    supply: Supply
-    
-    SommerfeldConstant:float = 1.618311e-4 
-    # region initialization
-    def __init__(self, barrier:Barrier = Barrier(), supply:Supply = Supply()):
-        """Initialises the class by inheritating Tabulator and setting it up as a private field to be used by Emitter
-
-        Args:
-            tabulator (Tabulator): Object that contains the attributes to interpolate the potential barrier given the field, radius and gamma as inputs
-        """
-        self.barrier = barrier
-        self.supply = supply
     # endregion
 
    
@@ -557,14 +540,14 @@ class ConductionBandEmitter(Emitter):
     # endregion
     
     # region initialization
-    def __init__(self, barrier:Barrier = Barrier(), supply:Supply = Supply()):
+    def __init__(self, barrier:Barrier = Barrier()):
         """Initialises the function by adding the atributes of a "tabulated" barrier emitter to metals
 
         Args:
             tabulator (Tabulator): Object that contains the attributes of a x material emitter (potential barrier, transmission coefficiens and electron supply functions)
         """
         
-        super().__init__(barrier, supply)
+        super().__init__(barrier)
     
     # endregion
     def _calculateIntegrationLimits(self, decayCutoff = 10.):
@@ -634,7 +617,7 @@ class ConductionBandEmitter(Emitter):
         
     def currentDensityIntegrand(self, energy, saveSpectrum = False):
         """Calculates the function that gives the current density when integrated"""
-        integrand = self.supply.logFermiDiracFunction(energy, self.kT) * self.innerIntegralDerivative(energy)
+        integrand = self.logFermiDiracFunction(energy, self.kT) * self.innerIntegralDerivative(energy)
         if saveSpectrum:
             self._currentDensityPerEnergy.append(integrand)
             self._spectralEnergyPoints.append(energy)
@@ -642,7 +625,7 @@ class ConductionBandEmitter(Emitter):
     
     def nottinghamHeatIntegrand(self, energy):
 
-        return self.innerIntegralDerivative(energy) * (energy * self.supply.logFermiDiracFunction(energy, self.kT) - \
+        return self.innerIntegralDerivative(energy) * (energy * self.logFermiDiracFunction(energy, self.kT) - \
             self.kT * scipy.special.spence(1. + np.exp(-energy / self.kT)))
 
     def currentDensity(self, mode:str = "fast", saveSpectrum:bool = False) -> float:
@@ -678,7 +661,7 @@ class ConductionBandEmitter(Emitter):
         except(IntegrationWarning):
             integral = 0.
             
-        return self.SommerfeldConstant * self.kT * integral
+        return Globals.SommerfeldConstant * self.kT * integral
 
     def aboveFermiRemainder(self):
         """
@@ -707,7 +690,7 @@ class ConductionBandEmitter(Emitter):
         spectralPointArray = np.array(self._spectralEnergyPoints)
         sortIndices = np.argsort(spectralPointArray)
     
-        return  spectralPointArray[sortIndices], np.array(self._currentDensityPerEnergy)[sortIndices] * self.kT * self.SommerfeldConstant
+        return  spectralPointArray[sortIndices], np.array(self._currentDensityPerEnergy)[sortIndices] * self.kT * Globals.SommerfeldConstant
     
     def innerIntegralDerivative(self, energy):
         """Calculates the derivative of the inner integral g(E) in the current density integration.
@@ -730,13 +713,12 @@ class ConductionBandEmitter(Emitter):
             the derivative of the integrand as a function of the energy and the value of the integrand
         """
 
-        return self.supply.FermiDiracFunction(energy, self.kT) * (self.innerIntegralDerivative(energy) - integrand * np.exp(energy/self.kT) / self.kT)
+        return self.FermiDiracFunction(energy, self.kT) * (self.innerIntegralDerivative(energy) - integrand * np.exp(energy/self.kT) / self.kT)
             
     def TEDJacobian(self, energy, integrand):
         """Evaluates the Jacobian of the differential equation system of TEDdifferentialSystem"""
-        return  np.array([[-self.supply.FermiDiracFunction(energy, self.kT) * np.exp(energy/self.kT) / self.kT]])
-    
-    
+        return  np.array([[-self.FermiDiracFunction(energy, self.kT) * np.exp(energy/self.kT) / self.kT]])
+     
     def totalEnergyDistribution(self, Npoints = 128):
         """Calculates the total energy distribution of field emitted electrons from metals. 
         The methodology is based on solving a differential equation. See Andreas' notes for details
@@ -767,15 +749,15 @@ class ConductionBandEmitter(Emitter):
         except:
             return 0.
         
-        return -self.SommerfeldConstant * self.kT * integral    
+        return -Globals.SommerfeldConstant * self.kT * integral    
     
     def currentDensityFromTED(self):
         energyPoints, totalEnergyDistribution = self.totalEnergyDistribution()
-        return self.SommerfeldConstant * np.trapz(totalEnergyDistribution, energyPoints)
+        return Globals.SommerfeldConstant * np.trapz(totalEnergyDistribution, energyPoints)
     
     def nottinahamHeatFromTED(self):
         energyPoints, totalEnergyDistribution = self.totalEnergyDistribution()
-        return self.SommerfeldConstant * np.trapz(totalEnergyDistribution * energyPoints, energyPoints)
+        return Globals.SommerfeldConstant * np.trapz(totalEnergyDistribution * energyPoints, energyPoints)
 
     def nottinghamHeatSimple(self, Npoints = 256):
         """Calculates the Nottingham heat resulted from field emitted electrons from metals with simple functions
@@ -789,8 +771,8 @@ class ConductionBandEmitter(Emitter):
         energyPoints = np.linspace(self._lowEnergyLimit, self._highEnergyLimit, Npoints)
         transmissionCoefficient = self.barrier.transmissionCoefficient(self.workFunction - energyPoints)
         integralOfTransmissionCoefficient = np.cumsum(transmissionCoefficient) * (energyPoints[1] - energyPoints[0])
-        integral = np.trapz(integralOfTransmissionCoefficient * self.supply.FermiDiracFunction(energyPoints, self.kT) * energyPoints, energyPoints)
-        return -self.SommerfeldConstant * integral
+        integral = np.trapz(integralOfTransmissionCoefficient * self.FermiDiracFunction(energyPoints, self.kT) * energyPoints, energyPoints)
+        return -Globals.SommerfeldConstant * integral
     #endregion
 
     
@@ -867,14 +849,14 @@ class Semiconductor_Emitter(Emitter):
     # endregion
     
     # region initialization
-    def __init__(self, barrier: Barrier, supply:Supply):
+    def __init__(self, barrier: Barrier,):
         """Initialises the function by adding the atributes of a "tabulated" barrier emitter to metals
 
         Args:
             tabulator (Tabulator): Object that contains the attributes of a x material emitter (potential barrier, transmission coefficiens and electron supply functions)
         """
         
-        super().__init__(barrier, supply)
+        super().__init__(barrier)
     # endregion
 
     # region user methods
@@ -936,11 +918,11 @@ class Semiconductor_Emitter(Emitter):
         a = self._me/self._m
         b = 1-a 
         
-        jc_integ = self.supply.logFermiDiracFunction(self._energy_conduction_band, self._kT) * \
+        jc_integ = self.logFermiDiracFunction(self._energy_conduction_band, self._kT) * \
             (self.barrier.transmissionCoefficient(-self._Ef-self._energy_conduction_band) - \
                 (b*self.barrier.transmissionCoefficient(-self._Ef-a*self._energy_conduction_band)))
         
-        return self.SommerfeldConstant * self._kT * np.trapz(jc_integ, self._energy_conduction_band)# np.sum(jc_integ) * (self._energy_conduction_band[1]-self._energy_conduction_band[0]) 
+        return Globals.SommerfeldConstant * self._kT * np.trapz(jc_integ, self._energy_conduction_band)# np.sum(jc_integ) * (self._energy_conduction_band[1]-self._energy_conduction_band[0]) 
     
     def Current_from_Valence_Band(self):
         """Calculates the conduction band component of the emitted current - Andreas' equation
@@ -952,9 +934,9 @@ class Semiconductor_Emitter(Emitter):
         a = self._mp/self._m
         b = 1+a
         
-        jv_integ = self.supply.logFermiDiracFunction(self._energy_valence_band, self._kT) * (self.barrier.transmissionCoefficient(-self._Ef-self._energy_valence_band) - (b*self.barrier.transmissionCoefficient(-self._Ef-b*self._energy_valence_band+a*self._Evhigh)))
+        jv_integ = self.logFermiDiracFunction(self._energy_valence_band, self._kT) * (self.barrier.transmissionCoefficient(-self._Ef-self._energy_valence_band) - (b*self.barrier.transmissionCoefficient(-self._Ef-b*self._energy_valence_band+a*self._Evhigh)))
         
-        return self.SommerfeldConstant * self._kT * np.trapz(jv_integ, self._energy_valence_band)
+        return Globals.SommerfeldConstant * self._kT * np.trapz(jv_integ, self._energy_valence_band)
     
     def Distributed_Current_Density_from_Semiconductors(self):
         """Calculates the current density being emitter from a semiconducting flat surface by calculating the emitted electron
@@ -974,9 +956,9 @@ class Semiconductor_Emitter(Emitter):
 
         c_cumulative_transmission = np.insert(np.cumsum((c_transmission_in_z[1:]+c_transmission_in_z[:-1])*(self._energy_conduction_band[1]-self._energy_conduction_band[0])/2), 0, 0)
         
-        c_number_of_electrons = np.sum(self.supply.FermiDiracFunction(self._energy_conduction_band, self._kT) * c_cumulative_transmission )
+        c_number_of_electrons = np.sum(self.FermiDiracFunction(self._energy_conduction_band, self._kT) * c_cumulative_transmission )
         
-        total_c = np.sum(self.SommerfeldConstant * c_number_of_electrons * (self._energy_conduction_band[1]-self._energy_conduction_band[0]))
+        total_c = np.sum(Globals.SommerfeldConstant * c_number_of_electrons * (self._energy_conduction_band[1]-self._energy_conduction_band[0]))
         
         #valence band
         c = self._mp/self._m
@@ -986,9 +968,9 @@ class Semiconductor_Emitter(Emitter):
         
         v_cumulative_transmission = np.insert(np.cumsum((v_transmission_in_z[1:]+v_transmission_in_z[:-1])*(self._energy_valence_band[1]-self._energy_valence_band[0])/2), 0, 0)
             
-        v_number_of_electrons = self.supply.FermiDiracFunction(self._energy_valence_band, self._kT) * v_cumulative_transmission 
+        v_number_of_electrons = self.FermiDiracFunction(self._energy_valence_band, self._kT) * v_cumulative_transmission 
         
-        total_v = np.sum(self.SommerfeldConstant * v_number_of_electrons * (self._energy_valence_band[1]-self._energy_valence_band[0]))
+        total_v = np.sum(Globals.SommerfeldConstant * v_number_of_electrons * (self._energy_valence_band[1]-self._energy_valence_band[0]))
         
         total = total_c + total_v
         
@@ -1024,7 +1006,7 @@ class Semiconductor_Emitter(Emitter):
 
         cumulative_transmission = np.insert(np.cumsum((transmission_in_z[1:]+transmission_in_z[:-1])*(self._energy_conduction_band[1]-self._energy_conduction_band[0])/2), 0, 0)
         
-        number_of_electrons = self.supply.FermiDiracFunction(self._energy_conduction_band, self._kT) * cumulative_transmission 
+        number_of_electrons = self.FermiDiracFunction(self._energy_conduction_band, self._kT) * cumulative_transmission 
 
         return self._energy_conduction_band , number_of_electrons
     
@@ -1043,7 +1025,7 @@ class Semiconductor_Emitter(Emitter):
         
         cumulative_transmission = np.insert(np.cumsum((transmission_in_z[1:]+transmission_in_z[:-1])*(self._energy_valence_band[1]-self._energy_valence_band[0])/2), 0, 0)
             
-        number_of_electrons = self.supply.FermiDiracFunction(self._energy_valence_band, self._kT) * cumulative_transmission 
+        number_of_electrons = self.FermiDiracFunction(self._energy_valence_band, self._kT) * cumulative_transmission 
       
         return self._energy_valence_band, number_of_electrons
     
@@ -1070,7 +1052,7 @@ class Semiconductor_Emitter(Emitter):
         
         heat = energy
         
-        return -self.SommerfeldConstant* self._kT * np.sum(heat*distribution)
+        return -Globals.SommerfeldConstant* self._kT * np.sum(heat*distribution)
     
     def Nottingham_Heat_from_Valence_Band(self): #NEED MOFICATIONS
         """Calculates the contribution of the valence band to the Nottingham heat resulted from field emitted electrons from semicoductors"""
@@ -1079,7 +1061,7 @@ class Semiconductor_Emitter(Emitter):
 
         heat = energy
 
-        return -self.SommerfeldConstant * self._kT * np.sum(heat*distribution)
+        return -Globals.SommerfeldConstant * self._kT * np.sum(heat*distribution)
 
     def Nottingham_Heat_from_Replacement_Electrons(self):
         """To be calculated from COMSOL"""
@@ -1098,7 +1080,7 @@ class Semiconductor_Emitter(Emitter):
         for i in range(len(self._energy_conduction_band)-1):
             cumulative_transmission[i+1] = cumulative_transmission[i] + ((self._energy_conduction_band[1]-self._energy_conduction_band[0])*(transmission_in_z[i+1]+transmission_in_z[i])/2)
         
-        energy_distribution = self.supply.FermiDiracFunction(self._energy_conduction_band, self._kT) * cumulative_transmission 
+        energy_distribution = self.FermiDiracFunction(self._energy_conduction_band, self._kT) * cumulative_transmission 
 
         return self._energy_conduction_band , energy_distribution
     # endregiondata
@@ -1242,7 +1224,7 @@ def currentDensityMetalforArrays(field:np.ndarray, radius:np.ndarray, gamma:np.n
     """ Calculates the current density for an array of inputs 
     """
     if (emitter is None):
-        emitter = ConductionBandEmitter(Barrier(),Supply())
+        emitter = ConductionBandEmitter(Barrier())
 
     currentDensity = np.copy(field)
     kT = Globals.BoltzmannConstant * temperature
@@ -1259,7 +1241,7 @@ def heat_metal_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.ndarray, Wo
     kBoltz = 8.6173324e-5 
     kT = kBoltz * Temperature
     
-    metal_emitter = ConductionBandEmitter(Barrier(),Supply())
+    metal_emitter = ConductionBandEmitter(Barrier())
     
     nh_metal = np.copy(Field)
 
@@ -1278,7 +1260,7 @@ def heat_metal_emitter2(Field:np.ndarray, Radius:np.ndarray, Gamma:np.ndarray, W
     kBoltz = 8.6173324e-5 
     kT = kBoltz * Temperature
     
-    metal_emitter = ConductionBandEmitter(Barrier(),Supply())
+    metal_emitter = ConductionBandEmitter(Barrier())
     
     nh_metal = np.copy(Field)
 
@@ -1302,7 +1284,7 @@ def current_semiconductor_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.
     effec_e = 0.98*mass_e
     effec_p = 0.59*mass_e
     
-    semiconductor_emitter = Semiconductor_Emitter(Barrier(),Supply())
+    semiconductor_emitter = Semiconductor_Emitter(Barrier())
 
     j_total = np.copy(Field)
     j_c = np.copy(Field)
@@ -1347,7 +1329,7 @@ def heat_semiconductor_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.nda
     effec_e = 0.98*mass_e
     effec_p = 0.59*mass_e
     
-    semiconductor_emitter = Semiconductor_Emitter(Barrier(),Supply())
+    semiconductor_emitter = Semiconductor_Emitter(Barrier())
 
     pn_total = np.copy(Field)
     pn_c = np.copy(Field)
@@ -1442,7 +1424,6 @@ if (__name__ == "__main__"): #some testing operations
     interpolator = Interpolator(tabulationFolder="tabulated/1D_1024", Nfield=1024, NRadius=1, Ngamma=1)
 
     bar = Barrier(5, 1000, 10., tabulationFolder="tabulated/1D_1024")
-    sup = Supply()
     em = ConductionBandEmitter(bar, sup)
 
 
