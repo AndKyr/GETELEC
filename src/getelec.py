@@ -535,7 +535,7 @@ class ConductionBandEmitter(Emitter):
     _lowEnergyLimit: float
     _centerOfSpectrumEnergy: float
     _maxGamowDerivative: float
-    _spectralEnergyPoints: list
+    currentDensityIntegrandPoints: list
     
     # endregion
     
@@ -615,33 +615,37 @@ class ConductionBandEmitter(Emitter):
         self.Ec = Ec
         self._calculateIntegrationLimits()
         
-    def currentDensityIntegrand(self, energy, saveSpectrum = False):
+    def currentDensityIntegrand(self, energy, saveIntegrand = False):
         """Calculates the function that gives the current density when integrated"""
         integrand = self.logFermiDiracFunction(energy, self.kT) * self.innerIntegralDerivative(energy)
-        if saveSpectrum:
-            self._currentDensityPerEnergy.append(integrand)
-            self._spectralEnergyPoints.append(energy)
+        if saveIntegrand:
+            self.currentDensityIntegrandArray.append(integrand)
+            self.currentDensityIntegrandPoints.append(energy)
         return integrand
     
-    def nottinghamHeatIntegrand(self, energy):
-
-        return self.innerIntegralDerivative(energy) * (energy * self.logFermiDiracFunction(energy, self.kT) - \
+    def nottinghamHeatIntegrand(self, energy, saveIntegrand = False):
+        """Calculates the function that gives the Nottingham heat when integrated"""
+        integrand = self.innerIntegralDerivative(energy) * (energy * self.logFermiDiracFunction(energy, self.kT) - \
             self.kT * scipy.special.spence(1. + np.exp(-energy / self.kT)))
+        if (saveIntegrand):
+            self.nottinghamHeatIntegrandPoints.append(energy)
+            self.nottinghamHeatIntegrandArray.append(integrand)
+        return integrand
 
-    def currentDensity(self, mode:str = "fast", saveSpectrum:bool = False) -> float:
+    def currentDensity(self, mode:str = "fast", saveIntegrand:bool = False) -> float:
         """Calculates the field emitted current density from metal surfaces
 
         Returns:
             float: Emitted current density being emitted from an infinitesimal flat surface area (electrons/area*time)
         """
-        if (saveSpectrum):
-            assert mode == "fast", "spectrum cannot be saved in fast mode. Give mode = 'slow'"
-            self._currentDensityPerEnergy = []
-            self._spectralEnergyPoints = []
+        if saveIntegrand:
+            assert mode == "fast", "cannot save the integrand in fast mode. Give mode = 'slow'"
+            self.currentDensityIntegrandArray = []
+            self.currentDensityIntegrandPoints = []
 
         if (mode == "slow"):
             integrantFunction = self.currentDensityIntegrand
-            integratorArguments = (saveSpectrum)
+            integratorArguments = saveIntegrand
         elif(mode == "fast"):
             integrantFunction = self.fastIntegrator.currentDensityPerNormalEnergy
             integratorArguments = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth, self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
@@ -659,7 +663,13 @@ class ConductionBandEmitter(Emitter):
             else:
                 integral, abserr = ig.quad(integrantFunction, self._lowEnergyLimit, self._highEnergyLimit, args=integratorArguments)
         except(IntegrationWarning):
+            print("quad function returned with warning")
             integral = 0.
+
+        if (saveIntegrand):
+            sortIndices = np.argsort(self.currentDensityIntegrandPoints)
+            self.currentDensityIntegrandPoints = np.array(self.currentDensityIntegrandPoints[sortIndices])
+            self.currentDensityIntegrandArray = np.array(self.currentDensityIntegrandArray[sortIndices]) * self.kT * Globals.SommerfeldConstant
             
         return Globals.SommerfeldConstant * self.kT * integral
 
@@ -674,23 +684,6 @@ class ConductionBandEmitter(Emitter):
             remainder -= (1. - self.effectiveMass) *  self.kT * self.barrier.transmissionCoefficient(self.workFunction) * \
                 (0.8224670334241132 + 0.9015426773696957 * self._maxGamowDerivative * (1. - self.effectiveMass))
         return remainder
-    
-    def normalEnergyDistribution(self):
-        """Calculates the perpendicular energy distribution of field emitted electrons from metals
-
-        Returns:
-            energy (array): Energy space for which the electron emission has been evalated (eV)
-            electron_number (array): Number of electrons being emitter with a certain energy (number)
-        """
-        self._spectralEnergyPoints = []
-        self._currentDensityPerEnergy = []
-        
-        self.currentDensity(mode = "slow", saveSpectrum=True)
-        
-        spectralPointArray = np.array(self._spectralEnergyPoints)
-        sortIndices = np.argsort(spectralPointArray)
-    
-        return  spectralPointArray[sortIndices], np.array(self._currentDensityPerEnergy)[sortIndices] * self.kT * Globals.SommerfeldConstant
     
     def innerIntegralDerivative(self, energy):
         """Calculates the derivative of the inner integral g(E) in the current density integration.
@@ -750,7 +743,48 @@ class ConductionBandEmitter(Emitter):
             return 0.
         
         return -Globals.SommerfeldConstant * self.kT * integral    
-    
+
+    def nottinghamHeat(self, mode:str = "fast", saveIntegrand:bool = False) -> float:
+        """Calculates the Nottingham heat.
+
+        Parameters:
+            mode:str fast for within-python calculation, fast to invoke fast C code
+            saveIntegrand:bool if True the integrand values are saved for plotting and debugging
+
+        Returns:
+            float: Emitted current density being emitted from an infinitesimal flat surface area (electrons/area*time)
+        """
+ 
+
+        if (mode == "slow"):
+            integrantFunction = self.nottinghamHeatIntegrand
+            integratorArguments = saveIntegrand
+        elif(mode == "fast"):
+            integrantFunction = self.fastIntegrator.nottinghamHeatIntegrand
+            integratorArguments = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth, self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, self.barrier._gamowDerivativeAtMaxEnergyDepth] + list(self.barrier._gamowPolynomialCoefficients))
+        else:
+            assert False, "nottinghamHeat called with wrong mode '%s'. Either 'fast' or 'slow'"%mode
+        
+
+        if saveIntegrand:
+            assert mode == "fast", "cannot save the integrand in fast mode. Give mode = 'slow'"
+            self.nottinghamHeatIntegrandArray = []
+            self.nottinghamHeatIntegrandPoints = []
+
+        try:
+            integral, abserr = ig.quad(integrantFunction, self._lowEnergyLimit, self._highEnergyLimit, args=integratorArguments)
+        except(IntegrationWarning):
+            print("quad function returned with warning")
+            integral = 0.
+
+        if (saveIntegrand):
+            sortIndices = np.argsort(self.nottinghamHeatIntegrandArray)
+            self.currentDensityIntegrandPoints = np.array(self.nottinghamHeatIntegrandArray[sortIndices])
+            self.nottinghamHeatIntegrandPoints = np.array(self.nottinghamHeatIntegrandPoints[sortIndices]) * self.kT * Globals.SommerfeldConstant
+            
+        return Globals.SommerfeldConstant * self.kT * integral
+
+
     def currentDensityFromTED(self):
         energyPoints, totalEnergyDistribution = self.totalEnergyDistribution()
         return Globals.SommerfeldConstant * np.trapz(totalEnergyDistribution, energyPoints)
@@ -759,20 +793,6 @@ class ConductionBandEmitter(Emitter):
         energyPoints, totalEnergyDistribution = self.totalEnergyDistribution()
         return Globals.SommerfeldConstant * np.trapz(totalEnergyDistribution * energyPoints, energyPoints)
 
-    def nottinghamHeatSimple(self, Npoints = 256):
-        """Calculates the Nottingham heat resulted from field emitted electrons from metals with simple functions
-        
-        Paramters:
-            Npoints(int): Number of points to be used for the integration. Default 256
-        Returns:
-            Calculated current density (A/nm^2)
-        """
-        
-        energyPoints = np.linspace(self._lowEnergyLimit, self._highEnergyLimit, Npoints)
-        transmissionCoefficient = self.barrier.transmissionCoefficient(self.workFunction - energyPoints)
-        integralOfTransmissionCoefficient = np.cumsum(transmissionCoefficient) * (energyPoints[1] - energyPoints[0])
-        integral = np.trapz(integralOfTransmissionCoefficient * self.FermiDiracFunction(energyPoints, self.kT) * energyPoints, energyPoints)
-        return -Globals.SommerfeldConstant * integral
     #endregion
 
     

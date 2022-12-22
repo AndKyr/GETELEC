@@ -30,12 +30,11 @@ class ConductionBandTests:
         currentDensity = np.copy(masses)
         for i in range(len(masses)):
             self.emitter.setParameters(effectiveMass=masses[i])
-            currentDensity[i] = self.emitter.currentDensity()
+            currentDensity[i] = self.emitter.currentDensity(saveIntegrand=plotSpectra)
 
             print("m* = %g, J = %g"%(masses[i], currentDensity[i]))
 
             if (plotSpectra):
-                Energy, spectrum = self.emitter.normalEnergyDistribution()
                 plt.plot(Energy, spectrum, label="m*=%.2g m"%masses[i])
 
         if (plotSpectra):
