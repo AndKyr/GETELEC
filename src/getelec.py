@@ -267,7 +267,7 @@ class Barrier(Interpolator):
     
     # region initialization
     def __init__(self, field:float = 5., radius:float = 1.e4, gamma:float = 10., \
-        preloadedGamowTable:np.ndarray = None, preloadedLimits:np.ndarray = None, tabulationFolder = 'tabulated') -> None:
+        preloadedGamowTable:np.ndarray = None, preloadedLimits:np.ndarray = None, tabulationFolder = Globals.tabulationPath) -> None:
 
         super().__init__(preloadedGamowTable, preloadedLimits, tabulationFolder)
         self.setParameters(field, radius, gamma)

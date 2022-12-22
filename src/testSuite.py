@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import scipy.integrate as ig
 
-getelecRootPath = str(Path(__file__).parents[2].absolute())
+getelecRootPath = str(Path(__file__).parents[1].absolute())
 sys.path.insert(0,getelecRootPath + "/src/")
 import getelec as gt
 
@@ -17,7 +17,7 @@ class ConductionBandTests:
 
 
     def __init__(self) -> None:
-        bar = gt.Barrier(5, 1000, 10., tabulationFolder="tabulated/1D_1024")
+        bar = gt.Barrier(5, 1000, 10., tabulationFolder= getelecRootPath + "/tabulated/1D_1024")
         sup = gt.Supply()
         self.emitter = gt.ConductionBandEmitter(bar, sup)
         self.emitter.setParameters(workfunction=4.5, kT=gt.Globals.BoltzmannConstant * 1500., Ec=0.1, effectiveMass=1.)
