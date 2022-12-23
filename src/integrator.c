@@ -110,7 +110,7 @@ double currentDensityPerNormalEnergy(int dataArrayLength, double *dataArray){
  * @param dataArray array of input parameters
  * @return the integrand value
  */
-double nottinghamHeatInegrand(int dataArrayLength, double *dataArray){
+double nottinghamHeatIntegrand(int dataArrayLength, double *dataArray){
 
     double Gamow = gamowFunction(dataArrayLength, dataArray);
     extern double dilog_();

@@ -11,12 +11,10 @@ import getelec as gt
 import matplotlib.pyplot as plt
 
 showFigures = True
-
+tolerance = 1.e-3
 
 
 class ConductionBandTests:
-
-
 
     def __init__(self) -> None:
         bar = gt.Barrier(5, 1000, 10., tabulationFolder= getelecRootPath + "/tabulated/1D_1024")
@@ -24,25 +22,44 @@ class ConductionBandTests:
         self.emitter.setParameters(workfunction=4.5, kT=gt.Globals.BoltzmannConstant * 1500., Ec=0.1, effectiveMass=1.)
     
     
-    def effectiveMassTest(self, minMass = 0.01, maxMass = 10., Npoints =64, plotSpectra = False):
+
+    def effectiveMassTest(self, minMass = 0.001, maxMass = 1., Npoints = 8, plotIntegrand = False):
 
         masses = np.geomspace(minMass, maxMass, Npoints)
         currentDensity = np.copy(masses)
+        nottinghamHeat = np.copy(masses)
+
+        if plotIntegrand:
+            fig, (ax1, ax2) = plt.subplots(2,1, sharex=True)
+
         for i in range(len(masses)):
             self.emitter.setParameters(effectiveMass=masses[i])
-            currentDensity[i] = self.emitter.currentDensity(saveIntegrand=plotSpectra)
+            currentDensity[i] = self.emitter.currentDensity(mode = "slow", saveIntegrand=plotIntegrand)
+            Jfast = self.emitter.currentDensity(mode = "fast")
+            JfromTED = self.emitter.currentDensityFromTED()
+            if (abs(1 - currentDensity[i] / JfromTED) > tolerance or abs(1 - currentDensity[i] / Jfast) > tolerance):
+                print("current density from two methods not matching", currentDensity[i], " != ", JfromTED, Jfast)
 
-            print("m* = %g, J = %g"%(masses[i], currentDensity[i]))
+            nottinghamHeat[i] = self.emitter.nottinghamHeat(mode="slow", saveIntegrand=plotIntegrand)
+            Pfast = self.emitter.nottinghamHeat(mode = "fast")
+            PfromTED = self.emitter.nottinghamHeatFromTED()
+            if (abs(1 - nottinghamHeat[i] / PfromTED) > tolerance or abs(1 - nottinghamHeat[i] / Pfast) > tolerance):
+                print("nottingham heat from two methods not matching", nottinghamHeat[i], " != ", PfromTED, Pfast)
 
-            if (plotSpectra):
-                plt.plot(Energy, spectrum, label="m*=%.2g m"%masses[i])
 
-        if (plotSpectra):
-            plt.xlabel("energy[eV]")
-            plt.ylabel("current density per energy [A/nm^2 / eV]")
-            plt.grid()
-            plt.legend()
-            plt.savefig("spectraForDifferentEffectiveMasses.png")
+            if plotIntegrand:
+                ax1.plot(self.emitter.currentDensityIntegrandPoints, self.emitter.currentDensityIntegrandArray, \
+                    label="m*=%.2g m"%masses[i])
+                ax2.plot(self.emitter.nottinghamHeatIntegrandPoints, self.emitter.nottinghamHeatIntegrandArray)
+
+        if plotIntegrand:
+            ax1.set_xlabel("energy[eV]")
+            ax1.set_ylabel("current density integrand [A/nm^2 / eV]")
+            ax1.grid()
+            ax2.set_ylabel("nottingham heat integrand [A/nm^2]")
+            ax2.grid()
+            # plt.legend()
+            # plt.savefig("currentDensityIntegrandForMasses.png")
             if (showFigures):
                 plt.show()
 
@@ -64,7 +81,7 @@ class ConductionBandTests:
             currentDensity[i] = self.emitter.currentDensity()
 
             if (plotSpectra):
-                Energy, spectrum = self.emitter.totalEnergyDistribution()
+                Energy, spectrum = self.emitter.calculateTotalEnergySpectrum()
                 JfromTED = gt.Globals.SommerfeldConstant * np.trapz(spectrum, Energy)
                 print("Ec = %g, J = %g,  J / JTED = %g, Npoints  = %g"%(arrayEc[i], currentDensity[i], currentDensity[i]  / JfromTED, len(Energy)))
                 plt.plot(Energy, spectrum, "-", label="Ec=%.2g eV"%arrayEc[i])
@@ -91,5 +108,5 @@ class ConductionBandTests:
         
 if (__name__ == "__main__"):
     tests = ConductionBandTests()
-    tests.conductionBandBottomTest(plotSpectra=True)
-    tests.effectiveMassTest()
+    # tests.conductionBandBottomTest(plotSpectra=True)
+    tests.effectiveMassTest(plotIntegrand=True)
