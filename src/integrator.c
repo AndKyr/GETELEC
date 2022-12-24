@@ -89,18 +89,28 @@ double transmissionCoefficientForGamow(double Gamow){
 }
 
 /**
- * Evaluates the integrand of the current density (D(E) * lFD(E))
-*/
-double currentDensityPerNormalEnergy(int dataArrayLength, double *dataArray){
+ * @brief Calculates the derivative of the inner integral g(E) in the current density integration. See Andreas' notes.
+ * @param dataArrayLength the length of the input parameters
+ * @param dataArray array of input parameters
+ * @return the inner integrand derivative value
+ */
 
+double innerIntegralDerivative(int dataArrayLength, double *dataArray){
     double Gamow = gamowFunction(dataArrayLength, dataArray);
-        
-    if (effectiveMass == 1.)
-        return logFermiDirac(energy / kT) * transmissionCoefficientForGamow(Gamow);
-    else{
-        double GamowReduced = gamowFunctionAtReducedEnergy(dataArrayLength, dataArray);
-        return logFermiDirac(energy / kT) * (transmissionCoefficientForGamow(Gamow) - (1. - effectiveMass) * transmissionCoefficientForGamow(GamowReduced));
+
+    double output = transmissionCoefficientForGamow(Gamow);
+    if (effectiveMass != 1.){
+        Gamow = gamowFunctionAtReducedEnergy(dataArrayLength, dataArray);
+        output -= (1. - effectiveMass) * transmissionCoefficientForGamow(Gamow);
     }
+    return output;
+}
+
+/**
+ * Evaluates the integrand of the current density (g'(E) * lFD(E))
+*/
+double currentDensityIntegrand(int dataArrayLength, double *dataArray){
+    return logFermiDirac(energy / kT) * innerIntegralDerivative(dataArrayLength, dataArray);
 }
 
 /**
@@ -112,16 +122,11 @@ double currentDensityPerNormalEnergy(int dataArrayLength, double *dataArray){
  */
 double nottinghamHeatIntegrand(int dataArrayLength, double *dataArray){
 
-    double Gamow = gamowFunction(dataArrayLength, dataArray);
     extern double dilog_();
-    double exponent = -exp(-energy / kT);
+    double exponential = -exp(-energy / kT);
 
-    if (effectiveMass == 1.)
-        return (logFermiDirac(energy / kT) * energy - kT * dilog_(&exponent)) * transmissionCoefficientForGamow(Gamow);
-    else{
-        double GamowReduced = gamowFunctionAtReducedEnergy(dataArrayLength, dataArray);
-        return (logFermiDirac(energy / kT) * energy - kT * dilog_(&exponent)) * (transmissionCoefficientForGamow(Gamow) - (1. - effectiveMass) * transmissionCoefficientForGamow(GamowReduced));
-    }
+    return (logFermiDirac(energy / kT) * energy - kT * dilog_(&exponential)) * 
+        innerIntegralDerivative(dataArrayLength, dataArray);
 }
 
 

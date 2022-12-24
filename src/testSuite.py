@@ -9,6 +9,18 @@ sys.path.insert(0,getelecRootPath + "/src/")
 import getelec as gt
 
 import matplotlib.pyplot as plt
+import matplotlib as mb
+
+font = 15
+mb.rcParams["font.size"] = font
+mb.rcParams["axes.labelsize"] = font
+mb.rcParams["xtick.labelsize"] = font
+mb.rcParams["ytick.labelsize"] = font
+mb.rcParams["legend.fontsize"] = font
+mb.rcParams["lines.linewidth"] = 1.5
+mb.rcParams["text.usetex"] = True
+figureSize = [16,10]
+colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
 showFigures = True
 tolerance = 1.e-3
@@ -23,50 +35,39 @@ class ConductionBandTests:
     
     
 
-    def effectiveMassTest(self, minMass = 0.001, maxMass = 1., Npoints = 8, plotIntegrand = False):
+    def effectiveMassTest(self, minMass = 0.001, maxMass = .05, Npoints = 4, plotIntegrand = False, plotSpectra = False):
 
         masses = np.geomspace(minMass, maxMass, Npoints)
         currentDensity = np.copy(masses)
         nottinghamHeat = np.copy(masses)
 
         if plotIntegrand:
-            fig, (ax1, ax2) = plt.subplots(2,1, sharex=True)
+            fig, (ax1, ax2) = plt.subplots(2,1, sharex=True, figsize=tuple(figureSize))
+        else:
+            ax1 = None
+            ax2 = None
 
         for i in range(len(masses)):
             self.emitter.setParameters(effectiveMass=masses[i])
-            currentDensity[i] = self.emitter.currentDensity(mode = "slow", saveIntegrand=plotIntegrand)
-            Jfast = self.emitter.currentDensity(mode = "fast")
-            JfromTED = self.emitter.currentDensityFromTED()
-            if (abs(1 - currentDensity[i] / JfromTED) > tolerance or abs(1 - currentDensity[i] / Jfast) > tolerance):
-                print("current density from two methods not matching", currentDensity[i], " != ", JfromTED, Jfast)
+            currentDensity[i], nottinghamHeat[i] = self.emitter.runFullTest(ax1, ax2, label=r"$ m=%.2g$"%masses[i])
 
-            nottinghamHeat[i] = self.emitter.nottinghamHeat(mode="slow", saveIntegrand=plotIntegrand)
-            Pfast = self.emitter.nottinghamHeat(mode = "fast")
-            PfromTED = self.emitter.nottinghamHeatFromTED()
-            if (abs(1 - nottinghamHeat[i] / PfromTED) > tolerance or abs(1 - nottinghamHeat[i] / Pfast) > tolerance):
-                print("nottingham heat from two methods not matching", nottinghamHeat[i], " != ", PfromTED, Pfast)
-
-
-            if plotIntegrand:
-                ax1.plot(self.emitter.currentDensityIntegrandPoints, self.emitter.currentDensityIntegrandArray, \
-                    label="m*=%.2g m"%masses[i])
-                ax2.plot(self.emitter.nottinghamHeatIntegrandPoints, self.emitter.nottinghamHeatIntegrandArray)
 
         if plotIntegrand:
-            ax1.set_xlabel("energy[eV]")
-            ax1.set_ylabel("current density integrand [A/nm^2 / eV]")
+            ax2.set_xlabel(r"$ E - E_F \textrm{ [eV]}$")
+            ax1.set_ylabel(r"$J \textrm{ integrand [A / nm}^2 \textrm{/ eV]}$")
             ax1.grid()
-            ax2.set_ylabel("nottingham heat integrand [A/nm^2]")
+            ax2.set_ylabel(r"$P_N \textrm{ integrand  [A/nm}^2 \textrm{]}$")
             ax2.grid()
-            # plt.legend()
-            # plt.savefig("currentDensityIntegrandForMasses.png")
+            ax1.legend()
+            ax2.legend()
+            plt.savefig("currentDensityIntegrandForMasses.png")
             if (showFigures):
                 plt.show()
 
         plt.figure()
-        plt.semilogx(masses, currentDensity)
-        plt.xlabel("effective mass / electron mass")
-        plt.ylabel("current density [nA / nm^2]")
+        plt.semilogx(masses, currentDensity, '.-')
+        plt.xlabel(r"$m^* / m_e$")
+        plt.ylabel(r"$\textrm{current density [nA / nm}^2\textrm{]}$")
         plt.grid()
         plt.savefig("currentDensity-effectiveMass.png")
         if (showFigures):
@@ -109,4 +110,4 @@ class ConductionBandTests:
 if (__name__ == "__main__"):
     tests = ConductionBandTests()
     # tests.conductionBandBottomTest(plotSpectra=True)
-    tests.effectiveMassTest(plotIntegrand=True)
+    tests.effectiveMassTest(plotIntegrand=True, plotSpectra=True)

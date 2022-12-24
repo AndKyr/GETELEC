@@ -9,6 +9,7 @@ import scipy.optimize as opt
 import copy
 import subprocess
 import scipy.special
+import matplotlib.pyplot as plt
 filePath,filename = os.path.split(os.path.realpath(__file__))
 
 
@@ -427,8 +428,8 @@ class Barrier(Interpolator):
 
 class Emitter:
     fastIntegrator = ct.CDLL(filePath + '/libintegrator.so') #use absolute path
-    fastIntegrator.currentDensityPerNormalEnergy.restype = ct.c_double
-    fastIntegrator.currentDensityPerNormalEnergy.argtypes = (ct.c_int, ct.c_double)
+    fastIntegrator.currentDensityIntegrand.restype = ct.c_double
+    fastIntegrator.currentDensityIntegrand.argtypes = (ct.c_int, ct.c_double)
     fastIntegrator.nottinghamHeatIntegrand.restype = ct.c_double
     fastIntegrator.nottinghamHeatIntegrand.argtypes = (ct.c_int, ct.c_double)
     
@@ -681,7 +682,7 @@ class ConductionBandEmitter(Emitter):
             integrantFunction = self.currentDensityIntegrand
             integratorArguments = saveIntegrand
         elif(mode == "fast"):
-            integrantFunction = self.fastIntegrator.currentDensityPerNormalEnergy
+            integrantFunction = self.fastIntegrator.currentDensityIntegrand
             integratorArguments = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth, self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
                 self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.Ec] + list(self.barrier._gamowPolynomialCoefficients))
         else:
@@ -691,11 +692,11 @@ class ConductionBandEmitter(Emitter):
             if (self._highEnergyLimit == 0.):
                 breakPoints =  np.array([0., 0.5 * self._centerOfSpectrumEnergy, self._centerOfSpectrumEnergy, 0.75 * self._centerOfSpectrumEnergy + 0.25 * self._lowEnergyLimit ])
                 integral, abserr, infodict= ig.quad(integrantFunction, self._lowEnergyLimit, self._highEnergyLimit, args=integratorArguments, \
-                    full_output=True, points=breakPoints)
+                    full_output=True, points=breakPoints, epsabs=-1)
                 
                 integral += self.aboveFermiRemainder()
             else:
-                integral, abserr = ig.quad(integrantFunction, self._lowEnergyLimit, self._highEnergyLimit, args=integratorArguments)
+                integral, abserr = ig.quad(integrantFunction, self._lowEnergyLimit, self._highEnergyLimit, args=integratorArguments, epsabs=-1)
         except(IntegrationWarning):
             print("quad function returned with warning")
             integral = 0.
@@ -764,13 +765,11 @@ class ConductionBandEmitter(Emitter):
         self.isTEDSpectrumCalculated = True
     
     def totalEnergySpectrumArrays(self, numberOfPoints:int = 256) -> tuple:
-        energyArray = np.linspace(self._lowEnergyLimit, self._highEnergyLimit, numberOfPoints)
-        try:
-            totalEnergySpctrumArray = self.totalEnergySpectrumFunction(energyArray)
-        except(ArithmeticError):
+        if (not self.isTEDSpectrumCalculated):
             self.calculateTotalEnergySpectrum()
-            totalEnergySpctrumArray = self.totalEnergySpectrumFunction(energyArray)
-        
+
+        energyArray = np.linspace(self._lowEnergyLimit, self._highEnergyLimit, numberOfPoints)
+        totalEnergySpctrumArray = self.totalEnergySpectrumFunction(energyArray)
         return energyArray, totalEnergySpctrumArray  
 
     def nottinghamHeat(self, mode:str = "fast", saveIntegrand:bool = False) -> float:
@@ -788,7 +787,8 @@ class ConductionBandEmitter(Emitter):
             integratorArguments = saveIntegrand
         elif(mode == "fast"):
             integrantFunction = self.fastIntegrator.nottinghamHeatIntegrand
-            integratorArguments = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth, self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, self.barrier._gamowDerivativeAtMaxEnergyDepth] + list(self.barrier._gamowPolynomialCoefficients))
+            integratorArguments = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth , self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
+                self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.Ec] + list(self.barrier._gamowPolynomialCoefficients))
         else:
             assert False, "nottinghamHeat called with wrong mode '%s'. Either 'fast' or 'slow'"%mode
         
@@ -799,7 +799,7 @@ class ConductionBandEmitter(Emitter):
             self.nottinghamHeatIntegrandPoints = []
 
         try:
-            integral, abserr = ig.quad(integrantFunction, self._lowEnergyLimit, self._highEnergyLimit, args=integratorArguments)
+            integral, abserr = ig.quad(integrantFunction, self._lowEnergyLimit, self._highEnergyLimit, args=integratorArguments, epsabs=-1)
         except(IntegrationWarning):
             print("quad function returned with warning")
             integral = 0.
@@ -816,13 +816,47 @@ class ConductionBandEmitter(Emitter):
         """Calculates the current density by integrating the total energy distribution spectrum"""
         if (not self.isTEDSpectrumCalculated):
             self.calculateTotalEnergySpectrum()
-        return ig.quad(self.totalEnergySpectrumFunction, self._lowEnergyLimit, self._highEnergyLimit)[0]
+        return ig.quad(self.totalEnergySpectrumFunction, self._lowEnergyLimit, self._highEnergyLimit, epsabs=-1, epsrel=1.e-4)[0]
         
     def nottinghamHeatFromTED(self) -> float:
         if (not self.isTEDSpectrumCalculated):
             self.calculateTotalEnergySpectrum()
         nottinghamSpectrum = lambda energy: self.totalEnergySpectrumFunction(energy) * energy
-        return -ig.quad(nottinghamSpectrum, self._lowEnergyLimit, self._highEnergyLimit)[0]
+        return -ig.quad(nottinghamSpectrum, self._lowEnergyLimit, self._highEnergyLimit, epsabs=-1, epsrel=1.e-4)[0]
+
+    def runFullTest(self, currentDensityAxis:plt.Axes = None, nottinghamHeatAxis:plt.Axes = None, tolerance:float = 1.e-2, label:str = "") -> tuple:
+        currentDensityFast = self.currentDensity(mode = "fast")
+        currentDensitySlow = self.currentDensity(mode = "slow", saveIntegrand=True)
+        currentDensityFromTED = self.currentDensityFromTED()
+
+        maxError = max(abs(1 - currentDensitySlow /currentDensityFast), abs(1 - currentDensityFromTED / currentDensityFast))
+        
+        if (maxError > tolerance):
+            print("current density from different methods not matching. Slow:", currentDensitySlow, " fast: ", currentDensityFast, "from TED spectrum: ", currentDensityFromTED)
+        
+        nottinghamHeatFast = self.nottinghamHeat(mode="fast")
+        nottinghamHeatSlow = self.nottinghamHeat(mode="slow", saveIntegrand=True)
+        nottinghamHeatFromTED = self.nottinghamHeatFromTED()
+
+        maxError = max(abs(1 - nottinghamHeatSlow / nottinghamHeatFast), abs(1 - nottinghamHeatFromTED / nottinghamHeatFast))
+        
+        if (maxError > tolerance):
+            print("nottingham heat from different methods not matching. Slow:", nottinghamHeatSlow, " fast: ", nottinghamHeatFast, "from TED spectrum: ", nottinghamHeatFromTED)
+
+        if currentDensityAxis is not None or nottinghamHeatAxis is not None:
+            energy, spectra = self.totalEnergySpectrumArrays()
+
+        if currentDensityAxis is not None:
+            line, = currentDensityAxis.plot(self.currentDensityIntegrandPoints, self.currentDensityIntegrandArray, \
+                label=r"$l_{FD}(E) g'(E)$" + label)
+            currentDensityAxis.plot(energy, spectra, "--", color = line.get_color(), label=r"$f_{FD}(E) g(E)$" +label)
+        
+        if (nottinghamHeatAxis is not None):
+            line, = nottinghamHeatAxis.plot(self.nottinghamHeatIntegrandPoints, self.nottinghamHeatIntegrandArray, label=r"$g'(E) [l_{FD}(E) E - kT Li_2(-e^{-E/kT})]$")
+            nottinghamHeatAxis.plot(energy, spectra * energy, '--', color = line.get_color(), label=r"$E \cdot f_{FD}(E) g(E)$")
+
+        return currentDensityFast, nottinghamHeatFast
+
 
     #endregion
 
