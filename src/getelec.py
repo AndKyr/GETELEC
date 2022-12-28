@@ -437,6 +437,14 @@ class Emitter:
     nottinghamHeatIntegrandPoints:np.ndarray
     currentDensityIntegrandArray:np.ndarray
     currentDensityIntegrandPoints:np.ndarray
+    kT: float
+    workFunction: float
+    Ec: float
+    effectiveMass: float
+
+    highEnergyLimit: float
+    lowEnergyLimit: float
+    isTEDSpectrumCalculated:bool
     
     barrier: Barrier
     # region initialization
@@ -451,6 +459,9 @@ class Emitter:
         self.nottinghamHeatIntegrandPoints = np.array([])
         self.currentDensityIntegrandPoints = np.array([])
         self.currentDensityIntegrandArray = np.array([])
+        self.highEnergyLimit = 1.e100
+        self.lowEnergyLimit = 1.e100
+        self.totalEnergySpectrumFunction = None
 
     def logFermiDiracFunction(self, energy, kT):
         """Returs the natural logarithm of the Fermi Diract distribution.
@@ -556,6 +567,7 @@ class Emitter:
         self.kT = kT
         self.effectiveMass = effectiveMass
         self.Ec = Ec
+        self.isTEDSpectrumCalculated = False
         self._calculateIntegrationLimits()
     
     def changeParameters(self, field:float = None, radius:float = None, gamma:float = None, workFunction:float = None, \
@@ -612,6 +624,69 @@ class Emitter:
         """Evaluates the Jacobian of the differential equation system of TEDdifferentialSystem"""
         return  np.array([[-self.FermiDiracFunction(energy, self.kT) * np.exp(energy/self.kT) / self.kT]])
      
+    def calculateTotalEnergySpectrum(self) -> None:
+        assert False, "calculateTotalEnergySpectrum() called in the base class where it does nothing"
+
+    def currentDensity(self) -> None:
+        assert False, "currentDensity() called in the base class where it does nothing"
+
+    def nottinghamHeat(self) -> None:
+        assert False, "notinghamHeat() called in the base class where it does nothing"
+
+    def currentDensityFromTED(self) -> float:
+        """Calculates the current density by integrating the total energy distribution spectrum"""
+        if (not self.isTEDSpectrumCalculated):
+            self.calculateTotalEnergySpectrum()
+        return ig.quad(self.totalEnergySpectrumFunction, self.lowEnergyLimit, self.highEnergyLimit, epsabs=-1, epsrel=1.e-4)[0]
+        
+    def nottinghamHeatFromTED(self) -> float:
+        if (not self.isTEDSpectrumCalculated):
+            self.calculateTotalEnergySpectrum()
+        nottinghamSpectrum = lambda energy: self.totalEnergySpectrumFunction(energy) * energy
+        return -ig.quad(nottinghamSpectrum, self.lowEnergyLimit, self.highEnergyLimit, epsabs=-1, epsrel=1.e-4)[0]
+
+    def totalEnergySpectrumArrays(self, numberOfPoints:int = 256) -> tuple:
+        if (not self.isTEDSpectrumCalculated):
+            self.calculateTotalEnergySpectrum()
+
+        energyArray = np.linspace(self.lowEnergyLimit, self.highEnergyLimit, numberOfPoints)
+        totalEnergySpctrumArray = self.totalEnergySpectrumFunction(energyArray)
+        return energyArray, totalEnergySpctrumArray  
+
+    def runFullTest(self, currentDensityAxis:plt.Axes = None, nottinghamHeatAxis:plt.Axes = None, tolerance:float = 1.e-2, label:str = "") -> tuple:
+        currentDensityFast = self.currentDensity(mode = "fast")
+        currentDensitySlow = self.currentDensity(mode = "slow", saveIntegrand=True)
+        currentDensityFromTED = self.currentDensityFromTED()
+
+        maxError = max(abs(1 - currentDensitySlow /currentDensityFast), abs(1 - currentDensityFromTED / currentDensityFast))
+        
+        if (maxError > tolerance):
+            print("current density from different methods not matching. Slow:", currentDensitySlow, " fast: ", currentDensityFast, "from TED spectrum: ", currentDensityFromTED)
+        
+        nottinghamHeatFast = self.nottinghamHeat(mode="fast")
+        nottinghamHeatSlow = self.nottinghamHeat(mode="slow", saveIntegrand=True)
+        nottinghamHeatFromTED = self.nottinghamHeatFromTED()
+
+        maxError = max(abs(1 - nottinghamHeatSlow / nottinghamHeatFast), abs(1 - nottinghamHeatFromTED / nottinghamHeatFast))
+        
+        if (maxError > tolerance):
+            print("nottingham heat from different methods not matching. Slow:", nottinghamHeatSlow, " fast: ", nottinghamHeatFast, "from TED spectrum: ", nottinghamHeatFromTED)
+
+        if currentDensityAxis is not None or nottinghamHeatAxis is not None:
+            energy, spectra = self.totalEnergySpectrumArrays()
+
+        if currentDensityAxis is not None:
+            line, = currentDensityAxis.plot(self.currentDensityIntegrandPoints, self.currentDensityIntegrandArray, \
+                label=r"$l_{FD}(E) g'(E)$" + label)
+            currentDensityAxis.plot(energy, spectra, "--", color = line.get_color(), label=r"$f_{FD}(E) g(E)$" +label)
+        
+        if (nottinghamHeatAxis is not None):
+            line, = nottinghamHeatAxis.plot(self.nottinghamHeatIntegrandPoints, self.nottinghamHeatIntegrandArray, label=r"$g'(E) [l_{FD}(E) E - kT Li_2(-e^{-E/kT})]$")
+            nottinghamHeatAxis.plot(energy, spectra * energy, '--', color = line.get_color(), label=r"$E \cdot f_{FD}(E) g(E)$")
+
+        return currentDensityFast, nottinghamHeatFast
+
+
 
     # endregion
 
@@ -622,18 +697,11 @@ class ConductionBandEmitter(Emitter):
     """
     
     # region field declarations
-    kT: float
-    workFunction: float
-    Ec: float
-    effectiveMass: float
+
     _centerOfSpectrumEnergy: float
     _maxGamowDerivative: float
-    _highEnergyLimit: float
-    _lowEnergyLimit: float
     _centerOfSpectrumEnergy: float
     _maxGamowDerivative: float
-    currentDensityIntegrandPoints: list
-    isTEDSpectrumCalculated:bool
     
     # endregion
     
@@ -652,7 +720,7 @@ class ConductionBandEmitter(Emitter):
     # endregion
     def _calculateIntegrationLimits(self, decayCutoff = 10.) -> None:
         """Finds the limits of integration, based on the regimes described by Jensen's GTF theory (see http://dx.doi.org/10.1063/1.4940721 for details)
-            The limits are saved on self._highEnergyLimit and self._lowEnergyLimit
+            The limits are saved on self.highEnergyLimit and self.lowEnergyLimit
         """
         self.barrier._calculateGamowData()
         
@@ -664,7 +732,7 @@ class ConductionBandEmitter(Emitter):
         determiningParameter = self._maxGamowDerivative * self.kT
         
         if (determiningParameter < 0.002 and self.Ec < 0.): # Very low temperature and quad() misbehaves. set some help
-            self._highEnergyLimit = 0.
+            self.highEnergyLimit = 0.
             
             #TODO fix for the case that Ec > Ef
             #get the polynomial P for which the equation P(E)=0 finds the place where E * dG/dE = 1
@@ -673,17 +741,17 @@ class ConductionBandEmitter(Emitter):
             realroots = np.roots(polynomialForRoots)
             self._centerOfSpectrumEnergy = self.workFunction - \
                 realroots[np.nonzero(np.logical_and(realroots > self.workFunction, realroots < self.barrier.maxEnergyDepth))][0]
-            self._lowEnergyLimit = self._centerOfSpectrumEnergy - decayCutoff / self._maxGamowDerivative 
+            self.lowEnergyLimit = self._centerOfSpectrumEnergy - decayCutoff / self._maxGamowDerivative 
         elif (determiningParameter < 1.): #field regime. The spectrum is centered around Fermi Level
             if (determiningParameter < 0.95):
-                self._highEnergyLimit = max(0., self.Ec) +  decayCutoff / (1. / self.kT - self._maxGamowDerivative) # decayCutoff divided by decay rate
+                self.highEnergyLimit = max(0., self.Ec) +  decayCutoff / (1. / self.kT - self._maxGamowDerivative) # decayCutoff divided by decay rate
             else:
-                self._highEnergyLimit = max(0., self.Ec) + 2 * decayCutoff * self.kT # decayCutoff divided by decay rate
-            self._lowEnergyLimit = - decayCutoff / self._maxGamowDerivative        
+                self.highEnergyLimit = max(0., self.Ec) + 2 * decayCutoff * self.kT # decayCutoff divided by decay rate
+            self.lowEnergyLimit = - decayCutoff / self._maxGamowDerivative        
         elif (self.barrier.gamowDerivativeAtMinBarrierDepth * self.kT > 1.): #thermal regime. The spctrum is centered around the top of the barrier
             self._centerOfSpectrumEnergy = max(self.Ec, self.workFunction - self.barrier.minEnergyDepth) #top of the barrier (Um)
-            self._highEnergyLimit = self._centerOfSpectrumEnergy + decayCutoff * self.kT 
-            self._lowEnergyLimit = self._centerOfSpectrumEnergy - 10 / self.barrier.gamowDerivativeAtMinBarrierDepth     
+            self.highEnergyLimit = self._centerOfSpectrumEnergy + decayCutoff * self.kT 
+            self.lowEnergyLimit = self._centerOfSpectrumEnergy - 10 / self.barrier.gamowDerivativeAtMinBarrierDepth     
         else: #intermediate regime. The spectrum center is approximately where dG/dE = 1/kT
             #get the polynomial P for which the equation P(w)=0 finds the place where dG/dw = 1/kT
             polynomialForRoots = np.copy(self.barrier.gamowDerivativePolynomial)
@@ -695,16 +763,12 @@ class ConductionBandEmitter(Emitter):
             self._centerOfSpectrumEnergy = max(self.Ec, self.workFunction - \
                     realroots[np.nonzero(np.logical_and(realroots > self.barrier.minEnergyDepth, realroots < self.workFunction))][0])
             # find energy limits
-            self._highEnergyLimit =  self._centerOfSpectrumEnergy + decayCutoff * self.kT
-            self._lowEnergyLimit = self._centerOfSpectrumEnergy - 2.5 * decayCutoff * self.kT
+            self.highEnergyLimit =  self._centerOfSpectrumEnergy + decayCutoff * self.kT
+            self.lowEnergyLimit = self._centerOfSpectrumEnergy - 2.5 * decayCutoff * self.kT
         
         #limit the low energy integration limit to the bottom of the conduction band
-        self._lowEnergyLimit = max(self._lowEnergyLimit, self.Ec)
-
-        # if integration limits are calculated, the object parameters are updated and the spectrum is obsolete. 
-        self.isTEDSpectrumCalculated = False 
-
-        
+        self.lowEnergyLimit = max(self.lowEnergyLimit, self.Ec)
+ 
     def currentDensity(self, mode:str = "fast", saveIntegrand:bool = False) -> float:
         """Calculates the field emitted current density from metal surfaces
 
@@ -727,14 +791,14 @@ class ConductionBandEmitter(Emitter):
             assert False, "currentDensity called with wrong mode '%s'. Either 'fast' or 'slow'"%mode
         
         try:
-            if (self._highEnergyLimit == 0.):
-                breakPoints =  np.array([0., 0.5 * self._centerOfSpectrumEnergy, self._centerOfSpectrumEnergy, 0.75 * self._centerOfSpectrumEnergy + 0.25 * self._lowEnergyLimit ])
-                integral, abserr, infodict= ig.quad(integrantFunction, self._lowEnergyLimit, self._highEnergyLimit, args=integratorArguments, \
+            if (self.highEnergyLimit == 0.):
+                breakPoints =  np.array([0., 0.5 * self._centerOfSpectrumEnergy, self._centerOfSpectrumEnergy, 0.75 * self._centerOfSpectrumEnergy + 0.25 * self.lowEnergyLimit ])
+                integral, abserr, infodict= ig.quad(integrantFunction, self.lowEnergyLimit, self.highEnergyLimit, args=integratorArguments, \
                     full_output=True, points=breakPoints, epsabs=-1)
                 
                 integral += self.aboveFermiRemainder()
             else:
-                integral, abserr = ig.quad(integrantFunction, self._lowEnergyLimit, self._highEnergyLimit, args=integratorArguments, epsabs=-1)
+                integral, abserr = ig.quad(integrantFunction, self.lowEnergyLimit, self.highEnergyLimit, args=integratorArguments, epsabs=-1)
         except(IntegrationWarning):
             print("quad function returned with warning")
             integral = 0.
@@ -779,20 +843,12 @@ class ConductionBandEmitter(Emitter):
             energy (array): Energy space for which the electron emission has been evalated (eV)
             electronNumber (array): Number of electrons being emitted with a certain total energy (number)
         """
-        solution = ig.solve_ivp(self.TEDdifferentialSystem, [self._lowEnergyLimit, self._highEnergyLimit], \
-            [0.], method='LSODA', dense_output=True, rtol = 1.e-12, jac=self.TEDJacobian, max_step=(self._highEnergyLimit - self._lowEnergyLimit) / minimumNumberOfPoints)
+        solution = ig.solve_ivp(self.TEDdifferentialSystem, [self.lowEnergyLimit, self.highEnergyLimit], \
+            [0.], method='LSODA', dense_output=True, rtol = 1.e-12, jac=self.TEDJacobian, max_step=(self.highEnergyLimit - self.lowEnergyLimit) / minimumNumberOfPoints)
         
         self.totalEnergySpectrumFunction = lambda energy : Globals.SommerfeldConstant * solution.sol(energy)[0]
         self.isTEDSpectrumCalculated = True
     
-    def totalEnergySpectrumArrays(self, numberOfPoints:int = 256) -> tuple:
-        if (not self.isTEDSpectrumCalculated):
-            self.calculateTotalEnergySpectrum()
-
-        energyArray = np.linspace(self._lowEnergyLimit, self._highEnergyLimit, numberOfPoints)
-        totalEnergySpctrumArray = self.totalEnergySpectrumFunction(energyArray)
-        return energyArray, totalEnergySpctrumArray  
-
     def nottinghamHeat(self, mode:str = "fast", saveIntegrand:bool = False) -> float:
         """Calculates the Nottingham heat.
 
@@ -820,7 +876,7 @@ class ConductionBandEmitter(Emitter):
             self.nottinghamHeatIntegrandPoints = np.array([])
 
         try:
-            integral, abserr = ig.quad(integrantFunction, self._lowEnergyLimit, self._highEnergyLimit, args=integratorArguments, epsabs=-1)
+            integral, abserr = ig.quad(integrantFunction, self.lowEnergyLimit, self.highEnergyLimit, args=integratorArguments, epsabs=-1)
         except(IntegrationWarning):
             print("quad function returned with warning")
             integral = 0.
@@ -831,52 +887,6 @@ class ConductionBandEmitter(Emitter):
             self.nottinghamHeatIntegrandArray = self.nottinghamHeatIntegrandArray[sortIndices] * self.kT * Globals.SommerfeldConstant
             
         return - Globals.SommerfeldConstant * self.kT * integral
-
-    def currentDensityFromTED(self) -> float:
-        """Calculates the current density by integrating the total energy distribution spectrum"""
-        if (not self.isTEDSpectrumCalculated):
-            self.calculateTotalEnergySpectrum()
-        return ig.quad(self.totalEnergySpectrumFunction, self._lowEnergyLimit, self._highEnergyLimit, epsabs=-1, epsrel=1.e-4)[0]
-        
-    def nottinghamHeatFromTED(self) -> float:
-        if (not self.isTEDSpectrumCalculated):
-            self.calculateTotalEnergySpectrum()
-        nottinghamSpectrum = lambda energy: self.totalEnergySpectrumFunction(energy) * energy
-        return -ig.quad(nottinghamSpectrum, self._lowEnergyLimit, self._highEnergyLimit, epsabs=-1, epsrel=1.e-4)[0]
-
-    def runFullTest(self, currentDensityAxis:plt.Axes = None, nottinghamHeatAxis:plt.Axes = None, tolerance:float = 1.e-2, label:str = "") -> tuple:
-        currentDensityFast = self.currentDensity(mode = "fast")
-        currentDensitySlow = self.currentDensity(mode = "slow", saveIntegrand=True)
-        currentDensityFromTED = self.currentDensityFromTED()
-
-        maxError = max(abs(1 - currentDensitySlow /currentDensityFast), abs(1 - currentDensityFromTED / currentDensityFast))
-        
-        if (maxError > tolerance):
-            print("current density from different methods not matching. Slow:", currentDensitySlow, " fast: ", currentDensityFast, "from TED spectrum: ", currentDensityFromTED)
-        
-        nottinghamHeatFast = self.nottinghamHeat(mode="fast")
-        nottinghamHeatSlow = self.nottinghamHeat(mode="slow", saveIntegrand=True)
-        nottinghamHeatFromTED = self.nottinghamHeatFromTED()
-
-        maxError = max(abs(1 - nottinghamHeatSlow / nottinghamHeatFast), abs(1 - nottinghamHeatFromTED / nottinghamHeatFast))
-        
-        if (maxError > tolerance):
-            print("nottingham heat from different methods not matching. Slow:", nottinghamHeatSlow, " fast: ", nottinghamHeatFast, "from TED spectrum: ", nottinghamHeatFromTED)
-
-        if currentDensityAxis is not None or nottinghamHeatAxis is not None:
-            energy, spectra = self.totalEnergySpectrumArrays()
-
-        if currentDensityAxis is not None:
-            line, = currentDensityAxis.plot(self.currentDensityIntegrandPoints, self.currentDensityIntegrandArray, \
-                label=r"$l_{FD}(E) g'(E)$" + label)
-            currentDensityAxis.plot(energy, spectra, "--", color = line.get_color(), label=r"$f_{FD}(E) g(E)$" +label)
-        
-        if (nottinghamHeatAxis is not None):
-            line, = nottinghamHeatAxis.plot(self.nottinghamHeatIntegrandPoints, self.nottinghamHeatIntegrandArray, label=r"$g'(E) [l_{FD}(E) E - kT Li_2(-e^{-E/kT})]$")
-            nottinghamHeatAxis.plot(energy, spectra * energy, '--', color = line.get_color(), label=r"$E \cdot f_{FD}(E) g(E)$")
-
-        return currentDensityFast, nottinghamHeatFast
-
 
     #endregion
 
