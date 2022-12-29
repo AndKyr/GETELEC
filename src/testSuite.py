@@ -30,26 +30,35 @@ class ConductionBandTests:
 
     def __init__(self) -> None:
         bar = gt.Barrier(5, 1000, 10., tabulationFolder= getelecRootPath + "/tabulated/1D_1024")
-        self.emitter = gt.ConductionBandEmitter(bar)
-        self.emitter.setParameters(workfunction=4.5, kT=gt.Globals.BoltzmannConstant * 1500., Ec=0.1, effectiveMass=1.)
+        self.conductionEmitter = gt.ConductionBandEmitter(bar)
+        self.valenceEmitter = gt.ValenceBandEmitter(bar)
+        self.conductionEmitter.setParameters(workfunction=4.5, kT=gt.Globals.BoltzmannConstant * 1500., energyBandLimit=0.1, effectiveMass=1.)
+        self.valenceEmitter.setParameters(workfunction=4.5, kT=gt.Globals.BoltzmannConstant * 1500., energyBandLimit = -.3, effectiveMass=.1)
     
     
 
     def effectiveMassTest(self, minMass = 0.001, maxMass = .05, Npoints = 4, plotIntegrand = False, plotSpectra = False):
 
         masses = np.geomspace(minMass, maxMass, Npoints)
-        currentDensity = np.copy(masses)
-        nottinghamHeat = np.copy(masses)
+        currentDensityConduction = np.copy(masses)
+        nottinghamHeatConduction = np.copy(masses)
+        currentDensityValence = np.copy(masses)
+        nottinghamHeatValence = np.copy(masses)
 
         if plotIntegrand:
             fig, (ax1, ax2) = plt.subplots(2,1, sharex=True, figsize=tuple(figureSize))
+            fig2, (ax3, ax4) = plt.subplots(2,1, sharex=True, figsize=tuple(figureSize))
         else:
             ax1 = None
             ax2 = None
+            ax3 = None
+            ax4 = None
 
         for i in range(len(masses)):
-            self.emitter.setParameters(effectiveMass=masses[i])
-            currentDensity[i], nottinghamHeat[i] = self.emitter.runFullTest(ax1, ax2, label=r"$ m=%.2g$"%masses[i])
+            self.conductionEmitter.setParameters(effectiveMass=masses[i])
+            self.valenceEmitter.changeParameters(effectiveMass=masses[i])
+            currentDensityConduction[i], nottinghamHeatConduction[i] = self.conductionEmitter.runFullTest(ax1, ax2, label=r"$ m=%.2g$"%masses[i])
+            currentDensityValence[i], nottinghamHeatValence[i] = self.valenceEmitter.runFullTest(ax3, ax4, label=r"$ m=%.2g$"%masses[i])
 
 
         if plotIntegrand:
@@ -65,7 +74,7 @@ class ConductionBandTests:
                 plt.show()
 
         plt.figure()
-        plt.semilogx(masses, currentDensity, '.-')
+        plt.semilogx(masses, currentDensityConduction, '.-')
         plt.xlabel(r"$m^* / m_e$")
         plt.ylabel(r"$\textrm{current density [nA / nm}^2\textrm{]}$")
         plt.grid()
@@ -78,11 +87,11 @@ class ConductionBandTests:
         arrayEc = np.linspace(minEc, maxEc, Npoints)
         currentDensity = np.copy(arrayEc)
         for i in range(len(arrayEc)):
-            self.emitter.setParameters(Ec=arrayEc[i], workfunction=4.8, kT = gt.Globals.BoltzmannConstant * 800)
-            currentDensity[i] = self.emitter.currentDensity()
+            self.conductionEmitter.setParameters(energyBandLimit=arrayEc[i], workfunction=4.8, kT = gt.Globals.BoltzmannConstant * 800)
+            currentDensity[i] = self.conductionEmitter.currentDensity()
 
             if (plotSpectra):
-                Energy, spectrum = self.emitter.calculateTotalEnergySpectrum()
+                Energy, spectrum = self.conductionEmitter.calculateTotalEnergySpectrum()
                 JfromTED = gt.Globals.SommerfeldConstant * np.trapz(spectrum, Energy)
                 print("Ec = %g, J = %g,  J / JTED = %g, Npoints  = %g"%(arrayEc[i], currentDensity[i], currentDensity[i]  / JfromTED, len(Energy)))
                 plt.plot(Energy, spectrum, "-", label="Ec=%.2g eV"%arrayEc[i])

@@ -426,7 +426,7 @@ class Barrier(Interpolator):
         if (saveFile):
             plt.savefig(saveFile)
 
-class Emitter:
+class BandEmitter:
     fastIntegrator = ct.CDLL(filePath + '/libintegrator.so') #use absolute path
     fastIntegrator.currentDensityIntegrand.restype = ct.c_double
     fastIntegrator.currentDensityIntegrand.argtypes = (ct.c_int, ct.c_double)
@@ -437,9 +437,10 @@ class Emitter:
     nottinghamHeatIntegrandPoints:np.ndarray
     currentDensityIntegrandArray:np.ndarray
     currentDensityIntegrandPoints:np.ndarray
-    kT: float
+    
+    kT: float #temperature
     workFunction: float
-    Ec: float
+    energyBandLimit: float #limit of the band (Ec for conduction band and Ev for valence band)
     effectiveMass: float
 
     highEnergyLimit: float
@@ -555,7 +556,7 @@ class Emitter:
         assert False, "_calculateIntegrationLimits() called in the base class where it does nothing"
 
     def setParameters(self, workfunction:float = 4.5, kT:float = Globals.BoltzmannConstant * 300., \
-        effectiveMass: float = 1, Ec: float = -100.) -> None:
+        effectiveMass: float = 1, energyBandLimit: float = -100.) -> None:
         """Defines main emitter characteristic parameters.
 
         Args:
@@ -566,12 +567,12 @@ class Emitter:
         self.workFunction = workfunction
         self.kT = kT
         self.effectiveMass = effectiveMass
-        self.Ec = Ec
+        self.energyBandLimit = energyBandLimit
         self.isTEDSpectrumCalculated = False
         self._calculateIntegrationLimits()
     
     def changeParameters(self, field:float = None, radius:float = None, gamma:float = None, workFunction:float = None, \
-        kT:float = None, effectiveMass:float = None, Ec:float = None) -> None:
+        kT:float = None, effectiveMass:float = None, energyBandLimit:float = None) -> None:
         """Change one or more of the parameters of the emitter. Only arguments passed are changes. All other parameters
         are kept as they were."""
         
@@ -584,8 +585,8 @@ class Emitter:
         if (effectiveMass is not None):
             self.effectiveMass = effectiveMass
         
-        if (Ec is not None):
-            self.Ec = Ec
+        if (energyBandLimit is not None):
+            self.energyBandLimit = energyBandLimit
         
         self.barrier.changeParameters(field, radius, gamma)
         self._calculateIntegrationLimits()
@@ -686,23 +687,18 @@ class Emitter:
 
         return currentDensityFast, nottinghamHeatFast
 
-
-
     # endregion
 
    
-class ConductionBandEmitter(Emitter):
+class ConductionBandEmitter(BandEmitter):
     """
-    Implements calculations for electron emission from metal emitters. 
+    Implements calculations for electron emission from the conduction band. 
     """
     
     # region field declarations
 
     _centerOfSpectrumEnergy: float
     _maxGamowDerivative: float
-    _centerOfSpectrumEnergy: float
-    _maxGamowDerivative: float
-    
     # endregion
     
     # region initialization
@@ -715,7 +711,7 @@ class ConductionBandEmitter(Emitter):
         """
         
         super().__init__(barrier)
-        self.setParameters(workfunction=workFunction, kT=kT, effectiveMass=effectiveMass, Ec=Ec)
+        self.setParameters(workfunction=workFunction, kT=kT, effectiveMass=effectiveMass, energyBandLimit=Ec)
     
     # endregion
     def _calculateIntegrationLimits(self, decayCutoff = 10.) -> None:
@@ -725,13 +721,13 @@ class ConductionBandEmitter(Emitter):
         self.barrier._calculateGamowData()
         
         #the place in the zone and above fermi that the gamow derivative is maximum
-        maxBetaEnergy = min([self.workFunction, self.barrier.maxEnergyDepth, self.workFunction - self.Ec])
+        maxBetaEnergy = min([self.workFunction, self.barrier.maxEnergyDepth, self.workFunction - self.energyBandLimit])
         #get the maximum (for energies above Fermi level) derivative of Gamow. It is capped at Wmax
         self._maxGamowDerivative = np.polyval(self.barrier.gamowDerivativePolynomial, maxBetaEnergy)
 
         determiningParameter = self._maxGamowDerivative * self.kT
         
-        if (determiningParameter < 0.002 and self.Ec < 0.): # Very low temperature and quad() misbehaves. set some help
+        if (determiningParameter < 0.002 and self.energyBandLimit < 0.): # Very low temperature and quad() misbehaves. set some help
             self.highEnergyLimit = 0.
             
             #TODO fix for the case that Ec > Ef
@@ -744,12 +740,12 @@ class ConductionBandEmitter(Emitter):
             self.lowEnergyLimit = self._centerOfSpectrumEnergy - decayCutoff / self._maxGamowDerivative 
         elif (determiningParameter < 1.): #field regime. The spectrum is centered around Fermi Level
             if (determiningParameter < 0.95):
-                self.highEnergyLimit = max(0., self.Ec) +  decayCutoff / (1. / self.kT - self._maxGamowDerivative) # decayCutoff divided by decay rate
+                self.highEnergyLimit = max(0., self.energyBandLimit) +  decayCutoff / (1. / self.kT - self._maxGamowDerivative) # decayCutoff divided by decay rate
             else:
-                self.highEnergyLimit = max(0., self.Ec) + 2 * decayCutoff * self.kT # decayCutoff divided by decay rate
+                self.highEnergyLimit = max(0., self.energyBandLimit) + 2 * decayCutoff * self.kT # decayCutoff divided by decay rate
             self.lowEnergyLimit = - decayCutoff / self._maxGamowDerivative        
         elif (self.barrier.gamowDerivativeAtMinBarrierDepth * self.kT > 1.): #thermal regime. The spctrum is centered around the top of the barrier
-            self._centerOfSpectrumEnergy = max(self.Ec, self.workFunction - self.barrier.minEnergyDepth) #top of the barrier (Um)
+            self._centerOfSpectrumEnergy = max(self.energyBandLimit, self.workFunction - self.barrier.minEnergyDepth) #top of the barrier (Um)
             self.highEnergyLimit = self._centerOfSpectrumEnergy + decayCutoff * self.kT 
             self.lowEnergyLimit = self._centerOfSpectrumEnergy - 10 / self.barrier.gamowDerivativeAtMinBarrierDepth     
         else: #intermediate regime. The spectrum center is approximately where dG/dE = 1/kT
@@ -760,14 +756,14 @@ class ConductionBandEmitter(Emitter):
             #find meaningful root of the polynomial
             realroots = np.roots(polynomialForRoots)
             # value of w where dG/dw = 1/kT
-            self._centerOfSpectrumEnergy = max(self.Ec, self.workFunction - \
+            self._centerOfSpectrumEnergy = max(self.energyBandLimit, self.workFunction - \
                     realroots[np.nonzero(np.logical_and(realroots > self.barrier.minEnergyDepth, realroots < self.workFunction))][0])
             # find energy limits
             self.highEnergyLimit =  self._centerOfSpectrumEnergy + decayCutoff * self.kT
             self.lowEnergyLimit = self._centerOfSpectrumEnergy - 2.5 * decayCutoff * self.kT
         
         #limit the low energy integration limit to the bottom of the conduction band
-        self.lowEnergyLimit = max(self.lowEnergyLimit, self.Ec)
+        self.lowEnergyLimit = max(self.lowEnergyLimit, self.energyBandLimit)
  
     def currentDensity(self, mode:str = "fast", saveIntegrand:bool = False) -> float:
         """Calculates the field emitted current density from metal surfaces
@@ -786,7 +782,7 @@ class ConductionBandEmitter(Emitter):
         elif(mode == "fast"):
             integrantFunction = self.fastIntegrator.currentDensityIntegrand
             integratorArguments = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth, self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
-                self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.Ec] + list(self.barrier._gamowPolynomialCoefficients))
+                self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.energyBandLimit] + list(self.barrier._gamowPolynomialCoefficients))
         else:
             assert False, "currentDensity called with wrong mode '%s'. Either 'fast' or 'slow'"%mode
         
@@ -828,7 +824,7 @@ class ConductionBandEmitter(Emitter):
         """
         output = self.barrier.transmissionCoefficient(self.workFunction - energy)
         if (self.effectiveMass != 1.):
-            output -= (1. - self.effectiveMass) * self.barrier.transmissionCoefficient(self.workFunction - self.Ec -  (1. - self.effectiveMass) * (energy - self.Ec))
+            output -= (1. - self.effectiveMass) * self.barrier.transmissionCoefficient(self.workFunction - self.energyBandLimit -  (1. - self.effectiveMass) * (energy - self.energyBandLimit))
         
         return output
     
@@ -865,7 +861,7 @@ class ConductionBandEmitter(Emitter):
         elif(mode == "fast"):
             integrantFunction = self.fastIntegrator.nottinghamHeatIntegrand
             integratorArguments = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth , self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
-                self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.Ec] + list(self.barrier._gamowPolynomialCoefficients))
+                self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.energyBandLimit] + list(self.barrier._gamowPolynomialCoefficients))
         else:
             assert False, "nottinghamHeat called with wrong mode '%s'. Either 'fast' or 'slow'"%mode
         
@@ -890,8 +886,155 @@ class ConductionBandEmitter(Emitter):
 
     #endregion
 
+
+class ValenceBandEmitter(BandEmitter):
+    """
+    Implements calculations for electron emission from the conduction band. 
+    """
     
-class Semiconductor_Emitter(Emitter):
+    # region field declarations
+    _maxGamowDerivative: float
+    _centerOfSpectrumEnergy: float
+    _maxGamowDerivative: float
+    
+    # endregion
+    
+    # region initialization
+    def __init__(self, barrier:Barrier = Barrier(), workFunction = 4.5, kT:float = Globals.BoltzmannConstant * 300., \
+        effectiveMass: float = 1, Ec: float = -100.) -> None:
+        """Initialises the function by adding the atributes of a "tabulated" barrier emitter to metals
+
+        Args:
+            tabulator (Tabulator): Object that contains the attributes of a x material emitter (potential barrier, transmission coefficiens and electron supply functions)
+        """
+        
+        super().__init__(barrier)
+        self.setParameters(workfunction=workFunction, kT=kT, effectiveMass=effectiveMass, energyBandLimit=Ec)
+    
+    # endregion
+
+    #region functions
+    def _calculateIntegrationLimits(self, decayCutoff = 10.) -> None:
+        """Finds the limits of integration, based on the regimes described by Jensen's GTF theory (see http://dx.doi.org/10.1063/1.4940721 for details)
+            The limits are saved on self.highEnergyLimit and self.lowEnergyLimit
+        """
+
+        assert self.energyBandLimit < 0., "The top of the valence band should be below the Fermi (i.e. < 0). Otherwise, the band is not a valence band."
+
+        self.barrier._calculateGamowData()
+        
+        #the place in the zone where the gamow derivative is minimum
+        minBetaEnergy = min([self.barrier.maxEnergyDepth, self.workFunction - self.energyBandLimit])
+        #get the minimum derivative of Gamow in the zone
+        minGamowDerivative = np.polyval(self.barrier.gamowDerivativePolynomial, minBetaEnergy)
+        self.highEnergyLimit = self.energyBandLimit
+        
+        self.lowEnergyLimit = self.energyBandLimit -  decayCutoff / minGamowDerivative # decayCutoff divided by decay rate
+
+ 
+    def currentDensity(self, mode:str = "fast", saveIntegrand:bool = False) -> float:
+        """Calculates the field emitted current density from metal surfaces
+
+        Returns:
+            float: Emitted current density being emitted from an infinitesimal flat surface area (electrons/area*time)
+        """
+        if saveIntegrand:
+            assert mode == "slow", "cannot save the integrand in fast mode. Give mode = 'slow'"
+            self.currentDensityIntegrandArray = np.array([])
+            self.currentDensityIntegrandPoints = np.array([])
+
+        if (mode == "slow"):
+            integrantFunction = self.currentDensityIntegrand
+            integratorArguments = saveIntegrand
+        elif(mode == "fast"):
+            integrantFunction = self.fastIntegrator.currentDensityIntegrand
+            integratorArguments = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth, self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
+                self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.energyBandLimit] + list(self.barrier._gamowPolynomialCoefficients))
+        else:
+            assert False, "currentDensity called with wrong mode '%s'. Either 'fast' or 'slow'"%mode
+        
+        try:
+            integral, abserr = ig.quad(integrantFunction, self.lowEnergyLimit, self.highEnergyLimit, args=integratorArguments, epsabs=-1)
+        except(IntegrationWarning):
+            print("quad function returned with warning")
+            integral = 0.
+
+        if (saveIntegrand):
+            sortIndices = np.argsort(self.currentDensityIntegrandPoints)
+            self.currentDensityIntegrandPoints = self.currentDensityIntegrandPoints[sortIndices]
+            self.currentDensityIntegrandArray = self.currentDensityIntegrandArray[sortIndices] * self.kT * Globals.SommerfeldConstant
+            
+        return Globals.SommerfeldConstant * self.kT * integral
+    
+    def innerIntegralDerivative(self, energy) -> float:
+        """Calculates the derivative of the inner integral g(E) in the current density integration.
+        See Andreas' notes.
+        """
+        output = self.barrier.transmissionCoefficient(self.workFunction - energy)
+        if (self.effectiveMass != 1.):
+            output -= (1. + self.effectiveMass) * self.barrier.transmissionCoefficient(self.workFunction - (1. + self.effectiveMass) * energy + self.effectiveMass * self.energyBandLimit)
+        
+        return output
+    
+    def calculateTotalEnergySpectrum(self, minimumNumberOfPoints:int = 128) -> None:
+        """Calculates the total energy distribution of field emitted electrons from metals. 
+        The methodology is based on solving a differential equation. See Andreas' notes for details
+        
+        Parameters: 
+            refinementLevel (int): Level by which the output energy points will be refined
+        
+        Returns:
+            energy (array): Energy space for which the electron emission has been evalated (eV)
+            electronNumber (array): Number of electrons being emitted with a certain total energy (number)
+        """
+        solution = ig.solve_ivp(self.TEDdifferentialSystem, [self.highEnergyLimit, self.lowEnergyLimit], \
+            [0.], method='LSODA', dense_output=True, rtol = 1.e-12, jac=self.TEDJacobian, max_step=(self.highEnergyLimit - self.lowEnergyLimit) / minimumNumberOfPoints)
+        
+        self.totalEnergySpectrumFunction = lambda energy : Globals.SommerfeldConstant * solution.sol(energy)[0]
+        self.isTEDSpectrumCalculated = True
+    
+    def nottinghamHeat(self, mode:str = "fast", saveIntegrand:bool = False) -> float:
+        """Calculates the Nottingham heat.
+
+        Parameters:
+            mode:str fast for within-python calculation, fast to invoke fast C code
+            saveIntegrand:bool if True the integrand values are saved for plotting and debugging
+
+        Returns:
+            float: Emitted current density being emitted from an infinitesimal flat surface area (electrons/area*time)
+        """
+        if (mode == "slow"):
+            integrantFunction = self.nottinghamHeatIntegrand
+            integratorArguments = saveIntegrand
+        elif(mode == "fast"):
+            integrantFunction = self.fastIntegrator.nottinghamHeatIntegrand
+            integratorArguments = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth , self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
+                self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.energyBandLimit] + list(self.barrier._gamowPolynomialCoefficients))
+        else:
+            assert False, "nottinghamHeat called with wrong mode '%s'. Either 'fast' or 'slow'"%mode
+        
+
+        if saveIntegrand:
+            assert mode == "slow", "cannot save the integrand in fast mode. Give mode = 'slow'"
+            self.nottinghamHeatIntegrandArray = np.array([])
+            self.nottinghamHeatIntegrandPoints = np.array([])
+
+        try:
+            integral, abserr = ig.quad(integrantFunction, self.lowEnergyLimit, self.highEnergyLimit, args=integratorArguments, epsabs=-1)
+        except(IntegrationWarning):
+            print("quad function returned with warning")
+            integral = 0.
+
+        if (saveIntegrand):
+            sortIndices = np.argsort(self.nottinghamHeatIntegrandPoints)
+            self.nottinghamHeatIntegrandPoints = self.nottinghamHeatIntegrandPoints[sortIndices]
+            self.nottinghamHeatIntegrandArray = self.nottinghamHeatIntegrandArray[sortIndices] * self.kT * Globals.SommerfeldConstant
+            
+        return - Globals.SommerfeldConstant * self.kT * integral
+
+    #endregion    
+
+class Semiconductor_Emitter(BandEmitter):
     """This class will be composed along with Emitter(Tabulator) in order to create a semiconductor field emitter. Then different functions will be executed to 
     calculate the density, nottingham heat and energy density of the electrons being emitted
     
@@ -944,7 +1087,7 @@ class Semiconductor_Emitter(Emitter):
     """
     
     # region field declarations
-    emitter: Emitter
+    emitter: BandEmitter
     _max_energy_conduction_band: np.ndarray
     _max_energy_valence_band: np.ndarray
     _energy_conduction_band: np.ndarray
