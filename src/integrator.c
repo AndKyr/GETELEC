@@ -9,7 +9,7 @@
 #define dGmin dataArray[5]
 #define dGmax dataArray[6]
 #define effectiveMass dataArray[7]
-#define Ec dataArray[8]
+#define energyBandLimit dataArray[8]
 #define polynomial(i) (dataArray[dataArrayLength - i - 1])
 #define polynomialLength dataArrayLength - 9
 
@@ -64,17 +64,6 @@ double gamowFunction(int dataArrayLength, double *dataArray){
 
 }
 
-/**
- * Calculates the gamow factor at energy by evaluating the polynomial
-*/
-double gamowFunctionAtReducedEnergy(int dataArrayLength, double *dataArray){
-
-    double aBar = 1. - effectiveMass;
-    double energyDepth = workFunction - Ec - aBar * (energy - Ec) ;
-    
-    return gamowFunctionForEnergy(dataArrayLength, dataArray, energyDepth);
-
-}
 
 /**
  * @brief  Calculates transmission coefficient for a given Gamow factor
@@ -97,10 +86,9 @@ double transmissionCoefficientForGamow(double Gamow){
 
 double innerIntegralDerivative(int dataArrayLength, double *dataArray){
     double Gamow = gamowFunction(dataArrayLength, dataArray);
-
     double output = transmissionCoefficientForGamow(Gamow);
     if (effectiveMass != 1.){
-        Gamow = gamowFunctionAtReducedEnergy(dataArrayLength, dataArray);
+        Gamow = gamowFunctionForEnergy(dataArrayLength, dataArray, workFunction - energyBandLimit - (1. - effectiveMass) * (energy - energyBandLimit));
         output -= (1. - effectiveMass) * transmissionCoefficientForGamow(Gamow);
     }
     return output;
