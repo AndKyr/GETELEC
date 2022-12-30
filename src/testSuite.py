@@ -23,7 +23,7 @@ figureSize = [16,10]
 colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
 showFigures = True
-tolerance = 1.e-3
+tolerance = 1.e-2
 
 
 class ConductionBandTests:
@@ -37,7 +37,7 @@ class ConductionBandTests:
     
     
 
-    def effectiveMassTest(self, minMass = 0.001, maxMass = 1., Npoints = 4, plotIntegrand = False, plotSpectra = False):
+    def effectiveMassTest(self, minMass = 0.01, maxMass = 1., Npoints = 4, plotIntegrand = False, plotSpectra = False):
 
         masses = np.geomspace(minMass, maxMass, Npoints)
         currentDensityConduction = np.copy(masses)

@@ -428,10 +428,14 @@ class Barrier(Interpolator):
 
 class BandEmitter:
     fastIntegrator = ct.CDLL(filePath + '/libintegrator.so') #use absolute path
-    fastIntegrator.currentDensityIntegrand.restype = ct.c_double
-    fastIntegrator.currentDensityIntegrand.argtypes = (ct.c_int, ct.c_double)
-    fastIntegrator.nottinghamHeatIntegrand.restype = ct.c_double
-    fastIntegrator.nottinghamHeatIntegrand.argtypes = (ct.c_int, ct.c_double)
+    fastIntegrator.currentDensityIntegrandConduction.restype = ct.c_double
+    fastIntegrator.currentDensityIntegrandConduction.argtypes = (ct.c_int, ct.c_double)
+    fastIntegrator.nottinghamHeatIntegrandConduction.restype = ct.c_double
+    fastIntegrator.nottinghamHeatIntegrandConduction.argtypes = (ct.c_int, ct.c_double)
+    fastIntegrator.currentDensityIntegrandValence.restype = ct.c_double
+    fastIntegrator.currentDensityIntegrandValence.argtypes = (ct.c_int, ct.c_double)
+    fastIntegrator.nottinghamHeatIntegrandValence.restype = ct.c_double
+    fastIntegrator.nottinghamHeatIntegrandValence.argtypes = (ct.c_int, ct.c_double)
 
     nottinghamHeatIntegrandArray:np.ndarray
     nottinghamHeatIntegrandPoints:np.ndarray
@@ -463,6 +467,8 @@ class BandEmitter:
         self.highEnergyLimit = 1.e100
         self.lowEnergyLimit = 1.e100
         self.totalEnergySpectrumFunction = None
+        self.fastCurrentDensityIntegrandFunction = None
+        self.fastNottinghamHeatIntegrandFunction = None
 
     def logFermiDiracFunction(self, energy, kT):
         """Returs the natural logarithm of the Fermi Diract distribution.
@@ -713,6 +719,8 @@ class ConductionBandEmitter(BandEmitter):
         
         super().__init__(barrier)
         self.setParameters(workfunction=workFunction, kT=kT, effectiveMass=effectiveMass, energyBandLimit=Ec)
+        self.fastCurrentDensityIntegrandFunction = self.fastIntegrator.currentDensityIntegrandConduction
+        self.fastNottinghamHeatIntegrandFunction = self.fastIntegrator.nottinghamHeatIntegrandConduction
     
     # endregion
     def _calculateIntegrationLimits(self, decayCutoff = 10.) -> None:
@@ -781,7 +789,7 @@ class ConductionBandEmitter(BandEmitter):
             integrantFunction = self.currentDensityIntegrand
             integratorArguments = saveIntegrand
         elif(mode == "fast"):
-            integrantFunction = self.fastIntegrator.currentDensityIntegrand
+            integrantFunction = self.fastCurrentDensityIntegrandFunction
             integratorArguments = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth, self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
                 self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.energyBandLimit] + list(self.barrier._gamowPolynomialCoefficients))
         else:
@@ -860,7 +868,7 @@ class ConductionBandEmitter(BandEmitter):
             integrantFunction = self.nottinghamHeatIntegrand
             integratorArguments = saveIntegrand
         elif(mode == "fast"):
-            integrantFunction = self.fastIntegrator.nottinghamHeatIntegrand
+            integrantFunction = self.fastNottinghamHeatIntegrandFunction
             integratorArguments = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth , self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
                 self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.energyBandLimit] + list(self.barrier._gamowPolynomialCoefficients))
         else:
@@ -911,6 +919,8 @@ class ValenceBandEmitter(BandEmitter):
         
         super().__init__(barrier)
         self.setParameters(workfunction=workFunction, kT=kT, effectiveMass=effectiveMass, energyBandLimit=Ec)
+        self.fastCurrentDensityIntegrandFunction = self.fastIntegrator.currentDensityIntegrandValence
+        self.fastNottinghamHeatIntegrandFunction = self.fastIntegrator.nottinghamHeatIntegrandValence
     
     # endregion
 
@@ -948,7 +958,7 @@ class ValenceBandEmitter(BandEmitter):
             integrantFunction = self.currentDensityIntegrand
             integratorArguments = saveIntegrand
         elif(mode == "fast"):
-            integrantFunction = self.fastIntegrator.currentDensityIntegrand
+            integrantFunction = self.fastCurrentDensityIntegrandFunction
             integratorArguments = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth, self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
                 self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.energyBandLimit] + list(self.barrier._gamowPolynomialCoefficients))
         else:
@@ -1008,7 +1018,7 @@ class ValenceBandEmitter(BandEmitter):
             integrantFunction = self.nottinghamHeatIntegrand
             integratorArguments = saveIntegrand
         elif(mode == "fast"):
-            integrantFunction = self.fastIntegrator.nottinghamHeatIntegrand
+            integrantFunction = self.fastNottinghamHeatIntegrandFunction
             integratorArguments = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth , self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
                 self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.energyBandLimit] + list(self.barrier._gamowPolynomialCoefficients))
         else:

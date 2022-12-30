@@ -28,7 +28,7 @@ double logFermiDirac(double energyOverkT){
 }
 
 
-double gamowFunctionForEnergy(int dataArrayLength, double *dataArray, double energyDepth){
+double gamowFunctionForEnergyDepth(int dataArrayLength, double *dataArray, double energyDepth){
     
     
     double Gamow = polynomial(0);   
@@ -60,7 +60,7 @@ double gamowFunctionForEnergy(int dataArrayLength, double *dataArray, double ene
 double gamowFunction(int dataArrayLength, double *dataArray){
     
     double energyDepth = workFunction - energy;
-    return gamowFunctionForEnergy(dataArrayLength, dataArray, energyDepth);
+    return gamowFunctionForEnergyDepth(dataArrayLength, dataArray, energyDepth);
 
 }
 
@@ -84,11 +84,11 @@ double transmissionCoefficientForGamow(double Gamow){
  * @return the inner integrand derivative value
  */
 
-double innerIntegralDerivative(int dataArrayLength, double *dataArray){
+double innerIntegralDerivativeConduction(int dataArrayLength, double *dataArray){
     double Gamow = gamowFunction(dataArrayLength, dataArray);
     double output = transmissionCoefficientForGamow(Gamow);
     if (effectiveMass != 1.){
-        Gamow = gamowFunctionForEnergy(dataArrayLength, dataArray, workFunction - energyBandLimit - (1. - effectiveMass) * (energy - energyBandLimit));
+        Gamow = gamowFunctionForEnergyDepth(dataArrayLength, dataArray, workFunction - energyBandLimit - (1. - effectiveMass) * (energy - energyBandLimit));
         output -= (1. - effectiveMass) * transmissionCoefficientForGamow(Gamow);
     }
     return output;
@@ -97,8 +97,8 @@ double innerIntegralDerivative(int dataArrayLength, double *dataArray){
 /**
  * Evaluates the integrand of the current density (g'(E) * lFD(E))
 */
-double currentDensityIntegrand(int dataArrayLength, double *dataArray){
-    return logFermiDirac(energy / kT) * innerIntegralDerivative(dataArrayLength, dataArray);
+double currentDensityIntegrandConduction(int dataArrayLength, double *dataArray){
+    return logFermiDirac(energy / kT) * innerIntegralDerivativeConduction(dataArrayLength, dataArray);
 }
 
 /**
@@ -108,14 +108,47 @@ double currentDensityIntegrand(int dataArrayLength, double *dataArray){
  * @param dataArray array of input parameters
  * @return the integrand value
  */
-double nottinghamHeatIntegrand(int dataArrayLength, double *dataArray){
+double nottinghamHeatIntegrandConduction(int dataArrayLength, double *dataArray){
 
     extern double dilog_();
     double exponential = -exp(-energy / kT);
 
     return (logFermiDirac(energy / kT) * energy - kT * dilog_(&exponential)) * 
-        innerIntegralDerivative(dataArrayLength, dataArray);
+        innerIntegralDerivativeConduction(dataArrayLength, dataArray);
 }
+
+double innerIntegralDerivativeValence(int dataArrayLength, double *dataArray){
+    double Gamow = gamowFunction(dataArrayLength, dataArray);
+    double output = transmissionCoefficientForGamow(Gamow);
+    Gamow = gamowFunctionForEnergyDepth(dataArrayLength, dataArray, workFunction - 
+        (1. + effectiveMass) * energy + effectiveMass * energyBandLimit);
+    output -= (1. + effectiveMass) * transmissionCoefficientForGamow(Gamow);
+    return output;
+}
+
+/**
+ * Evaluates the integrand of the current density (g'(E) * lFD(E))
+*/
+double currentDensityIntegrandValence(int dataArrayLength, double *dataArray){
+    return logFermiDirac(energy / kT) * innerIntegralDerivativeValence(dataArrayLength, dataArray);
+}
+
+/**
+ * @brief Calculates the Nottingham heat integrand
+ * 
+ * @param dataArrayLength the length of the input parameters
+ * @param dataArray array of input parameters
+ * @return the integrand value
+ */
+double nottinghamHeatIntegrandValence(int dataArrayLength, double *dataArray){
+
+    extern double dilog_();
+    double exponential = -exp(-energy / kT);
+
+    return (logFermiDirac(energy / kT) * energy - kT * dilog_(&exponential)) * 
+        innerIntegralDerivativeValence(dataArrayLength, dataArray);
+}
+
 
 
 
