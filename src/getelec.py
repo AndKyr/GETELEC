@@ -590,6 +590,7 @@ class BandEmitter:
         
         self.barrier.changeParameters(field, radius, gamma)
         self._calculateIntegrationLimits()
+        self.isTEDSpectrumCalculated = False
     
     def currentDensityIntegrand(self, energy, saveIntegrand = False) -> float:
         """Calculates the function that gives the current density when integrated"""
@@ -971,8 +972,8 @@ class ValenceBandEmitter(BandEmitter):
         See Andreas' notes.
         """
         output = self.barrier.transmissionCoefficient(self.workFunction - energy)
-        if (self.effectiveMass != 1.):
-            output -= (1. + self.effectiveMass) * self.barrier.transmissionCoefficient(self.workFunction - (1. + self.effectiveMass) * energy + self.effectiveMass * self.energyBandLimit)
+
+        output -= (1. + self.effectiveMass) * self.barrier.transmissionCoefficient(self.workFunction - (1. + self.effectiveMass) * energy + self.effectiveMass * self.energyBandLimit)
         
         return output
     
@@ -1020,7 +1021,7 @@ class ValenceBandEmitter(BandEmitter):
             self.nottinghamHeatIntegrandPoints = np.array([])
 
         try:
-            integral, abserr = ig.quad(integrantFunction, self.lowEnergyLimit, self.highEnergyLimit, args=integratorArguments, epsabs=-1)
+            integral, abserr = ig.quad(integrantFunction, self.lowEnergyLimit, self.highEnergyLimit, args=integratorArguments, epsabs=-1, epsrel=1.e-12, limit=100)
         except(IntegrationWarning):
             print("quad function returned with warning")
             integral = 0.

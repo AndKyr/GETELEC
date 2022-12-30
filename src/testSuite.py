@@ -37,7 +37,7 @@ class ConductionBandTests:
     
     
 
-    def effectiveMassTest(self, minMass = 0.001, maxMass = .05, Npoints = 4, plotIntegrand = False, plotSpectra = False):
+    def effectiveMassTest(self, minMass = 0.001, maxMass = 1., Npoints = 4, plotIntegrand = False, plotSpectra = False):
 
         masses = np.geomspace(minMass, maxMass, Npoints)
         currentDensityConduction = np.copy(masses)
@@ -62,6 +62,7 @@ class ConductionBandTests:
 
 
         if plotIntegrand:
+            plt.figure(fig)
             ax2.set_xlabel(r"$ E - E_F \textrm{ [eV]}$")
             ax1.set_ylabel(r"$J \textrm{ integrand [A / nm}^2 \textrm{/ eV]}$")
             ax1.grid()
@@ -69,7 +70,18 @@ class ConductionBandTests:
             ax2.grid()
             ax1.legend()
             ax2.legend()
-            plt.savefig("currentDensityIntegrandForMasses.png")
+            plt.savefig("conductionCurrentDensityIntegrandForMasses.png")
+
+            plt.figure(fig2)
+            ax4.set_xlabel(r"$ E - E_F \textrm{ [eV]}$")
+            ax3.set_ylabel(r"$J \textrm{ integrand [A / nm}^2 \textrm{/ eV]}$")
+            ax3.grid()
+            ax4.set_ylabel(r"$P_N \textrm{ integrand  [A/nm}^2 \textrm{]}$")
+            ax4.grid()
+            ax3.legend()
+            ax4.legend()
+
+            plt.savefig("valenceCurrentDensityIntegrandForMasses.png")
             if (showFigures):
                 plt.show()
 
