@@ -661,6 +661,49 @@ class BandEmitter:
         totalEnergySpctrumArray = self.totalEnergySpectrumFunction(energyArray)
         return energyArray, totalEnergySpctrumArray  
 
+    def currentDensity(self, mode:str = "fast", saveIntegrand:bool = False) -> float:
+        """Calculates the field emitted current density from metal surfaces
+
+        Returns:
+            float: Emitted current density being emitted from an infinitesimal flat surface area (electrons/area*time)
+        """
+        if saveIntegrand:
+            assert mode == "slow", "cannot save the integrand in fast mode. Give mode = 'slow'"
+            self.currentDensityIntegrandArray = np.array([])
+            self.currentDensityIntegrandPoints = np.array([])
+
+        if (mode == "slow"):
+            integrantFunction = self.currentDensityIntegrand
+            integratorArguments = saveIntegrand
+        elif(mode == "fast"):
+            integrantFunction = self.fastCurrentDensityIntegrandFunction
+            integratorArguments = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth, self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
+                self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.energyBandLimit] + list(self.barrier._gamowPolynomialCoefficients))
+        else:
+            assert False, "currentDensity called with wrong mode '%s'. Either 'fast' or 'slow'"%mode
+        
+        try:
+            if (self.highEnergyLimit == 0.):
+                breakPoints =  np.array([0., 0.5 * self._centerOfSpectrumEnergy, self._centerOfSpectrumEnergy, 0.75 * self._centerOfSpectrumEnergy + 0.25 * self.lowEnergyLimit ])
+                integral, abserr, infodict= ig.quad(integrantFunction, self.lowEnergyLimit, self.highEnergyLimit, args=integratorArguments, \
+                    full_output=True, points=breakPoints, epsabs=-1)
+                
+                integral += self.aboveFermiRemainder()
+            else:
+                integral, abserr = ig.quad(integrantFunction, self.lowEnergyLimit, self.highEnergyLimit, args=integratorArguments, epsabs=-1)
+        except(IntegrationWarning):
+            print("quad function returned with warning")
+            integral = 0.
+
+        if (saveIntegrand):
+            sortIndices = np.argsort(self.currentDensityIntegrandPoints)
+            self.currentDensityIntegrandPoints = self.currentDensityIntegrandPoints[sortIndices]
+            self.currentDensityIntegrandArray = self.currentDensityIntegrandArray[sortIndices] * self.kT * Globals.SommerfeldConstant
+            
+        return Globals.SommerfeldConstant * self.kT * integral
+
+
+
     def runFullTest(self, currentDensityAxis:plt.Axes = None, nottinghamHeatAxis:plt.Axes = None, tolerance:float = 1.e-2, label:str = "") -> tuple:
         currentDensityFast = self.currentDensity(mode = "fast")
         currentDensitySlow = self.currentDensity(mode = "slow", saveIntegrand=True)
@@ -774,47 +817,6 @@ class ConductionBandEmitter(BandEmitter):
         #limit the low energy integration limit to the bottom of the conduction band
         self.lowEnergyLimit = max(self.lowEnergyLimit, self.energyBandLimit)
  
-    def currentDensity(self, mode:str = "fast", saveIntegrand:bool = False) -> float:
-        """Calculates the field emitted current density from metal surfaces
-
-        Returns:
-            float: Emitted current density being emitted from an infinitesimal flat surface area (electrons/area*time)
-        """
-        if saveIntegrand:
-            assert mode == "slow", "cannot save the integrand in fast mode. Give mode = 'slow'"
-            self.currentDensityIntegrandArray = np.array([])
-            self.currentDensityIntegrandPoints = np.array([])
-
-        if (mode == "slow"):
-            integrantFunction = self.currentDensityIntegrand
-            integratorArguments = saveIntegrand
-        elif(mode == "fast"):
-            integrantFunction = self.fastCurrentDensityIntegrandFunction
-            integratorArguments = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth, self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
-                self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.energyBandLimit] + list(self.barrier._gamowPolynomialCoefficients))
-        else:
-            assert False, "currentDensity called with wrong mode '%s'. Either 'fast' or 'slow'"%mode
-        
-        try:
-            if (self.highEnergyLimit == 0.):
-                breakPoints =  np.array([0., 0.5 * self._centerOfSpectrumEnergy, self._centerOfSpectrumEnergy, 0.75 * self._centerOfSpectrumEnergy + 0.25 * self.lowEnergyLimit ])
-                integral, abserr, infodict= ig.quad(integrantFunction, self.lowEnergyLimit, self.highEnergyLimit, args=integratorArguments, \
-                    full_output=True, points=breakPoints, epsabs=-1)
-                
-                integral += self.aboveFermiRemainder()
-            else:
-                integral, abserr = ig.quad(integrantFunction, self.lowEnergyLimit, self.highEnergyLimit, args=integratorArguments, epsabs=-1)
-        except(IntegrationWarning):
-            print("quad function returned with warning")
-            integral = 0.
-
-        if (saveIntegrand):
-            sortIndices = np.argsort(self.currentDensityIntegrandPoints)
-            self.currentDensityIntegrandPoints = self.currentDensityIntegrandPoints[sortIndices]
-            self.currentDensityIntegrandArray = self.currentDensityIntegrandArray[sortIndices] * self.kT * Globals.SommerfeldConstant
-            
-        return Globals.SommerfeldConstant * self.kT * integral
-
     def aboveFermiRemainder(self) -> float:
         """
         Analytically approximates the integral remainder above the fermi level in case of very small temperatures when the 
@@ -941,41 +943,6 @@ class ValenceBandEmitter(BandEmitter):
         self.highEnergyLimit = self.energyBandLimit
         
         self.lowEnergyLimit = self.energyBandLimit -  decayCutoff / minGamowDerivative # decayCutoff divided by decay rate
-
- 
-    def currentDensity(self, mode:str = "fast", saveIntegrand:bool = False) -> float:
-        """Calculates the field emitted current density from metal surfaces
-
-        Returns:
-            float: Emitted current density being emitted from an infinitesimal flat surface area (electrons/area*time)
-        """
-        if saveIntegrand:
-            assert mode == "slow", "cannot save the integrand in fast mode. Give mode = 'slow'"
-            self.currentDensityIntegrandArray = np.array([])
-            self.currentDensityIntegrandPoints = np.array([])
-
-        if (mode == "slow"):
-            integrantFunction = self.currentDensityIntegrand
-            integratorArguments = saveIntegrand
-        elif(mode == "fast"):
-            integrantFunction = self.fastCurrentDensityIntegrandFunction
-            integratorArguments = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth, self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
-                self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.energyBandLimit] + list(self.barrier._gamowPolynomialCoefficients))
-        else:
-            assert False, "currentDensity called with wrong mode '%s'. Either 'fast' or 'slow'"%mode
-        
-        try:
-            integral, abserr = ig.quad(integrantFunction, self.lowEnergyLimit, self.highEnergyLimit, args=integratorArguments, epsabs=-1)
-        except(IntegrationWarning):
-            print("quad function returned with warning")
-            integral = 0.
-
-        if (saveIntegrand):
-            sortIndices = np.argsort(self.currentDensityIntegrandPoints)
-            self.currentDensityIntegrandPoints = self.currentDensityIntegrandPoints[sortIndices]
-            self.currentDensityIntegrandArray = self.currentDensityIntegrandArray[sortIndices] * self.kT * Globals.SommerfeldConstant
-            
-        return Globals.SommerfeldConstant * self.kT * integral
     
     def innerIntegralDerivative(self, energy) -> float:
         """Calculates the derivative of the inner integral g(E) in the current density integration.
