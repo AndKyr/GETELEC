@@ -638,9 +638,6 @@ class BandEmitter:
     def currentDensity(self) -> None:
         assert False, "currentDensity() called in the base class where it does nothing"
 
-    def nottinghamHeat(self) -> None:
-        assert False, "notinghamHeat() called in the base class where it does nothing"
-
     def currentDensityFromTED(self) -> float:
         """Calculates the current density by integrating the total energy distribution spectrum"""
         if (not self.isTEDSpectrumCalculated):
@@ -690,7 +687,7 @@ class BandEmitter:
                 
                 integral += self.aboveFermiRemainder()
             else:
-                integral, abserr = ig.quad(integrantFunction, self.lowEnergyLimit, self.highEnergyLimit, args=integratorArguments, epsabs=-1)
+                integral, abserr = ig.quad(integrantFunction, self.lowEnergyLimit, self.highEnergyLimit, args=integratorArguments, epsabs=-1, epsrel=1.e-10)
         except(IntegrationWarning):
             print("quad function returned with warning")
             integral = 0.
@@ -702,7 +699,44 @@ class BandEmitter:
             
         return Globals.SommerfeldConstant * self.kT * integral
 
+    def nottinghamHeat(self, mode:str = "fast", saveIntegrand:bool = False) -> float:
+        """Calculates the Nottingham heat.
 
+        Parameters:
+            mode:str fast for within-python calculation, fast to invoke fast C code
+            saveIntegrand:bool if True the integrand values are saved for plotting and debugging
+
+        Returns:
+            float: Emitted current density being emitted from an infinitesimal flat surface area (electrons/area*time)
+        """
+        if (mode == "slow"):
+            integrantFunction = self.nottinghamHeatIntegrand
+            integratorArguments = saveIntegrand
+        elif(mode == "fast"):
+            integrantFunction = self.fastNottinghamHeatIntegrandFunction
+            integratorArguments = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth , self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
+                self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.energyBandLimit] + list(self.barrier._gamowPolynomialCoefficients))
+        else:
+            assert False, "nottinghamHeat called with wrong mode '%s'. Either 'fast' or 'slow'"%mode
+        
+
+        if saveIntegrand:
+            assert mode == "slow", "cannot save the integrand in fast mode. Give mode = 'slow'"
+            self.nottinghamHeatIntegrandArray = np.array([])
+            self.nottinghamHeatIntegrandPoints = np.array([])
+
+        try:
+            integral, abserr = ig.quad(integrantFunction, self.lowEnergyLimit, self.highEnergyLimit, args=integratorArguments, epsabs=-1)
+        except(IntegrationWarning):
+            print("quad function returned with warning")
+            integral = 0.
+
+        if (saveIntegrand):
+            sortIndices = np.argsort(self.nottinghamHeatIntegrandPoints)
+            self.nottinghamHeatIntegrandPoints = self.nottinghamHeatIntegrandPoints[sortIndices]
+            self.nottinghamHeatIntegrandArray = self.nottinghamHeatIntegrandArray[sortIndices] * self.kT * Globals.SommerfeldConstant
+            
+        return - Globals.SommerfeldConstant * self.kT * integral
 
     def runFullTest(self, currentDensityAxis:plt.Axes = None, nottinghamHeatAxis:plt.Axes = None, tolerance:float = 1.e-2, label:str = "") -> tuple:
         currentDensityFast = self.currentDensity(mode = "fast")
@@ -727,12 +761,12 @@ class BandEmitter:
             energy, spectra = self.totalEnergySpectrumArrays()
 
         if currentDensityAxis is not None:
-            line, = currentDensityAxis.plot(self.currentDensityIntegrandPoints, self.currentDensityIntegrandArray, \
+            line, = currentDensityAxis.plot(self.currentDensityIntegrandPoints, self.currentDensityIntegrandArray, ".-", \
                 label=r"$l_{FD}(E) g'(E)$" + label)
             currentDensityAxis.plot(energy, spectra, "--", color = line.get_color(), label=r"$f_{FD}(E) g(E)$" +label)
         
         if (nottinghamHeatAxis is not None):
-            line, = nottinghamHeatAxis.plot(self.nottinghamHeatIntegrandPoints, self.nottinghamHeatIntegrandArray, label=r"$g'(E) [l_{FD}(E) E - kT Li_2(-e^{-E/kT})]$")
+            line, = nottinghamHeatAxis.plot(self.nottinghamHeatIntegrandPoints, self.nottinghamHeatIntegrandArray, ".-", label=r"$g'(E) [l_{FD}(E) E - kT Li_2(-e^{-E/kT})]$")
             nottinghamHeatAxis.plot(energy, spectra * energy, '--', color = line.get_color(), label=r"$E \cdot f_{FD}(E) g(E)$")
 
         return currentDensityFast, nottinghamHeatFast
@@ -856,45 +890,7 @@ class ConductionBandEmitter(BandEmitter):
         self.totalEnergySpectrumFunction = lambda energy : Globals.SommerfeldConstant * solution.sol(energy)[0]
         self.isTEDSpectrumCalculated = True
     
-    def nottinghamHeat(self, mode:str = "fast", saveIntegrand:bool = False) -> float:
-        """Calculates the Nottingham heat.
-
-        Parameters:
-            mode:str fast for within-python calculation, fast to invoke fast C code
-            saveIntegrand:bool if True the integrand values are saved for plotting and debugging
-
-        Returns:
-            float: Emitted current density being emitted from an infinitesimal flat surface area (electrons/area*time)
-        """
-        if (mode == "slow"):
-            integrantFunction = self.nottinghamHeatIntegrand
-            integratorArguments = saveIntegrand
-        elif(mode == "fast"):
-            integrantFunction = self.fastNottinghamHeatIntegrandFunction
-            integratorArguments = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth , self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
-                self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.energyBandLimit] + list(self.barrier._gamowPolynomialCoefficients))
-        else:
-            assert False, "nottinghamHeat called with wrong mode '%s'. Either 'fast' or 'slow'"%mode
-        
-
-        if saveIntegrand:
-            assert mode == "slow", "cannot save the integrand in fast mode. Give mode = 'slow'"
-            self.nottinghamHeatIntegrandArray = np.array([])
-            self.nottinghamHeatIntegrandPoints = np.array([])
-
-        try:
-            integral, abserr = ig.quad(integrantFunction, self.lowEnergyLimit, self.highEnergyLimit, args=integratorArguments, epsabs=-1)
-        except(IntegrationWarning):
-            print("quad function returned with warning")
-            integral = 0.
-
-        if (saveIntegrand):
-            sortIndices = np.argsort(self.nottinghamHeatIntegrandPoints)
-            self.nottinghamHeatIntegrandPoints = self.nottinghamHeatIntegrandPoints[sortIndices]
-            self.nottinghamHeatIntegrandArray = self.nottinghamHeatIntegrandArray[sortIndices] * self.kT * Globals.SommerfeldConstant
-            
-        return - Globals.SommerfeldConstant * self.kT * integral
-
+ 
     #endregion
 
 
@@ -971,45 +967,6 @@ class ValenceBandEmitter(BandEmitter):
         self.totalEnergySpectrumFunction = lambda energy : Globals.SommerfeldConstant * solution.sol(energy)[0]
         self.isTEDSpectrumCalculated = True
     
-    def nottinghamHeat(self, mode:str = "fast", saveIntegrand:bool = False) -> float:
-        """Calculates the Nottingham heat.
-
-        Parameters:
-            mode:str fast for within-python calculation, fast to invoke fast C code
-            saveIntegrand:bool if True the integrand values are saved for plotting and debugging
-
-        Returns:
-            float: Emitted current density being emitted from an infinitesimal flat surface area (electrons/area*time)
-        """
-        if (mode == "slow"):
-            integrantFunction = self.nottinghamHeatIntegrand
-            integratorArguments = saveIntegrand
-        elif(mode == "fast"):
-            integrantFunction = self.fastNottinghamHeatIntegrandFunction
-            integratorArguments = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth , self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
-                self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.energyBandLimit] + list(self.barrier._gamowPolynomialCoefficients))
-        else:
-            assert False, "nottinghamHeat called with wrong mode '%s'. Either 'fast' or 'slow'"%mode
-        
-
-        if saveIntegrand:
-            assert mode == "slow", "cannot save the integrand in fast mode. Give mode = 'slow'"
-            self.nottinghamHeatIntegrandArray = np.array([])
-            self.nottinghamHeatIntegrandPoints = np.array([])
-
-        try:
-            integral, abserr = ig.quad(integrantFunction, self.lowEnergyLimit, self.highEnergyLimit, args=integratorArguments, epsabs=-1, epsrel=1.e-12, limit=100)
-        except(IntegrationWarning):
-            print("quad function returned with warning")
-            integral = 0.
-
-        if (saveIntegrand):
-            sortIndices = np.argsort(self.nottinghamHeatIntegrandPoints)
-            self.nottinghamHeatIntegrandPoints = self.nottinghamHeatIntegrandPoints[sortIndices]
-            self.nottinghamHeatIntegrandArray = self.nottinghamHeatIntegrandArray[sortIndices] * self.kT * Globals.SommerfeldConstant
-            
-        return - Globals.SommerfeldConstant * self.kT * integral
-
     #endregion    
 
 class Semiconductor_Emitter(BandEmitter):

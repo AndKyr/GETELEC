@@ -26,7 +26,7 @@ showFigures = True
 tolerance = 1.e-2
 
 
-class ConductionBandTests:
+class BandEmitterTests:
 
     def __init__(self) -> None:
         bar = gt.Barrier(5, 1000, 10., tabulationFolder= getelecRootPath + "/tabulated/1D_1024")
@@ -37,7 +37,7 @@ class ConductionBandTests:
     
     
 
-    def effectiveMassTest(self, minMass = 0.01, maxMass = 1., Npoints = 4, plotIntegrand = False, plotSpectra = False):
+    def effectiveMassTest(self, minMass = 0.001, maxMass = 1., Npoints = 4, plotIntegrand = False, plotSpectra = False):
 
         masses = np.geomspace(minMass, maxMass, Npoints)
         currentDensityConduction = np.copy(masses)
@@ -57,8 +57,8 @@ class ConductionBandTests:
         for i in range(len(masses)):
             self.conductionEmitter.setParameters(effectiveMass=masses[i])
             self.valenceEmitter.changeParameters(effectiveMass=masses[i])
-            currentDensityConduction[i], nottinghamHeatConduction[i] = self.conductionEmitter.runFullTest(ax1, ax2, label=r"$ m=%.2g$"%masses[i])
-            currentDensityValence[i], nottinghamHeatValence[i] = self.valenceEmitter.runFullTest(ax3, ax4, label=r"$ m=%.2g$"%masses[i])
+            currentDensityConduction[i], nottinghamHeatConduction[i] = self.conductionEmitter.runFullTest(ax1, ax2, label=r"$, m=%.2g$"%masses[i])
+            currentDensityValence[i], nottinghamHeatValence[i] = self.valenceEmitter.runFullTest(ax3, ax4, label=r"$, m=%.2g$"%masses[i])
 
 
         if plotIntegrand:
@@ -129,6 +129,6 @@ class ConductionBandTests:
 
         
 if (__name__ == "__main__"):
-    tests = ConductionBandTests()
+    tests = BandEmitterTests()
     # tests.conductionBandBottomTest(plotSpectra=True)
     tests.effectiveMassTest(plotIntegrand=True, plotSpectra=True)
