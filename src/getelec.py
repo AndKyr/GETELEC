@@ -264,29 +264,32 @@ class Barrier(Interpolator):
     _energy: np.ndarray
     energy_top_barrier: float
     maxEnergyDepth:float
-    _gamowPolynomialCoefficients: np.ndarray
+    gamowPolynomialCoefficients: np.ndarray
     gamowDerivativeAtMinBarrierDepth: float
-    _gamowDerivativeAtMaxEnergyDepth: float
+    gamowDerivativeAtMaxEnergyDepth: float
     gamowDerivativePolynomial: np.ndarray
+    isDataCalculated:bool
     # endregion
     
     # region initialization
     def __init__(self, field:float = 5., radius:float = 1.e4, gamma:float = 10., \
         preloadedGamowTable:np.ndarray = None, preloadedLimits:np.ndarray = None, tabulationFolder = Globals.tabulationPath) -> None:
-
         super().__init__(preloadedGamowTable, preloadedLimits, tabulationFolder)
         self.setParameters(field, radius, gamma)
    
     def _calculateGamowData(self) -> None:
         """Gets the parameters necessary to evaluate the Gamow factor. """
-        
+        if (self.isDataCalculated):
+            return
+
         data = self.interpolateForValues(self._field, self._radius, self._gamma)
         self.minEnergyDepth = data[-2] #Wmin: This is the top of the barrier
         self.maxEnergyDepth = data[-1] #Wmax: The maximum barrier depth for which the polynomial is valid
-        self._gamowPolynomialCoefficients = data[:self._Npolynomial] #Gpoly
-        self.gamowDerivativePolynomial = np.polyder(self._gamowPolynomialCoefficients) #dG/dW polynomial coefficients
+        self.gamowPolynomialCoefficients = data[:self._Npolynomial] #Gpoly
+        self.gamowDerivativePolynomial = np.polyder(self.gamowPolynomialCoefficients) #dG/dW polynomial coefficients
         self.gamowDerivativeAtMinBarrierDepth = np.polyval(self.gamowDerivativePolynomial, self.minEnergyDepth) #dG/dW @ Wmin
-        self._gamowDerivativeAtMaxEnergyDepth = np.polyval(self.gamowDerivativePolynomial, self.maxEnergyDepth) #dG/dW @ Wmax
+        self.gamowDerivativeAtMaxEnergyDepth = np.polyval(self.gamowDerivativePolynomial, self.maxEnergyDepth) #dG/dW @ Wmax
+        self.isDataCalculated = True
 
     def _extendFieldBounds(self, energyDepth : np.ndarray) -> np.ndarray:
         """
@@ -328,19 +331,19 @@ class Barrier(Interpolator):
             self.Gamow = np.copy(energyDepth)
             highEnergyDepth = energyDepth > self.maxEnergyDepth
             lowEnergyDepth = energyDepth < self.minEnergyDepth
-            self.Gamow = np.polyval(self._gamowPolynomialCoefficients, energyDepth)
-            self.Gamow[highEnergyDepth] = np.polyval(self._gamowPolynomialCoefficients, self.maxEnergyDepth) + \
-                self._gamowDerivativeAtMaxEnergyDepth * (energyDepth[highEnergyDepth] - self.maxEnergyDepth)
-            self.Gamow[lowEnergyDepth] = np.polyval(self._gamowPolynomialCoefficients, self.minEnergyDepth) + \
+            self.Gamow = np.polyval(self.gamowPolynomialCoefficients, energyDepth)
+            self.Gamow[highEnergyDepth] = np.polyval(self.gamowPolynomialCoefficients, self.maxEnergyDepth) + \
+                self.gamowDerivativeAtMaxEnergyDepth * (energyDepth[highEnergyDepth] - self.maxEnergyDepth)
+            self.Gamow[lowEnergyDepth] = np.polyval(self.gamowPolynomialCoefficients, self.minEnergyDepth) + \
                 self.gamowDerivativeAtMinBarrierDepth * (energyDepth[lowEnergyDepth] - self.minEnergyDepth)
         else:
             if (energyDepth > self.minEnergyDepth and energyDepth < self.maxEnergyDepth):
-                self.Gamow = np.polyval(self._gamowPolynomialCoefficients, energyDepth)
+                self.Gamow = np.polyval(self.gamowPolynomialCoefficients, energyDepth)
             elif(energyDepth > self.maxEnergyDepth):
-                self.Gamow = np.polyval(self._gamowPolynomialCoefficients, self.maxEnergyDepth) + \
-                    self._gamowDerivativeAtMaxEnergyDepth * (energyDepth - self.maxEnergyDepth)
+                self.Gamow = np.polyval(self.gamowPolynomialCoefficients, self.maxEnergyDepth) + \
+                    self.gamowDerivativeAtMaxEnergyDepth * (energyDepth - self.maxEnergyDepth)
             else:
-                self.Gamow = np.polyval(self._gamowPolynomialCoefficients, self.minEnergyDepth) + \
+                self.Gamow = np.polyval(self.gamowPolynomialCoefficients, self.minEnergyDepth) + \
                     self.gamowDerivativeAtMinBarrierDepth * (energyDepth - self.minEnergyDepth) 
 
         if (1./self._field < self._inverseFieldLimits[0] or 1./self._field > self._inverseFieldLimits[1]):
@@ -360,6 +363,7 @@ class Barrier(Interpolator):
         self._field = field
         self._radius = radius
         self._gamma = gamma
+        self.isDataCalculated = False
         self._calculateGamowData()
 
     def changeParameters(self, field:float = None, radius:float = None, gamma:float = None) ->None:
@@ -675,7 +679,7 @@ class BandEmitter:
         elif(mode == "fast"):
             integrantFunction = self.fastCurrentDensityIntegrandFunction
             integratorArguments = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth, self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
-                self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.energyBandLimit] + list(self.barrier._gamowPolynomialCoefficients))
+                self.barrier.gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.energyBandLimit] + list(self.barrier.gamowPolynomialCoefficients))
         else:
             assert False, "currentDensity called with wrong mode '%s'. Either 'fast' or 'slow'"%mode
         
@@ -715,7 +719,7 @@ class BandEmitter:
         elif(mode == "fast"):
             integrantFunction = self.fastNottinghamHeatIntegrandFunction
             integratorArguments = tuple([self.workFunction, self.kT, self.barrier.minEnergyDepth , self.barrier.maxEnergyDepth, self.barrier.gamowDerivativeAtMinBarrierDepth, \
-                self.barrier._gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.energyBandLimit] + list(self.barrier._gamowPolynomialCoefficients))
+                self.barrier.gamowDerivativeAtMaxEnergyDepth, self.effectiveMass, self.energyBandLimit] + list(self.barrier.gamowPolynomialCoefficients))
         else:
             assert False, "nottinghamHeat called with wrong mode '%s'. Either 'fast' or 'slow'"%mode
         
@@ -787,7 +791,7 @@ class ConductionBandEmitter(BandEmitter):
     
     # region initialization
     def __init__(self, barrier:Barrier = Barrier(), workFunction = 4.5, kT:float = Globals.BoltzmannConstant * 300., \
-        effectiveMass: float = 1, Ec: float = -100.) -> None:
+        effectiveMass: float = 1, bandBottom: float = -100.) -> None:
         """Initialises the function by adding the atributes of a "tabulated" barrier emitter to metals
 
         Args:
@@ -795,7 +799,7 @@ class ConductionBandEmitter(BandEmitter):
         """
         
         super().__init__(barrier)
-        self.setParameters(workfunction=workFunction, kT=kT, effectiveMass=effectiveMass, energyBandLimit=Ec)
+        self.setParameters(workfunction=workFunction, kT=kT, effectiveMass=effectiveMass, energyBandLimit=bandBottom)
         self.fastCurrentDensityIntegrandFunction = self.fastIntegrator.currentDensityIntegrandConduction
         self.fastNottinghamHeatIntegrandFunction = self.fastIntegrator.nottinghamHeatIntegrandConduction
     
@@ -908,7 +912,7 @@ class ValenceBandEmitter(BandEmitter):
     
     # region initialization
     def __init__(self, barrier:Barrier = Barrier(), workFunction = 4.5, kT:float = Globals.BoltzmannConstant * 300., \
-        effectiveMass: float = 1, Ec: float = -100.) -> None:
+        effectiveMass: float = 1, bandTop: float = -100.) -> None:
         """Initialises the function by adding the atributes of a "tabulated" barrier emitter to metals
 
         Args:
@@ -916,7 +920,7 @@ class ValenceBandEmitter(BandEmitter):
         """
         
         super().__init__(barrier)
-        self.setParameters(workfunction=workFunction, kT=kT, effectiveMass=effectiveMass, energyBandLimit=Ec)
+        self.setParameters(workfunction=workFunction, kT=kT, effectiveMass=effectiveMass, energyBandLimit=bandTop)
         self.fastCurrentDensityIntegrandFunction = self.fastIntegrator.currentDensityIntegrandValence
         self.fastNottinghamHeatIntegrandFunction = self.fastIntegrator.nottinghamHeatIntegrandValence
     
@@ -969,7 +973,14 @@ class ValenceBandEmitter(BandEmitter):
     
     #endregion    
 
-class Semiconductor_Emitter(BandEmitter):
+class MetalEmitter(ConductionBandEmitter):
+    """Class to run simple metal emitters. 
+    It just uses all functionalities of a conduction band emitters, with only using effectiveMass=1 and the bottom of the conduction band being very low."""
+    def __init__(self, barrier: Barrier = Barrier(), workFunction=4.5, kT: float = Globals.BoltzmannConstant * 300) -> None:
+        super().__init__(barrier, workFunction, kT)
+
+
+class SemiconductorEmitter:
     """This class will be composed along with Emitter(Tabulator) in order to create a semiconductor field emitter. Then different functions will be executed to 
     calculate the density, nottingham heat and energy density of the electrons being emitted
     
@@ -1040,20 +1051,27 @@ class Semiconductor_Emitter(BandEmitter):
     _me: float #electron effective mass
     _mp: float #hole effective mass
     # endregion
-    
+    conductionEmitter:ConductionBandEmitter
+    valenceEmitter:ValenceBandEmitter
+    barrier:Barrier
+    valenceRatioLimit = 1.e-5
+
     # region initialization
-    def __init__(self, barrier: Barrier,):
+    def __init__(self, barrier:Barrier = Barrier(), conductionBandBottom:float = 0.5, workFunction:float = 4., \
+        bandGap:float = 1., kT:float = 0.025, effectiveMassConduction:float = 1., effectiveMassValence:float = 1.):
         """Initialises the function by adding the atributes of a "tabulated" barrier emitter to metals
 
         Args:
             tabulator (Tabulator): Object that contains the attributes of a x material emitter (potential barrier, transmission coefficiens and electron supply functions)
         """
-        
-        super().__init__(barrier)
+        self.barrier = barrier
+        self.conductionEmitter = ConductionBandEmitter(barrier,workFunction=workFunction, kT=kT, effectiveMass=effectiveMassConduction, bandBottom=conductionBandBottom)
+        self.valenceEmitter = ValenceBandEmitter(barrier=barrier, workFunction=workFunction, kT=kT, effectiveMass=effectiveMassValence, bandTop=conductionBandBottom - bandGap)
     # endregion
 
     # region user methods
-    def Define_Semiconductor_Emitter_Parameters(self, Ec:float, Ef:float, Eg:float, kT:float, m:float, me:float, mp:float):
+    def setParameters(self, field:float, radius:float, gamma:float, conductionBandBottom:float, \
+        workFunction:float, bandGap:float, kT:float, effectiveMassConduction:float, effectiveMassValence:float):
         """Defines the main emitter parameters:,, band gap, temperature, free electrons mass, effective electron mass, effective hole mass
 
         Args:
@@ -1066,216 +1084,55 @@ class Semiconductor_Emitter(BandEmitter):
             mp (float): effective hole mass (number)
         """
         
-        self._Ec = -Ec
-        self._Ef = -Ef
-        self._Eg = -Eg
-        self._Ev = self._Ec+self._Eg
-        self._kT = kT
-        self._m  = m
-        self._me = me
-        self._mp = mp
-        self._Integration_Limits_for_Semiconductors()
+        self.barrier.setParameters(field, radius, gamma)
+        self.conductionEmitter.setParameters(workfunction=workFunction, kT=kT, effectiveMass=effectiveMassConduction, energyBandLimit=conductionBandBottom)
+        self.conductionEmitter.setParameters(workfunction=workFunction, kT=kT, energyBandLimit=conductionBandBottom - bandGap, effectiveMass=effectiveMassValence)
     
-    def _Integration_Limits_for_Semiconductors(self):
-        """Finds the limits of integration"""
-        resolution = 512
-        self._Eclow = (self._Ec-self._Ef)
-        self._Echigh = max(self._Eclow, 0) + 20 * self._kT
-        self._Evhigh = (self._Ev-self._Ef)
-        self._Evlow = min(self._Evhigh, 0) - 20 / self.barrier._gamowDerivativeAtMaxEnergyDepth
-        self._energy_conduction_band = np.linspace(self._Eclow, self._Echigh, resolution)
-        self._energy_valence_band = np.linspace(self._Evlow, self._Evhigh, resolution)
+    def conductionToValenceRatioEstimate(self):
+        """Calculates an estimation between the current contribution of the valence band and the conduction band. If the ratio is too low, 
+        the valence band contribution will be neglected"""
+
+        gamowAtConduction = self.barrier.calculateGamow(self.conductionEmitter.workFunction - self.conductionEmitter.energyBandLimit)
+        gamowAtValence = self.barrier.calculateGamow(self.valenceEmitter.workFunction - self.valenceEmitter.energyBandLimit)
+
+        return np.exp(gamowAtValence - gamowAtConduction)
       
-    def Current_Density_from_Semiconductors(self):
-        """Returns the field emitted current density from semiconducting surfaces, by calling two other functions
+    def currentDensity(self):
+        """Calculates and returns field emitted current density from semiconducting surfaces, including valence and conduction bands (if necessary)"""
+        currentDensity = self.conductionEmitter.currentDensity()
 
+        if (self.conductionToValenceRatioEstimate > self.valenceRatioLimit):
+            currentDensity += self.valenceEmitter.currentDensity()
+        
+        return currentDensity
+
+    def nottinghamHeat(self):
+        """"Calculates and returns the total Nottingham heat from semiconductor surfaces, including valence and conduction bands (if necessary)"""      
+        nottinghamHeat = self.conductionEmitter.nottinghamHeat()
+
+        if (self.conductionToValenceRatioEstimate > self.valenceRatioLimit):
+            nottinghamHeat += self.valenceEmitter.nottinghamHeat()
+        
+        return nottinghamHeat
+
+    def totalEnergyDistribution(self, numberOfPoints:int = 256):
+        """Returns the total energy distribution of the electrons being emitted from the conduction and valence bands
+
+        Parameters:
+            numberOfPoints: The number of points at which each band spectrum is to be sampled
         Returns:
-            current_conduction (float): current density emitted from the conduction band (electrons/area*time)
-            current_valence (float): current density emitted from the valence band (electrons/area*time)
-            current_total (float): total current emitted from a semiconducting infinitisimal and flat surface (sum of the conduction and valence contributions) (electrons/area*time)
+            energyArray (np.ndarray): Energy from which electrons are emitted (eV)
+            spectrumArray (np.ndarray): Density of emitted electrons for each energy value (Amps per square nm per eV)
         """
         
-        current_conduction = self.Current_from_Conduction_Band()
-        current_valence = self.Current_from_Valence_Band()
-        current_total = current_conduction+current_valence
-        
-        return current_conduction, current_valence, current_total
+        energyArrayConduction, spectrumConduction = self.conductionEmitter.totalEnergySpectrumArrays(numberOfPoints=numberOfPoints)
+        energyArrayValence, spectrumValence = self.valenceEmitter.totalEnergySpectrumArrays(numberOfPoints=numberOfPoints)
 
-    def Current_from_Conduction_Band(self): 
-        """ Calculates the conduction band component of the emitted current - Stratton's 1962 equation
+        energyArray = np.concatenate(energyArrayValence, energyArrayConduction)
+        spectrumArray = np.concatenate(spectrumValence, spectrumConduction)
+        return energyArray, spectrumArray  
+        
 
-        Returns:
-            float: Emitted current density from the conduction band (electrons/area*time)
-        """
-        
-        a = self._me/self._m
-        b = 1-a 
-        
-        jc_integ = self.logFermiDiracFunction(self._energy_conduction_band, self._kT) * \
-            (self.barrier.transmissionCoefficient(-self._Ef-self._energy_conduction_band) - \
-                (b*self.barrier.transmissionCoefficient(-self._Ef-a*self._energy_conduction_band)))
-        
-        return Globals.SommerfeldConstant * self._kT * np.trapz(jc_integ, self._energy_conduction_band)# np.sum(jc_integ) * (self._energy_conduction_band[1]-self._energy_conduction_band[0]) 
-    
-    def Current_from_Valence_Band(self):
-        """Calculates the conduction band component of the emitted current - Andreas' equation
-
-        Returns:
-            float: Emitted current density from the valence band (electrons/area*time)
-        """
-        
-        a = self._mp/self._m
-        b = 1+a
-        
-        jv_integ = self.logFermiDiracFunction(self._energy_valence_band, self._kT) * (self.barrier.transmissionCoefficient(-self._Ef-self._energy_valence_band) - (b*self.barrier.transmissionCoefficient(-self._Ef-b*self._energy_valence_band+a*self._Evhigh)))
-        
-        return Globals.SommerfeldConstant * self._kT * np.trapz(jv_integ, self._energy_valence_band)
-    
-    def Distributed_Current_Density_from_Semiconductors(self):
-        """Calculates the current density being emitter from a semiconducting flat surface by calculating the emitted electron
-        energy distrubution and integrating over that distribution
-        
-        This function was implemented for validation purposes and it is not optimised!
-
-        Returns:
-            float: Emitted current density from semiconductor emitter with infinitesimal area (electrons/area*time)
-        """
-        
-        #conduction band
-        a = self._me/self._m
-        b = 1-a 
-        
-        c_transmission_in_z = self.Transmission_Coefficient(-self._Ef-self._energy_conduction_band) - (b*self.Transmission_Coefficient(-self._Ef-a*self._energy_conduction_band))
-
-        c_cumulative_transmission = np.insert(np.cumsum((c_transmission_in_z[1:]+c_transmission_in_z[:-1])*(self._energy_conduction_band[1]-self._energy_conduction_band[0])/2), 0, 0)
-        
-        c_number_of_electrons = np.sum(self.FermiDiracFunction(self._energy_conduction_band, self._kT) * c_cumulative_transmission )
-        
-        total_c = np.sum(Globals.SommerfeldConstant * c_number_of_electrons * (self._energy_conduction_band[1]-self._energy_conduction_band[0]))
-        
-        #valence band
-        c = self._mp/self._m
-        d = 1+c
-        
-        v_transmission_in_z = self.Transmission_Coefficient(-self._Ef-self._energy_valence_band) - (d*self.Transmission_Coefficient(-self._Ef-d*self._energy_valence_band+c*self._Evhigh))
-        
-        v_cumulative_transmission = np.insert(np.cumsum((v_transmission_in_z[1:]+v_transmission_in_z[:-1])*(self._energy_valence_band[1]-self._energy_valence_band[0])/2), 0, 0)
-            
-        v_number_of_electrons = self.FermiDiracFunction(self._energy_valence_band, self._kT) * v_cumulative_transmission 
-        
-        total_v = np.sum(Globals.SommerfeldConstant * v_number_of_electrons * (self._energy_valence_band[1]-self._energy_valence_band[0]))
-        
-        total = total_c + total_v
-        
-        return total_c, total_v, total
-    
-    def Energy_Distribution_from_Semiconductors(self):
-        """Returns the energy distribution of the electrons being emitted from the conduction and valence bands
-
-        Returns:
-            energy_space_c (array): Energy values in the conduction band from which electrons are emitted (eV)
-            electrons_from_c (array): Number of emitted electrons from the conduction band for each energy value (number)
-            energy_space_v (array): Energy values in the valence band from which electrons are emitted (eV)
-            electrons_from_v (array): Number of emitted electrons from the valence band for each energy value (number)
-        """
-        
-        energy_space_c, electrons_from_c = self.Energy_Distribution_from_Conduction_Band()
-        energy_space_v, electrons_from_v = self.Energy_Distribution_from_Valence_Band()
-
-        return  energy_space_c, electrons_from_c, energy_space_v, electrons_from_v
-
-    def Energy_Distribution_from_Conduction_Band(self):
-        """Calculates teh energy distribution of those electrons emitted from the conduction band
-
-        Returns:
-            _energy_conduction_band (array): Energy values in the conduction band from which electrons are emitted (eV)
-            number_of_electrons (array): Number of emitted electrons from the conduction band for each energy value (number)
-        """
-        
-        a = self._me/self._m
-        b = 1-a 
-        
-        transmission_in_z = self.barrier.transmissionCoefficient(-self._Ef-self._energy_conduction_band) - (b*self.barrier.transmissionCoefficient(-self._Ef-a*self._energy_conduction_band))
-
-        cumulative_transmission = np.insert(np.cumsum((transmission_in_z[1:]+transmission_in_z[:-1])*(self._energy_conduction_band[1]-self._energy_conduction_band[0])/2), 0, 0)
-        
-        number_of_electrons = self.FermiDiracFunction(self._energy_conduction_band, self._kT) * cumulative_transmission 
-
-        return self._energy_conduction_band , number_of_electrons
-    
-    def Energy_Distribution_from_Valence_Band(self): #NEED REVISION
-        """Calculates teh energy distribution of those electrons emitted from the valence band
-
-        Returns:
-            _energy_conduction_band (array): Energy values in the valence band from which electrons are emitted (eV)
-            number_of_electrons (array): Number of emitted electrons from the valence band for each energy value (number)
-        """
-        
-        a = self._mp/self._m
-        b = 1+a
-        
-        transmission_in_z = self.barrier.transmissionCoefficient(-self._Ef-self._energy_valence_band) - (b*self.barrier.transmissionCoefficient(-self._Ef-b*self._energy_valence_band+a*self._Evhigh))
-        
-        cumulative_transmission = np.insert(np.cumsum((transmission_in_z[1:]+transmission_in_z[:-1])*(self._energy_valence_band[1]-self._energy_valence_band[0])/2), 0, 0)
-            
-        number_of_electrons = self.FermiDiracFunction(self._energy_valence_band, self._kT) * cumulative_transmission 
-      
-        return self._energy_valence_band, number_of_electrons
-    
-    def Nottingham_Heat_from_Semiconductors(self):
-        """Returns the Nottigham heat resulted from electrons being emitter fromt the conduction and valence band
-
-        Returns:
-            nottigham_conduction (float): Conduction band contribution to Nottingham heat (J)
-            nottigham_valence (float): Valence band contribution to Nottingham heat (J)
-            nottigham_total (float): Total Nottingham heat (J)
-        """
-        
-        nottingham_conduction = self.Nottingham_Heat_from_Conduction_Band()
-        nottigham_valence = self.Nottingham_Heat_from_Valence_Band()
-        nottigham_replacement = self.Nottingham_Heat_from_Replacement_Electrons()
-        nottingham_total = nottingham_conduction + nottigham_valence + nottigham_replacement   
-        
-        return nottingham_conduction, nottigham_valence, nottingham_total
-    
-    def Nottingham_Heat_from_Conduction_Band(self): #NEED MODIFICATIONS
-        """Calculates the contribution of the conduction band to the Nottingham heat resulted from field emitted electrons from semicoductors"""
-        """the fuction will be replaced by the full code from the function, if we agree the function works well"""
-        energy, distribution = self.Energy_Distribution_from_Conduction_Band()
-        
-        heat = energy
-        
-        return -Globals.SommerfeldConstant* self._kT * np.sum(heat*distribution)
-    
-    def Nottingham_Heat_from_Valence_Band(self): #NEED MOFICATIONS
-        """Calculates the contribution of the valence band to the Nottingham heat resulted from field emitted electrons from semicoductors"""
-        """the fuction will be replaced by the full code from the function, if we agree the function works well"""
-        energy, distribution = self.Energy_Distribution_from_Valence_Band()#*self._energy_valence_band
-
-        heat = energy
-
-        return -Globals.SommerfeldConstant * self._kT * np.sum(heat*distribution)
-
-    def Nottingham_Heat_from_Replacement_Electrons(self):
-        """To be calculated from COMSOL"""
-        return 0
-    
-    def Energy_Distribution_from_Conduction_Band_educational(self):
-        """Calculates the contribution of the conduction band to the energy distribution of field emitted electrons from semiconductors on a clear equation to code manner"""
-        a = self._me/self._m
-        b = 1-a 
-        
-        transmission_in_z = self.Transmission_Coefficient(-self._Ef-self._energy_conduction_band) - (b*self.Transmission_Coefficient(-self._Ef-a*self._energy_conduction_band))
-
-        cumulative_transmission = np.copy(self._energy_conduction_band)
-        cumulative_transmission[0] = 0
-
-        for i in range(len(self._energy_conduction_band)-1):
-            cumulative_transmission[i+1] = cumulative_transmission[i] + ((self._energy_conduction_band[1]-self._energy_conduction_band[0])*(transmission_in_z[i+1]+transmission_in_z[i])/2)
-        
-        energy_distribution = self.FermiDiracFunction(self._energy_conduction_band, self._kT) * cumulative_transmission 
-
-        return self._energy_conduction_band , energy_distribution
     # endregiondata
 
 
@@ -1477,7 +1334,7 @@ def current_semiconductor_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.
     effec_e = 0.98*mass_e
     effec_p = 0.59*mass_e
     
-    semiconductor_emitter = Semiconductor_Emitter(Barrier())
+    semiconductor_emitter = SemiconductorEmitter(Barrier())
 
     j_total = np.copy(Field)
     j_c = np.copy(Field)
@@ -1493,9 +1350,9 @@ def current_semiconductor_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.
         semiconductor_emitter.barrier.setParameters(Field[i], Radius[i], Gamma[i])
         semiconductor_emitter.barrier._calculateGamowData()
 
-        semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec[i], Ef[i], Eg[i], kT[i], m[i], me[i], mp[i])
+        semiconductor_emitter.setParameters(Ec[i], Ef[i], Eg[i], kT[i], m[i], me[i], mp[i])
         
-        j_c[i], j_v[i], j_total[i] = semiconductor_emitter.Current_Density_from_Semiconductors()
+        j_c[i], j_v[i], j_total[i] = semiconductor_emitter.currentDensity()
  
     """
     file = open("Field_Emission_COMSOL_Debugging_Data.txt", "a")
@@ -1522,7 +1379,7 @@ def heat_semiconductor_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.nda
     effec_e = 0.98*mass_e
     effec_p = 0.59*mass_e
     
-    semiconductor_emitter = Semiconductor_Emitter(Barrier())
+    semiconductor_emitter = SemiconductorEmitter(Barrier())
 
     pn_total = np.copy(Field)
     pn_c = np.copy(Field)
@@ -1538,7 +1395,7 @@ def heat_semiconductor_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.nda
         semiconductor_emitter.barrier.setParameters(Field[i], Radius[i], Gamma[i])
         semiconductor_emitter.barrier._calculateGamowData()
 
-        semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec[i], Ef[i], Eg[i], kT[i], m[i], me[i], mp[i])
+        semiconductor_emitter.setParameters(Ec[i], Ef[i], Eg[i], kT[i], m[i], me[i], mp[i])
         
         pn_c[i], pn_v[i], pn_total[i] = semiconductor_emitter.Nottingham_Heat_from_Semiconductors()
 

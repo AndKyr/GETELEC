@@ -114,7 +114,7 @@ def current_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature,
     kBoltz = 8.6173324e-5 
     kT = kBoltz * Temperature
 
-    semiconductor_emitter = gt.Semiconductor_Emitter(tab)
+    semiconductor_emitter = gt.SemiconductorEmitter(tab)
 
     j_total = np.copy(Field)
     j_c = np.copy(Field)
@@ -126,9 +126,9 @@ def current_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature,
         semiconductor_emitter.emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
         semiconductor_emitter.emitter.Interpolate_Gammow()
 
-        semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec[i], Ef[i], Eg[i], kT[i], m[i], me[i], mp[i])
+        semiconductor_emitter.setParameters(Ec[i], Ef[i], Eg[i], kT[i], m[i], me[i], mp[i])
         
-        j_c[i], j_v[i], j_total[i] = semiconductor_emitter.Current_Density_from_Semiconductors()
+        j_c[i], j_v[i], j_total[i] = semiconductor_emitter.currentDensity()
 
     return j_total
 
@@ -152,7 +152,7 @@ def heat_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature, me
     kBoltz = 8.6173324e-5 
     kT = kBoltz * Temperature
 
-    semiconductor_emitter = gt.Semiconductor_Emitter(tab)
+    semiconductor_emitter = gt.SemiconductorEmitter(tab)
 
     nh_total = np.copy(Field)
     nh_c = np.copy(Field)
@@ -164,7 +164,7 @@ def heat_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature, me
         semiconductor_emitter.emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
         semiconductor_emitter.emitter.Interpolate_Gammow()
 
-        semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec[i], Ef[i], Eg[i], kT[i], m[i], me[i], mp[i])
+        semiconductor_emitter.setParameters(Ec[i], Ef[i], Eg[i], kT[i], m[i], me[i], mp[i])
         
         nh_c[i], nh_v[i], nh_total[i] = semiconductor_emitter.Nottingham_Heat_from_Semiconductors()
 
@@ -193,7 +193,7 @@ def spectrum_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature
     kBoltz = 8.6173324e-5 
     kT = kBoltz * Temperature
 
-    semiconductor_emitter = gt.Semiconductor_Emitter(tab)
+    semiconductor_emitter = gt.SemiconductorEmitter(tab)
 
     energy_c = np.copy(Field)
     count_c = np.copy(Field)
@@ -206,9 +206,9 @@ def spectrum_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature
         semiconductor_emitter.emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
         semiconductor_emitter.emitter.Interpolate_Gammow()
 
-        semiconductor_emitter.Define_Semiconductor_Emitter_Parameters(Ec[i], Ef[i], Eg[i], kT[i], m[i], me[i], mp[i])
+        semiconductor_emitter.setParameters(Ec[i], Ef[i], Eg[i], kT[i], m[i], me[i], mp[i])
         
-        energy_c[i], count_c[i], energy_v[i], count_v[i] = semiconductor_emitter.Energy_Distribution_from_Semiconductors()
+        energy_c[i], count_c[i], energy_v[i], count_v[i] = semiconductor_emitter.totalEnergyDistribution()
 
     return energy_c, count_c, energy_v, count_v
 
