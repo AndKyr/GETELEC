@@ -152,7 +152,7 @@ io.sockets.on('connection', function (socket) {
 
     }
 
-    console.log(`${updateTime()} Got a job from ${socket.id}}`);
+    console.log(`${updateTime()} Got a job from ${socket.id}`);
 
     PythonShell.run("python/emissionCalc.py", options, (err, res) => {
 
@@ -169,9 +169,7 @@ io.sockets.on('connection', function (socket) {
 
       } else if(res){
 
-        console.log(res)
-
-        if(res.length > 1){
+        if(res.length > 0){
 
           res.forEach(el =>{
 

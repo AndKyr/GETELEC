@@ -1589,7 +1589,7 @@ function main(){
     
                 let points = [];
     
-                if(_materialType == "1"){
+                if(_materialType == 1){
     
                     for(let i = 0; i < _sweepValues.length; i++){
     
@@ -1632,7 +1632,7 @@ function main(){
     
                 let points = [];
     
-                if(_materialType == "1"){
+                if(_materialType == 1){
     
                     for(let i = 0; i < data6e[0].length; i++){
     
@@ -1661,7 +1661,7 @@ function main(){
         }
     
         function updateNHGraph(){
-    
+
             if((data2 === undefined || data2.length == 1) && (data5 === undefined || data5.length == 0)){
     
                 return;
@@ -1670,7 +1670,7 @@ function main(){
     
                 let points = [];
     
-                if(_materialType == "1"){
+                if(_materialType == 1){
     
                     for(let i = 0; i < _sweepValues.length; i++){
     
@@ -1702,7 +1702,7 @@ function main(){
     
         function updateTitle(chart, data){
     
-            if(data.materialType == "1"){
+            if(data.materialType == 1){
     
                 switch(data.sweepParam){
     
