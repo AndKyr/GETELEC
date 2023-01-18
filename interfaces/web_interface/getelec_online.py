@@ -45,14 +45,14 @@ def heat_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
     """
     tab = gt.Interpolator()
     
-    kBoltz = 8.6173324e-5 
-    kT = kBoltz * Temperature
+    kT = gt.Globals.BoltzmannConstant * Temperature
     
     metal_emitter = gt.Metal_Emitter(tab)
     
     nh_metal = np.copy(Field)
 
     for i in range(len(Field)):
+        
         metal_emitter._emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
         metal_emitter._emitter.Interpolate_Gammow()
     
@@ -76,8 +76,8 @@ def spectrum_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
     """
     tab = gt.Interpolator()
     
-    kBoltz = 8.6173324e-5 
-    kT = kBoltz * Temperature
+
+    kT = gt.Globals.BoltzmannConstant * Temperature
     
     metal_emitter = gt.Metal_Emitter(tab)
     
@@ -111,15 +111,14 @@ def current_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature,
     """
     tab = gt.Interpolator()
     
-    kBoltz = 8.6173324e-5 
-    kT = kBoltz * Temperature
+    kT = gt.Globals.BoltzmannConstant * Temperature
 
     semiconductor_emitter = gt.SemiconductorEmitter(tab)
 
     j_total = np.copy(Field)
     j_c = np.copy(Field)
     j_v = np.copy(Field)
-    m = np.ones(Field)*9.1093837015e-31 
+    m = np.ones(Field) * gt.Globals.electronMass
 
     for i in range(len(Field)):
 
@@ -148,16 +147,15 @@ def heat_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature, me
     For more info refer to GETELEC TABULATOR's documentation
     """
     tab = gt.Interpolator()
-    
-    kBoltz = 8.6173324e-5 
-    kT = kBoltz * Temperature
+
+    kT = gt.Globals.BoltzmannConstant * Temperature
 
     semiconductor_emitter = gt.SemiconductorEmitter(tab)
 
     nh_total = np.copy(Field)
     nh_c = np.copy(Field)
     nh_v = np.copy(Field)
-    m = np.ones(Field)*9.1093837015e-31 
+    m = np.ones(Field) * gt.Globals.electronMass
 
     for i in range(len(Field)):
 
@@ -189,9 +187,8 @@ def spectrum_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature
     For more info refer to GETELEC TABULATOR's documentation
     """
     tab = gt.Interpolator()
-    
-    kBoltz = 8.6173324e-5 
-    kT = kBoltz * Temperature
+
+    kT = gt.Globals.BoltzmannConstant * Temperature
 
     semiconductor_emitter = gt.SemiconductorEmitter(tab)
 
@@ -199,7 +196,7 @@ def spectrum_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature
     count_c = np.copy(Field)
     energy_v = np.copy(Field)
     count_v = np.copy(Field)
-    m = np.ones(Field)*9.1093837015e-31 
+    m = np.ones(Field) * gt.Globals.electronMass
 
     for i in range(len(Field)):
 

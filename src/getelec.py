@@ -26,6 +26,7 @@ class Globals:
     tabulationPath:str = "tabulated/2D_512x256"
     BoltzmannConstant:float = 8.617333262e-5
     SommerfeldConstant:float = 1.618311e-4 
+    electronMass:float = 9.1093837e-31
     
     #the limit for which different approximations of the Fermi Dirac functions apply
     exponentLimit =  - 0.5 * np.log(np.finfo(float).eps)
@@ -74,7 +75,8 @@ class Interpolator:
     _Nradius : int  
 
     def __init__(self, preloadedGamowTable : np.ndarray = None, preloadedLimits : np.ndarray = None, tabulationFolder = Globals.tabulationPath, \
-        Nfield = 256, NRadius = 128, Ngamma = 1, Npolynomial = 4, NGamow = 128):
+        Nfield = 512, NRadius = 256, Ngamma = 1, Npolynomial = 4, NGamow = 128):
+
         """Initialises Tabulator by loading the tables from files. If maps not found, calls tabulation scripts from old getelec that create those tables.
 
         Parameters:
@@ -84,13 +86,20 @@ class Interpolator:
                 Number of points to tabulate for electric field, radius and gamma, number of polynomial terms, number of Gamow points for fitting.
                 Relevant in case tabulation files not found and the tabulation script from oldGETELEC is invoked. 
         """
+
         if (preloadedGamowTable is None or preloadedLimits is None):
+
             self._isTableLoaded = self._loadTablesFromFileIfPossible(tabulationFolder)
+
             if not self._isTableLoaded: #all the script that creates tables and try to load again
+
                 self.calculateAndSaveTable(NField=Nfield, NRadius=NRadius, Ngamma=Ngamma, Npolynomial=Npolynomial, \
                     NGamow=NGamow, dataFolder=tabulationFolder)
+
                 self._isTableLoaded = self._loadTablesFromFileIfPossible(tabulationFolder)
+
         else:
+            
             self._gamowTable = preloadedGamowTable
             self._limits = preloadedLimits
             self._isTableLoaded = True
@@ -98,6 +107,7 @@ class Interpolator:
         self._initializeTabulationVariables()
 
     def calculateAndSaveTable(self, NField = 256, NRadius = 128, Ngamma = 1, Npolynomial = 4, NGamow = 128, dataFolder = Globals.tabulationPath):
+
         """Runs old Getelec script that produces and saves tabulation
         
         Parameters:
