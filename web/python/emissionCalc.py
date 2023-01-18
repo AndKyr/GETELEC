@@ -13,29 +13,31 @@ emissionpath,mainfolder = os.path.split(emissionpath)
 pythonpath = emissionpath + '/interfaces/web_interface'
 sys.path.append(pythonpath)
 
-from getelec_online import currentDensityMetal, nottinghamHeatMetal, electronSpectrumMetal
+from getelec_online import currentDensityMetal, heat_metal_emitter, spectrum_metal_emitter
 from getelec_online import current_semiconductor_emitter, heat_semiconductor_emitter, spectrum_semiconductor_emitter
 
 def forceSameLength(_data):
 
-        maxlen = max(len(_data['field']), len(_data['radius']), len(_data['work_function']), len(_data['temperature']), len(_data['ec']), len(_data['ef']), len(_data['eg']), len(_data['gammaMetal']), len(_data['gammaSemi']), len(_data['me']), len(_data['mp']))
+        maxlen = max(len(_data['field']), len(_data['radius']), len(_data['wf']), len(_data['temp']), len(_data['ec']), len(_data['ef']), len(_data['eg']), len(_data['gammaMetal']), len(_data['gammaSemi']), len(_data['me']), len(_data['mp']))
 
-        shortFields = [var for var in _data.keys() if (var in ['field', 'radius', 'work_function', 'temperature', 'ec', 'ef', 'eg', 'gammaMetal', 'gammaSemi', 'me', 'mp'] and len(_data[f"{var}"]) < maxlen)]
+        shortFields = [var for var in _data.keys() if (var in ['field', 'radius', 'wf', 'temp', 'ec', 'ef', 'eg', 'gammaMetal', 'gammaSemi', 'me', 'mp'] and len(_data[f"{var}"]) < maxlen)]
 
         for _field in shortFields:
-
-            _data[f"{_field}"] = np.full(maxlen, _data[f"{_field}"])
+            
+            _data[f"{_field}"] = np.concatenate(_data[f"{_field}"], np.array(_data[f"{_field}"][-1]) * (maxlen - len(_data[f"{_field}"])))
 
         return _data
 
 def main():
 
     data = json.loads(sys.argv[1])
+
+    print(data)    
     
     data['field'] = np.array(data['field'])
     data['radius'] = np.array(data['radius'])
-    data['work_function'] = np.array(data['work_function'])
-    data['temperature'] = np.array(data['temperature'])
+    data['wf'] = np.array(data['work_function'])
+    data['temp'] = np.array(data['temperature'])
 
     data['ec'] = np.array(data['ec'])
     data['ef'] = np.array(data['ef'])
@@ -68,7 +70,7 @@ def main():
 
     elif data['sweepParam'] == 4:
 
-        data['sweepParam'] = "work_function"
+        data['sweepParam'] = "wf"
 
     elif data['sweepParam'] == 5:
 
@@ -78,15 +80,15 @@ def main():
 
         if data['calculateEC'] == 1:
             
-            data1 = currentDensityMetal(data['field'], data['radius'], data['gammaMetal'], data['work_function'], data['temperature']).tolist()
+            data1 = currentDensityMetal(data['field'], data['radius'], data['gammaMetal'], data['wf'], data['temp']).tolist()
         
         if data['calculateNH'] == 1:
 
-            data2 = nottinghamHeatMetal(data['field'], data['radius'], data['gammaMetal'], data['work_function'], data['temperature']).tolist()
+            data2 = heat_metal_emitter(data['field'], data['radius'], data['gammaMetal'], data['wf'], data['temp']).tolist()
 
         if data['calculateES'] == 1:
 
-            energies, electronCounts = electronSpectrumMetal(data['field'], data['radius'], data['gammaMetal'], data['work_function'], data['temperature'])
+            energies, electronCounts = spectrum_metal_emitter(data['field'], data['radius'], data['gammaMetal'], data['wf'], data['temp'])
 
             data3 = []
             data3e = []
@@ -101,19 +103,19 @@ def main():
 
         if data['calculateEC'] == 1:
 
-            data4 = current_semiconductor_emitter(data['field'], data['radius'], data['gammaSemi'], data['ec'], data['ef'], data['eg'], data['temperature'], data['me'], data['mp']).tolist()
+            data4 = current_semiconductor_emitter(data['field'], data['radius'], data['gammaSemi'], data['ec'], data['ef'], data['eg'], data['temp'], data['me'], data['mp']).tolist()
 
         if data['calculateNH'] == 1:  
               
-            data5 = heat_semiconductor_emitter(data['field'], data['radius'], data['gammaSemi'], data['ec'], data['ef'], data['eg'], data['temperature'], data['me'], data['mp']).tolist()
+            data5 = heat_semiconductor_emitter(data['field'], data['radius'], data['gammaSemi'], data['ec'], data['ef'], data['eg'], data['temp'], data['me'], data['mp']).tolist()
   
         if data['calculateES'] == "1":
 
-            energy, electronCount = spectrum_semiconductor_emitter(data['field'], data['radius'], data['gammaSemi'], data['ec'], data['ef'], data['eg'], data['temperature'], data['me'], data['mp']).tolist()
+            energy, electronCount = spectrum_semiconductor_emitter(data['field'], data['radius'], data['gammaSemi'], data['ec'], data['ef'], data['eg'], data['temp'], data['me'], data['mp']).tolist()
             data6 = energy.tolist()
             data6e = electronCount.tolist()
 
-    outdata = {"materialType": data['materialType'], "sweepParam": data['sweepParam'], "field": data['field'].tolist(), "radius": data['radius'].tolist(), "work_function": data['work_function'].tolist(), "temperature": data['temperature'].tolist(), "ec": data['ec'].tolist(), "ef": data['ef'].tolist(), "eg": data['eg'].tolist(), "gammaMetal": data['gammaMetal'].tolist(), "gammaSemi": data['gammaSemi'].tolist(), "me": data['me'].tolist(), "mp": data['mp'].tolist(), "metalEC": data1, "metalNH": data2, "metalESenergy": data3, "metalESelcount": data3e, "semiEC": data4, "semiNH": data5, "semiESenergy": data6, "semiESelcount": data6e
+    outdata = {"materialType": data['materialType'].tolist(), "sweepParam": data['sweepParam'].tolist(), "field": data['field'].tolist(), "radius": data['radius'].tolist(), "work_function": data['wf'].tolist(), "temperature": data['temp'].tolist(), "ec": data['ec'].tolist(), "ef": data['ef'].tolist(), "eg": data['eg'].tolist(), "gammaMetal": data['gammaMetal'].tolist(), "gammaSemi": data['gammaSemi'].tolist(), "me": data['me'].tolist(), "mp": data['mp'].tolist(), "metalEC": data1, "metalNH": data2, "metalESenergy": data3, "metalESelcount": data3e, "semiEC": data4, "semiNH": data5, "semiESenergy": data6, "semiESelcount": data6e
     }
 
     print(json.dumps(outdata))
