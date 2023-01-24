@@ -15,12 +15,22 @@ def getArgument(arg, index):
     except(TypeError, IndexError) as error:
         return arg
 
+def getArgument_beta(arg, idx):
+
+    if isinstance(arg, (np.ndarray, list)):
+
+        if idx >= len(arg):
+            return arg[-1]
+
+        else:
+            return arg[idx]
+
+    else:
+        return arg
+
 def current_density_metal(field: np.array, radius: np.array, gamma: np.array, workFunction: np.array, temperature: np.array):
     """ Calculates the current density for an numpy arrays of inputs
-        Inputs must be same length
     """
-
-    ##CHECK FOR INPUTS LENGTH
 
     emitter = gt.ConductionBandEmitter()
 
@@ -28,41 +38,27 @@ def current_density_metal(field: np.array, radius: np.array, gamma: np.array, wo
     kT = gt.Globals.BoltzmannConstant * np.array(temperature)
     
     for i in range(len(field)):
-        emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
-        emitter.setParameters(getArgument(workFunction, i), getArgument(kT, i))
+
+        emitter.barrier.setParameters(getArgument_beta(field, i), getArgument_beta(radius, i), getArgument_beta(gamma, i))
+        emitter.setParameters(getArgument_beta(workFunction, i), getArgument_beta(kT, i))
         currentDensity[i] = emitter.currentDensity()
         
     return currentDensity
-    
-def current_density_metal_beta(field: np.array, radius: np.array, gamma: np.array, workFunction: np.array, temperature: np.array):
 
+def current_density_metal_beta(field: np.array, radius: np.array, gamma: np.array, workFunction: np.array, temperature: np.array):
     """ Calculates the current density for an numpy arrays of inputs
         Inputs must be same length
-
-        DEV: uses multithreading
     """
 
-    ##CHECK FOR INPUTS LENGTH
-    if len(field) != len(radius) or len(field) != len(gamma) or len(field) != len(workFunction) or len(field) != len(temperature):
-        raise ValueError("Inputs must be the same length")
-
     emitter = gt.ConductionBandEmitter()
+
+    currentDensity = np.copy(field)
     kT = gt.Globals.BoltzmannConstant * np.array(temperature)
     
-    currentDensity = np.empty(len(field))
-    
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        
-        args_list = [(field[i], radius[i], gamma[i], workFunction[i], kT[i]) for i in range(len(field))]
-
-        results = [executor.submit(emitter.currentDensity, *args) for args in args_list]
-        
-        concurrent.futures.wait(results)
-        
-        for i, result in enumerate(results):
-
-            currentDensity[i] = result.result()
-    
+        futures = [executor.submit(lambda f, r, g, wf, kt: emitter.barrier.setParameters(f, r, g) or emitter.setParameters(wf, kt) or emitter.currentDensity(), getArgument_beta(field, i),
+         getArgument_beta(radius, i), getArgument_beta(gamma, i), getArgument_beta(workFunction, i), getArgument_beta(kT, i)) for i in range(len(field))]
+        currentDensity = [f.result() for f in concurrent.futures.as_completed(futures)]
     return currentDensity
 
 def heat_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):

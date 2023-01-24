@@ -5,6 +5,8 @@ import os
 import sys
 import numpy as np
 
+import timeit
+
 mainpath,filename = os.path.split(os.path.realpath(__file__))
 
 emissionpath,mainfolder = os.path.split(mainpath)
@@ -13,7 +15,7 @@ emissionpath,mainfolder = os.path.split(emissionpath)
 pythonpath = emissionpath + '/interfaces/web_interface'
 sys.path.append(pythonpath)
 
-from getelec_online import current_density_metal
+from getelec_online import current_density_metal, current_density_metal_beta
 
 # from getelec import Interpolator
 
@@ -69,9 +71,6 @@ def convertInput():
 
 data = convertInput()
 
-print(f"Converted input")
-print(data)
-
 field = data[2]
 radius = data[3]
 
@@ -82,6 +81,17 @@ gammaMetal = data[9]
 
 calculateEC = (str(data[13][0]))[0]
 
-data1 = current_density_metal(field, radius, gammaMetal, wf, temp).tolist()
+data1 = current_density_metal_beta(field, radius, gammaMetal, wf, temp)
 
 print(data1)
+
+print(f"Now measuring performance differences...")
+
+average_time = timeit.timeit(lambda: current_density_metal_beta(field, radius, gammaMetal, wf, temp), number = 1000)
+
+print("Average run time of current_density_metal_beta:", average_time / 10)
+
+average_time = timeit.timeit(lambda: current_density_metal(field, radius, gammaMetal, wf, temp), number = 1000)
+
+print("Average run time of current_density_metal:", average_time / 10)
+
