@@ -3,6 +3,8 @@ import numpy as np
 import os
 from pathlib import Path
 
+import concurrent.futures
+
 getelecRootPath = str(Path(__file__).parents[2].absolute())
 sys.path.insert(0,getelecRootPath + "/src/")
 import getelec as gt
@@ -13,7 +15,7 @@ def getArgument(arg, index):
     except(TypeError, IndexError) as error:
         return arg
 
-def currentDensityMetal(field: np.array, radius: np.array, gamma: np.array, workFunction: np.array, temperature: np.array):
+def current_density_metal(field: np.array, radius: np.array, gamma: np.array, workFunction: np.array, temperature: np.array):
     """ Calculates the current density for an numpy arrays of inputs
         Inputs must be same length
     """
@@ -30,6 +32,37 @@ def currentDensityMetal(field: np.array, radius: np.array, gamma: np.array, work
         emitter.setParameters(getArgument(workFunction, i), getArgument(kT, i))
         currentDensity[i] = emitter.currentDensity()
         
+    return currentDensity
+    
+def current_density_metal_beta(field: np.array, radius: np.array, gamma: np.array, workFunction: np.array, temperature: np.array):
+
+    """ Calculates the current density for an numpy arrays of inputs
+        Inputs must be same length
+
+        DEV: uses multithreading
+    """
+
+    ##CHECK FOR INPUTS LENGTH
+    if len(field) != len(radius) or len(field) != len(gamma) or len(field) != len(workFunction) or len(field) != len(temperature):
+        raise ValueError("Inputs must be the same length")
+
+    emitter = gt.ConductionBandEmitter()
+    kT = gt.BoltzmannConstant * temperature
+    
+    currentDensity = np.empty(len(field))
+    
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        
+        args_list = [(field[i], radius[i], gamma[i], workFunction[i], kT[i]) for i in range(len(field))]
+
+        results = [executor.submit(emitter.currentDensity, *args) for args in args_list]
+        
+        concurrent.futures.wait(results)
+        
+        for i, result in enumerate(results):
+
+            currentDensity[i] = result.result()
+    
     return currentDensity
 
 def heat_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
@@ -209,7 +242,6 @@ def spectrum_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature
 
     return energy_c, count_c, energy_v, count_v
 
-
 def fit_data(xML, yML, workFunction, mode = "simple"):
 
     if mode == "simple":
@@ -239,6 +271,6 @@ def fit_data(xML, yML, workFunction, mode = "simple"):
 
 
 
-field = np.linspace(3., 6., 32)
+#field = np.linspace(3., 6., 32)
 
-print(currentDensityMetal(field, 100., 10., 4.5, 300.))
+#print(current_density_metal(field, 100., 10., 4.5, 300.))
