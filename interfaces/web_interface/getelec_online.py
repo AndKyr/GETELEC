@@ -25,7 +25,7 @@ def current_density_metal(field: np.array, radius: np.array, gamma: np.array, wo
     emitter = gt.ConductionBandEmitter()
 
     currentDensity = np.copy(field)
-    kT = gt.BoltzmannConstant * temperature
+    kT = gt.Globals.BoltzmannConstant * np.array(temperature)
     
     for i in range(len(field)):
         emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
@@ -47,7 +47,7 @@ def current_density_metal_beta(field: np.array, radius: np.array, gamma: np.arra
         raise ValueError("Inputs must be the same length")
 
     emitter = gt.ConductionBandEmitter()
-    kT = gt.BoltzmannConstant * temperature
+    kT = gt.Globals.BoltzmannConstant * np.array(temperature)
     
     currentDensity = np.empty(len(field))
     
