@@ -13,7 +13,7 @@ emissionpath,mainfolder = os.path.split(emissionpath)
 pythonpath = emissionpath + '/interfaces/web_interface'
 sys.path.append(pythonpath)
 
-from getelec_online import current_metal_emitter
+from getelec_online import current_density_metal
 
 # from getelec import Interpolator
 
@@ -69,6 +69,9 @@ def convertInput():
 
 data = convertInput()
 
+print(f"Converted input")
+print(data)
+
 field = data[2]
 radius = data[3]
 
@@ -79,6 +82,6 @@ gammaMetal = data[9]
 
 calculateEC = (str(data[13][0]))[0]
 
-data1 = current_metal_emitter(field, radius, gammaMetal, wf, temp).tolist()
+data1 = current_density_metal(field, radius, gammaMetal, wf, temp).tolist()
 
 print(data1)

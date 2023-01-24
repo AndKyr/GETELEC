@@ -1148,6 +1148,7 @@ class SemiconductorEmitter:
 
 
 class IVDataFitter:
+    
     parameters: dict
     initialParameters: dict
     minParameters: dict

@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import numpy as np
+import concurrent.futures
 
 data = json.loads(sys.argv[1])
 
@@ -27,7 +28,7 @@ def main():
 
     xdata = 1./np.array(data['Voltage'])
     ydata = np.log(np.array(data['Current']))
-    workFunction = float(data['Work_function'][0])
+    workFunction = np.full(ydata.shape, float(data['Work_function'][0]))
 
     xplot, xplot_th, yth, beta, radius, sigmaAeff = fit_data(xdata, ydata, workFunction, mode = "simple")
 
@@ -38,6 +39,38 @@ def main():
                 "xAxisUnit": "1 / (Local Field [V/nm])", "yAxisUnit": "Current [Amps]"}
 
     print(json.dumps(outdata))
+
+def main_beta():
+
+    xdata = 1./np.array(data['Voltage'])
+    ydata = np.log(np.array(data['Current']))
+    workFunction = np.full(ydata.shape, float(data['Work_function'][0]))
+
+    xplot = np.empty(ydata.shape)
+    xplot_th = np.empty(ydata.shape)
+    yth = np.empty(ydata.shape)
+    beta = np.empty(ydata.shape)
+    radius = np.empty(ydata.shape)
+    sigmaAeff = np.empty(ydata.shape)
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+
+        args_list = [(xdata[i], ydata[i], workFunction[i]) for i in range(len(xdata))]
+        results = [executor.submit(fit_data, *args) for args in args_list]
+
+        concurrent.futures.wait(results)
+
+        for i, result in enumerate(results):
+            xplot[i], xplot_th[i], yth[i], beta[i], radius[i], sigmaAeff[i] = result.result()
+
+    outdata = { "type": "ivCalc",
+                "xplot_mrk": xplot.tolist(), "yplot_mrk": data['Current'], \
+                "xplot_line": xplot_th.tolist(), "yplot_line": yth.tolist(), \
+                "beta": beta, "sigma_Aeff": sigmaAeff, \
+                "xAxisUnit": "1 / (Local Field [V/nm])", "yAxisUnit": "Current [Amps]"}
+
+    print(json.dumps(outdata))
+
 
 def mainWithRadius():
 
