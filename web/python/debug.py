@@ -85,13 +85,15 @@ data1 = current_density_metal_beta(field, radius, gammaMetal, wf, temp)
 
 print(data1)
 
-print(f"Now measuring performance differences...")
+# print(f"Now measuring performance differences...")
 
-average_time = timeit.timeit(lambda: current_density_metal_beta(field, radius, gammaMetal, wf, temp), number = 1000)
+# average_time = timeit.timeit(lambda: current_density_metal_beta(field, radius, gammaMetal, wf, temp), number = 1000)
 
-print("Average run time of current_density_metal_beta:", average_time / 10)
+# print("Average run time of current_density_metal_beta:", average_time / 10)
 
-average_time = timeit.timeit(lambda: current_density_metal(field, radius, gammaMetal, wf, temp), number = 1000)
+# average_time = timeit.timeit(lambda: current_density_metal(field, radius, gammaMetal, wf, temp), number = 1000)
 
-print("Average run time of current_density_metal:", average_time / 10)
+# print("Average run time of current_density_metal:", average_time / 10)
 
+#Average run time of current_density_metal_beta: 0.5402713211951777
+#Average run time of current_density_metal: 0.18813487290171907
