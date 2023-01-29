@@ -2,6 +2,7 @@ import sys
 import numpy as np
 import os
 from pathlib import Path
+import math
 
 import concurrent.futures
 
@@ -52,7 +53,45 @@ def current_density_metal_beta(field: np.array, radius: np.array, gamma: np.arra
         currentDensity = [f.result() for f in concurrent.futures.as_completed(futures)]
     return currentDensity
 
-def heat_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
+def current_density_metal_beta_optimized(field: np.array, radius: np.array, gamma: np.array, workFunction: np.array, temperature: np.array):
+    """ Calculates the current density for an numpy arrays of inputs
+        Inputs must be same length.
+        Uses chunks and multithreading
+    """
+
+    def calculate_current_density_chunk(start_index, end_index):
+
+        emitter = gt.ConductionBandEmitter()
+        current_density_chunk = np.copy(field[start_index:end_index])
+        kT = gt.Globals.BoltzmannConstant * np.array(temperature[start_index:end_index])
+        
+        for i in range(start_index, end_index):
+
+            emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
+            emitter.setParameters(getArgument(workFunction, i), getArgument(kT, i))
+            current_density_chunk[i - start_index] = emitter.currentDensity()
+
+        return current_density_chunk
+
+    currentDensity = np.copy(field)
+    max_chunk_size = 8
+    chunks = range(0, len(field), max_chunk_size)
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+
+        results = []
+
+        for i in range(len(chunks)-1):
+
+            start_index = chunks[i]
+            end_index = chunks[i+1]
+            results.append(executor.submit(calculate_current_density_chunk, start_index, end_index))
+
+        currentDensity = [r.result() for r in concurrent.futures.as_completed(results)]
+
+    return np.concatenate(currentDensity)
+
+def heat_metal_emitter(field: np.array, radius: np.array, gamma: np.array, workFunction: np.array, temperature: np.array):
     """
     Field [nm] - Electric field
     Radius [nm] - Emitter's tip radius
@@ -63,26 +102,22 @@ def heat_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
 
     For more info refer to GETELEC TABULATOR's documentation
     """
-    tab = gt.Interpolator()
+    emitter = gt.ConductionBandEmitter()
     
-    kT = gt.Globals.BoltzmannConstant * Temperature
+    kT = gt.Globals.BoltzmannConstant * np.array(temperature)
     
-    metal_emitter = gt.Metal_Emitter(tab)
-    
-    nh_metal = np.copy(Field)
+    nh_metal = np.copy(field)
 
-    for i in range(len(Field)):
-        
-        metal_emitter._emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
-        metal_emitter._emitter.Interpolate_Gammow()
+    for i in range(len(field)):
+
+        emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
+        emitter.setParameters(getArgument(workFunction, i), getArgument(kT, i))
     
-        metal_emitter.Define_Metal_Emitter_Parameters(Workfunction[i], kT[i])
-    
-        nh_metal[i] = metal_emitter.Nottingham_Heat_from_Metals()
+        nh_metal[i] = emitter.nottinghamHeat()
 
     return nh_metal
 
-def spectrum_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
+def spectrum_metal_emitter(field: np.array, radius: np.array, gamma: np.array, workFunction: np.array, temperature: np.array):
     """
     Field [nm] - Electric field
     Radius [nm] - Emitter's tip radius
@@ -94,23 +129,23 @@ def spectrum_metal_emitter(Field, Radius, Gamma, Workfunction, Temperature):
 
     For more info refer to GETELEC TABULATOR's documentation
     """
-    tab = gt.Interpolator()
-    
 
-    kT = gt.Globals.BoltzmannConstant * Temperature
-    
-    metal_emitter = gt.Metal_Emitter(tab)
-    
-    energy = np.copy(Field)
-    electron_count = np.copy(Field)
+    emitter = gt.ConductionBandEmitter()
 
-    for i in range(len(Field)):
-        metal_emitter._emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
-        metal_emitter._emitter.Interpolate_Gammow()
+    kT = gt.Globals.BoltzmannConstant * np.array(temperature)
     
-        metal_emitter.Define_Metal_Emitter_Parameters(Workfunction[i], kT[i])
+    energy = []
+    electron_count = []
+
+    for i in range(len(field)):
+
+        emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
+        emitter.setParameters(getArgument(workFunction, i), getArgument(kT, i))
     
-        energy[i], electron_count[i] = metal_emitter.Energy_Distribution_for_Metals()
+        _energy, _electron_count = emitter.totalEnergySpectrumArrays(numberOfPoints=256)
+
+        energy.append(_energy)
+        electron_count.append(_electron_count)
 
     return energy, electron_count
 

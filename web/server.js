@@ -171,11 +171,11 @@ io.sockets.on('connection', function (socket) {
 
       } else if(res){
 
-        console.log(res)
-
-        if(res.length > 1){
+        if(res.length > 0){
 
           res.forEach(el =>{
+
+            console.log(updateTimeError() + el[0])
 
             if(el[0] == "{"){
   
@@ -204,11 +204,6 @@ io.sockets.on('connection', function (socket) {
   
           })
   
-
-        } else{
-          
-          console.log(updateTime() + res);
-
         }
 
       }
