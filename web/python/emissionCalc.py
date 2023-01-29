@@ -18,10 +18,22 @@ from getelec_online import current_semiconductor_emitter, heat_semiconductor_emi
 
 from getelec_online import current_density_metal_beta
 
+def forceSameLength(data):
+
+    max_len = max([len(data[field]) for field in ['field', 'radius', 'work_function', 'temperature', 'ec', 'ef', 'eg', 'gammaMetal', 'gammaSemi', 'me', 'mp']])
+
+    for field in ['field', 'radius', 'work_function', 'temperature', 'ec', 'ef', 'eg', 'gammaMetal', 'gammaSemi', 'me', 'mp']:
+
+        while len(data[field]) < max_len:
+            
+            data[field].append(data[field][-1])
+
+    
+    return data
 
 def main():
 
-    data = json.loads(sys.argv[1])
+    data = forceSameLength(json.loads(sys.argv[1]))
 
     data1 = []
     data2 = []

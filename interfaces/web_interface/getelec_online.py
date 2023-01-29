@@ -24,7 +24,8 @@ def current_density_metal(field: np.array, radius: np.array, gamma: np.array, wo
     """ Calculates the current density for an numpy arrays of inputs
     """
 
-    emitter = gt.ConductionBandEmitter()
+    #emitter = gt.ConductionBandEmitter()
+    emitter = gt.MetalEmitter()
 
     currentDensity = np.copy(field)
     kT = gt.Globals.BoltzmannConstant * np.array(temperature)
@@ -42,7 +43,8 @@ def current_density_metal_beta(field: np.array, radius: np.array, gamma: np.arra
         Inputs must be same length
     """
 
-    emitter = gt.ConductionBandEmitter()
+    #emitter = gt.ConductionBandEmitter()
+    emitter = gt.MetalEmitter()
 
     currentDensity = np.copy(field)
     kT = gt.Globals.BoltzmannConstant * np.array(temperature)
@@ -53,7 +55,7 @@ def current_density_metal_beta(field: np.array, radius: np.array, gamma: np.arra
         currentDensity = [f.result() for f in concurrent.futures.as_completed(futures)]
     return currentDensity
 
-def current_density_metal_beta_optimized(field: np.array, radius: np.array, gamma: np.array, workFunction: np.array, temperature: np.array):
+def current_density_metal_beta_chunks(field: np.array, radius: np.array, gamma: np.array, workFunction: np.array, temperature: np.array):
     """ Calculates the current density for an numpy arrays of inputs
         Inputs must be same length.
         Uses chunks and multithreading
@@ -61,7 +63,8 @@ def current_density_metal_beta_optimized(field: np.array, radius: np.array, gamm
 
     def calculate_current_density_chunk(start_index, end_index):
 
-        emitter = gt.ConductionBandEmitter()
+        #emitter = gt.ConductionBandEmitter()
+        emitter = gt.MetalEmitter()
         current_density_chunk = np.copy(field[start_index:end_index])
         kT = gt.Globals.BoltzmannConstant * np.array(temperature[start_index:end_index])
         
@@ -130,7 +133,8 @@ def spectrum_metal_emitter(field: np.array, radius: np.array, gamma: np.array, w
     For more info refer to GETELEC TABULATOR's documentation
     """
 
-    emitter = gt.ConductionBandEmitter()
+    #emitter = gt.ConductionBandEmitter()
+    emitter = gt.MetalEmitter()
 
     kT = gt.Globals.BoltzmannConstant * np.array(temperature)
     
@@ -149,7 +153,7 @@ def spectrum_metal_emitter(field: np.array, radius: np.array, gamma: np.array, w
 
     return energy, electron_count
 
-def current_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature, me, mp):
+def current_semiconductor_emitter(field: np.array, radius: np.array, gamma: np.array, ec, ef, eg, temperature: np.array, me, mp):
     """
     Field [nm] - Electric field
     Radius [nm] - Emitter's tip radius
@@ -158,26 +162,26 @@ def current_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature,
     Ef [eV] - Fermi level
     Eg [eV] - band gap
     Temperature [K] - Emitter's temperature
-    me [kg] - electron effective mass
-    mp [kg] - hole effective mass
+    me [kg] - electron relative mass
+    mp [kg] - hole relative mass
     j_metal [A/nm^2] - Emitted current density
 
     For more info refer to GETELEC TABULATOR's documentation
     """
-    tab = gt.Interpolator()
-    
-    kT = gt.Globals.BoltzmannConstant * Temperature
 
-    semiconductor_emitter = gt.SemiconductorEmitter(tab)
+    kT = gt.Globals.BoltzmannConstant * np.array(temperature)
 
-    j_total = np.copy(Field)
-    j_c = np.copy(Field)
-    j_v = np.copy(Field)
-    m = np.ones(Field) * gt.Globals.electronMass
+    emitter = gt.SemiconductorEmitter()
 
-    for i in range(len(Field)):
+    currentDensity = np.copy(field)
 
-        semiconductor_emitter.emitter.Define_Barrier_Parameters(Field[i], Radius[i], Gamma[i])
+    for i in range(len(field)):
+
+        emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
+        emitter.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i), ec, ef, eg, getArgument(kT, i), me, mp)
+
+        emitter.currentDensity()
+
         semiconductor_emitter.emitter.Interpolate_Gammow()
 
         semiconductor_emitter.setParameters(Ec[i], Ef[i], Eg[i], kT[i], m[i], me[i], mp[i])

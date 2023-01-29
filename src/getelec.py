@@ -12,14 +12,11 @@ import scipy.special
 import matplotlib.pyplot as plt
 filePath,filename = os.path.split(os.path.realpath(__file__))
 
-
 # compile C library in case it is not available
 if (not os.path.exists(filePath + '/libintegrator.so') or os.path.getmtime(filePath + "/libintegrator.so") < os.path.getmtime(filePath + "/integrator.c") ):
     subprocess.call("gcc -c -fPIC -O3 integrator.c -o integrator.o", cwd=filePath, shell=True)
     subprocess.call("gfortran -c -fPIC -O3 dilog.f -o dilog.o", cwd=filePath, shell=True)
     subprocess.call("gcc -fPIC -shared integrator.o dilog.o -o libintegrator.so && rm *.o", cwd=filePath, shell=True)
-
-
 
 class Globals:
     """Keeps global constants and variables"""
@@ -34,7 +31,6 @@ class Globals:
 def setTabulationPath(path:str) -> None:
     """module function that sets the tabulation path where to find the tabulated barrier parameters"""
     Globals.tabulationPath = path
-
 
 class Interpolator:
     """
@@ -232,7 +228,6 @@ class Interpolator:
             interpolationCoordinates = np.array([gammaCoordinates, radiusCoordinates, fieldCoorinates, paramCoordinates])
 
         return scipy.ndimage.map_coordinates(self._gamowTable, interpolationCoordinates, order = interpolationOrder, mode='nearest')
-
 
 class Barrier(Interpolator):
 
@@ -786,7 +781,6 @@ class BandEmitter:
         return currentDensityFast, nottinghamHeatFast
 
     # endregion
-
    
 class ConductionBandEmitter(BandEmitter):
     """
@@ -903,10 +897,8 @@ class ConductionBandEmitter(BandEmitter):
         
         self.totalEnergySpectrumFunction = lambda energy : Globals.SommerfeldConstant * solution.sol(energy)[0]
         self.isTEDSpectrumCalculated = True
-    
  
     #endregion
-
 
 class ValenceBandEmitter(BandEmitter):
     """
@@ -1089,9 +1081,8 @@ class SemiconductorEmitter:
             Ef (float): fermi level (eV)
             Eg (float): band gap (eV)
             kT (float): temperature (eV)
-            m (float): free electron mass (kg)
-            me (float): effective electron mass (number)
-            mp (float): effective hole mass (number)
+            me (float): relative electron mass (number, fraction)
+            mp (float): relative hole mass (number, fraction)
         """
         
         self.barrier.setParameters(field, radius, gamma)
