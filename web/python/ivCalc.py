@@ -30,15 +30,17 @@ def main():
     ydata = np.log(np.array(data['Current']))
     workFunction = np.full(ydata.shape, float(data['Work_function'][0]))
 
-    xplot, xplot_th, yth, beta, radius, sigmaAeff = fit_data(xdata, ydata, workFunction, mode = "simple")
+    print(json.dumps(xdata.tolist()))
 
-    outdata = { "type": "ivCalc",
-                "xplot_mrk": xplot.tolist(), "yplot_mrk": data['Current'], \
-                "xplot_line": xplot_th.tolist(), "yplot_line": yth.tolist(), \
-                "beta": beta, "sigma_Aeff": sigmaAeff, \
-                "xAxisUnit": "1 / (Local Field [V/nm])", "yAxisUnit": "Current [Amps]"}
+    # xplot, xplot_th, yth, beta, radius, sigmaAeff = fit_data(xdata, ydata, workFunction, mode = "simple")
 
-    print(json.dumps(outdata))
+    # outdata = { "type": "ivCalc",
+    #             "xplot_mrk": xplot.tolist(), "yplot_mrk": data['Current'], \
+    #             "xplot_line": xplot_th.tolist(), "yplot_line": yth.tolist(), \
+    #             "beta": beta, "sigma_Aeff": sigmaAeff, \
+    #             "xAxisUnit": "1 / (Local Field [V/nm])", "yAxisUnit": "Current [Amps]"}
+
+    # print(json.dumps(outdata))
 
 def main_beta():
 

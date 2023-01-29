@@ -10,22 +10,18 @@ const bounds = {
 
 }
 
+let materialType, field, radius, workFunction, temperature,
+fieldMult, radiusMult, workFunctionMult, temperatureMult,
+calculateNH, calculateES, calculateEC, gammaMetal, gammaSemi,
+ec, ef, eg, me, mp, _field, _radius, _workFunction, _temperature,
+_ec, _ef, _eg, _me, _mp, _gammaMetal, _gammaSemi, sweepParam,
+data, chart1, chart2, chart3, _data
+
 function main(){
 
     // Connection with node.js socket.io server
 
     let socket = io();
-
-
-    //local global variables for main function
-
-    let materialType, field, radius, workFunction, temperature,
-        fieldMult, radiusMult, workFunctionMult, temperatureMult,
-        calculateNH, calculateES, calculateEC, gammaMetal, gammaSemi,
-        ec, ef, eg, me, mp, _field, _radius, _workFunction, _temperature,
-        _ec, _ef, _eg, _me, _mp, _gammaMetal, _gammaSemi, sweepParam,
-        data, chart1, chart2, chart3, _data
-    
 
     // boolean used to load charts only when users inputs data
 
@@ -336,8 +332,6 @@ function main(){
 
             let sweepingSlider = document.getElementById('sweepingSlider');
 
-            console.log(calculateEC, calculateES, calculateNH);
-
             if(calculateEC){ currentChart.hidden = false} else { currentChart.hidden = true}
             if(calculateNH){ heatChart.hidden = false} else { heatChart.hidden = true}
             if(calculateES){ spectrumChart.hidden = false; sweepingSlider.hidden = false} else { spectrumChart.hidden = true; sweepingSlider.hidden = true}
@@ -403,6 +397,8 @@ function main(){
 
         let slider = document.getElementById('myRange');
 
+        let downloadButton = document.getElementById('downloadButton');
+
         //advancedModeToggleMainDiv.hidden = true;
 
         enterButton.addEventListener("click", checkValidity);
@@ -416,6 +412,8 @@ function main(){
         
         preselectSemiPropertiesDiv.addEventListener("change", updatePreselectSemiProperties);
         enterButton.addEventListener("click", checkValidity);
+
+        downloadButton.addEventListener('click', downloadData);
 
         updatePropertiesPresets();
         
@@ -1596,7 +1594,7 @@ function main(){
     
         } else if(update == 'es'){
     
-            updateESGraph();
+            updateESGraph('dontMove');
     
         }
     
@@ -1644,8 +1642,7 @@ function main(){
     
         }
     
-        function updateESGraph(){
-    
+        function updateESGraph(dontMove){    
     
             if((data6e === undefined || data6e.length == 0)){
     
@@ -1679,7 +1676,7 @@ function main(){
     
                 updateTitle(chart3, data);
     
-                updatePoints(chart3, points);    
+                updatePoints(chart3, points, dontMove);    
     
             }
     
@@ -1790,7 +1787,7 @@ function main(){
     
             }
     
-            chart.update();
+            chart.update('none');
     
         }
     
@@ -1804,7 +1801,7 @@ function main(){
     
                     chart.options.plugins.zoom.limits.x = {min: bounds.field.min, max: bounds.field.max};
     
-                    chart.update();
+                    chart.update('none');
     
                     break;
     
@@ -1814,7 +1811,7 @@ function main(){
     
                     chart.options.plugins.zoom.limits.x = {min: bounds.radius.min, max: bounds.radius.max};
     
-                    chart.update();
+                    chart.update('none');
     
                     break;
     
@@ -1824,7 +1821,7 @@ function main(){
     
                     chart.options.plugins.zoom.limits.x = {min: bounds.workFunction.min, max: bounds.workFunction.max};
     
-                    chart.update();
+                    chart.update('none');
     
                     break;
                     
@@ -1834,14 +1831,14 @@ function main(){
     
                     chart.options.plugins.zoom.limits.x = {min: bounds.temperature.min, max: bounds.temperature.max};
     
-                    chart.update();
+                    chart.update('none');
     
                     break;
     
             }
         }
     
-        function updatePoints(chart, points){
+        function updatePoints(chart, points, dontMove){
     
             chart.data.datasets.forEach((dataset) =>{
     
@@ -1849,7 +1846,7 @@ function main(){
                 
             });
     
-            chart.update();
+            chart.update('none');
     
             if(chart.data.datasets.length > 1){
     
@@ -1883,8 +1880,9 @@ function main(){
                 })
     
             }
-    
-            chart.update();
+        
+            if(dontMove == 'dontMove'){chart.update('none')} else { chart.update()}
+
         }
          
         function updateSweepValues(){
@@ -2849,6 +2847,8 @@ function insertAfter(newNode, existingNode) {
 
 }
 
+//Returns size of object
+
 function memorySizeOf(obj) {
 
     let bytes = 0;
@@ -2916,3 +2916,57 @@ function memorySizeOf(obj) {
     return formatByteSize(sizeOf(obj));
 
 };
+
+//Download data from graphs as csv
+
+function downloadData(){
+
+    function jsonToCsv(json) {
+        let csv = "";
+    
+        // add the headers
+        let headers = Object.keys(json);
+        csv += headers.join(",") + "\n";
+    
+        // add the data
+        let values = Object.values(json);
+        for (let i = 0; i < values[0].length; i++) {
+            let row = "";
+            for (let j = 0; j < headers.length; j++) {
+                row += values[j][i] + ",";
+            }
+            row = row.slice(0, -1); // remove the last comma
+            csv += row + "\n";
+        }
+    
+        return csv;
+    }
+
+    const toSave = {
+
+        ec: _data.ec,
+        ef: _data.ef,
+        eg: _data.eg,
+        field: _data.field,
+        gammaMetal: _data.gammaMetal,
+        gammaSemi: _data.gammaSemi,
+        materialType: _data.materialType,
+        me: _data.me,
+        metalEmittedCurrent: _data.metalEC,
+        //metalElectronSpectrumElectronCount: _data.metalESelcount,
+        //metalElectronSpectrumElectronEnergy: _data.metalESenergy,
+        metalNottinghamHeat: _data.metalNottinghamHeat
+
+    }
+
+    let blob = new Blob([jsonToCsv(toSave)], { type: "text/csv" });
+    let url = window.URL.createObjectURL(blob);
+    let a = document.createElement("a");
+    a.href = url;
+    a.download = 'data.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+
+}

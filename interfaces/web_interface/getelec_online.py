@@ -264,7 +264,7 @@ def spectrum_semiconductor_emitter(Field, Radius, Gamma, Ec, Ef, Eg, Temperature
 
     return energy_c, count_c, energy_v, count_v
 
-def fit_data(xML, yML, workFunction, mode = "simple"):
+def fit_data(xML: np.array, yML, workFunction, mode = "simple"):
 
     if mode == "simple":
         gt.setTabulationPath(getelecRootPath + "/tabulated/1D_1024")
