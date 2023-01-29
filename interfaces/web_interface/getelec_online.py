@@ -9,22 +9,13 @@ getelecRootPath = str(Path(__file__).parents[2].absolute())
 sys.path.insert(0,getelecRootPath + "/src/")
 import getelec as gt
 
-def getArgument(arg, index):
-    try:
-        return(arg[index])
-    except(TypeError, IndexError) as error:
-        return arg
-
-def getArgument_beta(arg, idx):
+def getArgument(arg, idx):
 
     if isinstance(arg, (np.ndarray, list)):
-
         if idx >= len(arg):
             return arg[-1]
-
         else:
             return arg[idx]
-
     else:
         return arg
 
@@ -39,8 +30,8 @@ def current_density_metal(field: np.array, radius: np.array, gamma: np.array, wo
     
     for i in range(len(field)):
 
-        emitter.barrier.setParameters(getArgument_beta(field, i), getArgument_beta(radius, i), getArgument_beta(gamma, i))
-        emitter.setParameters(getArgument_beta(workFunction, i), getArgument_beta(kT, i))
+        emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
+        emitter.setParameters(getArgument(workFunction, i), getArgument(kT, i))
         currentDensity[i] = emitter.currentDensity()
         
     return currentDensity
@@ -56,8 +47,8 @@ def current_density_metal_beta(field: np.array, radius: np.array, gamma: np.arra
     kT = gt.Globals.BoltzmannConstant * np.array(temperature)
     
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = [executor.submit(lambda f, r, g, wf, kt: emitter.barrier.setParameters(f, r, g) or emitter.setParameters(wf, kt) or emitter.currentDensity(), getArgument_beta(field, i),
-         getArgument_beta(radius, i), getArgument_beta(gamma, i), getArgument_beta(workFunction, i), getArgument_beta(kT, i)) for i in range(len(field))]
+        futures = [executor.submit(lambda f, r, g, wf, kt: emitter.barrier.setParameters(f, r, g) or emitter.setParameters(wf, kt) or emitter.currentDensity(), getArgument(field, i),
+         getArgument(radius, i), getArgument(gamma, i), getArgument(workFunction, i), getArgument(kT, i)) for i in range(len(field))]
         currentDensity = [f.result() for f in concurrent.futures.as_completed(futures)]
     return currentDensity
 

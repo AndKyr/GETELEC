@@ -81,7 +81,7 @@ gammaMetal = data[9]
 
 calculateEC = (str(data[13][0]))[0]
 
-data1 = current_density_metal_beta(field, radius, gammaMetal, wf, temp)
+data1 = current_density_metal(field, radius, gammaMetal, wf, temp)
 
 print(data1)
 

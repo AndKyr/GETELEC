@@ -17,4 +17,6 @@ parser.add_argument("-o", "--outputFolder", help = "Output folder", required = F
 args = parser.parse_args()
 
 tab = gt.Tabulator(Nf=int(args.Nfield), Nr = int(args.Nradius), Ngamma=int(args.Ngamma), Npoly=int(args.Npolynomial), NGamow=int(args.NGamow) )
+
+print(f"Running table generation script with tablesize ${args.Nfield} ...")
 tab.tabulateGamowTable(outputFolder=args.outputFolder)
