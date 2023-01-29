@@ -322,9 +322,34 @@ function main(){
 
         }
 
+        //Hides graphs that are not to be calculated from html, displays graphs to be calculated
+
+        function hideGraphs(){
+
+            calculateEC = document.getElementById("chooseEC").checked;
+            calculateES = document.getElementById("chooseES").checked;
+            calculateNH = document.getElementById("chooseNH").checked;
+
+            let currentChart = document.getElementById('currentChart');
+            let heatChart = document.getElementById('heatChart');
+            let spectrumChart = document.getElementById('spectrumChart');
+
+            let sweepingSlider = document.getElementById('sweepingSlider');
+
+            console.log(calculateEC, calculateES, calculateNH);
+
+            if(calculateEC){ currentChart.hidden = false} else { currentChart.hidden = true}
+            if(calculateNH){ heatChart.hidden = false} else { heatChart.hidden = true}
+            if(calculateES){ spectrumChart.hidden = false; sweepingSlider.hidden = false} else { spectrumChart.hidden = true; sweepingSlider.hidden = true}
+
+
+        }
+
         //Below are functions that are ran once main is called
 
         removeErrorDivs();
+
+        hideGraphs();
     
         getValuesFromUserInputFields();
 
@@ -1518,7 +1543,7 @@ function main(){
         console.log(data);
         console.log(`Size of data: ` + memorySizeOf(data));
 
-        updateGraphs();
+        updateGraphs("all");
 
         $('#loadingModal').modal('hide');
 
@@ -1648,7 +1673,7 @@ function main(){
     
                 chart3.options.plugins.zoom.limits.x = {min: -10, max: 5};
     
-                chart3.resetZoom();
+                //chart3.resetZoom();
     
                 chart3.update();
     
