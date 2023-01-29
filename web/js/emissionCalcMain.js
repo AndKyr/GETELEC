@@ -1521,13 +1521,11 @@ function main(){
 
     //Listens for data from server. Once received, updates graphs with given data. Hides loading modal
 
-    socket.on("calculatedEmission", (data) =>{
+    socket.on("calculatedEmission", (res) =>{
 
         if(!chartsLoaded){
 
             loadCharts();
-
-            _data = data;
 
             let slider = document.getElementById('myRange');
 
@@ -1538,10 +1536,13 @@ function main(){
 
         }
 
-        console.log(data);
-        console.log(`Size of data: ` + memorySizeOf(data));
+        console.log(res);
+        console.log(`Size of data: ` + memorySizeOf(res));
 
-        updateGraphs("all");
+        data = res;
+        _data = res;
+
+        updateGraphs();
 
         $('#loadingModal').modal('hide');
 
@@ -1636,7 +1637,7 @@ function main(){
     
                 updateTitle(chart1, data);
     
-                updatePoints(chart1, points);    
+                updatePoints(chart1, points);
                 
             }
     
@@ -1881,7 +1882,7 @@ function main(){
     
             }
         
-            if(dontMove == 'dontMove'){chart.update('none')} else { chart.update()}
+            if(dontMove === 'dontMove'){chart.update('none')} else { chart.update()}
 
         }
          

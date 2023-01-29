@@ -664,8 +664,8 @@ class BandEmitter:
             self.calculateTotalEnergySpectrum()
 
         energyArray = np.linspace(self.lowEnergyLimit, self.highEnergyLimit, numberOfPoints)
-        totalEnergySpctrumArray = self.totalEnergySpectrumFunction(energyArray)
-        return energyArray, totalEnergySpctrumArray  
+        totalEnergySpectrumArray = self.totalEnergySpectrumFunction(energyArray)
+        return energyArray, totalEnergySpectrumArray
 
     def currentDensity(self, mode:str = "fast", saveIntegrand:bool = False) -> float:
         """Calculates the field emitted current density from metal surfaces
@@ -1102,7 +1102,7 @@ class SemiconductorEmitter:
         """Calculates and returns field emitted current density from semiconducting surfaces, including valence and conduction bands (if necessary)"""
         currentDensity = self.conductionEmitter.currentDensity()
 
-        if (self.conductionToValenceRatioEstimate > self.valenceRatioLimit):
+        if (self.conductionToValenceRatioEstimate() > self.valenceRatioLimit):
             currentDensity += self.valenceEmitter.currentDensity()
         
         return currentDensity
@@ -1111,7 +1111,7 @@ class SemiconductorEmitter:
         """"Calculates and returns the total Nottingham heat from semiconductor surfaces, including valence and conduction bands (if necessary)"""      
         nottinghamHeat = self.conductionEmitter.nottinghamHeat()
 
-        if (self.conductionToValenceRatioEstimate > self.valenceRatioLimit):
+        if (self.conductionToValenceRatioEstimate() > self.valenceRatioLimit):
             nottinghamHeat += self.valenceEmitter.nottinghamHeat()
         
         return nottinghamHeat
@@ -1262,7 +1262,7 @@ class IVDataFitter:
         self.fittedCurrent = self.prefactor * unshiftedCurrentCurve
 
     def getOptCurrentCurve(self, voltageData = None) -> np.ndarray:
-        if (voltageData == None):
+        if (len(voltageData) == 0):
             return self.fittedCurrent
         else:
             return self.prefactor * self.currentDensityforVoltages(voltageData)

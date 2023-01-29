@@ -13,16 +13,16 @@ emissionpath,mainfolder = os.path.split(emissionpath)
 pythonpath = emissionpath + '/interfaces/web_interface'
 sys.path.append(pythonpath)
 
-from getelec_online import current_density_metal, heat_metal_emitter, spectrum_metal_emitter
+from getelec_online import current_metal_emitter, heat_metal_emitter, spectrum_metal_emitter
 from getelec_online import current_semiconductor_emitter, heat_semiconductor_emitter, spectrum_semiconductor_emitter
 
 from getelec_online import current_density_metal_beta
 
 def forceSameLength(data):
 
-    max_len = max([len(data[field]) for field in ['field', 'radius', 'work_function', 'temperature', 'ec', 'ef', 'eg', 'gammaMetal', 'gammaSemi', 'me', 'mp']])
+    max_len = max([len(data[field]) for field in ['field', 'radius', 'work_function', 'temperature', 'gammaMetal', 'gammaSemi']])
 
-    for field in ['field', 'radius', 'work_function', 'temperature', 'ec', 'ef', 'eg', 'gammaMetal', 'gammaSemi', 'me', 'mp']:
+    for field in ['field', 'radius', 'work_function', 'temperature', 'gammaMetal', 'gammaSemi']:
 
         while len(data[field]) < max_len:
             
@@ -70,7 +70,7 @@ def main():
 
         if data['calculateEC'] == 1:
             
-            data1 = current_density_metal(data['field'], data['radius'], data['gammaMetal'], data['work_function'], data['temperature']).tolist()
+            data1 = current_metal_emitter(data['field'], data['radius'], data['gammaMetal'], data['work_function'], data['temperature']).tolist()
         
         if data['calculateNH'] == 1:
 
