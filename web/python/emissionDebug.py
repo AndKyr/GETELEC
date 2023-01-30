@@ -92,7 +92,7 @@ mp = data[12][0]
 
 calculateEC = (str(data[13][0]))[0]
 
-data = heat_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp)
+data = spectrum_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp)
 
 print(data)
 

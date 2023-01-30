@@ -663,7 +663,9 @@ class BandEmitter:
         if (not self.isTEDSpectrumCalculated):
             self.calculateTotalEnergySpectrum()
 
-        energyArray = np.linspace(self.lowEnergyLimit, self.highEnergyLimit, numberOfPoints)
+        #First point in array is removed as it is forced to be zero
+
+        energyArray = np.linspace(self.lowEnergyLimit, self.highEnergyLimit, numberOfPoints)[1:]
         totalEnergySpectrumArray = self.totalEnergySpectrumFunction(energyArray)
         return energyArray, totalEnergySpectrumArray
 
@@ -808,7 +810,7 @@ class ConductionBandEmitter(BandEmitter):
         self.fastNottinghamHeatIntegrandFunction = self.fastIntegrator.nottinghamHeatIntegrandConduction
     
     # endregion
-    def _calculateIntegrationLimits(self, decayCutoff = 10.) -> None:
+    def _calculateIntegrationLimits(self, decayCutoff = 8.) -> None:
         """Finds the limits of integration, based on the regimes described by Jensen's GTF theory (see http://dx.doi.org/10.1063/1.4940721 for details)
             The limits are saved on self.highEnergyLimit and self.lowEnergyLimit
         """
@@ -1129,8 +1131,8 @@ class SemiconductorEmitter:
         energyArrayConduction, spectrumConduction = self.conductionEmitter.totalEnergySpectrumArrays(numberOfPoints=numberOfPoints)
         energyArrayValence, spectrumValence = self.valenceEmitter.totalEnergySpectrumArrays(numberOfPoints=numberOfPoints)
 
-        energyArray = np.concatenate(energyArrayValence, energyArrayConduction)
-        spectrumArray = np.concatenate(spectrumValence, spectrumConduction)
+        energyArray = np.concatenate((energyArrayValence, energyArrayConduction))
+        spectrumArray = np.concatenate((spectrumValence, spectrumConduction))
         return energyArray, spectrumArray  
         
 

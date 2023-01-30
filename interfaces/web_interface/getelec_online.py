@@ -90,7 +90,7 @@ def spectrum_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndar
         emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
         emitter.setParameters(getArgument(workFunction, i), getArgument(kT, i))
     
-        _energy, _electron_count = emitter.totalEnergySpectrumArrays(numberOfPoints=256)
+        _energy, _electron_count = emitter.totalEnergySpectrumArrays(numberOfPoints=257)
 
         energy.append(_energy)
         electron_count.append(_electron_count)
@@ -182,8 +182,13 @@ def spectrum_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma:
 
     emitter = gt.SemiconductorEmitter()
 
+
+    #list of arrays
+
     energy = []
     electron_count = []
+
+
 
     for i in range(len(field)):
 
@@ -193,7 +198,7 @@ def spectrum_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma:
         _energy, _electron_count = emitter.totalEnergyDistribution()
 
         energy.append(_energy)
-        energy.append(_electron_count)
+        electron_count.append(_electron_count)
 
     return energy, electron_count
 
