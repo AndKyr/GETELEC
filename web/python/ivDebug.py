@@ -42,4 +42,5 @@ def main():
     print(json.dumps(outdata))
 
 
-main()
+if __name__ == "__main__":
+    main()
