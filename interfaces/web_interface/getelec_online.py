@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import math
 
-import concurrent.futures
+from multiprocessing import Pool
 
 getelecRootPath = str(Path(__file__).parents[2].absolute())
 sys.path.insert(0,getelecRootPath + "/src/")
@@ -232,63 +232,26 @@ def fit_data(xML: np.array, yML, workFunction, mode = "simple"):
 
 #EXPERIMENTAL
 
-def current_density_metal_beta(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, workFunction: np.ndarray, temperature: np.ndarray):
-    """ Calculates the current density for an numpy arrays of inputs
-        Inputs must be same length
+def metal_emitter_worker(input_list):
+    """ Worker function for calculating current density of a single element from the field array
     """
 
-    #emitter = gt.ConductionBandEmitter()
-    emitter = gt.MetalEmitter()
+    field, radius, gamma, workFunction, temperature = input_list
 
-    currentDensity = np.copy(field)
+    emitter = gt.MetalEmitter()
     kT = gt.Globals.BoltzmannConstant * np.array(temperature)
-    
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = [executor.submit(lambda f, r, g, wf, kt: emitter.barrier.setParameters(f, r, g) or emitter.setParameters(wf, kt) or emitter.currentDensity(), getArgument(field, i),
-         getArgument(radius, i), getArgument(gamma, i), getArgument(workFunction, i), getArgument(kT, i)) for i in range(len(field))]
-        currentDensity = [f.result() for f in concurrent.futures.as_completed(futures)]
+
+    emitter.barrier.setParameters(field, radius, gamma)
+    emitter.setParameters(workFunction, kT)
+    currentDensity = emitter.currentDensity()
+
     return currentDensity
 
-def current_density_metal_beta_chunks(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, workFunction: np.ndarray, temperature: np.array):
+def current_metal_emitter_threaded(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, workFunction: np.ndarray, temperature: np.ndarray, threads = 8):
     """ Calculates the current density for an numpy arrays of inputs
-        Inputs must be same length.
-        Uses chunks and multithreading
+        Uses multithreading via Pool
     """
-
-    def calculate_current_density_chunk(start_index, end_index):
-
-        #emitter = gt.ConductionBandEmitter()
-        emitter = gt.MetalEmitter()
-        current_density_chunk = np.copy(field[start_index:end_index])
-        kT = gt.Globals.BoltzmannConstant * np.array(temperature[start_index:end_index])
-        
-        for i in range(start_index, end_index):
-
-            emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
-            emitter.setParameters(getArgument(workFunction, i), getArgument(kT, i))
-            current_density_chunk[i - start_index] = emitter.currentDensity()
-
-        return current_density_chunk
-
-    currentDensity = np.copy(field)
-    max_chunk_size = 8
-    chunks = range(0, len(field), max_chunk_size)
-
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-
-        results = []
-
-        for i in range(len(chunks)-1):
-
-            start_index = chunks[i]
-            end_index = chunks[i+1]
-            results.append(executor.submit(calculate_current_density_chunk, start_index, end_index))
-
-        currentDensity = [r.result() for r in concurrent.futures.as_completed(results)]
-
-    return np.concatenate(currentDensity)
-
-
-#field = np.linspace(3., 6., 32)
-
-#print(current_density_metal(field, 100., 10., 4.5, 300.))
+    with Pool(processes=threads) as process_pool:
+        input_list = [(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i), getArgument(workFunction, i), getArgument(temperature, i)) for i in range(len(field))]
+        results = process_pool.map(metal_emitter_worker, input_list)
+    return results
