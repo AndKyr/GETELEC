@@ -1139,7 +1139,6 @@ class SemiconductorEmitter:
     # endregiondata
 
 
-
 class IVDataFitter:
     
     parameters: dict
@@ -1268,9 +1267,6 @@ class IVDataFitter:
             return self.fittedCurrent
         else:
             return self.prefactor * self.currentDensityforVoltages(voltageData)
-
-
-
 
 
 def currentDensityMetalforArrays(field:np.ndarray, radius:np.ndarray, gamma:np.ndarray, \
