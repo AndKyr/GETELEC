@@ -16,7 +16,6 @@ sys.path.append(pythonpath)
 from getelec_online import current_metal_emitter, heat_metal_emitter, spectrum_metal_emitter
 from getelec_online import current_semiconductor_emitter, heat_semiconductor_emitter, spectrum_semiconductor_emitter
 
-from getelec_online import current_density_metal_beta
 
 def forceSameLength(data):
 

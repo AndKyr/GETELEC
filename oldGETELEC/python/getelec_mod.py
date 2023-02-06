@@ -18,6 +18,9 @@ import warnings
 from io import StringIO 
 import sys
 
+import threading
+import cProfile
+
 pythonpath,filename = os.path.split(os.path.realpath(__file__))
 emissionpath,pythonfolder = os.path.split(pythonpath)
 libpath = emissionpath + '/lib/libgetelec.so'
@@ -328,6 +331,68 @@ class Tabulator():
         np.save(outputFolder + "/tabLimits.npy", np.array([min(self.inverseFieldValues), max(self.inverseFieldValues), \
                 min(self.inverseRadiusValues), max(self.inverseRadiusValues), min(self.inverseGammaValues), max(self.inverseGammaValues)]))
         
+    def tabulateGamowTable_worker(self, gamma_count, radius_count, field_count_splitted, numberOfGammowValues, G, numberOfPolynomialTerms, thread):
+
+        for gamma_idx in gamma_count:
+            for radius_idx in radius_count:
+                for field_idx in field_count_splitted[thread]:
+
+                    field = 1 / self.inverseFieldValues[field_idx]
+                    radius = 1 / self.inverseRadiusValues[radius_idx]
+                    gamma = 1 / self.inverseGammaValues[gamma_idx]
+
+                    minimumBarrierDepth = np.array([1.])
+                    maximumBarrierDepth = np.copy(minimumBarrierDepth)
+
+                    getelec.export_gamow_for_energy_range(ct.c_double(field), ct.c_double(radius), ct.c_double(gamma), ct.c_int(numberOfGammowValues), ct.c_void_p(minimumBarrierDepth.ctypes.data), ct.c_void_p(maximumBarrierDepth.ctypes.data), ct.c_void_p(G.ctypes.data))
+
+                    barrierDepths = np.linspace(minimumBarrierDepth[0], maximumBarrierDepth[0], self.numberOfGammowValues)
+
+                    try:
+                        fittedPolynomialCoefficients = np.polyfit(barrierDepths, G, numberOfPolynomialTerms - 1)
+                    except(np.RankWarning):
+                        print("Rank Warning for F = %g, R = %g, gamma = %g" % (field, radius, gamma))
+                        plt.plot(barrierDepths, G)
+                        plt.show()
+
+                    self.gamowTable[gamma_idx, radius_idx, field_idx, :] = np.append(fittedPolynomialCoefficients, [barrierDepths[0], barrierDepths[-1]])   
+
+
+    def tabulateGamowTable_threaded(self, outputFolder = 'tabulated', threads = 8):
+
+        """
+            Buggy...
+            Works by splitting field array into n parts
+        """
+
+        self.gamowTable = np.ones([self.numberOfGammaValues, self.numberOfRadiusValues, self.numberOfFieldValues, self.numberOfPolynomialTerms + 2])
+
+        gamma_count = range(self.numberOfGammaValues)
+        radius_count = range(self.numberOfRadiusValues)
+        field_count = range(self.numberOfFieldValues)
+
+        field_count_splitted = np.array_split(field_count, threads)
+
+        G = np.zeros(self.numberOfGammowValues)
+
+        _threads = []
+
+        for thread in range(threads):
+
+            thread = threading.Thread(target=self.tabulateGamowTable_worker, args=(gamma_count, radius_count, field_count_splitted, self.numberOfGammowValues, G, self.numberOfPolynomialTerms, thread))
+            
+            _threads.append(thread)
+            thread.start()
+        
+        for thread in _threads:
+            thread.join()
+
+    
+        #np.save(outputFolder + "/GamowTable", self.gamowTable)
+
+        #np.save(outputFolder + "/tabLimits.npy", np.array([min(self.inverseFieldValues), max(self.inverseFieldValues), min(self.inverseRadiusValues), max(self.inverseRadiusValues), min(self.inverseGammaValues), max(self.inverseGammaValues)]))
+
+
     def load(self):
         try:
             self.Jmesh = np.load("tabulated/current_density_table.npy")
@@ -700,11 +765,3 @@ def thetaroots(z):
 def J_ChildL(V,beta):
     kappa = 1.904e5
     return (4./9) * beta**2 * V**1.5 / kappa
-    
-    
-        
-
-
-
-
-    
