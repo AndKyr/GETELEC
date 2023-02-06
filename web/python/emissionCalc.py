@@ -132,5 +132,4 @@ def main():
 
     print(json.dumps(outdata))
 
-
 main()

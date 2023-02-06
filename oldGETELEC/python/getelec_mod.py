@@ -1,5 +1,5 @@
 """This module provides with all the interfcace classes and functions to call
-GETELEC software from python and perform electron emissino calculations"""
+GETELEC software from python and perform electron emission calculations"""
 
 
 import ctypes as ct
@@ -176,7 +176,6 @@ def emission_create(F = 5., W = 4.5, R = 5000., gamma = 1., Temp = 300., \
     return this
 
 
-
 def calc_json(json_str):
     """Creates an Emission class object and calculates everyting. 
     from json imput object."""
@@ -228,9 +227,8 @@ def calc_json(json_str):
                 'regime': this.regime, 'sharpness': this.sharp, \
                 'Ierror': this.ierr}
     return json.dumps(outdata)
-    
 
-    
+
 class Tabulator():
     
     def __init__(self, emitter = emission_create(), Nf = 256, Nr = 128, Ngamma = 1, Npoly = 4, NGamow = 256):
@@ -618,8 +616,6 @@ class MultiEmitter():
         print ("betas = %.3g +- %.3g"%(np.mean(self.betas),np.std(self.betas)))
         print ("maxbeta = %g"%(np.max(self.betas)))
         
-        
-
 
 def emit (F = 5., W = 4.5, R = 5., gamma = 10., Temp = 300., verbose = False):
     """Calculate the current density and the Nottingham heating for specific set
