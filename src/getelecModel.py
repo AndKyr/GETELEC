@@ -16,8 +16,19 @@ import numpy as np
 import copy
 import json
 import inspect
+import xgboost as xgb
 
-from getelec import MetalEmitter, SemiconductorEmitter, IVDataFitter, BandEmitter
+from getelec import MetalEmitter, SemiconductorEmitter, IVDataFitter, BandEmitter, Globals
+
+def getArgument(arg, idx):
+
+    if isinstance(arg, (np.ndarray, list)):
+        if idx >= len(arg):
+            return arg[-1]
+        else:
+            return arg[idx]
+    else:
+        return arg
 
 class GETELECModel():
 
@@ -30,19 +41,30 @@ class GETELECModel():
         gamma: Optional[np.ndarray] = None,
         work_function: Optional[np.ndarray] = None,
         temperature: Optional[np.ndarray] = None,
-        emitter_object: Optional[BandEmitter] = None,
+        emitter: Optional[BandEmitter] = None,
         **kwargs: Any
 
     ) -> None:
 
-        """
-        Param emitter_type: Type of emitter, "metal" or "semiconductor"
-        Param field: NumPy array of field values, V/nm
-        Param radius: NumPy array of radius values, nm
-        Param gamma: NumPy array of gamma values,  dimensionless
-        Param work_function: NumPy array of work function values, eV
-        Param temperature: NumPy array of temperature values, K
-        Param emitter_object: Object of the emitter, MetalEmitter or SemiconductorEmitter or BandEmitter
+        """Create GETELEC model.
+
+        Parameters
+        ----------
+
+        emitter_type:
+            Type of emitter, "metal" or "semiconductor"
+        field:
+            NumPy array of field values, V/nm
+        radius:
+            NumPy array of radius values, nm
+        gamma:
+            NumPy array of gamma values,  dimensionless
+        work_function:
+            NumPy array of work function values, eV
+        temperature:
+            NumPy array of temperature values, K
+        emitter:
+            Object of the emitter, MetalEmitter or SemiconductorEmitter or BandEmitter
         """
 
         self.emitter_type = emitter_type
@@ -51,7 +73,11 @@ class GETELECModel():
         self.gamma = gamma
         self.work_function = work_function
         self.temperature = temperature
-        self.emitter_object = emitter_object
+        self.emitter = emitter
+
+        self.emitted_current_density = None
+        self.nottigham_heat = None
+        self.electron_spectrum = None
 
         if kwargs:
             self.kwargs = kwargs
@@ -75,7 +101,15 @@ class GETELECModel():
 
     @classmethod
     def _get_param_names(cls):
-        """Get parameter names for the estimator"""
+        """
+        Get parameter names for the estimator
+
+        Returns
+        -------
+        params: dict
+            Sorted parameter names
+        """
+
         init = getattr(cls.__init__, "deprecated_original", cls.__init__)
         if init is object.__init__:
             return []
@@ -109,6 +143,7 @@ class GETELECModel():
 
     def set_params(self, **params: Any) -> "GETELECModel":
         """Set the parameters of this estimator.
+
         Returns
         -------
         self
@@ -134,68 +169,137 @@ class GETELECModel():
     def load_model():
         return
 
-    def nottingham_heat(self):
+    def get_nottingham_heat(self):
+
+        """Calculate Nottigham heat from the emitter
+        
+        Returns numpy array of Nottigham heat values
+        """
 
         if(self.emitter_type == 'metal'):
 
-            MetalEmitter
-
-            return
+            return self._nottingham_heat_metal()
 
         if(self.emitter_type == 'semiconductor'):
 
-            SemiconductorEmitter
-
-            return
+            return self._nottingham_heat_semiconductor()
 
         raise ValueError("emitter_type has to be 'metal' or 'semiconductor'")
     
-    def emitted_current(self):
+    def get_emitted_current_density(self):
 
-        if(self.emitter_type == 'metal'):
+        """Calculate emitted current density from the emitter.
 
-            MetalEmitter
+        Returns numpy array of emitted currents (electrons / area * time)
+        
+        """
 
-            return
+        if(self.emitter_type == 'metal'): 
 
-        if(self.emitter_type == 'semiconductor'):
-
-            SemiconductorEmitter
-
-            return
-
-        raise ValueError("emitter_type has to be 'metal' or 'semiconductor'")
-
-    def electron_spectrum(self):
-
-        if(self.emitter_type == 'metal'):
-
-            MetalEmitter
-
-            return
+            return self._emitted_current_density_metal().emitted_current_density
 
         if(self.emitter_type == 'semiconductor'):
 
-            SemiconductorEmitter
-
-            return
+            return self._emitted_current_density_semiconductor()
 
         raise ValueError("emitter_type has to be 'metal' or 'semiconductor'")
+
+    def get_electron_spectrum(self):
+
+        """Calculate electron spectrum from the emitter
+        
+        Returns
+        
+        """
+
+        if(self.emitter_type == 'metal'):
+
+            return self._electron_spectrum_metal()
+
+        if(self.emitter_type == 'semiconductor'):
+
+            return self._electron_spectrum_semiconductor()
+
+        raise ValueError("emitter_type has to be 'metal' or 'semiconductor'")
+
+    def _nottingham_heat_metal(self):
+        """Calculate Nottingham heat for metals
+
+        Returns self
+        """
+
+    
+    def _nottingham_heat_semiconductor(self):
+        """Calculate Nottingham heat for semiconductors
+        
+        Returns self
+        """
+
+        return
+    
+    def _emitted_current_density_metal(self):
+        """Calculate emitted current for metals
+        
+        Returns self
+        """
+
+        self.emitter = MetalEmitter()
+        kT = Globals.BoltzmannConstant * self.temperature
+        emitted_current_density = np.copy(self.field)
+
+        for i in range(len(emitted_current_density)):
+
+            self.emitter.barrier.setParameters(getArgument(self.field, i), getArgument(self.radius, i), getArgument(self.gamma, i))
+            self.emitter.setParameters(getArgument(self.work_function, i), getArgument(kT, i))
+            emitted_current_density[i] = self.emitter.currentDensity()
+
+        self.emitted_current_density = emitted_current_density
+
+        return self
+
+    def _emitted_current_density_semiconductor(self):
+        """Calculate emitted current for semiconductors
+        
+        Returns self
+        """
+
+        return
+
+    def _electron_spectrum_metal(self):
+        """Calculate electron spectrum for metals
+        
+        Returns self
+        """
+
+        return
+
+    def _electron_spectrum_semiconductor(self):
+        """Calculate electron spectrum for semiconductors
+        
+        Returns self
+        """
+
+        return
 
 #########################
 
 
 
 
-
-
-
-
 model = GETELECModel()
 
-model.set_params(emitter='metal')
+field = np.full(5, 8)
+radius = np.full(5, 50)
+gamma = np.full(5, 10)
+work_function = np.full(5, 4)
+temperature = np.full(5, 300)
 
-model.get_params()
+model.set_params(emitter_type='metal', field = field, radius = radius, gamma = gamma, work_function = work_function, temperature = temperature)
 
-current = model.emitted_current()
+print(model.get_params())
+
+current = model.get_emitted_current_density()
+
+print(current)
+
 
