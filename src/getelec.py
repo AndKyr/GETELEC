@@ -1269,7 +1269,11 @@ class IVDataFitter:
             return self.prefactor * self.currentDensityforVoltages(voltageData)
 
 
-def currentDensityMetalforArrays(field:np.ndarray, radius:np.ndarray, gamma:np.ndarray, \
+
+
+
+
+def OLDcurrentDensityMetalforArrays(field:np.ndarray, radius:np.ndarray, gamma:np.ndarray, \
     workFunction:np.ndarray, temperature:np.ndarray, emitter = None):
     """ Calculates the current density for an array of inputs 
     """
@@ -1286,7 +1290,7 @@ def currentDensityMetalforArrays(field:np.ndarray, radius:np.ndarray, gamma:np.n
         
     return currentDensity
 
-def heat_metal_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.ndarray, Workfunction:np.ndarray, Temperature:np.ndarray):
+def OLDheat_metal_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.ndarray, Workfunction:np.ndarray, Temperature:np.ndarray):
     
     kBoltz = 8.6173324e-5 
     kT = kBoltz * Temperature
@@ -1305,7 +1309,7 @@ def heat_metal_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.ndarray, Wo
 
     return nh_metal
 
-def heat_metal_emitter2(Field:np.ndarray, Radius:np.ndarray, Gamma:np.ndarray, Workfunction:np.ndarray, Temperature:np.ndarray):
+def OLDheat_metal_emitter2(Field:np.ndarray, Radius:np.ndarray, Gamma:np.ndarray, Workfunction:np.ndarray, Temperature:np.ndarray):
 
     kBoltz = 8.6173324e-5 
     kT = kBoltz * Temperature
@@ -1324,7 +1328,7 @@ def heat_metal_emitter2(Field:np.ndarray, Radius:np.ndarray, Gamma:np.ndarray, W
 
     return nh_metal
 
-def current_semiconductor_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.ndarray ,Ec:np.ndarray, Ef:np.ndarray, Eg:np.ndarray, Temperature:np.ndarray):
+def OLDcurrent_semiconductor_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.ndarray ,Ec:np.ndarray, Ef:np.ndarray, Eg:np.ndarray, Temperature:np.ndarray):
 
     kBoltz = 8.6173324e-5 
 
@@ -1370,7 +1374,7 @@ def current_semiconductor_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.
     
     return j_total
 
-def heat_semiconductor_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.ndarray ,Ec:np.ndarray, Ef:np.ndarray, Eg:np.ndarray, Temperature:np.ndarray):
+def OLDheat_semiconductor_emitter(Field:np.ndarray, Radius:np.ndarray, Gamma:np.ndarray ,Ec:np.ndarray, Ef:np.ndarray, Eg:np.ndarray, Temperature:np.ndarray):
     
     kBoltz = 8.6173324e-5 
     kT = kBoltz * Temperature
