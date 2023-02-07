@@ -36,11 +36,11 @@ class GETELECModel():
 
         self,
         emitter_type: Optional[str] = None,
-        field: Optional[np.ndarray] = None,
-        radius: Optional[np.ndarray] = None,
-        gamma: Optional[np.ndarray] = None,
-        work_function: Optional[np.ndarray] = None,
-        temperature: Optional[np.ndarray] = None,
+        field: Optional[Union[np.ndarray, List[float], Tuple[float]]] = None,
+        radius: Optional[Union[np.ndarray, List[float], Tuple[float]]] = None,
+        gamma: Optional[Union[np.ndarray, List[float], Tuple[float]]] = None,
+        work_function: Optional[Union[np.ndarray, List[float], Tuple[float]]] = None,
+        temperature: Optional[Union[np.ndarray, List[float], Tuple[float]]] = None,
         emitter: Optional[BandEmitter] = None,
         **kwargs: Any
 
@@ -54,15 +54,15 @@ class GETELECModel():
         emitter_type:
             Type of emitter, "metal" or "semiconductor"
         field:
-            NumPy array of field values, V/nm
+            NumPy array of field float values, V/nm
         radius:
-            NumPy array of radius values, nm
+            NumPy array of radius float values, nm
         gamma:
-            NumPy array of gamma values,  dimensionless
+            NumPy array of gamma float values,  dimensionless
         work_function:
-            NumPy array of work function values, eV
+            NumPy array of work function float values, eV
         temperature:
-            NumPy array of temperature values, K
+            NumPy array of temperature float values, K
         emitter:
             Object of the emitter, MetalEmitter or SemiconductorEmitter or BandEmitter
         """
@@ -74,10 +74,6 @@ class GETELECModel():
         self.work_function = work_function
         self.temperature = temperature
         self.emitter = emitter
-
-        self.emitted_current_density = None
-        self.nottigham_heat = None
-        self.electron_spectrum = None
 
         if kwargs:
             self.kwargs = kwargs
@@ -196,7 +192,7 @@ class GETELECModel():
 
         if(self.emitter_type == 'metal'): 
 
-            return self._emitted_current_density_metal().emitted_current_density
+            return self._emitted_current_density_metal()
 
         if(self.emitter_type == 'semiconductor'):
 
@@ -227,7 +223,6 @@ class GETELECModel():
 
         Returns self
         """
-
     
     def _nottingham_heat_semiconductor(self):
         """Calculate Nottingham heat for semiconductors
@@ -240,22 +235,22 @@ class GETELECModel():
     def _emitted_current_density_metal(self):
         """Calculate emitted current for metals
         
-        Returns self
+        Returns emitted current density array
         """
 
         self.emitter = MetalEmitter()
         kT = Globals.BoltzmannConstant * self.temperature
-        emitted_current_density = np.copy(self.field)
 
-        for i in range(len(emitted_current_density)):
+        _emitted_current_density = np.copy(self.field, )
+
+        for i in range(len(_emitted_current_density)):
 
             self.emitter.barrier.setParameters(getArgument(self.field, i), getArgument(self.radius, i), getArgument(self.gamma, i))
             self.emitter.setParameters(getArgument(self.work_function, i), getArgument(kT, i))
-            emitted_current_density[i] = self.emitter.currentDensity()
 
-        self.emitted_current_density = emitted_current_density
+            _emitted_current_density[i] = self.emitter.currentDensity()
 
-        return self
+        return _emitted_current_density
 
     def _emitted_current_density_semiconductor(self):
         """Calculate emitted current for semiconductors
@@ -288,7 +283,7 @@ class GETELECModel():
 
 model = GETELECModel()
 
-field = np.full(5, 8)
+field = np.array([1, 2, 3, 4, 5])
 radius = np.full(5, 50)
 gamma = np.full(5, 10)
 work_function = np.full(5, 4)
