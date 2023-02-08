@@ -1270,9 +1270,6 @@ class IVDataFitter:
 
 
 
-
-
-
 def OLDcurrentDensityMetalforArrays(field:np.ndarray, radius:np.ndarray, gamma:np.ndarray, \
     workFunction:np.ndarray, temperature:np.ndarray, emitter = None):
     """ Calculates the current density for an array of inputs 

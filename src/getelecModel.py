@@ -34,6 +34,7 @@ class GETELECModel():
         eg: Optional[float] = None,
         me: Optional[float] = None,
         mp: Optional[float] = None,
+        electron_spectrum_count: Optional[int] = None,
 
         **kwargs: Any
 
@@ -65,11 +66,13 @@ class GETELECModel():
         Ef:
             Fermi level, [eV]
         Eg:
-            Ban gap, [eV]
+            Band gap, [eV]
         me:
             effective electron mass, fraction m/me
         mp:
             effective hole mass, fraction m/me
+        electron_spectrum_count:
+            Number of spectras to create, int
         """
 
         self.emitter_type = emitter_type
@@ -84,9 +87,12 @@ class GETELECModel():
         self.me = me
         self.mp = mp
 
+        self.electron_spectrum_count = electron_spectrum_count
+
         self.emitted_current_density = None
         self.nottingham_heat = None
         self.electron_spectrum = None
+        
 
         if(emitter == None):
             if(emitter_type != None):
@@ -245,17 +251,21 @@ class GETELECModel():
 
         """Calculate electron spectrum from the emitter
         
-        Returns
+        Returns dictionary of numpy arrays (energy, electron_count)
         
         """
 
         if(self.emitter_type == 'metal'):
 
-            return self._electron_spectrum_metal()
+            _energy, _electron_count = self._electron_spectrum_metal().electron_spectrum
+
+            return {'energy': _energy, 'electron_count': _electron_count}
 
         if(self.emitter_type == 'semiconductor'):
 
-            return self._electron_spectrum_semiconductor()
+            _energy, _electron_count = self._electron_spectrum_semiconductor().electron_spectrum
+
+            return {'energy': _energy, 'electron_count': _electron_count}
 
         raise ValueError("emitter_type has to be 'metal' or 'semiconductor'")
 
@@ -295,6 +305,7 @@ class GETELECModel():
 
             _nottingham_heat[i] = self.emitter.nottinghamHeat()
 
+        self.nottingham_heat = _nottingham_heat
 
         return self
     
@@ -303,6 +314,8 @@ class GETELECModel():
         
         Returns self
         """
+
+        
         kT = Globals.BoltzmannConstant * self.temperature
 
         _emitted_current_density = np.array(self.field, dtype=float)
@@ -343,8 +356,24 @@ class GETELECModel():
         
         Returns self
         """
+        kT = Globals.BoltzmannConstant * np.array(self.temperature, dtype=float)
 
-        return
+        energy = []
+        electron_count = []
+
+        for i in range(len(self.field)):
+
+            self.emitter.barrier.setParameters(getArgument(self.field, i), getArgument(self.radius, i), getArgument(self.gamma, i))
+            self.emitter.setParameters(getArgument(self.work_function, i), getArgument(kT, i))
+
+            _energy, _electron_count = self.emitter.totalEnergySpectrumArrays(self.electron_spectrum_count)
+
+            energy.append(_energy)
+            electron_count.append(_electron_count)
+
+        self.electron_spectrum = (energy, electron_count)
+
+        return self
 
     def _electron_spectrum_semiconductor(self):
         """Calculate electron spectrum for semiconductors
@@ -352,12 +381,28 @@ class GETELECModel():
         Returns self
         """
 
-        return
+        kT = Globals.BoltzmannConstant * np.array(self.temperature, dtype=float)
+
+        energy = []
+        electron_count = []
+
+        for i in range(len(self.field)):
+
+            self.emitter.barrier.setParameters(getArgument(self.field, i), getArgument(self.radius, i), getArgument(self.gamma, i))
+            self.emitter.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i), self.ec, self.ef, self.eg, getArgument(kT, i), self.me, self.mp)
+
+            _energy, _electron_count = self.emitter.totalEnergyDistribution(self.electron_spectrum_count)
+
+            energy.append(_energy)
+            electron_count.append(_electron_count)
+
+        self.electron_spectrum = (energy, electron_count)
+
+        return self
 
 #########################
 
-
-if(__name__ == "__main__"):
+if(__name__ == '__main__'):
 
     model = GETELECModel()
 
@@ -367,14 +412,19 @@ if(__name__ == "__main__"):
     work_function = np.full(5, 4)
     temperature = np.full(5, 300)
 
-    model.set_params(emitter_type='metal', field = field, radius = radius, gamma = gamma, work_function = work_function, temperature = temperature)
+    ec = 4.05
+    ef = 4.61
+    eg = 1.12
+    me = 0.7
+    mp = 0.5
+
+
+    model.set_params(emitter_type='semiconductor', field = field, radius = radius, gamma = gamma, temperature = temperature, ec = ec, ef = ef, eg = eg, me = me, mp = mp, electron_spectrum_points = 4)
 
     print(model.get_params())
 
-    current = model.get_emitted_current_density()
+    res = model.get_electron_spectrum()
 
-    print(current)
-
-    print(dir(model.get_params()['emitter']))
+    print(res)
 
 
