@@ -8,35 +8,7 @@ from multiprocessing import Pool
 
 getelecRootPath = str(Path(__file__).parents[2].absolute())
 sys.path.insert(0,getelecRootPath + "/src/")
-
 import getelec as gt
-from getelecModel import GETELECModel
-
-def current_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, work_function: np.ndarray, temperature: np.ndarray):
-
-    model = GETELECModel(emitter_type='metal', field=field, radius=radius, gamma=gamma, work_function=work_function, temperature=temperature)
-
-    return model.get_emitted_current_density()
-
-def current_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, ec: float, ef:float, eg: float, temperature: np.ndarray, me: float, mp: float):
-
-    model = GETELECModel(emitter_type='semiconductor', field=field, radius=radius, gamma=gamma, ec=ec, ef=ef, eg=eg, temperature=temperature, me=me, mp=mp)
-
-    return model.get_emitted_current_density()
-
-def heat_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, work_function: np.ndarray, temperature: np.ndarray):
-
-    model = GETELECModel(emitter_type='metal', field=field, radius=radius, gamma=gamma, work_function=work_function, temperature=temperature)
-
-    return model.get_nottingham_heat()
-
-def heat_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, ec: float, ef:float, eg: float, temperature: np.ndarray, me: float, mp: float):
-
-    model = GETELECModel(emitter_type='semiconductor', field=field, radius=radius, gamma=gamma, ec=ec, ef=ef, eg=eg, temperature=temperature, me=me, mp=mp)
-    
-    return model.get_nottingham_heat()
-
-###CODE BELOW NEEDS UPDATING USES OLD STUFF
 
 def getArgument(arg, idx):
 
@@ -48,6 +20,49 @@ def getArgument(arg, idx):
     else:
         return arg
 
+def current_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, workFunction: np.ndarray, temperature: np.ndarray):
+    """ Calculates the current density for an numpy arrays of inputs
+    """
+
+    #emitter = gt.ConductionBandEmitter()
+    emitter = gt.MetalEmitter()
+
+    currentDensity = np.copy(field)
+    kT = gt.Globals.BoltzmannConstant * np.array(temperature)
+    
+    for i in range(len(field)):
+
+        emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
+        emitter.setParameters(getArgument(workFunction, i), getArgument(kT, i))
+        currentDensity[i] = emitter.currentDensity()
+        
+    return currentDensity
+
+def heat_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, workFunction: np.ndarray, temperature: np.ndarray):
+    """
+    Field [nm] - Electric field
+    Radius [nm] - Emitter's tip radius
+    Gamma [int] - Math parameter
+    Workfunction [eV] - Material's workfunction
+    Temperature [K] - Emitter's temperature
+    nh_metal [W/nm^2] - Deposited Nottigham heat
+
+    For more info refer to GETELEC TABULATOR's documentation
+    """
+    emitter = gt.ConductionBandEmitter()
+    
+    kT = gt.Globals.BoltzmannConstant * np.array(temperature)
+    
+    nh_metal = np.copy(field)
+
+    for i in range(len(field)):
+
+        emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
+        emitter.setParameters(getArgument(workFunction, i), getArgument(kT, i))
+    
+        nh_metal[i] = emitter.nottinghamHeat()
+
+    return nh_metal
 
 def spectrum_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, workFunction: np.ndarray, temperature: np.ndarray):
     """
@@ -81,6 +96,68 @@ def spectrum_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndar
         electron_count.append(_electron_count)
 
     return energy, electron_count
+
+def current_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, ec: float, ef:float, eg: float, temperature: np.ndarray, me: float, mp: float):
+    """
+    Field [nm] - Electric field
+    Radius [nm] - Emitter's tip radius
+    Gamma [int] - Math parameter
+    Ec [eV] - Bottom of the conduction band
+    Ef [eV] - Fermi level
+    Eg [eV] - band gap
+    Temperature [K] - Emitter's temperature
+    me [kg] - electron relative mass
+    mp [kg] - hole relative mass
+    j_metal [A/nm^2] - Emitted current density
+
+    For more info refer to GETELEC TABULATOR's documentation
+    """
+
+    kT = gt.Globals.BoltzmannConstant * np.array(temperature)
+
+    emitter = gt.SemiconductorEmitter()
+
+    currentDensity = np.copy(field)
+
+    for i in range(len(field)):
+
+        emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
+        emitter.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i), ec, ef, eg, getArgument(kT, i), me, mp)
+
+        currentDensity[i] = emitter.currentDensity()
+
+    return currentDensity
+
+def heat_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, ec: float, ef:float, eg: float, temperature: np.ndarray, me: float, mp: float):
+    """
+    Field [nm] - Electric field
+    Radius [nm] - Emitter's tip radius
+    Gamma [int] - Math parameter
+    Ec [eV] - Bottom of the conduction band
+    Ef [eV] - Fermi level
+    Eg [eV] - band gap
+    Temperature [K] - Emitter's temperature
+    me [kg] - electron relative mass
+    mp [kg] - hole relative mass
+    nh_total [W/nm^2] - Deposited Nottigham heat
+
+    For more info refer to GETELEC TABULATOR's documentation
+    """
+
+    kT = gt.Globals.BoltzmannConstant * np.array(temperature)
+
+    emitter = gt.SemiconductorEmitter()
+
+    nh_total = np.copy(field)
+
+    for i in range(len(field)):
+
+        emitter.barrier.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i))
+        emitter.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i), ec, ef, eg, getArgument(kT, i), me, mp)
+        
+        nh_total[i] = emitter.nottinghamHeat()
+
+    return nh_total
 
 def spectrum_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, ec: float, ef:float, eg: float, temperature: np.ndarray, me: float, mp: float):
     """
@@ -152,7 +229,8 @@ def fit_data(xML: np.array, yML, workFunction, mode = "simple"):
     
     return xplot, xplot_th, yth, fitter.parameters["fieldConversionFactor"], fitter.parameters["radius"], fitter.prefactor
 
-###EXPERIMENTAL
+
+#EXPERIMENTAL
 
 def metal_emitter_worker(input_list):
     """ Worker function for calculating current density of a single element from the field array
