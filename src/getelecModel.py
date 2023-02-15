@@ -318,7 +318,7 @@ class GETELECModel():
         
         Returns numpy array of Nottigham heat values
         """
-        if(self.nottinghamHeat == None): print("WARNING, you have asked Nottingham heat without calculating it first. You might want to run getelecModel.run(calculateNottinghamHeat=True) first")
+        #if(self.nottinghamHeat == None): print("WARNING, you have asked Nottingham heat without calculating it first. You might want to run getelecModel.run(calculateNottinghamHeat=True) first")
 
         return self.nottinghamHeat
     
