@@ -22,19 +22,19 @@ class GETELECModel():
     def __init__(
 
         self,
-        emitter_type: Optional[str] = None,
+        emitterType: Optional[str] = None,
         field: Optional[np.ndarray] = None,
         radius: Optional[np.ndarray] = None,
         gamma: Optional[np.ndarray] = None,
-        work_function: Optional[np.ndarray] = None,
+        workFunction: Optional[np.ndarray] = None,
         temperature: Optional[np.ndarray] = None,
         emitter: Optional[BandEmitter] = None,
-        ec: Optional[float] = None,
-        ef: Optional[float] = None,
-        eg: Optional[float] = None,
-        me: Optional[float] = None,
-        mp: Optional[float] = None,
-        electron_spectrum_count: Optional[int] = None,
+        conductionBandBottom: Optional[float] = None,
+        fermiLevel: Optional[float] = None,
+        bandGap: Optional[float] = None,
+        effectiveMassConduction: Optional[float] = None,
+        effectiveMassValence: Optional[float] = None,
+        numberOfSpectrumPoints: Optional[int] = None,
 
         **kwargs: Any
 
@@ -45,82 +45,95 @@ class GETELECModel():
         Parameters
         ----------
 
-        emitter_type:
+        emitterType:
             Type of emitter, "metal" or "semiconductor"
             Defining this overrides previous Emitter instance
-            and creates a new, empty one.
+            and creates a new, eeffectiveMassValencety one.
+
         field:
-            NumPy array of field float values, [V/nm]
+            NueffectiveMassValencey array of field float values, [V/nm]
+
         radius:
-            NumPy array of radius float values, [nm]
+            NueffectiveMassValencey array of radius float values, [nm]
+
         gamma:
-            NumPy array of gamma float values, dimensionless
-        work_function:
-            NumPy array of work function float values, [eV]
+            NueffectiveMassValencey array of gamma float values, dimensionless
+
+        workFunction:
+            NueffectiveMassValencey array of work function float values, [eV]
+
         temperature:
-            NumPy array of temperature float values, [K]
+            NueffectiveMassValencey array of temperature float values, [K]
+
         emitter:
             Object of the emitter, MetalEmitter or SemiconductorEmitter
-        Ec:
+
+        conductionBandBottom:
             Energy of the bottom of conduction band, [eV]
-        Ef:
+
+        fermiLevel:
             Fermi level, [eV]
-        Eg:
+
+        bandGap:
             Band gap, [eV]
-        me:
-            effective electron mass, fraction m/me
-        mp:
-            effective hole mass, fraction m/me
-        electron_spectrum_count:
+
+        effectiveMassConduction:
+            Effective electron mass, fraction m/me
+
+        effectiveMassValence:
+            Effective hole mass, fraction m/me
+            
+        numberOfSpectrumPoints:
             Number of spectras to create, int
+
         """
 
-        self.emitter_type = emitter_type
+        self.emitterType = emitterType
         self.field = field
         self.radius = radius
         self.gamma = gamma
-        self.work_function = work_function
+        self.workFunction = workFunction
         self.temperature = temperature
-        self.ec = ec
-        self.ef = ef
-        self.eg = eg
-        self.me = me
-        self.mp = mp
+        self.conductionBandBottom = conductionBandBottom
+        self.fermiLevel = fermiLevel
+        self.bandGap = bandGap
+        self.effectiveMassConduction = effectiveMassConduction
+        self.effectiveMassValence = effectiveMassValence
 
-        self.electron_spectrum_count = electron_spectrum_count
+        self.numberOfSpectrumPoints = numberOfSpectrumPoints
 
-        self.emitted_current_density = None
-        self.nottingham_heat = None
-        self.electron_spectrum = None
+        self.currentDensity = None
+        self.nottinghamHeat = None
+        self.electronSpectrum = None
         
 
         if(emitter == None):
-            if(emitter_type != None):
-                if(emitter_type == 'metal'): self.emitter = MetalEmitter()
-                elif(emitter_type == 'semiconductor'): self.emitter = SemiconductorEmitter()
-                else: raise ValueError("emitter_type has to be 'metal' or 'semiconductor'")
+            if(emitterType != None):
+                if(emitterType == 'metal'): self.emitter = MetalEmitter()
+                elif(emitterType == 'semiconductor'): self.emitter = SemiconductorEmitter()
+                else: raise ValueError("emitterType has to be 'metal' or 'semiconductor'")
             else: 
-                if(emitter_type != None):
-                    raise ValueError("If emitter object is not passed, emitter_type has to be set to 'metal' or 'semiconductor'")
+                if(emitterType != None):
+                    raise ValueError("If emitter object is not passed, emitterType has to be set to 'metal' or 'semiconductor'")
         else:
             if(type(emitter) == MetalEmitter):
-                self.emitter_type = 'metal'
+                self.emitterType = 'metal'
             elif(type(emitter) == SemiconductorEmitter):
-                self.emitter_type = 'semiconductor'
+                self.emitterType = 'semiconductor'
             else: raise ValueError("Passed object as 'emitter' has to be of type 'MetalEmitter' or 'SemiconductorEmitter'")
             self.emitter = emitter
 
 
-        if(emitter_type != None):
-            if(emitter_type == 'metal'): self.emitter = MetalEmitter()
-            elif(emitter_type == 'semiconductor'): self.emitter = SemiconductorEmitter()
-            else: raise ValueError("emitter_type has to be 'metal' or 'semiconductor'")
+        if(emitterType != None):
+            if(emitterType == 'metal'): self.emitter = MetalEmitter()
+            elif(emitterType == 'semiconductor'): self.emitter = SemiconductorEmitter()
+            else: raise ValueError("emitterType has to be 'metal' or 'semiconductor'")
         else: self.emitter = emitter
 
         if kwargs:
             self.kwargs = kwargs
     
-    def set_params(self, **params) -> "GETELECModel":
+    def setParameters(self, **params) -> "GETELECModel":
         """Set the parameters of the model. Allows unknown kwargs.
         Returns self.
         """
@@ -138,7 +151,7 @@ class GETELECModel():
         return self
 
     @classmethod
-    def _get_param_names(cls):
+    def _getParameterNames(cls):
         """
         Get parameter names for the estimator
 
@@ -161,7 +174,7 @@ class GETELECModel():
 
         return sorted([p.name for p in parameters])
 
-    def get_params(self):
+    def getParameters(self):
         """
         Get parameters for this estimator.
 
@@ -171,15 +184,15 @@ class GETELECModel():
             Parameter names mapped to their values.
         """
         out = dict()
-        for key in self._get_param_names():
+        for key in self._getParameterNames():
             value = getattr(self, key)
-            if hasattr(value, "get_params") and not isinstance(value, type):
-                deep_items = value.get_params().items()
+            if hasattr(value, "getParameters") and not isinstance(value, type):
+                deep_items = value.getParameters().items()
                 out.update((key + "__" + k, val) for k, val in deep_items)
             out[key] = value
         return out
 
-    def set_params(self, **params: Any) -> "GETELECModel":
+    def setParameters(self, **params: Any) -> "GETELECModel":
         """Set the parameters of this estimator.
 
         Returns
@@ -193,7 +206,7 @@ class GETELECModel():
         for key, value in params.items():
             if hasattr(self, key):
                 setattr(self, key, value)
-                if(key == 'emitter_type'):
+                if(key == 'emitterType'):
                     if(value == 'metal'):
                         self.emitter = MetalEmitter()
                     elif(value == 'semiconductor'):
@@ -206,110 +219,110 @@ class GETELECModel():
 
         return self
 
-    def save_model():
+    def saveModel():
         return
     
-    def load_model():
+    def loadModel():
         return
 
-    def get_nottingham_heat(self):
+    def getNottinghamHeat(self):
 
         """Calculate Nottigham heat from the emitter
         
-        Returns numpy array of Nottigham heat values
+        Returns nueffectiveMassValencey array of Nottigham heat values
         """
 
-        if(self.emitter_type == 'metal'):
+        if(self.emitterType == 'metal'):
 
-            return self._nottingham_heat_metal().nottingham_heat
+            return self._nottinghamHeatMetal().nottinghamHeat
 
-        if(self.emitter_type == 'semiconductor'):
+        if(self.emitterType == 'semiconductor'):
 
-            return self._nottingham_heat_semiconductor().nottingham_heat
+            return self._nottinghamHeatSemiconductor().nottinghamHeat
 
-        raise ValueError("emitter_type has to be 'metal' or 'semiconductor'")
+        raise ValueError("emitterType has to be 'metal' or 'semiconductor'")
     
-    def get_emitted_current_density(self):
+    def getCurrentDensity(self):
 
         """Calculate emitted current density from the emitter.
 
-        Returns numpy array of emitted currents (electrons / area * time)
+        Returns nueffectiveMassValencey array of emitted currents (electrons / area * time)
         
         """
 
-        if(self.emitter_type == 'metal'): 
+        if(self.emitterType == 'metal'): 
 
-            return (self._emitted_current_density_metal()).emitted_current_density
+            return (self._currentDensityMetal()).currentDensity
 
-        if(self.emitter_type == 'semiconductor'):
+        if(self.emitterType == 'semiconductor'):
 
-            return (self._emitted_current_density_semiconductor()).emitted_current_density
+            return (self._currentDensitySemiconductor()).currentDensity
 
-        raise ValueError("emitter_type has to be 'metal' or 'semiconductor'")
+        raise ValueError("emitterType has to be 'metal' or 'semiconductor'")
 
-    def get_electron_spectrum(self):
+    def getElectronSpectrum(self):
 
         """Calculate electron spectrum from the emitter
         
-        Returns dictionary of numpy arrays (energy, electron_count)
+        Returns dictionary of nueffectiveMassValencey arrays (energy, electron_count)
         
         """
 
-        if(self.emitter_type == 'metal'):
+        if(self.emitterType == 'metal'):
 
-            _energy, _electron_count = self._electron_spectrum_metal().electron_spectrum
+            _energy, _electronCount = self._electronSpectrumMetal().electronSpectrum
 
-            return {'energy': _energy, 'electron_count': _electron_count}
+            return {'energy': _energy, 'electron_count': _electronCount}
 
-        if(self.emitter_type == 'semiconductor'):
+        if(self.emitterType == 'semiconductor'):
 
-            _energy, _electron_count = self._electron_spectrum_semiconductor().electron_spectrum
+            _energy, _electronCount = self._electronSpectrumSemiconductor().electronSpectrum
 
-            return {'energy': _energy, 'electron_count': _electron_count}
+            return {'energy': _energy, 'electron_count': _electronCount}
 
-        raise ValueError("emitter_type has to be 'metal' or 'semiconductor'")
+        raise ValueError("emitterType has to be 'metal' or 'semiconductor'")
 
-    def _nottingham_heat_metal(self):
+    def _nottinghamHeatMetal(self):
         """Calculate Nottingham heat for metals
 
         Returns self
         """
         kT = Globals.BoltzmannConstant * self.temperature
 
-        _nottingham_heat = np.array(self.field, dtype=float)
+        _nottinghamHeat = np.array(self.field, dtype=float)
 
-        for i in range(len(_nottingham_heat)):
+        for i in range(len(_nottinghamHeat)):
 
             self.emitter.barrier.setParameters(getArgument(self.field, i), getArgument(self.radius, i), getArgument(self.gamma, i))
-            self.emitter.setParameters(getArgument(self.work_function, i), getArgument(kT, i))
+            self.emitter.setParameters(getArgument(self.workFunction, i), getArgument(kT, i))
 
-            _nottingham_heat[i] = self.emitter.nottinghamHeat()
+            _nottinghamHeat[i] = self.emitter.nottinghamHeat()
 
-        self.nottingham_heat = _nottingham_heat
+        self.nottinghamHeat = _nottinghamHeat
 
         return self
     
-    def _nottingham_heat_semiconductor(self):
+    def _nottinghamHeatSemiconductor(self):
         """Calculate Nottingham heat for semiconductors
         
         Returns self
         """
         kT = Globals.BoltzmannConstant * self.temperature
 
-        _nottingham_heat = np.array(self.field, dtype = float)
+        _nottinghamHeat = np.array(self.field, dtype = float)
 
-        for i in range(len(_nottingham_heat)):
+        for i in range(len(_nottinghamHeat)):
 
             self.emitter.barrier.setParameters(getArgument(self.field, i), getArgument(self.radius, i), getArgument(self.gamma, i))
-            self.emitter.setParameters(getArgument(self.field, i), getArgument(self.radius, i), getArgument(self.gamma, i), self.ec, self.ef, self.eg, getArgument(kT, i), self.me, self.mp)
+            self.emitter.setParameters(getArgument(self.field, i), getArgument(self.radius, i), getArgument(self.gamma, i), self.conductionBandBottom, self.fermiLevel, self.bandGap, getArgument(kT, i), self.effectiveMassConduction, self.effectiveMassValence)
 
-            _nottingham_heat[i] = self.emitter.nottinghamHeat()
+            _nottinghamHeat[i] = self.emitter.nottinghamHeat()
 
-        self.nottingham_heat = _nottingham_heat
+        self.nottinghamHeat = _nottinghamHeat
 
         return self
     
-    def _emitted_current_density_metal(self):
+    def _currentDensityMetal(self):
         """Calculate emitted current for metals
         
         Returns self
@@ -318,40 +331,40 @@ class GETELECModel():
         
         kT = Globals.BoltzmannConstant * self.temperature
 
-        _emitted_current_density = np.array(self.field, dtype=float)
+        _currentDensity = np.array(self.field, dtype=float)
 
-        for i in range(len(_emitted_current_density)):
+        for i in range(len(_currentDensity)):
 
             self.emitter.barrier.setParameters(getArgument(self.field, i), getArgument(self.radius, i), getArgument(self.gamma, i))
-            self.emitter.setParameters(getArgument(self.work_function, i), getArgument(kT, i))
+            self.emitter.setParameters(getArgument(self.workFunction, i), getArgument(kT, i))
 
-            _emitted_current_density[i] = self.emitter.currentDensity()
+            _currentDensity[i] = self.emitter.currentDensity()
 
-        self.emitted_current_density = _emitted_current_density
+        self.currentDensity = _currentDensity
 
         return self
 
-    def _emitted_current_density_semiconductor(self):
+    def _currentDensitySemiconductor(self):
         """Calculate emitted current for semiconductors
         
         Returns self
         """
         kT = Globals.BoltzmannConstant * self.temperature
         
-        _emitted_current_density = np.array(self.field, dtype=float)
+        _currentDensity = np.array(self.field, dtype=float)
 
-        for i in range(len(_emitted_current_density)):
+        for i in range(len(_currentDensity)):
 
             self.emitter.barrier.setParameters(getArgument(self.field, i), getArgument(self.radius, i), getArgument(self.gamma, i))
-            self.emitter.setParameters(getArgument(self.field, i), getArgument(self.radius, i), getArgument(self.gamma, i), self.ec, self.ef, self.eg, getArgument(kT, i), self.me, self.mp)
+            self.emitter.setParameters(getArgument(self.field, i), getArgument(self.radius, i), getArgument(self.gamma, i), self.conductionBandBottom, self.fermiLevel, self.bandGap, getArgument(kT, i), self.effectiveMassConduction, self.effectiveMassValence)
 
-            _emitted_current_density[i] = self.emitter.currentDensity()
+            _currentDensity[i] = self.emitter.currentDensity()
 
-        self.emitted_current_density = _emitted_current_density
+        self.currentDensity = _currentDensity
 
         return self
 
-    def _electron_spectrum_metal(self):
+    def _electronSpectrumMetal(self):
         """Calculate electron spectrum for metals
         
         Returns self
@@ -361,21 +374,23 @@ class GETELECModel():
         energy = []
         electron_count = []
 
+        n_points = 256 if self.numberOfSpectrumPoints is None else self.numberOfSpectrumPoints
+
         for i in range(len(self.field)):
 
             self.emitter.barrier.setParameters(getArgument(self.field, i), getArgument(self.radius, i), getArgument(self.gamma, i))
-            self.emitter.setParameters(getArgument(self.work_function, i), getArgument(kT, i))
+            self.emitter.setParameters(getArgument(self.workFunction, i), getArgument(kT, i))
 
-            _energy, _electron_count = self.emitter.totalEnergySpectrumArrays(self.electron_spectrum_count)
+            _energy, _electron_count = self.emitter.totalEnergySpectrumArrays(n_points)
 
             energy.append(_energy)
             electron_count.append(_electron_count)
 
-        self.electron_spectrum = (energy, electron_count)
+        self.electronSpectrum = (energy, electron_count)
 
         return self
 
-    def _electron_spectrum_semiconductor(self):
+    def _electronSpectrumSemiconductor(self):
         """Calculate electron spectrum for semiconductors
         
         Returns self
@@ -386,17 +401,19 @@ class GETELECModel():
         energy = []
         electron_count = []
 
+        n_points = 256 if self.numberOfSpectrumPoints is None else self.numberOfSpectrumPoints
+
         for i in range(len(self.field)):
 
             self.emitter.barrier.setParameters(getArgument(self.field, i), getArgument(self.radius, i), getArgument(self.gamma, i))
-            self.emitter.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i), self.ec, self.ef, self.eg, getArgument(kT, i), self.me, self.mp)
+            self.emitter.setParameters(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i), self.conductionBandBottom, self.fermiLevel, self.bandGap, getArgument(kT, i), self.effectiveMassConduction, self.effectiveMassValence)
 
-            _energy, _electron_count = self.emitter.totalEnergyDistribution(self.electron_spectrum_count)
+            _energy, _electron_count = self.emitter.totalEnergyDistribution(n_points)
 
             energy.append(_energy)
             electron_count.append(_electron_count)
 
-        self.electron_spectrum = (energy, electron_count)
+        self.electronSpectrum = (energy, electron_count)
 
         return self
 
@@ -409,21 +426,21 @@ if(__name__ == '__main__'):
     field = np.array([1, 2, 3, 4, 5])
     radius = np.full(5, 50)
     gamma = np.full(5, 10)
-    work_function = np.full(5, 4)
+    workFunction = np.full(5, 4)
     temperature = np.full(5, 300)
 
-    ec = 4.05
-    ef = 4.61
-    eg = 1.12
-    me = 0.7
-    mp = 0.5
+    conductionBandBottom = 4.05
+    fermiLevel = 4.61
+    bandGap = 1.12
+    effectiveMassConduction = 0.7
+    effectiveMassValence = 0.5
 
 
-    model.set_params(emitter_type='semiconductor', field = field, radius = radius, gamma = gamma, temperature = temperature, ec = ec, ef = ef, eg = eg, me = me, mp = mp, electron_spectrum_points = 4)
+    model.setParameters(emitterType='semiconductor', field = field, radius = radius, gamma = gamma, temperature = temperature, conductionBandBottom = conductionBandBottom, fermiLevel = fermiLevel, bandGap = bandGap, effectiveMassConduction = effectiveMassConduction, effectiveMassValence = effectiveMassValence, numberOfSpectrumPoints = 4)
 
-    print(model.get_params())
+    print(model.getParameters())
 
-    res = model.get_electron_spectrum()
+    res = model.getElectronSpectrum()
 
     print(res)
 
