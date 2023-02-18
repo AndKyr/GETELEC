@@ -135,29 +135,6 @@ class GETELECModel():
 
         if kwargs:
             self.kwargs = kwargs
-    
-    def setParameters(self, **params) -> "GETELECModel":
-        """Set the parameters of the model. Allows unknown kwargs.
-        Returns self.
-        """
-
-        if not params: return self
-
-        for key, value in params.items():
-            if hasattr(self, key):
-                setattr(self, key, value)
-            else:
-                if not hasattr(self, "kwargs"):
-                    self.kwargs = {}
-                self.kwargs[key] = value
-
-        # set result values to None, implying that they are not calculated when parameters are changed
-
-        self.currentDensity = None 
-        self.nottinghamHeat = None
-        self.electronSpectrum = None
-
-        return self
 
     @classmethod
     def _getParameterNames(cls):
@@ -227,6 +204,9 @@ class GETELECModel():
                     self.kwargs = {}
                 self.kwargs[key] = value
 
+        self.currentDensity = None 
+        self.nottinghamHeat = None
+        self.electronSpectrum = None
 
         return self
 
