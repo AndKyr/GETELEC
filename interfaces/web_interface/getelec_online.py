@@ -16,25 +16,25 @@ def current_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarr
 
     model = GETELECModel(emitter_type='metal', field=field, radius=radius, gamma=gamma, work_function=work_function, temperature=temperature)
 
-    return model.get_emitted_current_density()
+    return model.calculateCurrentDensity().currentDensity
 
 def current_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, ec: float, ef:float, eg: float, temperature: np.ndarray, me: float, mp: float):
 
     model = GETELECModel(emitter_type='semiconductor', field=field, radius=radius, gamma=gamma, ec=ec, ef=ef, eg=eg, temperature=temperature, me=me, mp=mp)
 
-    return model.get_emitted_current_density()
+    return model.calculateCurrentDensity().currentDensity
 
 def heat_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, work_function: np.ndarray, temperature: np.ndarray):
 
     model = GETELECModel(emitter_type='metal', field=field, radius=radius, gamma=gamma, work_function=work_function, temperature=temperature)
 
-    return model.get_nottingham_heat()
+    return model.calculateNottinghamHeat().nottinghamHeat
 
 def heat_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, ec: float, ef:float, eg: float, temperature: np.ndarray, me: float, mp: float):
 
     model = GETELECModel(emitter_type='semiconductor', field=field, radius=radius, gamma=gamma, ec=ec, ef=ef, eg=eg, temperature=temperature, me=me, mp=mp)
     
-    return model.get_nottingham_heat()
+    return model.calculateNottinghamHeat().nottinghamHeat
 
 ###CODE BELOW NEEDS UPDATING USES OLD STUFF
 
