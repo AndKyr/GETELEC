@@ -177,7 +177,33 @@ class GETELECModel():
                 out.update((key + "__" + k, val) for k, val in deep_items)
             out[key] = value
         return out
-
+    
+    def setParameters(self, **params: Any) -> "GETELECModel":
+        """Set the parameters of this estimator.
+        Returns
+        -------
+        self
+        """
+        if not params:
+            return self
+        for key, value in params.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+                if(key == 'emitterType'):
+                    if(value == 'metal'):
+                        self.emitter = MetalEmitter()
+                    elif(value == 'semiconductor'):
+                        self.emitter = SemiconductorEmitter()
+                    else:
+                        raise ValueError("emitterType has to be 'metal' or 'semiconductor'")
+            else:
+                if not hasattr(self, "kwargs"):
+                    self.kwargs = {}
+                self.kwargs[key] = value
+        self.currentDensity = None
+        self.nottinghamHeat = None
+        self.electronSpectrum = None
+        return self
 
     def saveModel():
         return
@@ -268,7 +294,7 @@ class GETELECModel():
         
         Returns numpy array of Nottigham heat values
         """
-        if(self.nottinghamHeat == None): 
+        if(self.nottinghamHeat is None): 
             print("WARNING, you have asked Nottingham heat without calculating it first. You might want to run getelecModel.run(calculateNottinghamHeat=True) first")
 
         return self.nottinghamHeat
@@ -280,7 +306,7 @@ class GETELECModel():
         Returns numpy array of emitted currents (electrons / area * time)
         
         """
-        if(self.currentDensity == None): 
+        if(self.currentDensity is None): 
             print("WARNING, you have asked currentDensity without calculating it first. You might want to run getelecModel.run(calculateCurrentDensity=True) first")
 
         return self.currentDensity
@@ -292,7 +318,7 @@ class GETELECModel():
         Returns dictionary of numpy arrays {energy, electron_count}
         
         """
-        if(self.nottinghamHeat == None):
+        if(self.nottinghamHeat is None):
             print("WARNING, you have asked Electron Spectrum without calculating it first. You might want to run getelecModel.run(calculateElectronSpectrum=True) first")
 
         return self.electronSpectrum
