@@ -20,7 +20,7 @@ if (not os.path.exists(filePath + '/libintegrator.so') or os.path.getmtime(fileP
 
 class Globals:
     """Keeps global constants and variables"""
-    tabulationPath:str = "tabulated/2D_512x256"
+    tabulationPath:str = filePath + "/../tabulated/2D_512x256"
     BoltzmannConstant:float = 8.617333262e-5
     SommerfeldConstant:float = 1.618311e-4 
     electronMass:float = 9.1093837e-31
@@ -1118,7 +1118,7 @@ class SemiconductorEmitter:
         
         return nottinghamHeat
 
-    def totalEnergyDistribution(self, numberOfPoints:int = 256):
+    def totalEnergySpectrumArrays(self, numberOfPoints:int = 256):
         """Returns the total energy distribution of the electrons being emitted from the conduction and valence bands
 
         Parameters:
