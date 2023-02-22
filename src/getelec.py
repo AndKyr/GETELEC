@@ -1118,7 +1118,7 @@ class SemiconductorEmitter:
         
         return nottinghamHeat
 
-    def totalEnergyDistribution(self, numberOfPoints:int = 256):
+    def totalEnergySpectrumArrays(self, numberOfPoints:int = 256):
         """Returns the total energy distribution of the electrons being emitted from the conduction and valence bands
 
         Parameters:
