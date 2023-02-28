@@ -1,33 +1,33 @@
-function current_density = current_metal(field,radius,gamma,workf,t)
+function current_density = current_metal(field, radius, gamma, workFunction, temperature)
     
     %Checking and initialising Python environment
     pe = pyenv;
-    if pe.Status == 'Loaded'
-        % pass
-    else 
+    if pe.Status ~= 'Loaded'
         disp("Initialising Python enviroment");
-        %pyenv("Version","/home/salva/Documents/getelec_priv/python/venv/bin/python3.8")
-        pyenv("Version","/usr/bin/python3.10")
+        pyenv("Version","/usr/bin/python3")
         pyenv("ExecutionMode","OutOfProcess");
     end
     
-    %Pointing MATLAB to the right Python path
-    if count(py.sys.path, '/home/salva/Documents/getelec_priv/python') == 0
-        disp('Loading path')
-        insert(py.sys.path, int64(0),'/home/salva/Documents/getelec_priv/python');
-    else
-        %pass
-    end
 
     %Importing GETELEC
-    getelec = py.importlib.import_module('getelec_tabulator');
-
-    %Calculating current density from GETELEC
-    disp('Calculating J metal emitter')
+    filePath = fileparts(mfilename('fullpath'));
+    splitted = strsplit(filePath, filesep);
+    getelecPath = append(join(splitted(1:end-2), filesep), filesep, 'src');
+    getelecPath = getelecPath{1};
+    pyrun(["import sys", sprintf("if '%s' not in sys.path: sys.path.append('%s')", getelecPath, getelecPath)]);
+    pyrun(["matlabPaths = [x for x in sys.path if 'MATLAB' in x]",  "for x in matlabPaths: sys.path.remove(x)"]);
     
-    % field is transformed from a double to np, so GETELEC can handle it
-    % GETELEC outcomes are transformed to double for COMSOL
-    % in A/m^2
-    current_density = double(getelec.current_metal_emitter(py.numpy.array(field),py.numpy.array(radius),py.numpy.array(gamma),py.numpy.array(workf), py.numpy.array(t))*1E18);
+    getelecModule = py.importlib.import_module('getelecModel');
 
+    gtm = getelecModule.GETELECModel();
+    %py.importlib.reload(py.getelecModel);
+
+    gtm.setParameters(field = py.numpy.array(field), radius = py.numpy.array(radius), ...
+        gamma = py.numpy.array(gamma), workFunction = py.numpy.array(workFunction), ...
+        temperature = py.numpy.array(temperature), emitterType = "metal");
+
+    gtm.run(calculateCurrent = true, calculateNottinghamHeat = true, calculateSpectrum = false);
+
+    
+    current_density = gtm.getCurrentDensity();
 end
