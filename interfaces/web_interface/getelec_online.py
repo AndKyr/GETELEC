@@ -12,29 +12,41 @@ sys.path.insert(0,getelecRootPath + "/src/")
 import getelec as gt
 from getelecModel import GETELECModel
 
-def current_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, work_function: np.ndarray, temperature: np.ndarray):
+def current_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, workFunction: np.ndarray, temperature: np.ndarray):
 
-    model = GETELECModel(emitter_type='metal', field=field, radius=radius, gamma=gamma, work_function=work_function, temperature=temperature)
+    model = GETELECModel(emitterType='metal', field=field, radius=radius, gamma=gamma, workFunction=workFunction, temperature=temperature)
 
     return model.calculateCurrentDensity().currentDensity
 
 def current_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, ec: float, ef:float, eg: float, temperature: np.ndarray, me: float, mp: float):
 
-    model = GETELECModel(emitter_type='semiconductor', field=field, radius=radius, gamma=gamma, ec=ec, ef=ef, eg=eg, temperature=temperature, me=me, mp=mp)
+    model = GETELECModel(emitterType='semiconductor', field=field, radius=radius, gamma=gamma, ec=ec, ef=ef, eg=eg, temperature=temperature, me=me, mp=mp)
 
     return model.calculateCurrentDensity().currentDensity
 
-def heat_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, work_function: np.ndarray, temperature: np.ndarray):
+def heat_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, workFunction: np.ndarray, temperature: np.ndarray):
 
-    model = GETELECModel(emitter_type='metal', field=field, radius=radius, gamma=gamma, work_function=work_function, temperature=temperature)
+    model = GETELECModel(emitterType='metal', field=field, radius=radius, gamma=gamma, workFunction=workFunction, temperature=temperature)
 
     return model.calculateNottinghamHeat().nottinghamHeat
 
 def heat_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, ec: float, ef:float, eg: float, temperature: np.ndarray, me: float, mp: float):
 
-    model = GETELECModel(emitter_type='semiconductor', field=field, radius=radius, gamma=gamma, ec=ec, ef=ef, eg=eg, temperature=temperature, me=me, mp=mp)
+    model = GETELECModel(emitterType='semiconductor', field=field, radius=radius, gamma=gamma, ec=ec, ef=ef, eg=eg, temperature=temperature, me=me, mp=mp)
     
     return model.calculateNottinghamHeat().nottinghamHeat
+
+def spectrum_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, workFunction: np.ndarray, temperature: np.ndarray):
+
+    model = GETELECModel(emitterType='metal', field=field, radius=radius, gamma=gamma, workFunction=workFunction, temperature=temperature)
+
+    return model.calculateElectronSpectrum().electronSpectrum
+
+def spectrum_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, ec: float, ef:float, eg: float, temperature: np.ndarray, me: float, mp: float):
+
+    model = GETELECModel(emitterType='semiconductor', field=field, radius=radius, gamma=gamma, ec=ec, ef=ef, eg=eg, temperature=temperature, me=me, mp=mp)
+
+    return model.calculateElectronSpectrum().electronSpectrum
 
 ###CODE BELOW NEEDS UPDATING USES OLD STUFF
 
@@ -49,7 +61,7 @@ def getArgument(arg, idx):
         return arg
 
 
-def spectrum_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, workFunction: np.ndarray, temperature: np.ndarray):
+def OLDspectrum_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, workFunction: np.ndarray, temperature: np.ndarray):
     """
     Field [nm] - Electric field
     Radius [nm] - Emitter's tip radius
@@ -82,7 +94,7 @@ def spectrum_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndar
 
     return energy, electron_count
 
-def spectrum_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, ec: float, ef:float, eg: float, temperature: np.ndarray, me: float, mp: float):
+def OLDspectrum_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, ec: float, ef:float, eg: float, temperature: np.ndarray, me: float, mp: float):
     """
     Field [nm] - Electric field
     Radius [nm] - Emitter's tip radius

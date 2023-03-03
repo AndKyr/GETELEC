@@ -54,19 +54,19 @@ class GETELECModel():
             and creates a new, empty one.
 
         field:
-            NueffectiveMassValencey array of field float values, [V/nm]
+            Numpy array of field float values, [V/nm]
 
         radius:
-            NueffectiveMassValencey array of radius float values, [nm]
+            Numpy array of radius float values, [nm]
 
         gamma:
-            NueffectiveMassValencey array of gamma float values, dimensionless
+            Numpy array of gamma float values, dimensionless
 
         workFunction:
-            NueffectiveMassValencey array of work function float values, [eV]
+            Numpy array of work function float values, [eV]
 
         temperature:
-            NueffectiveMassValencey array of temperature float values, [K]
+            Numpy array of temperature float values, [K]
 
         emitter:
             Object of the emitter, MetalEmitter or SemiconductorEmitter
@@ -108,33 +108,25 @@ class GETELECModel():
         self.currentDensity = None
         self.nottinghamHeat = None
         self.electronSpectrum = None
-        
-
-        if(emitter == None):
-            if(emitterType != None):
-                if(emitterType == 'metal'): self.emitter = MetalEmitter()
-                elif(emitterType == 'semiconductor'): self.emitter = SemiconductorEmitter()
-                else: raise ValueError("emitterType has to be 'metal' or 'semiconductor'")
-            else: 
-                if(emitterType != None):
-                    raise ValueError("If emitter object is not passed, emitterType has to be set to 'metal' or 'semiconductor'")
-        else:
-            if(type(emitter) == MetalEmitter):
-                self.emitterType = 'metal'
-            elif(type(emitter) == SemiconductorEmitter):
-                self.emitterType = 'semiconductor'
-            else: raise ValueError("Passed object as 'emitter' has to be of type 'MetalEmitter' or 'SemiconductorEmitter'")
-            self.emitter = emitter
-
-
-        if(emitterType != None):
-            if(emitterType == 'metal'): self.emitter = MetalEmitter()
-            elif(emitterType == 'semiconductor'): self.emitter = SemiconductorEmitter()
-            else: raise ValueError("emitterType has to be 'metal' or 'semiconductor'")
-        else: self.emitter = emitter
 
         if kwargs:
             self.kwargs = kwargs
+
+        if(emitter is None):
+
+            self.emitter = None
+
+            if(emitterType is not None):
+
+                if(emitterType == 'metal'):
+                    self.emitter = MetalEmitter()
+
+                elif(emitterType == 'semiconductor'):
+                    self.emitter = SemiconductorEmitter()
+
+                else: raise ValueError("emitterType has to be 'metal' or 'semiconductor'")
+
+        else: self.emitter = emitter
 
     @classmethod
     def _getParameterNames(cls):
@@ -186,23 +178,33 @@ class GETELECModel():
         """
         if not params:
             return self
+        
         for key, value in params.items():
+
             if hasattr(self, key):
                 setattr(self, key, value)
+
                 if(key == 'emitterType'):
-                    if(value == 'metal'):
-                        self.emitter = MetalEmitter()
-                    elif(value == 'semiconductor'):
-                        self.emitter = SemiconductorEmitter()
-                    else:
-                        raise ValueError("emitterType has to be 'metal' or 'semiconductor'")
+
+                    if(value == 'metal'): self.emitter = MetalEmitter()
+
+                    elif(value == 'semiconductor'): self.emitter = SemiconductorEmitter()
+
+                    else: raise ValueError("emitterType has to be 'metal' or 'semiconductor'")
+                    
+                    print(self.emitter)
+                    
             else:
+
                 if not hasattr(self, "kwargs"):
                     self.kwargs = {}
+
                 self.kwargs[key] = value
+
         self.currentDensity = None
         self.nottinghamHeat = None
         self.electronSpectrum = None
+        
         return self
 
     def saveModel():
