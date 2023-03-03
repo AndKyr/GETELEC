@@ -92,9 +92,9 @@ mp = data[12][0]
 
 calculateEC = (str(data[13][0]))[0]
 
-data = spectrum_semiconductor_emitter(field, radius, gammaSemi, ec, ef, eg, temp, me, mp)
+data = spectrum_metal_emitter(field, radius, gammaMetal, wf, temp)
 
-print(data)
+print(data.keys())
 
 # print(f"Now measuring performance differences...")
 

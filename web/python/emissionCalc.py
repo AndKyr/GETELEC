@@ -77,16 +77,18 @@ def main():
 
         if data['calculateES'] == 1:
 
-            energies, electronCounts = spectrum_metal_emitter(data['field'], data['radius'], data['gammaMetal'], data['work_function'], data['temperature'])
+            res = spectrum_metal_emitter(data['field'], data['radius'], data['gammaMetal'], data['work_function'], data['temperature'])
 
-            data3 = []
-            data3e = []
+            for i, arr in enumerate(res['energy']):
+                res['energy'][i] = arr.tolist()
 
-            for energy in energies:
-                data3.append(energy.tolist())
+            for i, arr in enumerate(res['electronCount']):
+                res['electronCount'][i] = arr.tolist()
 
-            for electronCount in electronCounts:
-                data3e.append(electronCount.tolist())
+            data3 = res['energy']
+            data3e = res['electronCount']
+
+
             
     elif data['materialType'] == 2:
 
@@ -100,9 +102,16 @@ def main():
   
         if data['calculateES'] == "1":
 
-            energy, electronCount = spectrum_semiconductor_emitter(data['field'], data['radius'], data['gammaSemi'], data['ec'], data['ef'], data['eg'], data['temperature'], data['me'], data['mp']).tolist()
-            data6 = energy.tolist()
-            data6e = electronCount.tolist()
+            res = spectrum_semiconductor_emitter(data['field'], data['radius'], data['gammaSemi'], data['ec'], data['ef'], data['eg'], data['temperature'], data['me'], data['mp'])
+
+            for i, arr in enumerate(res['energy']):
+                res['energy'][i] = arr.tolist()
+
+            for i, arr in enumerate(res['electronCount']):
+                res['electronCount'][i] = arr.tolist()
+
+            data6 = res['energy']
+            data6e = res['electronCount']
 
     outdata = {
 
