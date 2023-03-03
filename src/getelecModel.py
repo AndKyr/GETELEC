@@ -11,7 +11,7 @@ def getArgument(arg, idx):
 
     if isinstance(arg, (np.ndarray, list)):
         if idx >= len(arg):
-            print(f"WARNING, one of the arrays is shorter than the others. Last value of the array was copied to match length.")
+            # print(f"WARNING, one of the arrays is shorter than the others. Last value of the array was copied to match length.")
             return arg[-1]
         else:
             return arg[idx]
@@ -33,7 +33,6 @@ class GETELECModel():
         temperature: Optional[np.ndarray] = None,
         emitter: Optional[BandEmitter] = None,
         conductionBandBottom: Optional[float] = None,
-        fermiLevel: Optional[float] = None,
         bandGap: Optional[float] = None,
         effectiveMassConduction: Optional[float] = None,
         effectiveMassValence: Optional[float] = None,
@@ -74,9 +73,6 @@ class GETELECModel():
         conductionBandBottom:
             Energy of the bottom of conduction band, [eV]
 
-        fermiLevel:
-            Fermi level, [eV]
-
         bandGap:
             Band gap, [eV]
 
@@ -98,7 +94,6 @@ class GETELECModel():
         self.workFunction = workFunction
         self.temperature = temperature
         self.conductionBandBottom = conductionBandBottom
-        self.fermiLevel = fermiLevel
         self.bandGap = bandGap
         self.effectiveMassConduction = effectiveMassConduction
         self.effectiveMassValence = effectiveMassValence
@@ -271,7 +266,7 @@ class GETELECModel():
 
             elif(self.emitterType == 'semiconductor'):
 
-                self.emitter.setParameters(getArgument(self.field, i), getArgument(self.radius, i), getArgument(self.gamma, i), self.conductionBandBottom, self.fermiLevel, self.bandGap, getArgument(kT, i), self.effectiveMassConduction, self.effectiveMassValence)
+                self.emitter.setParameters(getArgument(self.field, i), getArgument(self.radius, i), getArgument(self.gamma, i), self.conductionBandBottom, self.workFunction, self.bandGap, getArgument(kT, i), self.effectiveMassConduction, self.effectiveMassValence)
 
                 if(calculateCurrent): _currentDensity[i] = self.emitter.currentDensity()
 
@@ -353,3 +348,5 @@ class GETELECModel():
         self.run(calculateSpectrum=True)
 
         return self
+
+
