@@ -31,7 +31,7 @@ def heat_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray,
 
 def heat_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, ec: float, ef:float, eg: float, temperature: np.ndarray, me: float, mp: float):
 
-    model = GETELECModel(emitterType='semiconductor', field=field, radius=radius, gamma=gamma, ec=ec, ef=ef, eg=eg, temperature=temperature, me=me, mp=mp)
+    model = gt.GETELECModel(emitterType='semiconductor', field=field, radius=radius, gamma=gamma, ec=ec, ef=ef, eg=eg, temperature=temperature, me=me, mp=mp)
     
     return model.calculateNottinghamHeat().nottinghamHeat
 

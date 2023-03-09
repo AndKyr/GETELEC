@@ -1499,9 +1499,10 @@ class GETELECModel():
 
             currentDensity = emitter.currentDensity() if calculateCurrent else None
             nottinghamHeat = emitter.nottinghamHeat() if calculateNottighamHeat else None
-            energy, electronCount = emitter.totalEnergySpectrumArrays(nPoints) if calculateSpectrum else None
 
-            results[idx] = {'currentDensity': currentDensity, 'nottinghamHeat': nottinghamHeat, 'electronEnergy': energy, 'electronCount': electronCount}
+            (electronEnergy, electronCount) = emitter.totalEnergySpectrumArrays(nPoints) if calculateSpectrum else (None, None)
+
+            results[idx] = {'currentDensity': currentDensity, 'nottinghamHeat': nottinghamHeat, 'electronEnergy': electronEnergy, 'electronCount': electronCount}
 
     def __run_semiconductor_worker(self, emitter, indexes, calculateCurrent, calculateNottighamHeat, calculateSpectrum, field, radius, gamma, conductionBandBottom, workFunction, bandGap, kT, effectiveMassConduction, effectiveMassValence, nPoints, results):
 
@@ -1513,7 +1514,7 @@ class GETELECModel():
 
             currentDensity = emitter.currentDensity() if calculateCurrent else None
             nottinghamHeat = emitter.nottinghamHeat() if calculateNottighamHeat else None
-            electronEnergy, electronCount = emitter.totalEnergySpectrumArrays(nPoints) if calculateSpectrum else None
+            (electronEnergy, electronCount) = emitter.totalEnergySpectrumArrays(nPoints) if calculateSpectrum else (None, None)
 
             results[idx] = {'currentDensity': currentDensity, 'nottinghamHeat': nottinghamHeat, 'electronEnergy': electronEnergy, 'electronCount': electronCount}
 

@@ -69,11 +69,11 @@ def main():
 
         if data['calculateEC'] == 1:
             
-            data1 = current_metal_emitter(data['field'], data['radius'], data['gammaMetal'], data['work_function'], data['temperature']).tolist()
+            data1 = current_metal_emitter(data['field'], data['radius'], data['gammaMetal'], data['work_function'], data['temperature'])
         
         if data['calculateNH'] == 1:
 
-            data2 = heat_metal_emitter(data['field'], data['radius'], data['gammaMetal'], data['work_function'], data['temperature']).tolist()
+            data2 = heat_metal_emitter(data['field'], data['radius'], data['gammaMetal'], data['work_function'], data['temperature'])
 
         if data['calculateES'] == 1:
 
