@@ -1,16 +1,15 @@
-import ctypes as ct
-import numpy as np
-from scipy.integrate import IntegrationWarning
-import scipy.integrate as ig
-import os
-import scipy.ndimage
-import matplotlib.pyplot as plt
-import scipy.optimize as opt
 import copy
-import subprocess
-import scipy.special
+import ctypes as ct
+import inspect
 import matplotlib.pyplot as plt
-
+import numpy as np
+import os
+import scipy.integrate as ig
+import scipy.ndimage
+import scipy.optimize as opt
+import scipy.special
+from scipy.integrate import IntegrationWarning
+import subprocess
 from typing import Any, Optional
 
 filePath,filename = os.path.split(os.path.realpath(__file__))
@@ -1611,7 +1610,6 @@ class GETELECModel():
         self.run(calculateSpectrum=True)
 
         return self
-
 
 
 if (__name__ == "__main__"): #some testing operations
