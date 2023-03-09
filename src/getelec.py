@@ -1481,15 +1481,13 @@ class GETELECModel():
     def loadModel():
         return
     
-    def run_metal_worker(input_list):
-
-        emitter, indexes, calculateCurrent, calculateNottighamHeat, calculateSpectrum, field, radius, gamma, workFunction, kT, nPoints, results = input_list
+    def __run_metal_worker(self, emitter, indexes, calculateCurrent, calculateNottighamHeat, calculateSpectrum, field, radius, gamma, workFunction, kT, nPoints, results):
 
         for idx in indexes:
 
-            emitter.barrier.setParameters(GETELECModel._getArgument(field, idx), GETELECModel._getArgument(radius, idx), GETELECModel._getArgument(gamma, i))
+            emitter.barrier.setParameters(self._getArgument(field, idx), self._getArgument(radius, idx), self._getArgument(gamma, idx))
 
-            emitter.setParameters(GETELECModel._getArgument(workFunction, idx), GETELECModel._getArgument(kT, idx))
+            emitter.setParameters(self._getArgument(workFunction, idx), self._getArgument(kT, idx))
 
             currentDensity = emitter.currentDensity() if calculateCurrent else None
             nottinghamHeat = emitter.nottinghamHeat() if calculateNottighamHeat else None
@@ -1498,15 +1496,13 @@ class GETELECModel():
             results[idx] = {'currentDensity': currentDensity, 'nottinghamHeat': nottinghamHeat, 'electronEnergy': energy, 'electronCount': electronCount}
 
 
-    def run_semiconductor_worker(input_list):
-
-        emitter, indexes, calculateCurrent, calculateNottighamHeat, calculateSpectrum, field, radius, gamma, conductionBandBottom, workFunction, bandGap, kT, effectiveMassConduction, effectiveMassValence, nPoints, results = input_list
+    def __run_semiconductor_worker(self, emitter, indexes, calculateCurrent, calculateNottighamHeat, calculateSpectrum, field, radius, gamma, conductionBandBottom, workFunction, bandGap, kT, effectiveMassConduction, effectiveMassValence, nPoints, results):
 
         for idx in indexes:
 
-            emitter.barrier.setParameters(GETELECModel._getArgument(field, idx), GETELECModel._getArgument(radius, idx), GETELECModel._getArgument(gamma, i))
+            emitter.barrier.setParameters(self._getArgument(field, idx), self._getArgument(radius, idx), self._getArgument(gamma, idx))
 
-            emitter.setParameters(GETELECModel._getArgument(field, idx), GETELECModel._getArgument(radius, idx), GETELECModel._getArgument(gamma, idx), conductionBandBottom, workFunction, bandGap, GETELECModel._getArgument(kT, idx), effectiveMassConduction, effectiveMassValence)
+            emitter.setParameters(self._getArgument(field, idx), self._getArgument(radius, idx), self._getArgument(gamma, idx), conductionBandBottom, workFunction, bandGap, self._getArgument(kT, idx), effectiveMassConduction, effectiveMassValence)
 
             currentDensity = emitter.currentDensity() if calculateCurrent else None
             nottinghamHeat = emitter.nottinghamHeat() if calculateNottighamHeat else None
@@ -1559,29 +1555,29 @@ class GETELECModel():
 
         kT = Globals.BoltzmannConstant * np.array(self.temperature, dtype=float)
 
-        emittersObjectsThreads = [copy.deepcopy(self) for _ in range(nThreads)]
+        emittersObjectsThreads = [copy.copy(self.emitter) for _ in range(nThreads)]
         emitterIndices = np.array_split(np.linspace(0, len(self.field), len(self.field), dtype=int), nThreads)
 
         threads = []
         results = [None] * len(self.field)
 
-        if(self.emitter.type == 'metal'):
+        if(self.emitterType == 'metal'):
 
             for i in range(nThreads):
 
                 inputList = (emittersObjectsThreads[i], emitterIndices[i], calculateCurrent, calculateNottinghamHeat, calculateSpectrum, self.field, self.radius, self.gamma, self.workFunction, kT, nPoints, results)
 
-                thread = threading.Thread(target=self.run_metal_worker, args = inputList)
+                thread = threading.Thread(target=self.__run_metal_worker, args = inputList)
                 threads.append(thread)
                 thread.start()
 
-        if self.emitter.type == 'semiconductor':
+        if self.emitterType == 'semiconductor':
 
             for i in range(nThreads):
 
                 inputList = (emittersObjectsThreads[i], emitterIndices[i], calculateCurrent, calculateNottinghamHeat, calculateSpectrum, self.field, self.radius, self.gamma, self.conductionBandBottom, self.workFunction, self.bandGap, kT, self.effectiveMassConduction, self.effectiveMassValence, nPoints, results)
 
-                thread = threading.Thread(target=self.run_semiconductor_worker, args = inputList)
+                thread = threading.Thread(target=self.__run_semiconductor_worker, args = inputList)
                 threads.append(thread)
                 thread.start()
 
@@ -1595,9 +1591,9 @@ class GETELECModel():
         _electronSpectrum = {'energy': [], 'electronCount': []}
 
         for result in results:
-            if(result['currentDensity'] is not None): _currentDensity.append(result['currentDensity'])
-            if(result['nottinghamHeat'] is not None): _nottinghamHeat.append(result['nottinghamHeat'])
-            if(result['electronEnergy'] is not None): 
+            if(calculateCurrent): _currentDensity.append(result['currentDensity'])
+            if(calculateNottinghamHeat): _nottinghamHeat.append(result['nottinghamHeat'])
+            if(calculateSpectrum): 
                 _electronSpectrum['energy'].append(result['electronEnergy'])
                 _electronSpectrum['electronCount'].append(result['electronCount'])
         

@@ -75,29 +75,3 @@ def fit_data(xML: np.array, yML, workFunction, mode = "simple"):
         
     
     return xplot, xplot_th, yth, fitter.parameters["fieldConversionFactor"], fitter.parameters["radius"], fitter.prefactor
-
-###EXPERIMENTAL
-
-def metal_emitter_worker(input_list):
-    """ Worker function for calculating current density of a single element from the field array
-    """
-
-    field, radius, gamma, workFunction, temperature = input_list
-
-    emitter = gt.MetalEmitter()
-    kT = gt.Globals.BoltzmannConstant * np.array(temperature)
-
-    emitter.barrier.setParameters(field, radius, gamma)
-    emitter.setParameters(workFunction, kT)
-    currentDensity = emitter.currentDensity()
-
-    return currentDensity
-
-def current_metal_emitter_threaded(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, workFunction: np.ndarray, temperature: np.ndarray, threads = 8):
-    """ Calculates the current density for an numpy arrays of inputs
-        Uses multithreading via Pool
-    """
-    with Pool(processes=threads) as process_pool:
-        input_list = [(getArgument(field, i), getArgument(radius, i), getArgument(gamma, i), getArgument(workFunction, i), getArgument(temperature, i)) for i in range(len(field))]
-        results = process_pool.map(metal_emitter_worker, input_list)
-    return results
