@@ -1549,7 +1549,7 @@ class GETELECModel():
         """
 
         nPoints = 256 if self.numberOfSpectrumPoints is None else self.numberOfSpectrumPoints
-        nPointsPerThreadOptimized = 8
+        nPointsPerThreadOptimized = 64
 
         if (len(self.field) < nThreads * nPointsPerThreadOptimized): nThreads = 1
 
