@@ -12,6 +12,8 @@ from scipy.integrate import IntegrationWarning
 import subprocess
 from typing import Any, Optional
 
+import pickle
+
 import threading
 
 filePath,filename = os.path.split(os.path.realpath(__file__))
@@ -1481,7 +1483,6 @@ class GETELECModel():
         """
 
         _setTabulationPath(path)
-        
 
     def saveModel():
         return
@@ -1521,7 +1522,7 @@ class GETELECModel():
     def run(self, calculateCurrent: Optional[bool] = False, calculateNottinghamHeat: Optional[bool] = False, calculateSpectrum: Optional[bool] = False, nThreads: Optional[int] = 8):
 
         """Runs the model by specifying what properties to compute.
-        Allows running multiple calculations at the same time
+        Allows multithreading, running multiple calculations at the same time.
 
         Parameters
         ----------
@@ -1547,22 +1548,16 @@ class GETELECModel():
 
         """
 
-        if(calculateCurrent): _currentDensity = np.array(self.field, dtype=float)
-        if(calculateNottinghamHeat): _nottinghamHeat = np.array(self.field, dtype=float)
-        
-        if(calculateSpectrum): 
-
-            energy = []
-            electronCount = []
-
         nPoints = 256 if self.numberOfSpectrumPoints is None else self.numberOfSpectrumPoints
-        nPointsPerThreadOptimized = 64
+        nPointsPerThreadOptimized = 8
 
         if (len(self.field) < nThreads * nPointsPerThreadOptimized): nThreads = 1
 
         kT = Globals.BoltzmannConstant * np.array(self.temperature, dtype=float)
 
-        emittersObjectsThreads = [copy.copy(self.emitter) for _ in range(nThreads)]
+        parent = self
+
+        emittersObjectsThreads = [GETELECModel(parent.emitterType, parent.field, parent.radius, parent.gamma, parent.workFunction, parent.temperature, parent.conductionBandBottom, parent.bandGap, parent.effectiveMassValence, parent.effectiveMassConduction, parent.numberOfSpectrumPoints).emitter for _ in range(nThreads)]
         emitterIndices = np.array_split(np.arange(len(self.field)), nThreads)
 
         threads = []
