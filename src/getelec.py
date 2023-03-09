@@ -1399,7 +1399,16 @@ class GETELECModel():
 
         return sorted([p.name for p in parameters])
 
-    def _getArgument(arg, idx):
+    def _getArgument(self, arg, idx):
+        """
+        Get element from an array at index.
+        If element does not exist at index, returns last element of array
+        If is not array, returns the value
+
+        Returns
+        -------
+        *Single element
+        """
 
         if isinstance(arg, (np.ndarray, list)):
             if idx >= len(arg):
