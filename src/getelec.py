@@ -23,7 +23,6 @@ if (not os.path.exists(filePath + '/libintegrator.so') or os.path.getmtime(fileP
     subprocess.call("gfortran -c -fPIC -O3 dilog.f -o dilog.o", cwd=filePath, shell=True)
     subprocess.call("gcc -fPIC -shared integrator.o dilog.o -o libintegrator.so && rm *.o", cwd=filePath, shell=True)
 
-
 class Globals:
     """Keeps global constants and variables"""
     tabulationPath:str = filePath + "/../tabulated/2D_512x256"
@@ -34,7 +33,7 @@ class Globals:
     #the limit for which different approximations of the Fermi Dirac functions apply
     exponentLimit =  - 0.5 * np.log(np.finfo(float).eps)
 
-def setTabulationPath(path:str) -> None:
+def _setTabulationPath(path:str) -> None:
     """module function that sets the tabulation path where to find the tabulated barrier parameters"""
     Globals.tabulationPath = path
 
@@ -1475,6 +1474,15 @@ class GETELECModel():
         
         return self
 
+    def setTabulationPath(path:str) -> None:
+
+        """
+        Sets tabulation path for getelec module where to find tabulated barrier parameters
+        """
+
+        _setTabulationPath(path)
+        
+
     def saveModel():
         return
     
@@ -1495,7 +1503,6 @@ class GETELECModel():
 
             results[idx] = {'currentDensity': currentDensity, 'nottinghamHeat': nottinghamHeat, 'electronEnergy': energy, 'electronCount': electronCount}
 
-
     def __run_semiconductor_worker(self, emitter, indexes, calculateCurrent, calculateNottighamHeat, calculateSpectrum, field, radius, gamma, conductionBandBottom, workFunction, bandGap, kT, effectiveMassConduction, effectiveMassValence, nPoints, results):
 
         for idx in indexes:
@@ -1509,7 +1516,6 @@ class GETELECModel():
             electronEnergy, electronCount = emitter.totalEnergySpectrumArrays(nPoints) if calculateSpectrum else None
 
             results[idx] = {'currentDensity': currentDensity, 'nottinghamHeat': nottinghamHeat, 'electronEnergy': electronEnergy, 'electronCount': electronCount}
-
 
     def run(self, calculateCurrent: Optional[bool] = False, calculateNottinghamHeat: Optional[bool] = False, calculateSpectrum: Optional[bool] = False, nThreads: Optional[int] = 8):
 
@@ -1556,7 +1562,7 @@ class GETELECModel():
         kT = Globals.BoltzmannConstant * np.array(self.temperature, dtype=float)
 
         emittersObjectsThreads = [copy.copy(self.emitter) for _ in range(nThreads)]
-        emitterIndices = np.array_split(np.linspace(0, len(self.field), len(self.field), dtype=int), nThreads)
+        emitterIndices = np.array_split(np.arange(len(self.field)), nThreads)
 
         threads = []
         results = [None] * len(self.field)
