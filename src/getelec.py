@@ -1139,7 +1139,7 @@ class SemiconductorEmitter:
         return energyArray, spectrumArray  
         
 
-    # endregiondata
+    # endregion
 
 class IVDataFitter:
     
