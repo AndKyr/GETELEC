@@ -1151,9 +1151,12 @@ function fitpoly(this)  result(var)
     
     N = size(this%xr)
     
-    if ((size(this%Apoly)) /=  (3*size(this%xr) + 3*Nmaxpoly + 3) .or. &
-        .not.(allocated(this%Apoly))) then
-        if (allocated(this%Apoly)) deallocate(this%Apoly)
+    if (.not. (allocated(this%Apoly))) then
+        allocate (this%Apoly(3*size(this%xr) + 3*Nmaxpoly + 3))
+    endif
+
+    if (size(this%Apoly) /= (3*size(this%xr) + 3*Nmaxpoly + 3)) then
+        deallocate(this%Apoly)
         allocate (this%Apoly(3*size(this%xr) + 3*Nmaxpoly + 3))
     endif
     !make sure that the arrays are allocated properly and have the correct size
