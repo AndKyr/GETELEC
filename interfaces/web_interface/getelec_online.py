@@ -52,9 +52,9 @@ def spectrum_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma:
 def fit_data(xML: np.array, yML, workFunction, mode = "simple"):
 
     if mode == "simple":
-        gt.setTabulationPath(getelecRootPath + "/tabulated/1D_1024")
+        gt._setTabulationPath(getelecRootPath + "/tabulated/1D_1024")
     else:
-        gt.setTabulationPath(getelecRootPath + "tabulated/2D_512x256")
+        gt._setTabulationPath(getelecRootPath + "tabulated/2D_512x256")
     
     voltage = 1./xML
     current = np.exp(yML)
