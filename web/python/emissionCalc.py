@@ -100,7 +100,7 @@ def main():
               
             data5 = heat_semiconductor_emitter(data['field'], data['radius'], data['gammaSemi'], data['ec'], data['ef'], data['eg'], data['temperature'], data['me'], data['mp'])
   
-        if data['calculateES'] == "1":
+        if data['calculateES'] == 1:
 
             res = spectrum_semiconductor_emitter(data['field'], data['radius'], data['gammaSemi'], data['ec'], data['ef'], data['eg'], data['temperature'], data['me'], data['mp'])
 

@@ -1136,8 +1136,8 @@ class SemiconductorEmitter:
         energyArrayConduction, spectrumConduction = self.conductionEmitter.totalEnergySpectrumArrays(numberOfPoints=numberOfPoints)
         energyArrayValence, spectrumValence = self.valenceEmitter.totalEnergySpectrumArrays(numberOfPoints=numberOfPoints)
 
-        energyArray = np.concatenate((energyArrayValence, energyArrayConduction))
-        spectrumArray = np.concatenate((spectrumValence, spectrumConduction))
+        energyArray = energyArrayValence + energyArrayConduction
+        spectrumArray = spectrumValence + spectrumConduction
         return energyArray, spectrumArray  
         
 
@@ -1675,6 +1675,25 @@ class GETELECModel():
 
 
 if (__name__ == "__main__"): #some testing operations
+
+    field = np.array([1, 2, 3, 4, 5])
+    radius = np.full(5, 50)
+    gamma = np.full(5, 10)
+    workFunction = np.full(5, 4)
+    temperature = np.full(5, 300)
+
+    emitter = SemiconductorEmitter()
+
+    emitter.barrier.setParameters(4, 20, 10)
+    emitter.setParameters(5, 50, 4.5, 3, 4, 2, Globals.BoltzmannConstant*280, 1, 1)
+
+    print(emitter.totalEnergySpectrumArrays())
+
+
+                #emitter.barrier.setParameters(self._getArgument(field, idx), self._getArgument(radius, idx), self._getArgument(gamma, idx))
+
+           # emitter.setParameters(self._getArgument(field, idx), self._getArgument(radius, idx), self._getArgument(gamma, idx), conductionBandBottom, workFunction, bandGap, self._getArgument(kT, idx), effectiveMassConduction, effectiveMassValence)
+
     
 
     # kT = Globals.BoltzmannConstant * 1000.
@@ -1726,30 +1745,30 @@ if (__name__ == "__main__"): #some testing operations
     # t1 = time.time()
     # print ("elapsed time semiconductor = ", t1 - t0)
 
-    interpolator = Interpolator(tabulationFolder="tabulated/1D_1024", Nfield=1024, NRadius=1, Ngamma=1)
+    # interpolator = Interpolator(tabulationFolder="tabulated/1D_1024", Nfield=1024, NRadius=1, Ngamma=1)
 
-    bar = Barrier(5, 1000, 10., tabulationFolder="tabulated/1D_1024")
-    em = ConductionBandEmitter(bar, sup)
+    # bar = Barrier(5, 1000, 10., tabulationFolder="tabulated/1D_1024")
+    # em = ConductionBandEmitter(bar, sup)
 
 
-    xFN = np.linspace(0.15, 0.3, 32)
+    # xFN = np.linspace(0.15, 0.3, 32)
 
-    voltage = 1./xFN
-    currentDensity = np.copy(voltage)
+    # voltage = 1./xFN
+    # currentDensity = np.copy(voltage)
     
-    for i in range(len(voltage)):
-        bar.setParameters(field=voltage[i], radius=1000.)
-        em.setParameters(4.5, 300. * Globals.BoltzmannConstant)
-        currentDensity[i] = em.currentDensity()
+    # for i in range(len(voltage)):
+    #     bar.setParameters(field=voltage[i], radius=1000.)
+    #     em.setParameters(4.5, 300. * Globals.BoltzmannConstant)
+    #     currentDensity[i] = em.currentDensity()
 
-    fitter = IVDataFitter(emitter=em)
+    # fitter = IVDataFitter(emitter=em)
 
-    fitter.setIVcurve(voltageData=voltage, currentData=currentDensity)
-    fitter.setParameterRange()
-    fitter.fitIVCurve()
-    fittedCurrent = fitter.getOptCurrentCurve()
-    plt.semilogy(voltage, currentDensity, '.')
-    plt.semilogy(voltage, fittedCurrent)
-    plt.savefig("fittedcurve.png")
+    # fitter.setIVcurve(voltageData=voltage, currentData=currentDensity)
+    # fitter.setParameterRange()
+    # fitter.fitIVCurve()
+    # fittedCurrent = fitter.getOptCurrentCurve()
+    # plt.semilogy(voltage, currentDensity, '.')
+    # plt.semilogy(voltage, fittedCurrent)
+    # plt.savefig("fittedcurve.png")
 
 

@@ -43,7 +43,7 @@ def spectrum_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndar
 
 def spectrum_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, conductionBandBottom: float, workFunction:float, bandGap: float, temperature: np.ndarray, effectiveMassConduction: float, effectiveMassValence: float):
 
-    model = gt.GETELECModel(emitterType='semiconductor', field=field, radius=radius, gamma=gamma, conductionBandBottom=conductionBandBottom, workFunction=workFunction, bandGap=bandGap, temperature=temperature, effectiveMassConduction=effectiveMassConduction, effectiveMassValence=effectiveMassValence)
+    model = gt.GETELECModel(emitterType='semiconductor', field=field, radius=radius, gamma=gamma, conductionBandBottom=conductionBandBottom[0], workFunction=workFunction[0], bandGap=bandGap[0], temperature=temperature, effectiveMassConduction=effectiveMassConduction[0], effectiveMassValence=effectiveMassValence[0])
 
     return model.calculateElectronSpectrum().electronSpectrum
 

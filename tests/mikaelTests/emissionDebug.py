@@ -49,7 +49,7 @@ from getelec_online import current_semiconductor_emitter, heat_semiconductor_emi
 # gtm.calculateCurrentDensity()
 # print(gtm.getCurrentDensity())
 
-jsonData = '{"materialType":2,"sweepParam":2,"field":[2,2.48,2.95,3.43,3.9,4.38,4.86,5.33,5.81,6.29,6.76,7.24,7.71,8.19,8.67,9.14,9.62,10.1,10.57,11.05,11.52,12],"radius":[50],"work_function":[4.5],"temperature":[300],"ec":[4.05],"ef":[4.61],"eg":[1.12],"gammaMetal":[10],"gammaSemi":[10],"me":[0.98],"mp":[0.5],"calculateEC":1,"calculateNH":0,"calculateES":0}'
+jsonData = '{"materialType":2,"sweepParam":2,"field":[2,2.48,2.95,3.43,3.9,4.38,4.86,5.33,5.81,6.29,6.76,7.24,7.71,8.19,8.67,9.14,9.62,10.1,10.57,11.05,11.52,12],"radius":[50],"work_function":[4.5],"temperature":[300],"ec":[4.05],"ef":[4.61],"eg":[1.12],"gammaMetal":[10],"gammaSemi":[10],"me":[0.98],"mp":[0.5],"calculateEC":0,"calculateNH":0,"calculateES":1}'
 
 
 def forceSameLength(data):
@@ -135,7 +135,7 @@ def main():
               
             data5 = heat_semiconductor_emitter(data['field'], data['radius'], data['gammaSemi'], data['ec'], data['ef'], data['eg'], data['temperature'], data['me'], data['mp'])
   
-        if data['calculateES'] == "1":
+        if data['calculateES'] == 1:
 
             res = spectrum_semiconductor_emitter(data['field'], data['radius'], data['gammaSemi'], data['ec'], data['ef'], data['eg'], data['temperature'], data['me'], data['mp'])
 
