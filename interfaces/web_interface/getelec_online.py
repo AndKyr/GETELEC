@@ -17,9 +17,9 @@ def current_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarr
 
     return model.calculateCurrentDensity().currentDensity
 
-def current_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, ec: float, ef:float, eg: float, temperature: np.ndarray, me: float, mp: float):
+def current_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, conductionBandBottom: float, workFunction:float, bandGap: float, temperature: np.ndarray, effectiveMassConduction: float, effectiveMassValence: float):
 
-    model = gt.GETELECModel(emitterType='semiconductor', field=field, radius=radius, gamma=gamma, ec=ec, ef=ef, eg=eg, temperature=temperature, me=me, mp=mp)
+    model = gt.GETELECModel(emitterType='semiconductor', field=field, radius=radius, gamma=gamma, conductionBandBottom=conductionBandBottom, workFunction=workFunction, bandGap=bandGap, temperature=temperature, effectiveMassConduction=effectiveMassConduction, effectiveMassValence=effectiveMassValence)
 
     return model.calculateCurrentDensity().currentDensity
 
@@ -29,9 +29,9 @@ def heat_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray,
 
     return model.calculateNottinghamHeat().nottinghamHeat
 
-def heat_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, ec: float, ef:float, eg: float, temperature: np.ndarray, me: float, mp: float):
+def heat_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, conductionBandBottom: float, workFunction:float, bandGap: float, temperature: np.ndarray, effectiveMassConduction: float, effectiveMassValence: float):
 
-    model = gt.GETELECModel(emitterType='semiconductor', field=field, radius=radius, gamma=gamma, ec=ec, ef=ef, eg=eg, temperature=temperature, me=me, mp=mp)
+    model = gt.GETELECModel(emitterType='semiconductor', field=field, radius=radius, gamma=gamma, conductionBandBottom=conductionBandBottom, workFunction=workFunction, bandGap=bandGap, temperature=temperature, effectiveMassConduction=effectiveMassConduction, effectiveMassValence=effectiveMassValence)
     
     return model.calculateNottinghamHeat().nottinghamHeat
 
@@ -41,9 +41,9 @@ def spectrum_metal_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndar
 
     return model.calculateElectronSpectrum().electronSpectrum
 
-def spectrum_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, ec: float, ef:float, eg: float, temperature: np.ndarray, me: float, mp: float):
+def spectrum_semiconductor_emitter(field: np.ndarray, radius: np.ndarray, gamma: np.ndarray, conductionBandBottom: float, workFunction:float, bandGap: float, temperature: np.ndarray, effectiveMassConduction: float, effectiveMassValence: float):
 
-    model = gt.GETELECModel(emitterType='semiconductor', field=field, radius=radius, gamma=gamma, ec=ec, ef=ef, eg=eg, temperature=temperature, me=me, mp=mp)
+    model = gt.GETELECModel(emitterType='semiconductor', field=field, radius=radius, gamma=gamma, conductionBandBottom=conductionBandBottom, workFunction=workFunction, bandGap=bandGap, temperature=temperature, effectiveMassConduction=effectiveMassConduction, effectiveMassValence=effectiveMassValence)
 
     return model.calculateElectronSpectrum().electronSpectrum
 

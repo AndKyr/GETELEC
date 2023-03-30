@@ -1519,10 +1519,12 @@ class GETELECModel():
 
             results[idx] = {'currentDensity': currentDensity, 'nottinghamHeat': nottinghamHeat, 'electronEnergy': electronEnergy, 'electronCount': electronCount}
 
-    def run(self, calculateCurrent: Optional[bool] = False, calculateNottinghamHeat: Optional[bool] = False, calculateSpectrum: Optional[bool] = False, nThreads: Optional[int] = 8):
+    def run(self, calculateCurrent: Optional[bool] = False, calculateNottinghamHeat: Optional[bool] = False, calculateSpectrum: Optional[bool] = False, nThreads: Optional[int] = 1):
 
         """Runs the model by specifying what properties to compute.
         Allows multithreading, running multiple calculations at the same time.
+
+        BETA: Only 1 thread for now
 
         Parameters
         ----------
@@ -1557,7 +1559,9 @@ class GETELECModel():
 
         parent = self
 
-        emittersObjectsThreads = [GETELECModel(parent.emitterType, parent.field, parent.radius, parent.gamma, parent.workFunction, parent.temperature, parent.conductionBandBottom, parent.bandGap, parent.effectiveMassValence, parent.effectiveMassConduction, parent.numberOfSpectrumPoints).emitter for _ in range(nThreads)]
+        emittersObjectsThreads = [GETELECModel(emitterType = parent.emitterType, field = parent.field, radius = parent.radius, gamma = parent.gamma, workFunction = parent.workFunction,
+                                                temperature = parent.temperature, conductionBandBottom = parent.conductionBandBottom, bandGap = parent.bandGap, effectiveMassValence = parent.effectiveMassValence,
+                                                effectiveMassConduction = parent.effectiveMassConduction, numberOfSpectrumPoints = parent.numberOfSpectrumPoints).emitter for _ in range(nThreads)]
         emitterIndices = np.array_split(np.arange(len(self.field)), nThreads)
 
         threads = []
