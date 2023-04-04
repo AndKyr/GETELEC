@@ -1,11 +1,11 @@
 #! /usr/bin/python
 
 #fitting parameters: minimum, initial guess and maximum values
-F0 = [0.1, 0.51, 2.]
-R0 = [100., 101., 102.]
-gamma0 = [1., 1.2, 1.3]
-Temp0 = [299., 300., 300.]
-W0 = [5.2, 5.21, 5.22]
+F0 = [2., 8., 15.]
+R0 = [0.5, 5., 102.]
+gamma0 = [2., 10., 100]
+Temp0 = [299.9, 300., 300.01]
+W0 = [4.5, 4.500001, 4.5001]
 
 
 #ploting parameters
@@ -28,13 +28,13 @@ pythonpath = emissionpath + '/python'
 sys.path.append(pythonpath)
 import getelec_mod as getelec_old
 
-matplotlib.rcParams["font.family"] = 'Times New Roman'
+# matplotlib.rcParams["font.family"] = 'Times New Roman'
 matplotlib.rcParams["font.size"] = font
 matplotlib.rcParams["axes.labelsize"] = font
 matplotlib.rcParams["xtick.labelsize"] = font
 matplotlib.rcParams["ytick.labelsize"] = font
 matplotlib.rcParams["legend.fontsize"] = font
-matplotlib.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}']
+# matplotlib.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}']
 
 filename  = sys.argv[1]
 fig = plt.figure(figsize=(20,15))
@@ -53,8 +53,7 @@ popt = fit.x
 yopt = getelec_old.MLplot(xdata, popt[0], popt[1], popt[2], popt[3], popt[4])
 yshift = max(yopt) - max(ydata)
     
-#print 'beta = %10.3e, W = %10.3f, R = %10.3f, gamma = %10.3f, Temp = %10.3f, sigmaAeff = %10.3e' 
-#        % (popt[0], popt[1],  popt[2], popt[3], popt[4], 1e-9*np.exp(-yshift))
+print ('beta = %10.3e, W = %10.3f, R = %10.3f, gamma = %10.3f, Temp = %10.3f, sigmaAeff = %10.3e'%(popt[0], popt[1],  popt[2], popt[3], popt[4], 1e-9*np.exp(-yshift)))
                 
 xth = np.linspace(min(xdata),max(xdata),100)
 yth = np.exp(getelec_old.MLplot(xth, popt[0], popt[1], popt[2], popt[3], popt[4]) - yshift)           
@@ -65,5 +64,6 @@ ax.semilogy(xth / popt[0],yth,c=colors, linewidth = lw, label = 'fitting')
 
 ax.legend(loc="best")
 fig.tight_layout()
-plt.show()
+plt.savefig("fitted.png")
+# plt.show()
 
