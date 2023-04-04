@@ -1143,135 +1143,6 @@ class SemiconductorEmitter:
 
     # endregion
 
-class IVDataFitter:
-    
-    parameters: dict
-    initialParameters: dict
-    minParameters: dict
-    maxParameters: dict
-
-    def __init__(self, emitter:ConductionBandEmitter = ConductionBandEmitter()) -> None:
-        self.emitter = emitter
-        if (emitter.barrier.getDimension() == 3):
-            self.parameters = {"fieldConversionFactor": 1., "radius": 10., "gamma": 10., "workFunction": 4.5, "temperature": 300.}
-        elif (emitter.barrier.getDimension() == 2):
-            self.parameters = {"fieldConversionFactor": 1., "radius": 10.,"workFunction": 4.5, "temperature": 300.}
-        elif (emitter.barrier.getDimension() == 1):
-            self.parameters = {"fieldConversionFactor": 1., "workFunction": 4.5, "temperature": 300.}
-        else:
-            assert False, "The interpolator has wrong dimension (%d)"%emitter.barrier.getDimension()
-
-    def currentDensityforVoltages(self, voltageArray:np.ndarray ):
-        """ Calculates and returns the current density for a given array of voltages, assuming a field conversion factor 
-        (F=fieldConversionfactor * Voltage). 
-        
-        Parameters:
-            voltageArray: array of Voltages (Volts)
-            fieldConversionFactor: ratio between local field and voltage (1/nm). Default 1.
-            radius: radius of curvature of the emitter. Default 20.
-            gamma: gamma barrier parameter. Default 10.
-            workFunction: Work function of the emitter (eV). Default 4.5
-            temperature: local temperature of the emitter (K). Default 300.
-
-        Returns:
-            currentDensity: Array of the resulting current densities for each voltage element
-        """
-        currentDensity = np.copy(voltageArray)
-
-        radius = 1.e4
-        gamma = 10.
-        if (self.emitter.barrier.getDimension() >= 2):
-            radius = self.parameters["radius"]
-        if(self.emitter.barrier.getDimension() == 3):
-            gamma = self.parameters["gamma"]
-        
-    
-        for i in range(len(voltageArray)):
-            self.emitter.barrier.setParameters(field= self.parameters["fieldConversionFactor"] * voltageArray[i], radius = radius, gamma = gamma)
-            self.emitter.setParameters(self.parameters["workFunction"], Globals.BoltzmannConstant * self.parameters["temperature"])
-            currentDensity[i] = self.emitter.currentDensity()
-        
-        return currentDensity
-    
-    def logCurrentDensityError(self, parameterList, voltageData, currentDensityData):
-        """ Calculates the error between a given I-V curve and the one calculated by GETELEC for a given set of parameters.
-        The main usage of this function is to be called by external minimization function in order to find the parameterList that
-        gives the best fit to the given I-V
-
-        Parameters:
-            parameterList: list of emitter parameters (fieldConversionFactor, radius, gamma, workFunction, temperature)
-            voltageArray: input array of voltages (measured)
-            curentDensityArray: input array of current densities
-        Returns:
-            array of relative errors (in logarithmic scale) between the calculated and the given current densities, after normalizing with a multiplication
-            factor that forces them to match at their maximum
-        """
-
-        assert len(parameterList) == len(self.parameters), "parameterList has a length of %d while it should have %d"%(len(parameterList), len(self.parameters))
-        i = 0
-        for paramName in self.parameters:
-            self.parameters[paramName] = parameterList[i]
-            i += 1
-
-
-        calculatedCurrentDensities = self.currentDensityforVoltages(voltageData)
-        
-        #normalize by forcing the max values to match
-        maxValueRatio = np.max(currentDensityData) / np.max(calculatedCurrentDensities)
-        error = np.log(maxValueRatio * calculatedCurrentDensities / currentDensityData)
-        return error
-
-    def setIVcurve(self, voltageData:np.ndarray, currentData:np.ndarray):
-        self.voltageData = voltageData
-        self.currentData = currentData
-        return
-
-    def setParameterRange(self, fieldRange = [1., 6., 12.], radiusRange = [1., 20., 1000.], gammaRange = [1., 10., 1000.], \
-        workFunctionRange = [1., 4.5, 7.5], temperatureRange = [30., 300., 5000.]):
-        self.minParameters = copy.deepcopy(self.parameters)
-        self.maxParameters = copy.deepcopy(self.parameters)
-        self.initialParameters = copy.deepcopy(self.parameters)
-
-        self.minParameters["fieldConversionFactor"] = fieldRange[0] / np.min(self.voltageData)
-        self.initialParameters["fieldConversionFactor"] = fieldRange[1] / np.mean(self.voltageData)
-        self.maxParameters["fieldConversionFactor"] = fieldRange[2] / np.max(self.voltageData)
-        
-        self.minParameters["workFunction"] = workFunctionRange[0]
-        self.initialParameters["workFunction"] = workFunctionRange[1]
-        self.maxParameters["workFunction"] = workFunctionRange[2]
-
-        self.minParameters["temperature"] = temperatureRange[0]
-        self.initialParameters["temperature"] = temperatureRange[1]
-        self.maxParameters["temperature"] = temperatureRange[2]
-
-        if (self.emitter.barrier.getDimension() >= 2):
-            self.minParameters["radius"] = radiusRange[0]
-            self.initialParameters["radius"] = radiusRange[1]
-            self.maxParameters["radius"] = radiusRange[2]
-        if (self.emitter.barrier.getDimension() == 3):
-            self.minParameters["gamma"] = gammaRange[0]
-            self.initialParameters["gamma"] = gammaRange[1]
-            self.maxParameters["gamma"] = gammaRange[2]
-
-    def fitIVCurve(self) -> None:
-        self.optimizationData = opt.least_squares(fun = self.logCurrentDensityError, args = (self.voltageData, self.currentData), x0 = list(self.initialParameters.values()), \
-            bounds =(list(self.minParameters.values()), list(self.maxParameters.values())), method = 'trf', jac = '3-point')
-        
-        i = 0
-        for parameterName in self.parameters:
-            self.parameters[parameterName] = self.optimizationData.x[i]
-            i += 1
-        
-        unshiftedCurrentCurve = self.currentDensityforVoltages(self.voltageData)
-        self.prefactor = np.max(self.currentData) / np.max(unshiftedCurrentCurve)
-        self.fittedCurrent = self.prefactor * unshiftedCurrentCurve
-
-    def getOptCurrentCurve(self, voltageData = None) -> np.ndarray:
-        if (len(voltageData) == 0):
-            return self.fittedCurrent
-        else:
-            return self.prefactor * self.currentDensityforVoltages(voltageData)
-
 class GETELECModel():
 
     def __init__(
@@ -1279,16 +1150,16 @@ class GETELECModel():
         #AK: set the parameters below to match the definitions given in the refactored code
 
         self,
-        emitterType: Optional[str] = None,
-        field: Optional[np.ndarray] = None,
-        radius: Optional[np.ndarray] = None,
-        gamma: Optional[np.ndarray] = None,
-        workFunction: Optional[np.ndarray] = None,
-        temperature: Optional[np.ndarray] = None,
+        emitterType: Optional[str] = "metal",
+        field: Optional[np.ndarray] = 5.,
+        radius: Optional[np.ndarray] = 1000.,
+        gamma: Optional[np.ndarray] = 10.,
+        workFunction: Optional[np.ndarray] = 4.5,
+        temperature: Optional[np.ndarray] = 300.,
         emitter: Optional[BandEmitter] = None,
         conductionBandBottom: Optional[float] = None,
         bandGap: Optional[float] = None,
-        effectiveMassConduction: Optional[float] = None,
+        effectiveMassConduction: Optional[float] = 1.,
         effectiveMassValence: Optional[float] = None,
         numberOfSpectrumPoints: Optional[int] = None,
 
