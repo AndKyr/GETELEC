@@ -1,8 +1,8 @@
 import getelec as gt
 import numpy as np
-import copy
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
+import copy
 
 class IVDataFitter:
     
@@ -20,7 +20,6 @@ class IVDataFitter:
         self.minParameters = {"fieldConversionFactor": 1.}
         self.initialParameters = {"fieldConversionFactor": 1.}
         self.maxParameters = {"fieldConversionFactor": 1.}
-
 
     def currentDensityforVoltages(self, voltageArray:np.ndarray) -> np.ndarray:
         """ Calculates and returns the current density for a given array of voltages, assuming a field conversion factor 
@@ -49,25 +48,25 @@ class IVDataFitter:
 
         Parameters:
             parameterList: list of emitter parameters (fieldConversionFactor, radius, gamma, workFunction, temperature)
-            voltageArray: input array of voltages (measured)
-            curentDensityArray: input array of current densities
         Returns:
             array of relative errors (in logarithmic scale) between the calculated and the given current densities, after normalizing with a multiplication
             factor that forces them to match at their maximum
         """
 
         assert len(parameterList) == len(self.fittingParameters), "parameterList has a length of %d while it should have %d"%(len(parameterList), len(self.fittingParameters))
+        
+        #copy parameter list into the parameter dictionary
         i = 0
         for paramName in self.fittingParameters:
             self.fittingParameters[paramName] = parameterList[i]
             i += 1
 
-
         calculatedCurrentDensities = self.currentDensityforVoltages(self.voltageData)
         
         #normalize by forcing the max values to match
-        maxValueRatio = np.max(self.currentData) / np.max(calculatedCurrentDensities)
-        error = np.log(maxValueRatio * calculatedCurrentDensities / self.currentData)
+        logOfPrefactor = np.mean(np.log(self.currentData)) - np.mean(np.log(calculatedCurrentDensities))
+        self.preFactor = np.exp(logOfPrefactor)
+        error = np.log(calculatedCurrentDensities / self.currentData) + logOfPrefactor
         return error
 
     def setIVdata(self, voltageData:np.ndarray, currentData:np.ndarray) -> None:
@@ -106,6 +105,9 @@ class IVDataFitter:
         for key in fixedParameterArgs:
             try:
                 self.fittingParameters.pop(key)
+                self.initialParameters.pop(key)
+                self.minParameters.pop(key)
+                self.maxParameters.pop(key)
             except KeyError:
                 pass
 
@@ -126,9 +128,7 @@ class IVDataFitter:
             self.fittingParameters[parameterName] = self.optimizationData.x[i]
             i += 1
         
-        unshiftedCurrentCurve = self.currentDensityforVoltages(self.voltageData)
-        self.prefactor = np.max(self.currentData) / np.max(unshiftedCurrentCurve)
-        self.fittedCurrent = self.prefactor * unshiftedCurrentCurve
+        self.fittedCurrent = self.preFactor * self.currentDensityforVoltages(self.voltageData)
 
     def getOptCurrentCurve(self, voltageData:np.ndarray = None) -> np.ndarray:
         """Calculates and returns the current curve for a given input voltage data array
@@ -140,9 +140,28 @@ class IVDataFitter:
         if (voltageData is None):
             return self.fittedCurrent
         else:
-            return self.prefactor * self.currentDensityforVoltages(voltageData)
+            return self.preFactor * self.currentDensityforVoltages(voltageData)
+        
+    def getFittingError(self):
+        return self.optimizationData.cost
+    
+    def printFittingData(self):
+        print("Optimum parameters: ", self.fittingParameters)
+        print("sigma * Aeff: ", self.preFactor)
+        print("Fitting Error (relative): ", self.getFittingError())
 
 
+class twoEmitterFitter:
+    def __init__(self, emitterModel: gt.GETELECModel = gt.GETELECModel()) -> None:
+
+        self.fittingParameters = {"fieldConversionFactor": 1., "secondFieldConversionFactor": 2., "prefactor": 1., "secondPrefactor": 1.}
+        self.minParameters ={"fieldConversionFactor": 1., "secondFieldConversionFactor": 2., "prefactor": 1., "secondPrefactor": 1.}
+        self.initialParameters = {"fieldConversionFactor": 1., "secondFieldConversionFactor": 2., "prefactor": 1., "secondPrefactor": 1.}
+        self.maxParameters = {"fieldConversionFactor": 1., "secondFieldConversionFactor": 2., "prefactor": 1., "secondPrefactor": 1.}
+
+        self.firstEmitter = emitterModel
+
+        self.secondEmitter = copy.deepcopy(self.firstEmitter)
 
 if (__name__ == "__main__"): #some testing operations
     
@@ -189,14 +208,24 @@ if (__name__ == "__main__"): #some testing operations
     fitter.fitIVCurve()
     fittedCurrent = fitter.getOptCurrentCurve(voltageData)
     plt.semilogy(1./voltageData, currentData, '.', label="data" )
-    plt.semilogy(1./voltageData, fittedCurrent, label = "beta = %g"%fitter.fittingParameters["fieldConversionFactor"])
+    plt.semilogy(1./voltageData, fittedCurrent, label = "beta=%.2g, err=%.2g"%(fitter.fittingParameters["fieldConversionFactor"], fitter.getFittingError()))
 
     fitter.setParameterRange(radius=[1., 10., 2000.])
 
     fitter.fitIVCurve()
     fittedCurrent = fitter.getOptCurrentCurve()
-    plt.semilogy(1./voltageData, fittedCurrent, label = "beta = %g, R = %g"%(fitter.fittingParameters["fieldConversionFactor"], fitter.fittingParameters["radius"]))
+    plt.semilogy(1./voltageData, fittedCurrent, label = "beta = %.2g, R = %.2g, err=%.2g"%(fitter.fittingParameters["fieldConversionFactor"], fitter.fittingParameters["radius"], fitter.getFittingError()))
+
+
+
+    fitter.setParameterRange(workFunction=[2.5, 4.5, 7.], radius=[1., 10., 200.])
+
+    fitter.fitIVCurve()
+    fittedCurrent = fitter.getOptCurrentCurve()
+    plt.semilogy(1./voltageData, fittedCurrent, label = "beta = %.2g, R = %.2g, W = %.2g, err = %.2g"%(fitter.fittingParameters["fieldConversionFactor"], fitter.fittingParameters["radius"], fitter.fittingParameters["workFunction"], fitter.getFittingError()))
 
     plt.legend()
 
     plt.savefig("fittedcurve.png")
+
+    fitter.printFittingData()
