@@ -61,12 +61,12 @@ class IVDataFitter:
             self.fittingParameters[paramName] = parameterList[i]
             i += 1
 
-        calculatedCurrentDensities = self.currentDensityforVoltages(self.voltageData)
+        self.calculatedCurrentDensities = self.currentDensityforVoltages(self.voltageData)
         
         #normalize by forcing the max values to match
-        logOfPrefactor = np.mean(np.log(self.currentData)) - np.mean(np.log(calculatedCurrentDensities))
+        logOfPrefactor = np.mean(np.log(self.currentData)) - np.mean(np.log(self.calculatedCurrentDensities))
         self.preFactor = np.exp(logOfPrefactor)
-        error = np.log(calculatedCurrentDensities / self.currentData) + logOfPrefactor
+        error = np.log(self.calculatedCurrentDensities / self.currentData) + logOfPrefactor
         return error
 
     def setIVdata(self, voltageData:np.ndarray, currentData:np.ndarray) -> None:
@@ -142,14 +142,34 @@ class IVDataFitter:
         else:
             return self.preFactor * self.currentDensityforVoltages(voltageData)
         
-    def getFittingError(self):
+    def getFittingError(self) -> None:
         return self.optimizationData.cost
     
-    def printFittingData(self):
+    def printFittingData(self) -> None:
         print("Optimum parameters: ", self.fittingParameters)
         print("sigma * Aeff: ", self.preFactor)
         print("Fitting Error (relative): ", self.getFittingError())
 
+    def orthodoxyStatus(self) -> str:
+        maxCurrentDensity = np.max(self.calculatedCurrentDensities)
+        if maxCurrentDensity > 1.e-5:
+            self.orthodoxyMessage = """
+            The local field and current density predicted by the fit is too high. Your emitter would blow up if such a current density were true. The input data do not correspond to orthodox field emission"""
+            return "unorthodox (high)"
+        if maxCurrentDensity > 1.e-7:
+            self.orthodoxyMessage = """
+            The local field and current density predicted by the fit quite high. Your emitter would be close to blowing up if such a current density were true. The input are likely to not correspond to orthodox field emission"""
+            return "apparently orthodox (high)"
+        
+        if self.preFactor > 1.e10:
+            self.orthodoxyMessage = """The local field and current density predicted by the fit are too low and the corresponding effective emission area is too high. Do you think it is reasonable your effective emission area (total current / max current density) to be in the order of %g nm^2? If not (e.g. you are not measuring a huge amount of emitters or your emitter is not 0.1mm in radius), the input data do not correspond to orthodox field emission"""%self.preFactor
+            return "unorthodox (low)"
+        if self.preFactor > 1.e5:
+            self.orthodoxyMessage = """The local field and current density predicted by the fit are quite low and the corresponding effective emission area is pretty high. Do you think it is reasonable your effective emission area (total current / max current density) to be in the order of %g nm^2? If not (e.g. you are not measuring a big amount of emitters or your emitter is not micron-scale in radius), the input data are likely to not correspond to orthodox field emission"""%self.preFactor
+            return "apparently orthodox (low)"
+
+        self.orthodoxyMessage = "The data are within field emission orthodoxy limits"
+        return "orthodox"
 
 class twoEmitterFitter:
     def __init__(self, emitterModel: gt.GETELECModel = gt.GETELECModel()) -> None:
