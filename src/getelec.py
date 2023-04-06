@@ -1544,79 +1544,37 @@ class GETELECModel():
 if (__name__ == "__main__"): #some testing operations
     
 
-    # kT = Globals.BoltzmannConstant * 1000.
-    # for i in range(8):
-    #     kT *= 0.8
-    #     em.setParameters(4., kT)
-    #     print("running for temperature = ", kT / Globals.BoltzmannConstant)
-    #     Energy, electronCount = em.totalEnergyDistribution()
-    #     currentFromTED = em.SommerfeldConstant * np.trapz(electronCount, Energy)
-    #     nottinghamFromTED = -em.SommerfeldConstant * np.trapz(electronCount * Energy, Energy)
-    #     print("Current density from three methods:", em.currentDensityFast(), em.currentDensitySlow(), currentFromTED)
-    #     print("Nottingham Heat from 3 methods: ", em.nottinghamHeatFast(), em.nottinghamHeatSimple(), nottinghamFromTED)
-
-    #     plt.plot(Energy, electronCount, markersize = 1.5)
-    # plt.grid()
-    # plt.savefig("spectrum.png")
-    # Ntest = 100000
-    # fields = np.random.randn(Ntest) + 5.
-    # Radii = 2 * np.random.randn(Ntest) + 5.
-    # Temperatures = 100 * np.random.randn(Ntest) + 900.
-
-    # import time
-
-    # t0 = time.time()
-
-    # Jcur = np.copy(Temperatures)
+    reducedFields = np.linspace(0.1, 0.9, 128)
     
-    # for i in range(Ntest):
-    #     bar.setParameters(field=fields[i], radius=Radii[i])
-    #     em.setParameters(4., Temperatures[i] * Globals.BoltzmannConstant)
-    #     Jcur[i] = em.currentDensityFast()
-
-    # t1 = time.time()
-    # timePerCalculation = (t1 - t0) / Ntest
-    # print("time per current calculation = %e sec"%timePerCalculation)
-
-    # JcurSemi = np.copy(Jcur)
-    # em = Semiconductor_Emitter(bar, sup)
-    # t0 = time.time()
-    
-    # for i in range(Ntest):
-    #     bar.setParameters(field=fields[i], radius=Radii[i])
-    #     em.Define_Semiconductor_Emitter_Parameters(Ec=8., Ef= 4., Eg=1.2, kT= Globals.BoltzmannConstant * Temperatures[i], m=1., me=1., mp=1. )
-    #     JcurSemi[i] = em.Current_from_Conduction_Band()
-    #     if (abs(Jcur[i]/JcurSemi[i] - 1.) > 0.1):
-    #         print(fields[i], Radii[i], Temperatures[i], Jcur[i], JcurSemi[i])
-
-    # print(np.mean(Jcur/JcurSemi), np.std(Jcur/JcurSemi))
-    # t1 = time.time()
-    # print ("elapsed time semiconductor = ", t1 - t0)
-
-    interpolator = Interpolator(tabulationFolder="tabulated/1D_1024", Nfield=1024, NRadius=1, Ngamma=1)
-
-    bar = Barrier(5, 1000, 10., tabulationFolder="tabulated/1D_1024")
-    em = ConductionBandEmitter(bar, sup)
+    workFunction = 3.5
+    fields = reducedFields * workFunction**2 * 0.694
+    gtmod = GETELECModel(workFunction=workFunction, field=fields)
 
 
-    xFN = np.linspace(0.15, 0.3, 32)
+    gtmod.calculateCurrentDensity()
+    currentDensities = np.array(gtmod.getCurrentDensity())
 
-    voltage = 1./xFN
-    currentDensity = np.copy(voltage)
-    
-    for i in range(len(voltage)):
-        bar.setParameters(field=voltage[i], radius=1000.)
-        em.setParameters(4.5, 300. * Globals.BoltzmannConstant)
-        currentDensity[i] = em.currentDensity()
+    plt.semilogy(reducedFields, currentDensities)
+    plt.xlabel("reduced field f")
+    plt.ylabel("current density [A/nm^2]")
+    plt.grid()
 
-    fitter = IVDataFitter(emitter=em)
+    workFunction = 5.5
+    fields = reducedFields * workFunction**2 * 0.694
+    gtmod.setParameters(workFunction=workFunction, field=fields)
 
-    fitter.setIVcurve(voltageData=voltage, currentData=currentDensity)
-    fitter.setParameterRange()
-    fitter.fitIVCurve()
-    fittedCurrent = fitter.getOptCurrentCurve()
-    plt.semilogy(voltage, currentDensity, '.')
-    plt.semilogy(voltage, fittedCurrent)
-    plt.savefig("fittedcurve.png")
+    gtmod.calculateCurrentDensity()
+    currentDensities = np.array(gtmod.getCurrentDensity())
+
+    plt.semilogy(reducedFields, currentDensities)
+    plt.savefig("reducedFieldCurrentDensityCurve.png")
+    plt.show()
+
+    # plt.semilogy(1./fields, currentDensities)
+    # plt.xlabel("1/F [nm / V]")
+    # plt.ylabel("current density [A/nm^2]")
+    # plt.savefig("simpleFNplotTest.png")
+
+
 
 
