@@ -1133,8 +1133,8 @@ class SemiconductorEmitter:
         energyArrayConduction, spectrumConduction = self.conductionEmitter.totalEnergySpectrumArrays(numberOfPoints=numberOfPoints)
         energyArrayValence, spectrumValence = self.valenceEmitter.totalEnergySpectrumArrays(numberOfPoints=numberOfPoints)
 
-        energyArray = np.concatenate((energyArrayValence, energyArrayConduction))
-        spectrumArray = np.concatenate((spectrumValence, spectrumConduction))
+        energyArray = energyArrayValence + energyArrayConduction
+        spectrumArray = spectrumValence + spectrumConduction
         return energyArray, spectrumArray  
         
 
@@ -1392,6 +1392,8 @@ class GETELECModel():
         """Runs the model by specifying what properties to compute.
         Allows multithreading, running multiple calculations at the same time.
 
+        BETA: Only 1 thread for now
+
         Parameters
         ----------
 
@@ -1544,6 +1546,25 @@ class GETELECModel():
 
 
 if (__name__ == "__main__"): #some testing operations
+
+    field = np.array([1, 2, 3, 4, 5])
+    radius = np.full(5, 50)
+    gamma = np.full(5, 10)
+    workFunction = np.full(5, 4)
+    temperature = np.full(5, 300)
+
+    emitter = SemiconductorEmitter()
+
+    emitter.barrier.setParameters(4, 20, 10)
+    emitter.setParameters(5, 50, 4.5, 3, 4, 2, Globals.BoltzmannConstant*280, 1, 1)
+
+    print(emitter.totalEnergySpectrumArrays())
+
+
+                #emitter.barrier.setParameters(self._getArgument(field, idx), self._getArgument(radius, idx), self._getArgument(gamma, idx))
+
+           # emitter.setParameters(self._getArgument(field, idx), self._getArgument(radius, idx), self._getArgument(gamma, idx), conductionBandBottom, workFunction, bandGap, self._getArgument(kT, idx), effectiveMassConduction, effectiveMassValence)
+
     
 
     reducedFields = np.linspace(0.1, 0.9, 128)
