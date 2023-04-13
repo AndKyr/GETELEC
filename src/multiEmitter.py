@@ -94,12 +94,13 @@ class MultiEmitter():
         print ("heights = %.3g +- %.3g"%(np.mean(self.heights), np.std(self.heights)))
         print ("radii = %.3g +- %.3g"%(np.mean(self.radii), np.std(self.radii)))
         print ("betas = %.3g +- %.3g"%(np.mean(self.betas),np.std(self.betas)))
-        print ("maxbeta = %g"%(np.max(self.betas)))
+        print ("maximum beta = %g"%(np.max(self.betas)))
+        print ("minimum radius beta = %g"%(np.max(self.betas)))
         
 
         
 if (__name__ == "__main__"): #some testing operations
-    farFields = np.linspace(0.035, 0.08, 16)
+    farFields = 1./np.linspace(1./0.08, 1./0.035, 16)
     totalCurrents = np.copy(farFields)
     getelecModel = gt.GETELECModel(emitterType="metal")
     import IVDataFitter

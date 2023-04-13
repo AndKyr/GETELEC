@@ -276,7 +276,6 @@ class twoEmitterFitter(generalFitter):
         self.calculatedCurrentDensities = self.currentDensityforVoltages(self.voltageData)
         return np.log(self.calculatedCurrentDensities / self.currentData)
 
-
     def fitIVCurve(self) -> None:
         """Performs the fitting"""
         self.optimizationData = opt.least_squares(fun = self.logCurrentDensityError, x0 = list(self.initialParameters.values()), \
@@ -290,7 +289,10 @@ class twoEmitterFitter(generalFitter):
         self.fittedCurrent = self.currentDensityforVoltages(self.voltageData)
 
     def printFittingData(self) -> None:
-        print("Optimum parameters: ", self.fittingParameters)
+        betas = sorted([self.fittingParameters["fieldConversionFactor"], self.fittingParameters["secondFieldConversionFactor"]])
+        prefactors = sorted([self.fittingParameters["prefactor"], self.fittingParameters["secondPrefactor"]])
+        
+        print("Optimum parameters: beta_1: %.4g, beta_2: %.4g, Aeff_1: %.4g, Aeff_1: %.4g"%(betas[1], betas[0], prefactors[0], prefactors[1]))
         print("Fitting Error (relative): ", self.getFittingError())
 
 
