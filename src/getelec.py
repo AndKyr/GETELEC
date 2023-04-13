@@ -1,4 +1,3 @@
-import copy
 import ctypes as ct
 import inspect
 import matplotlib.pyplot as plt
@@ -11,8 +10,6 @@ import scipy.special
 from scipy.integrate import IntegrationWarning
 import subprocess
 from typing import Any, Optional
-
-import pickle
 
 import threading
 
@@ -1157,11 +1154,11 @@ class GETELECModel():
         workFunction: Optional[np.ndarray] = 4.5,
         temperature: Optional[np.ndarray] = 300.,
         emitter: Optional[BandEmitter] = None,
-        conductionBandBottom: Optional[float] = None,
-        bandGap: Optional[float] = None,
+        conductionBandBottom: Optional[float] = -15.,
+        bandGap: Optional[float] = 3.,
         effectiveMassConduction: Optional[float] = 1.,
-        effectiveMassValence: Optional[float] = None,
-        numberOfSpectrumPoints: Optional[int] = None,
+        effectiveMassValence: Optional[float] = 1.,
+        numberOfSpectrumPoints: Optional[int] = 64,
 
         **kwargs: Any
 
@@ -1421,18 +1418,23 @@ class GETELECModel():
 
         nPoints = 256 if self.numberOfSpectrumPoints is None else self.numberOfSpectrumPoints
         nPointsPerThreadOptimized = 64
+        
+        fieldLength = 1
+        if (hasattr(self.field, '__len__')):
+            fieldLength = len(self.field)
 
-        if (len(self.field) < nThreads * nPointsPerThreadOptimized): nThreads = 1
+        if (fieldLength < nThreads * nPointsPerThreadOptimized): nThreads = 1
+
 
         kT = Globals.BoltzmannConstant * np.array(self.temperature, dtype=float)
 
         parent = self
 
-        emittersObjectsThreads = [GETELECModel(parent.emitterType, parent.field, parent.radius, parent.gamma, parent.workFunction, parent.temperature, parent.conductionBandBottom, parent.bandGap, parent.effectiveMassValence, parent.effectiveMassConduction, parent.numberOfSpectrumPoints).emitter for _ in range(nThreads)]
-        emitterIndices = np.array_split(np.arange(len(self.field)), nThreads)
+        emittersObjectsThreads = [GETELECModel(emitterType=parent.emitterType, field=parent.field, radius=parent.radius, gamma=parent.gamma, workFunction=parent.workFunction, temperature=parent.temperature, conductionBandBottom=parent.conductionBandBottom, bandGap=parent.bandGap, effectiveMassValence=parent.effectiveMassValence, effectiveMassConduction=parent.effectiveMassConduction, numberOfSpectrumPoints=parent.numberOfSpectrumPoints).emitter for _ in range(nThreads)]
+        emitterIndices = np.array_split(np.arange(fieldLength), nThreads)
 
         threads = []
-        results = [None] * len(self.field)
+        results = [None] * fieldLength
 
         if(self.emitterType == 'metal'):
 

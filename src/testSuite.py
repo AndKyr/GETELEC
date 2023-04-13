@@ -1,6 +1,5 @@
 import sys
 import numpy as np
-import os
 from pathlib import Path
 import scipy.integrate as ig
 
@@ -127,8 +126,15 @@ class BandEmitterTests:
         if (showFigures):
             plt.show()
 
+
         
 if (__name__ == "__main__"):
-    tests = BandEmitterTests()
+    # tests = BandEmitterTests()
     # tests.conductionBandBottomTest(plotSpectra=True)
-    tests.effectiveMassTest(plotIntegrand=True, plotSpectra=True)
+    # tests.effectiveMassTest(plotIntegrand=True, plotSpectra=True)
+    model = gt.GETELECModel(emitterType="semiconductor", conductionBandBottom=0.1, bandGap=0.5, numberOfSpectrumPoints=256)
+    model.calculateElectronSpectrum()
+    spectra = model.getElectronSpectrum()
+    plt.plot(spectra["energy"][0], spectra["electronCount"][0])
+    plt.savefig("spectra.png")
+    print(spectra)
