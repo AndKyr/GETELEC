@@ -1579,9 +1579,12 @@ function main(){
         let data4 = data.semiEC;
     
         let data5 = data.semiNH;
+
+        let data3 = data.metalESenergy;
+        let data3e = data.metalESelcount;
     
-        let data6 = data.metalESelcount;
-        let data6e = data.metalESenergy;
+        let data6 = data.semiESelcount;
+        let data6e = data.semiESenergy;
     
         //For ease, copies the array values of parameters to a new array, so that its easier to access right data.
     
@@ -1645,7 +1648,7 @@ function main(){
     
         function updateESGraph(dontMove){    
     
-            if((data6e === undefined || data6e.length == 0)){
+            if((data3 === undefined || data3.length == 0) && (data6 === undefined || data6.length == 0)){
     
                 return;
     
@@ -1657,27 +1660,35 @@ function main(){
     
                 if(_materialType == "1"){
     
-                    for(let i = 0; i < data6e[0].length; i++){
+                    for(let i = 0; i < data3e[0].length; i++){
     
-                        points.push({x: data6e[sliderValue][i], y: data6[sliderValue][i]});
+                        points.push({x: data3[sliderValue][i], y: data3e[sliderValue][i]});
     
                     }
     
                 } else {
     
-                    alert("Semiconductor electron spectrum calculations are not yet implemented");
+                    for(let i = 0; i < data6e[0].length; i++){
+    
+                        points.push({x: data6[sliderValue][i], y: data6e[sliderValue][i]});
+    
+                    }
     
                 }
+
+                chart3.options.scales.x.title.text = "Electron energy, [eV]"
     
-                chart3.options.plugins.zoom.limits.x = {min: -10, max: 5};
-    
+                chart3.options.plugins.zoom.limits.x = {min: -10, max: 10};
+
+                chart3.update('none');
+
                 //chart3.resetZoom();
-    
-                chart3.update();
     
                 updateTitle(chart3, data);
     
                 updatePoints(chart3, points, dontMove);    
+
+                console.log(points)
     
             }
     
