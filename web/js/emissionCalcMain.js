@@ -15,7 +15,7 @@ fieldMult, radiusMult, workFunctionMult, temperatureMult,
 calculateNH, calculateES, calculateEC, gammaMetal, gammaSemi,
 ec, ef, eg, me, mp, _field, _radius, _workFunction, _temperature,
 _ec, _ef, _eg, _me, _mp, _gammaMetal, _gammaSemi, sweepParam,
-data, chart1, chart2, chart3, _data
+data, chart1, chart2, chart3, _data, centerButton
 
 function main(){
 
@@ -334,7 +334,7 @@ function main(){
 
             if(calculateEC){ currentChart.hidden = false} else { currentChart.hidden = true}
             if(calculateNH){ heatChart.hidden = false} else { heatChart.hidden = true}
-            if(calculateES){ spectrumChart.hidden = false; sweepingSlider.hidden = false} else { spectrumChart.hidden = true; sweepingSlider.hidden = true}
+            if(calculateES){ spectrumChart.hidden = false; sweepingSlider.hidden = false; centerButton.hidden = false} else { spectrumChart.hidden = true; sweepingSlider.hidden = true; centerButton.hidden = true}
 
 
         }
@@ -383,7 +383,7 @@ function main(){
 
     function loadInitEventListeners(){
 
-        let enterButton = document.getElementById("enterButton");
+        const enterButton = document.getElementById("enterButton");
         let pickChangingVarGenerationMethodDiv = document.getElementById("autoGenerateValuesToggle");
 
         let generateValuesBtn = document.getElementById("generateValuesButton");
@@ -397,7 +397,9 @@ function main(){
 
         let slider = document.getElementById('myRange');
 
-        let downloadButton = document.getElementById('downloadButton');
+        const downloadButton = document.getElementById('downloadButton');
+
+        centerButton = document.getElementById('centerButton');
 
         //advancedModeToggleMainDiv.hidden = true;
 
@@ -414,6 +416,7 @@ function main(){
         enterButton.addEventListener("click", checkValidity);
 
         downloadButton.addEventListener('click', downloadData);
+        centerButton.addEventListener('click', centerData);
 
         updatePropertiesPresets();
         
@@ -1583,8 +1586,8 @@ function main(){
         let data3 = data.metalESenergy;
         let data3e = data.metalESelcount;
     
-        let data6 = data.semiESelcount;
-        let data6e = data.semiESenergy;
+        let data6e = data.semiESelcount;
+        let data6 = data.semiESenergy;
     
         //For ease, copies the array values of parameters to a new array, so that its easier to access right data.
     
@@ -2980,5 +2983,13 @@ function downloadData(){
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
+
+}
+
+function centerData() {
+
+    chart3.resetZoom();
+
+    chart3.update();
 
 }
