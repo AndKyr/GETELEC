@@ -239,7 +239,7 @@ class Tabulator():
 
 
     def prepareTabulation(self, Nf = 256, Nr = 128, Ngamma = 1, Npoly = 4, NGamow = 256):
-        self.fieldRange = [1., 20.]
+        self.fieldRange = [0.5, 40.]
         self.minRadius = 0.5
         self.maxGamma = 1.e3
 
