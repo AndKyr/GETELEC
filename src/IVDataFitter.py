@@ -179,6 +179,7 @@ class IVDataFitter(generalFitter):
 
         self.orthodoxyMessage = "The data are within field emission orthodoxy limits"
         return "orthodox"
+    
 
 class twoEmitterFitter(generalFitter):
     def __init__(self, emitterModel: gt.GETELECModel = gt.GETELECModel()) -> None:
@@ -308,6 +309,21 @@ class twoEmitterFitter(generalFitter):
         else:
             return self.preFactor * self.currentDensityforVoltages(voltageData)
 
+
+
+def performFullEmissionFitting(voltageData:np.ndarray, currentData:np.ndarray, field:list = [1., 6., 15.], radius = 2000., gamma = 10., workFunction = 4.5, temperature = 300.):
+    
+    ivFitter = IVDataFitter()
+    ivFitter.setIVdata(voltageData=voltageData, currentData=currentData)
+    ivFitter.setParameterRange(field, radius, gamma, workFunction, temperature)
+    ivFitter.fitIVCurve()
+    plotVoltages = 1. / np.linspace(1./min(voltageData), 1./max(voltageData), 128)
+    plotFields = ivFitter.fittingParameters["fieldConversionFactor"] * plotVoltages
+
+    fittedCurrentCurve = ivFitter.getOptCurrentCurve(plotVoltages)
+    return {"plotFields": plotFields, "fittedCurrents": fittedCurrentCurve} | ivFitter.fittingParameters | {"fittingError": ivFitter.getFittingError(), "orthodoxyStatus": ivFitter.orthodoxyStatus(), "orthodoxyMessage": ivFitter.orthodoxyMessage}
+
+
 if (__name__ == "__main__"): #some testing operations
     
 
@@ -348,13 +364,16 @@ if (__name__ == "__main__"): #some testing operations
        7.33204336e-13, 5.23857148e-13, 3.73798141e-13, 2.66375053e-13])
 
 
-    ivFitter.setIVdata(voltageData=voltageData, currentData=currentData)
-    ivFitter.setParameterRange()
-    ivFitter.fitIVCurve()
-    fittedCurrent = ivFitter.getOptCurrentCurve(voltageData)
-    plt.semilogy(1./voltageData, currentData, '.', label="data" )
-    plt.semilogy(1./voltageData, fittedCurrent, label = "beta=%.2g, err=%.2g"%(ivFitter.fittingParameters["fieldConversionFactor"], ivFitter.getFittingError()))
+    outData = performFullEmissionFitting(voltageData, currentData)
 
+    fittedCurrent = outData["fittedCurrents"]
+    plt.semilogy(1./voltageData, currentData, '.', label="data" )
+    plt.semilogy(outData["fieldConversionFactor"] / outData["plotFields"] , fittedCurrent, label = "beta=%.2g, err=%.2g"%(outData["fieldConversionFactor"], outData["fittingError"]))
+
+    print(outData)
+
+
+    ivFitter.setIVdata(voltageData=voltageData, currentData=currentData)
     ivFitter.setParameterRange(radius=[1., 10., 2000.])
 
     ivFitter.fitIVCurve()
