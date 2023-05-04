@@ -158,6 +158,7 @@ class IVDataFitter(generalFitter):
         print("Optimum parameters: ", self.fittingParameters)
         print("sigma * Aeff: ", self.preFactor)
         print("Fitting Error (relative): ", self.getFittingError())
+        print("orthodoxy status: ", self.orthodoxyStatus())
 
     def orthodoxyStatus(self) -> str:
         maxCurrentDensity = np.max(self.calculatedCurrentDensities)
@@ -371,26 +372,44 @@ if (__name__ == "__main__"): #some testing operations
     plt.semilogy(outData["fieldConversionFactor"] / outData["plotFields"] , fittedCurrent, label = "beta=%.2g, err=%.2g"%(outData["fieldConversionFactor"], outData["fittingError"]))
 
     print(outData)
+    plt.savefig("fittedCurveOnlyBeta.png")
+    plt.close()
 
+    voltageData = np.array([0.0729348 , 0.07171391, 0.07087798, 0.07008738, 0.06931421, \
+       0.06769618, 0.06645514, 0.06525878, 0.06399593, 0.06234496, \
+       0.06105263, 0.05937943, 0.05763645])
+    
+    currentData = np.array([4.24256972e-06, 3.96317508e-06, 3.75021449e-06, 3.51572519e-06, \
+       3.30859717e-06, 2.96829892e-06, 2.61283693e-06, 2.40444228e-06, \
+       2.17155982e-06, 1.69466134e-06, 1.54505191e-06, 1.34140291e-06, 1.11327359e-06])
 
+    plt.figure()
     ivFitter.setIVdata(voltageData=voltageData, currentData=currentData)
-    ivFitter.setParameterRange(radius=[1., 10., 2000.])
-
+    ivFitter.setParameterRange(radius=[3., 10., 2000.])
     ivFitter.fitIVCurve()
     fittedCurrent = ivFitter.getOptCurrentCurve()
-    plt.semilogy(1./voltageData, fittedCurrent, label = "beta = %.2g, R = %.2g, err=%.2g"%(ivFitter.fittingParameters["fieldConversionFactor"], ivFitter.fittingParameters["radius"], ivFitter.getFittingError()))
+
+    ivFitter.printFittingData()
+    plt.semilogy(1 / ivFitter.fittingParameters["fieldConversionFactor"] / voltageData, fittedCurrent / ivFitter.preFactor, label = "beta = %.2g, R = %.2g, err=%.2g"%(ivFitter.fittingParameters["fieldConversionFactor"], ivFitter.fittingParameters["radius"], ivFitter.getFittingError()))
+    plt.semilogy(1 / ivFitter.fittingParameters["fieldConversionFactor"]/voltageData, currentData / ivFitter.preFactor, ".")
+    plt.legend()
+    plt.grid()
+    plt.savefig("fittedCurveChen.png")
+
+    plt.close()
+    plt.figure()
 
 
+    ivFitter.setParameterRange(workFunction=4.6, radius=[1., 10., 200.])
 
-    ivFitter.setParameterRange(workFunction=[2.5, 4.5, 7.], radius=[1., 10., 200.])
-
+    ivFitter.setIVdata(voltageData, currentData)
     ivFitter.fitIVCurve()
     fittedCurrent = ivFitter.getOptCurrentCurve()
-    plt.semilogy(1./voltageData, fittedCurrent, label = "beta = %.2g, R = %.2g, W = %.2g, err = %.2g"%(ivFitter.fittingParameters["fieldConversionFactor"], ivFitter.fittingParameters["radius"], ivFitter.fittingParameters["workFunction"], ivFitter.getFittingError()))
+    plt.semilogy(1./voltageData, fittedCurrent, label = "beta = %.2g, R = %.2g, err = %.2g"%(ivFitter.fittingParameters["fieldConversionFactor"], ivFitter.fittingParameters["radius"], ivFitter.getFittingError()))
 
     plt.legend()
 
-    plt.savefig("fittedcurve.png")
+    plt.savefig("fittedcurve2Emitter.png")
     plt.close()
 
     ivFitter.printFittingData()
