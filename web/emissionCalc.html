@@ -147,45 +147,72 @@
 
                 </div>
 
-
-                <div class="row g-3 align-items-center mb-3 mt-1 mx-auto">
+                <div class="row g-3 align-items-center mb-3 mx-auto mt-1">
                     <div class="col-auto">
-                    <label for="ecParam" class="col-form-label">Ec [eV]</label>
-                    </div>
-                    <div class="col-auto">
-                    <input type="text" id="ecParam" class="form-control" aria-describedby="ecParamInLine">
-                    </div>
-                    <div class="col-auto">
-                    <span id="ecParamInLine" class="form-text">
-                        Bottom of the conduction band
-                    </span>
-                    </div>
-                </div>
-
-                <div class="row g-3 align-items-center mb-3 mx-auto">
-                    <div class="col-auto">
-                    <label for="efParam" class="col-form-label">Ef [eV]</label>
+                    <label for="efParam" class="col-form-label">φ [eV]</label>
                     </div>
                     <div class="col-auto">
                     <input type="text" id="efParam" class="form-control" aria-describedby="efParamInLine">
                     </div>
                     <div class="col-auto">
                     <span id="efParamInLine" class="form-text">
-                        Fermi level
+                        Work function, i.e. distance between the Fermi level and the vacuum level
                     </span>
                     </div>
                 </div>
 
                 <div class="row g-3 align-items-center mb-3 mx-auto">
                     <div class="col-auto">
-                    <label for="egParam" class="col-form-label">Eg [eV]</label>
+                    <label for="ecParam" class="col-form-label">E_c [eV]</label>
+                    </div>
+                    <div class="col-auto">
+                    <input type="text" id="ecParam" class="form-control" aria-describedby="ecParamInLine">
+                    </div>
+                    <div class="col-auto">
+                    <span id="ecParamInLine" class="form-text">
+                        Conduction band bottom with respect to the Fermi level, e.g. Ec&lt;0 for degenerate semiconductor
+                    </span>
+                    </div>
+                </div>
+
+                <div class="row g-3 align-items-center mb-3 mx-auto">
+                    <div class="col-auto">
+                    <label for="egParam" class="col-form-label">E_g [eV]</label>
                     </div>
                     <div class="col-auto">
                     <input type="text" id="egParam" class="form-control" aria-describedby="egParamInLine">
                     </div>
                     <div class="col-auto">
                     <span id="egParamInLine" class="form-text">
-                        Band gap
+                        Band gap, i.e. distance between the bottom of the conduction band and the top of the valence band
+                    </span>
+                    </div>
+                </div>
+
+                <div class="row g-3 align-items-center mb-3 mx-auto">
+                    <div class="col-auto">
+                    <label for="meParam" class="col-form-label">m_n/m_e</label>
+                    </div>
+                    <div class="col-auto">
+                    <input type="text" id="meParam" class="form-control" aria-describedby="meParamInLine">
+                    </div>
+                    <div class="col-auto">
+                    <span id="meParamInLine" class="form-text">
+                        Electron effective mass on the conduction band, as a fraction of the free electron mass
+                    </span>
+                    </div>
+                </div>
+
+                <div class="row g-3 align-items-center mb-3 mx-auto">
+                    <div class="col-auto">
+                    <label for="mpParam" class="col-form-label">m_p/m_e</label>
+                    </div>
+                    <div class="col-auto">
+                    <input type="text" id="mpParam" class="form-control" aria-describedby="mpParamInLine">
+                    </div>
+                    <div class="col-auto">
+                    <span id="mpParamInLine" class="form-text">
+                        Hole effective mass on the valence band, as a fraction of the free electron mass
                     </span>
                     </div>
                 </div>
@@ -203,37 +230,10 @@
                     </span>
                     </div>
                 </div>
-
-
-                <div class="row g-3 align-items-center mb-3 mx-auto">
-                    <div class="col-auto">
-                    <label for="meParam" class="col-form-label">me [m*/m]</label>
-                    </div>
-                    <div class="col-auto">
-                    <input type="text" id="meParam" class="form-control" aria-describedby="meParamInLine">
-                    </div>
-                    <div class="col-auto">
-                    <span id="meParamInLine" class="form-text">
-                        Electron effective mass as fraction of electron mass
-                    </span>
-                    </div>
-                </div>
-
-                <div class="row g-3 align-items-center mb-3 mx-auto">
-                    <div class="col-auto">
-                    <label for="mpParam" class="col-form-label">mp [m*/m]</label>
-                    </div>
-                    <div class="col-auto">
-                    <input type="text" id="mpParam" class="form-control" aria-describedby="mpParamInLine">
-                    </div>
-                    <div class="col-auto">
-                    <span id="mpParamInLine" class="form-text">
-                        Hole effective mass as fraction of electron mass
-                    </span>
-                    </div>
-                </div>
             
             </div>
+
+            
 
 
             <div id="advancedParametersMetal" hidden style="border-style:solid;padding-left:10px;border-radius:9px" class="mb-3 advancedparams">
