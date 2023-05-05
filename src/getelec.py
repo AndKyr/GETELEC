@@ -24,7 +24,7 @@ if (not os.path.exists(filePath + '/libintegrator.so') or os.path.getmtime(fileP
 
 class Globals:
     """Keeps global constants and variables"""
-    tabulationPath:str = filePath + "/../tabulated/2D_512x256"
+    tabulationPath:str = filePath + "/../tabulated/1D_512_new"
     BoltzmannConstant:float = 8.617333262e-5
     SommerfeldConstant:float = 1.618311e-4 
     electronMass:float = 9.1093837e-31
@@ -73,9 +73,9 @@ class GamowCalculator:
             raise(AssertionError, "unimplemented XCmode")
         
     def findBarrierMax(self) -> float:
-        optimization =  opt.minimize(self.negativeBarrierFunction,.5)
+        optimization =  opt.minimize(self.negativeBarrierFunction,.5, bounds=[(1.e-5, 10.)])
         self.barrierMaximumLocation = optimization.x
-        self.minBarrierDepth = self.negativeBarrierFunction(self.barrierMaximumLocation)
+        self.minBarrierDepth = self.negativeBarrierFunction(self.barrierMaximumLocation)[0] + 1.e-3
         return self.barrierMaximumLocation
 
     def barrierFunction(self, z, barrierDepth):
@@ -87,16 +87,16 @@ class GamowCalculator:
 
     def findZeros(self, barrierDepth:float) -> None:
         rootResult = opt.root_scalar(self.barrierFunction, args=barrierDepth, bracket=[1.e-5, self.barrierMaximumLocation])
-        self.leftRoot = rootResult.x
+        self.leftRoot = rootResult.root
         rootResult = opt.root_scalar(self.barrierFunction, args=barrierDepth, bracket=[self.barrierMaximumLocation, 10.])
-        self.rightRoot = rootResult.x
+        self.rightRoot = rootResult.root
 
     def integrantWKB(self, z:float, barrierDepth:float) -> float:
         return self.barrierFunction(z, barrierDepth) ** .5
 
     def calculateGamow(self, barrierDepth:float) -> float:
         self.findZeros(barrierDepth)
-        return Globals.gamowPrefactor * ig.quad(self.integrantWKB, self.leftRoot, self.rightRoot, args=barrierDepth)
+        return Globals.gamowPrefactor * ig.quad(self.integrantWKB, self.leftRoot, self.rightRoot, args=barrierDepth)[0]
 
     def findMaxBarrierDepth(self, maximumGamow:float = 50.) -> float:
         self.maxBarrierDepth = self.minBarrierDepth
@@ -107,7 +107,7 @@ class GamowCalculator:
                 break
         
         GminusGmax = lambda barrierDepth: self.calculateGamow(barrierDepth) - maximumGamow
-        self.maxBarrierDepth = opt.root_scalar(GminusGmax, bracket=[self.maxBarrierDepth/1.5, self.maxBarrierDepth])
+        self.maxBarrierDepth = opt.root_scalar(GminusGmax, bracket=[self.maxBarrierDepth/1.5, self.maxBarrierDepth]).root
         return self.maxBarrierDepth
 
 
@@ -173,7 +173,7 @@ class GamowTabulator(GamowCalculator):
             if (self.numberOfRadiusValues == 1):
                 self.gamowTable = np.reshape(self.gamowTable, (self.numberOfFieldValues, self.numberOfPolynomialTerms + 2))
 
-        np.save(outputFolder + "/GamowTable", self.gamowTable)
+        np.save(outputFolder + "/GamowTable.npy", self.gamowTable)
 
         np.save(outputFolder + "/tabLimits.npy", np.array([min(self.inverseFieldValues), max(self.inverseFieldValues), \
                 min(self.inverseRadiusValues), max(self.inverseRadiusValues), min(self.inverseGammaValues), max(self.inverseGammaValues)]))
@@ -272,7 +272,8 @@ class Interpolator:
             os.system(command)
         else:
             tabulator = GamowTabulator(Nf=NField, Nr=NRadius, Ngamma=Ngamma)
-            tabulator.tabulateGamowTable()
+            os.system("mkdir -p " + dataFolder)
+            tabulator.tabulateGamowTable(dataFolder)
 
 
     def _loadTablesFromFileIfPossible(self, dataFolder = Globals.tabulationPath) -> bool:
@@ -628,7 +629,7 @@ class BandEmitter:
         self.highEnergyLimit = 1.e100
         self.lowEnergyLimit = 1.e100
         self.totalEnergySpectrumFunction = None
-        self.fastCurrentDensityIntegrandFunction =; None
+        self.fastCurrentDensityIntegrandFunction = None
         self.fastNottinghamHeatIntegrandFunction = None
 
     def logFermiDiracFunction(self, energy, kT):
@@ -1492,7 +1493,7 @@ class GETELECModel():
         
         return self
 
-    def setTabulationPath(path:str) -> None:
+    def setTabulationPath(self, path:str) -> None:
 
         """
         Sets tabulation path for getelec module where to find tabulated barrier parameters

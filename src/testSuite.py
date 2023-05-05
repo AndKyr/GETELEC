@@ -62,20 +62,20 @@ class BandEmitterTests:
 
         if plotIntegrand:
             plt.figure(fig)
-            ax2.set_xlabel(r"$ E - E_F \textrm{ [eV]}$")
-            ax1.set_ylabel(r"$J \textrm{ integrand [A / nm}^2 \textrm{/ eV]}$")
-            ax1.grid()
-            ax2.set_ylabel(r"$P_N \textrm{ integrand  [A/nm}^2 \textrm{]}$")
+            ax4.set_xlabel(r"E - E_F [eV]")
+            ax3.set_ylabel(r"integrand [A / nm$^2$ eV]")
+            ax3.grid()
+            ax4.set_ylabel(r"P_N integrand  [A/nm$^2$]")
             ax2.grid()
             ax1.legend()
             ax2.legend()
             plt.savefig("conductionCurrentDensityIntegrandForMasses.png")
 
             plt.figure(fig2)
-            ax4.set_xlabel(r"$ E - E_F \textrm{ [eV]}$")
-            ax3.set_ylabel(r"$J \textrm{ integrand [A / nm}^2 \textrm{/ eV]}$")
+            ax4.set_xlabel(r"E - E_F [eV]")
+            ax3.set_ylabel(r"integrand [A / nm$^2$ eV]")
             ax3.grid()
-            ax4.set_ylabel(r"$P_N \textrm{ integrand  [A/nm}^2 \textrm{]}$")
+            ax4.set_ylabel(r"P_N integrand  [A/nm$^2$]")
             ax4.grid()
             ax3.legend()
             ax4.legend()
@@ -87,7 +87,7 @@ class BandEmitterTests:
         plt.figure()
         plt.semilogx(masses, currentDensityConduction, '.-')
         plt.xlabel(r"$m^* / m_e$")
-        plt.ylabel(r"$\textrm{current density [nA / nm}^2\textrm{]}$")
+        plt.ylabel(r"current density [nA / nm$^2$]")
         plt.grid()
         plt.savefig("currentDensity-effectiveMass.png")
         if (showFigures):
@@ -102,14 +102,15 @@ class BandEmitterTests:
             currentDensity[i] = self.conductionEmitter.currentDensity()
 
             if (plotSpectra):
-                Energy, spectrum = self.conductionEmitter.calculateTotalEnergySpectrum()
+                self.conductionEmitter.calculateTotalEnergySpectrum()
+                Energy, spectrum = self.conductionEmitter.totalEnergySpectrumArrays()
                 JfromTED = gt.Globals.SommerfeldConstant * np.trapz(spectrum, Energy)
                 print("Ec = %g, J = %g,  J / JTED = %g, Npoints  = %g"%(arrayEc[i], currentDensity[i], currentDensity[i]  / JfromTED, len(Energy)))
                 plt.plot(Energy, spectrum, "-", label="Ec=%.2g eV"%arrayEc[i])
 
         if (plotSpectra):
             plt.xlabel("energy[eV]")
-            plt.ylabel("current density per energy [A/nm^2 / eV]")
+            plt.ylabel(r"current density per energy [A/nm$^2$ / eV]")
             plt.grid()
             plt.legend()
             plt.savefig("spectraForDifferentEc.png")
@@ -120,21 +121,46 @@ class BandEmitterTests:
         plt.figure()
         plt.semilogy(arrayEc, currentDensity)
         plt.xlabel("Ec [eV]")
-        plt.ylabel("current density [nA / nm^2]")
+        plt.ylabel(r"current density [nA / nm$^2$]")
         plt.grid()
         plt.savefig("currentDensity-Ec.png")
         if (showFigures):
             plt.show()
 
 
-        
+class tabulatorTests:
+
+    def __init__(self) -> None:
+        pass
+
+    def compareOldAndNew(self):
+        model = gt.GETELECModel(emitterType="metal")
+        # model.setTabulationPath("tabulated/1D_512_new")
+        # model.emitter.barrier.calculateAndSaveTable(NField=64, NRadius=1, dataFolder="tabulated/1D_512_new")
+        # model.emitter.barrier._loadTablesFromFileIfPossible()
+        model.calculateCurrentDensity()
+        print("from new = ", model.getCurrentDensity())
+
+
+        gt._setTabulationPath("tabulated/1D_1024")
+        model = gt.GETELECModel(emitterType="metal")
+        model.calculateCurrentDensity()
+        print("from old = ", model.getCurrentDensity())
+
+
 if (__name__ == "__main__"):
     # tests = BandEmitterTests()
     # tests.conductionBandBottomTest(plotSpectra=True)
     # tests.effectiveMassTest(plotIntegrand=True, plotSpectra=True)
-    model = gt.GETELECModel(emitterType="semiconductor", conductionBandBottom=0.1, bandGap=0.5, numberOfSpectrumPoints=256)
-    model.calculateElectronSpectrum()
-    spectra = model.getElectronSpectrum()
-    plt.plot(spectra["energy"][0], spectra["electronCount"][0])
-    plt.savefig("spectra.png")
-    print(spectra)
+    # model = gt.GETELECModel(emitterType="semiconductor", conductionBandBottom=0.1, bandGap=0.5, numberOfSpectrumPoints=256)
+    # model.calculateElectronSpectrum()
+    # spectra = model.getElectronSpectrum()
+    # plt.plot(spectra["energy"][0], spectra["electronCount"][0])
+    # plt.savefig("spectra.png")
+
+    tbTest = tabulatorTests()
+
+
+    tbTest.compareOldAndNew()
+
+    
