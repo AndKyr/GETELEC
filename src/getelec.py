@@ -28,6 +28,9 @@ class Globals:
     BoltzmannConstant:float = 8.617333262e-5
     SommerfeldConstant:float = 1.618311e-4 
     electronMass:float = 9.1093837e-31
+    imageChargeConstant:float = .359991137
+    gamowPrefactor:float = 10.24633444
+
     
     #the limit for which different approximations of the Fermi Dirac functions apply
     exponentLimit =  - 0.5 * np.log(np.finfo(float).eps)
@@ -35,6 +38,147 @@ class Globals:
 def _setTabulationPath(path:str) -> None:
     """module function that sets the tabulation path where to find the tabulated barrier parameters"""
     Globals.tabulationPath = path
+
+
+class GamowCalculator:
+    def __init__(self, field:float = 5., radius:float = 1000, gamma:float = 10., XCmode = "image") -> None:
+        self.field = field
+        self.radius = radius
+        self.gamma = gamma
+        self.XCmode = XCmode
+
+
+    def setXCpotential(self, nominatorPolynomial:np.ndarray = np.array([ 3.83076793,  2.93641507,  5.303711]), denominatorPolynomial:np.ndarray = np.array([27.04324491,  9.52682019, 1.])) -> None:
+        if (self.XCmode == "image"): 
+            return
+        self.nominatorPolynomial = nominatorPolynomial
+        self.denominatorPolynomial = denominatorPolynomial
+
+    def imagePotential(self, z:np.ndarray):
+        return  Globals.imageChargeConstant * ( 1. / z - .5 / self.radius) 
+
+    def electrostaticPotential(self, z:np.ndarray):
+        return self.field * (self.radius * (self.gamma - 1.) * z + z**2) / (self.gamma * z + self.radius * (self.gamma - 1.))
+    
+
+    def fractionalFunctionXC(self, z):
+        return np.polyval(self.nominatorPolynomial, z) / np.polyval(self.denominatorPolynomial, z)
+
+    def XCpotential(self, z:np.ndarray):
+        if self.XCmode == "image":
+            return self.imagePotential(z)
+        elif self.XCmode == "fractional":
+            return self.fractionalFunctionXC(z)
+        else:
+            raise(AssertionError, "unimplemented XCmode")
+        
+    def findBarrierMax(self) -> float:
+        optimization =  opt.minimize(self.negativeBarrierFunction,.5)
+        self.barrierMaximumLocation = optimization.x
+        self.minBarrierDepth = self.negativeBarrierFunction(self.barrierMaximumLocation)
+        return self.barrierMaximumLocation
+
+    def barrierFunction(self, z, barrierDepth):
+        return barrierDepth - self.electrostaticPotential(z) - self.XCpotential(z)
+    
+    def negativeBarrierFunction(self, z):
+        return self.electrostaticPotential(z) + self.XCpotential(z)
+
+
+    def findZeros(self, barrierDepth:float) -> None:
+        rootResult = opt.root_scalar(self.barrierFunction, args=barrierDepth, bracket=[1.e-5, self.barrierMaximumLocation])
+        self.leftRoot = rootResult.x
+        rootResult = opt.root_scalar(self.barrierFunction, args=barrierDepth, bracket=[self.barrierMaximumLocation, 10.])
+        self.rightRoot = rootResult.x
+
+    def integrantWKB(self, z:float, barrierDepth:float) -> float:
+        return self.barrierFunction(z, barrierDepth) ** .5
+
+    def calculateGamow(self, barrierDepth:float) -> float:
+        self.findZeros(barrierDepth)
+        return Globals.gamowPrefactor * ig.quad(self.integrantWKB, self.leftRoot, self.rightRoot, args=barrierDepth)
+
+    def findMaxBarrierDepth(self, maximumGamow:float = 50.) -> float:
+        self.maxBarrierDepth = self.minBarrierDepth
+        for i in range(100):
+            self.maxBarrierDepth *= 1.5
+            Gnew = self.calculateGamow(self.maxBarrierDepth)
+            if (Gnew > maximumGamow):
+                break
+        
+        GminusGmax = lambda barrierDepth: self.calculateGamow(barrierDepth) - maximumGamow
+        self.maxBarrierDepth = opt.root_scalar(GminusGmax, bracket=[self.maxBarrierDepth/1.5, self.maxBarrierDepth])
+        return self.maxBarrierDepth
+
+
+    def calculateGamowCurve(self, numberOfPoints:int = 64) -> None:
+        self.findBarrierMax()
+        self.findMaxBarrierDepth()
+
+        self.barrierDepthVector = np.linspace(self.minBarrierDepth, self.maxBarrierDepth, numberOfPoints)
+        self.gamowVector = np.copy(self.barrierDepthVector)
+        for i in range(numberOfPoints):
+            self.gamowVector[i] = self.calculateGamow(self.barrierDepthVector[i])
+
+class GamowTabulator(GamowCalculator):
+    def __init__(self,  XCmode="image", Nf = 256, Nr = 128, Ngamma = 1, Npoly = 4) -> None:
+        super().__init__(XCmode)
+        if self.XCmode != "image":
+            self.setXCpotential()
+
+        self.fieldRange = [0.5, 40.]
+        self.minRadius = 0.5
+        self.maxGamma = 1.e3
+
+        #in this case the reasonable single Gamma value is 10
+        if(Ngamma == 1):
+            self.maxGamma = 10.
+
+        self.numberOfFieldValues = Nf
+        self.numberOfRadiusValues = Nr
+        self.numberOfGammaValues = Ngamma
+        self.numberOfPolynomialTerms = Npoly
+
+        self.inverseFieldValues = np.linspace(1 / self.fieldRange[1], 1. / self.fieldRange[0], self.numberOfFieldValues)
+        self.inverseRadiusValues = np.linspace(1.e-4, 1 / self.minRadius, self.numberOfRadiusValues)
+        self.inverseGammaValues = np.linspace(1. / self.maxGamma, 1., self.numberOfGammaValues)
+    
+    def tabulateGamowTable(self, outputFolder = Globals.tabulationPath):
+        """Looks for the files where the precaculate barriers are stored. Then it uses interpolation methods to make the most accurate barrier for the given 
+        input (electric field, tip radius and gamma exponent). Gtab is stores the polinomial that gives its shape to the barrier.
+        """
+
+        self.gamowTable = np.ones([self.numberOfGammaValues, self.numberOfRadiusValues, self.numberOfFieldValues, self.numberOfPolynomialTerms + 2])
+
+        for i in range(self.numberOfGammaValues):
+            for j in range(self.numberOfRadiusValues):
+                for k in range(self.numberOfFieldValues):
+                    
+                    self.field = 1 / self.inverseFieldValues[k]
+                    self.radius = 1 / self.inverseRadiusValues[j]
+                    self.gamma = 1 / self.inverseGammaValues[i]
+                    
+                    self.calculateGamowCurve()
+                    
+                    try:
+                        fittedPolynomialCoefficients = np.polyfit(self.barrierDepthVector, self.gamowVector, self.numberOfPolynomialTerms - 1)
+                    except(np.RankWarning):
+                        print("Rank Warning for F = %g, R = %g, gamma = %g"%(field, radius, gamma))
+                        plt.plot(self.barrierDepthVector, self.gamowVector)
+                        plt.show()
+                    self.gamowTable[i, j, k, :] = np.append(fittedPolynomialCoefficients, [self.minBarrierDepth, self.maxBarrierDepth])    
+
+        if (self.numberOfGammaValues == 1):
+            self.gamowTable = np.reshape(self.gamowTable, (self.numberOfRadiusValues, self.numberOfFieldValues, self.numberOfPolynomialTerms + 2))
+            if (self.numberOfRadiusValues == 1):
+                self.gamowTable = np.reshape(self.gamowTable, (self.numberOfFieldValues, self.numberOfPolynomialTerms + 2))
+
+        np.save(outputFolder + "/GamowTable", self.gamowTable)
+
+        np.save(outputFolder + "/tabLimits.npy", np.array([min(self.inverseFieldValues), max(self.inverseFieldValues), \
+                min(self.inverseRadiusValues), max(self.inverseRadiusValues), min(self.inverseGammaValues), max(self.inverseGammaValues)]))
+        
+
 
 class Interpolator:
     """
@@ -106,7 +250,7 @@ class Interpolator:
         
         self._initializeTabulationVariables()
 
-    def calculateAndSaveTable(self, NField = 256, NRadius = 128, Ngamma = 1, Npolynomial = 4, NGamow = 128, dataFolder = Globals.tabulationPath):
+    def calculateAndSaveTable(self, NField = 256, NRadius = 128, Ngamma = 1, Npolynomial = 4, NGamow = 128, dataFolder = Globals.tabulationPath, mode="newGETELEC"):
 
         """Runs old Getelec script that produces and saves tabulation
         
@@ -118,14 +262,18 @@ class Interpolator:
             NGAmow: Number of Gamow calculation points for polynomial fitting
             dataFolder: Folder where to save the data
         """
+        if (mode == "oldGETELEC"):
+            tabulationScript = filePath + "/../oldGETELEC/python/tabulateGamow.py"
+            command = "python3 %s -nf %d -nr %d -ng %d -np %d -nG %d -o %s"%(tabulationScript, NField, NRadius, \
+                Ngamma, Npolynomial, NGamow, dataFolder)
+            print("Producing tabulator by running:")
+            print(command)
+            os.system("mkdir -p " + dataFolder)
+            os.system(command)
+        else:
+            tabulator = GamowTabulator(Nf=NField, Nr=NRadius, Ngamma=Ngamma)
+            tabulator.tabulateGamowTable()
 
-        tabulationScript = filePath + "/../oldGETELEC/python/tabulateGamow.py"
-        command = "python3 %s -nf %d -nr %d -ng %d -np %d -nG %d -o %s"%(tabulationScript, NField, NRadius, \
-            Ngamma, Npolynomial, NGamow, dataFolder)
-        print("Producing tabulator by running:")
-        print(command)
-        os.system("mkdir -p " + dataFolder)
-        os.system(command)
 
     def _loadTablesFromFileIfPossible(self, dataFolder = Globals.tabulationPath) -> bool:
         """Loads the table of the Gamow factor from the files where it has been stored.
@@ -480,7 +628,7 @@ class BandEmitter:
         self.highEnergyLimit = 1.e100
         self.lowEnergyLimit = 1.e100
         self.totalEnergySpectrumFunction = None
-        self.fastCurrentDensityIntegrandFunction = None
+        self.fastCurrentDensityIntegrandFunction =; None
         self.fastNottinghamHeatIntegrandFunction = None
 
     def logFermiDiracFunction(self, energy, kT):
