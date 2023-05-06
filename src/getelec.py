@@ -24,7 +24,7 @@ if (not os.path.exists(filePath + '/libintegrator.so') or os.path.getmtime(fileP
 
 class Globals:
     """Keeps global constants and variables"""
-    tabulationPath:str = filePath + "/../tabulated/1D_512_new"
+    tabulationPath:str = filePath + "/../tabulated/1D_1024"
     BoltzmannConstant:float = 8.617333262e-5
     SommerfeldConstant:float = 1.618311e-4 
     electronMass:float = 9.1093837e-31
@@ -41,18 +41,23 @@ def _setTabulationPath(path:str) -> None:
 
 
 class GamowCalculator:
-    def __init__(self, field:float = 5., radius:float = 1000, gamma:float = 10., XCmode = "image") -> None:
+    def __init__(self, field:float = 5., radius:float = 1000, gamma:float = 10., XCmode:str = "image") -> None:
         self.field = field
         self.radius = radius
         self.gamma = gamma
         self.XCmode = XCmode
+        if (self.XCmode == "image"):
+            self.zMinimum = 1.e-5
+        elif(self.XCmode == "fractional"):
+            self.setXCpotential()
 
 
-    def setXCpotential(self, nominatorPolynomial:np.ndarray = np.array([ 3.83076793,  2.93641507,  5.303711]), denominatorPolynomial:np.ndarray = np.array([27.04324491,  9.52682019, 1.])) -> None:
+    def setXCpotential(self, nominatorPolynomial:np.ndarray = np.array([ 3.83076793,  2.93641507,  5.303711]), denominatorPolynomial:np.ndarray = np.array([27.04324491,  9.52682019, 1.]), zMin = -.178) -> None:
         if (self.XCmode == "image"): 
             return
         self.nominatorPolynomial = nominatorPolynomial
         self.denominatorPolynomial = denominatorPolynomial
+        self.zMinimum = zMin
 
     def imagePotential(self, z:np.ndarray):
         return  Globals.imageChargeConstant * ( 1. / z - .5 / self.radius) 
@@ -73,7 +78,7 @@ class GamowCalculator:
             raise(AssertionError, "unimplemented XCmode")
         
     def findBarrierMax(self) -> float:
-        optimization =  opt.minimize(self.negativeBarrierFunction,.5, bounds=[(1.e-5, 10.)])
+        optimization =  opt.minimize(self.negativeBarrierFunction,.5, bounds=[(self.zMinimum, 3.)])
         self.barrierMaximumLocation = optimization.x
         self.minBarrierDepth = self.negativeBarrierFunction(self.barrierMaximumLocation)[0] + 1.e-3
         return self.barrierMaximumLocation
@@ -86,7 +91,7 @@ class GamowCalculator:
 
 
     def findZeros(self, barrierDepth:float) -> None:
-        rootResult = opt.root_scalar(self.barrierFunction, args=barrierDepth, bracket=[1.e-5, self.barrierMaximumLocation])
+        rootResult = opt.root_scalar(self.barrierFunction, args=barrierDepth, bracket=[self.zMinimum, self.barrierMaximumLocation])
         self.leftRoot = rootResult.root
         rootResult = opt.root_scalar(self.barrierFunction, args=barrierDepth, bracket=[self.barrierMaximumLocation, 10.])
         self.rightRoot = rootResult.root
@@ -122,11 +127,9 @@ class GamowCalculator:
 
 class GamowTabulator(GamowCalculator):
     def __init__(self,  XCmode="image", Nf = 256, Nr = 128, Ngamma = 1, Npoly = 4) -> None:
-        super().__init__(XCmode)
-        if self.XCmode != "image":
-            self.setXCpotential()
+        super().__init__(XCmode=XCmode)
 
-        self.fieldRange = [0.5, 40.]
+        self.fieldRange = [0.5, 12.]
         self.minRadius = 0.5
         self.maxGamma = 1.e3
 
@@ -143,10 +146,13 @@ class GamowTabulator(GamowCalculator):
         self.inverseRadiusValues = np.linspace(1.e-4, 1 / self.minRadius, self.numberOfRadiusValues)
         self.inverseGammaValues = np.linspace(1. / self.maxGamma, 1., self.numberOfGammaValues)
     
-    def tabulateGamowTable(self, outputFolder = Globals.tabulationPath):
+    def tabulateGamowTable(self, outputFolder = None):
         """Looks for the files where the precaculate barriers are stored. Then it uses interpolation methods to make the most accurate barrier for the given 
         input (electric field, tip radius and gamma exponent). Gtab is stores the polinomial that gives its shape to the barrier.
         """
+
+        if outputFolder is None:
+            outputFolder = Globals.tabulationPath
 
         self.gamowTable = np.ones([self.numberOfGammaValues, self.numberOfRadiusValues, self.numberOfFieldValues, self.numberOfPolynomialTerms + 2])
 
@@ -173,6 +179,7 @@ class GamowTabulator(GamowCalculator):
             if (self.numberOfRadiusValues == 1):
                 self.gamowTable = np.reshape(self.gamowTable, (self.numberOfFieldValues, self.numberOfPolynomialTerms + 2))
 
+        os.system("mkdir -p %s"%outputFolder)
         np.save(outputFolder + "/GamowTable.npy", self.gamowTable)
 
         np.save(outputFolder + "/tabLimits.npy", np.array([min(self.inverseFieldValues), max(self.inverseFieldValues), \
@@ -218,8 +225,7 @@ class Interpolator:
     _Npolynomial : int 
     _Nradius : int  
 
-    def __init__(self, preloadedGamowTable : np.ndarray = None, preloadedLimits : np.ndarray = None, tabulationFolder = Globals.tabulationPath, \
-        Nfield = 512, NRadius = 256, Ngamma = 1, Npolynomial = 4, NGamow = 128):
+    def __init__(self, preloadedGamowTable : np.ndarray = None, preloadedLimits : np.ndarray = None, tabulationFolder = None, Nfield = 512, NRadius = 256, Ngamma = 1, Npolynomial = 4, NGamow = 128):
 
         """Initialises Tabulator by loading the tables from files. If maps not found, calls tabulation scripts from old getelec that create those tables.
 
@@ -230,6 +236,9 @@ class Interpolator:
                 Number of points to tabulate for electric field, radius and gamma, number of polynomial terms, number of Gamow points for fitting.
                 Relevant in case tabulation files not found and the tabulation script from oldGETELEC is invoked. 
         """
+
+        if tabulationFolder is None:
+            tabulationFolder = Globals.tabulationPath
 
         if (preloadedGamowTable is None or preloadedLimits is None):
 
@@ -250,7 +259,7 @@ class Interpolator:
         
         self._initializeTabulationVariables()
 
-    def calculateAndSaveTable(self, NField = 256, NRadius = 128, Ngamma = 1, Npolynomial = 4, NGamow = 128, dataFolder = Globals.tabulationPath, mode="newGETELEC"):
+    def calculateAndSaveTable(self, NField = 256, NRadius = 128, Ngamma = 1, Npolynomial = 4, NGamow = 128, dataFolder = None, mode="newGETELEC", XCmode = "image"):
 
         """Runs old Getelec script that produces and saves tabulation
         
@@ -262,6 +271,10 @@ class Interpolator:
             NGAmow: Number of Gamow calculation points for polynomial fitting
             dataFolder: Folder where to save the data
         """
+
+        if dataFolder is None:
+            dataFolder = Globals.tabulationPath
+
         if (mode == "oldGETELEC"):
             tabulationScript = filePath + "/../oldGETELEC/python/tabulateGamow.py"
             command = "python3 %s -nf %d -nr %d -ng %d -np %d -nG %d -o %s"%(tabulationScript, NField, NRadius, \
@@ -271,17 +284,22 @@ class Interpolator:
             os.system("mkdir -p " + dataFolder)
             os.system(command)
         else:
-            tabulator = GamowTabulator(Nf=NField, Nr=NRadius, Ngamma=Ngamma)
+            tabulator = GamowTabulator(Nf=NField, Nr=NRadius, Ngamma=Ngamma, XCmode=XCmode)
             os.system("mkdir -p " + dataFolder)
             tabulator.tabulateGamowTable(dataFolder)
 
 
-    def _loadTablesFromFileIfPossible(self, dataFolder = Globals.tabulationPath) -> bool:
+    def _loadTablesFromFileIfPossible(self, dataFolder = None) -> bool:
         """Loads the table of the Gamow factor from the files where it has been stored.
 
         Returns:
             True if successful loading. False if table files not found
         """
+
+        if dataFolder is None:
+            dataFolder = Globals.tabulationPath
+
+            
         try:
             self._gamowTable = np.load(dataFolder + "/GamowTable.npy")
             self._limits = np.load(dataFolder + "/tabLimits.npy")
@@ -431,7 +449,8 @@ class Barrier(Interpolator):
     
     # region initialization
     def __init__(self, field:float = 5., radius:float = 1.e4, gamma:float = 10., \
-        preloadedGamowTable:np.ndarray = None, preloadedLimits:np.ndarray = None, tabulationFolder = Globals.tabulationPath) -> None:
+        preloadedGamowTable:np.ndarray = None, preloadedLimits:np.ndarray = None, tabulationFolder = None) -> None:
+
         super().__init__(preloadedGamowTable, preloadedLimits, tabulationFolder)
         self.setParameters(field, radius, gamma)
    
