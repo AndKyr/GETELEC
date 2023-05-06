@@ -43,13 +43,13 @@ currentData = np.exp(yFN) * voltageData**2 * 1.e2
 
 
 ivFitter.setIVdata(voltageData=voltageData, currentData=currentData)
-ivFitter.setParameterRange(workFunction=5.25)
+ivFitter.setParameterRange(workFunction=5.25, prefactorBounds=(1., 1.))
 ivFitter.fitIVCurve()
 fittedCurrent = ivFitter.getOptCurrentCurve()
 
 ivFitter.printFittingData()
 
-plt.semilogy(1000./voltageData, fittedCurrent / ivFitter.preFactor, label = r"XC from DFT $\beta=%.3g \mu \textrm{m}^{-1}$"%(1.e3 * ivFitter.fittingParameters["fieldConversionFactor"]))
+plt.semilogy(1000./voltageData, fittedCurrent, label = r"XC from DFT $\beta=%.3g \mu \textrm{m}^{-1}$"%(1.e3 * ivFitter.fittingParameters["fieldConversionFactor"]))
 
 
 

@@ -79,7 +79,8 @@ class IVDataFitter(generalFitter):
         
         #normalize by forcing the max values to match
         logOfPrefactor = np.mean(np.log(self.currentData)) - np.mean(np.log(self.calculatedCurrentDensities))
-        self.preFactor = np.exp(logOfPrefactor)
+        self.preFactor = max(np.exp(logOfPrefactor), self.prefactorBounds[0])
+        self.prefactor = min(self.preFactor, self.prefactorBounds[1])
         error = np.log(self.calculatedCurrentDensities / self.currentData) + logOfPrefactor
         return error
 
@@ -87,7 +88,7 @@ class IVDataFitter(generalFitter):
     def fitIVCurve(self) -> None:
         """Performs the fitting"""
         self.optimizationData = opt.least_squares(fun = self.logCurrentDensityError, x0 = list(self.initialParameters.values()), \
-            bounds =(list(self.minParameters.values()), list(self.maxParameters.values())), method = 'trf', jac = '3-point')
+            bounds =(list(self.minParameters.values()), list(self.maxParameters.values())), method = 'trf', jac = '3-point', xtol=1.e-12)
         
         i = 0
         for parameterName in self.fittingParameters:
@@ -97,7 +98,7 @@ class IVDataFitter(generalFitter):
         self.fittedCurrent = self.preFactor * self.currentDensityforVoltages(self.voltageData)
 
 
-    def setParameterRange(self, field:list = [1., 6., 15.], radius = 2000., gamma = 10., workFunction = 4.5, temperature = 300.) ->None:
+    def setParameterRange(self, field:list = [1., 6., 15.], radius = 2000., gamma = 10., workFunction = 4.5, temperature = 300., prefactorBounds = None) ->None:
 
         """Sets the range of the parameters that will be fitted (variables) and the value of those that will be fixed
         
@@ -112,7 +113,7 @@ class IVDataFitter(generalFitter):
         #parameter arguments that are to be fixed
         fixedParameterArgs = {key:value for key,value in locals().items() if type(value) in [float, int]}
         
-        #parameter arguments that are to be 
+        #parameter arguments that are to be fitted
         fittingParameterArgs = {key:value for key,value in locals().items() if type(value) == list and key != "field"}
 
         # set range for all parameters to be fitted
@@ -134,6 +135,12 @@ class IVDataFitter(generalFitter):
                 self.maxParameters.pop(key)
             except KeyError:
                 pass
+
+        if prefactorBounds is None:
+            self.prefactorBounds = (np.finfo(np.float64).tiny, np.finfo(np.float64).max)
+        else:
+            self.prefactorBounds = prefactorBounds
+
 
         #sanity checks
         if "radius" in self.fittingParameters:
