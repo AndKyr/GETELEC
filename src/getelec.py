@@ -8,6 +8,7 @@ import scipy.ndimage
 import scipy.optimize as opt
 import scipy.special
 from scipy.integrate import IntegrationWarning
+import scipy.interpolate as interp
 import subprocess
 from typing import Any, Optional
 
@@ -30,8 +31,7 @@ class Globals:
     electronMass:float = 9.1093837e-31
     imageChargeConstant:float = .359991137
     gamowPrefactor:float = 10.24633444
-
-    
+   
     #the limit for which different approximations of the Fermi Dirac functions apply
     exponentLimit =  - 0.5 * np.log(np.finfo(float).eps)
 
@@ -41,23 +41,21 @@ def _setTabulationPath(path:str) -> None:
 
 
 class GamowCalculator:
-    def __init__(self, field:float = 5., radius:float = 1000, gamma:float = 10., XCmode:str = "image") -> None:
+    def __init__(self, field:float = 5., radius:float = 1000, gamma:float = 10., XCdataFile:str = "tabulated/XCdata_W110.npy") -> None:
         self.field = field
         self.radius = radius
         self.gamma = gamma
-        self.XCmode = XCmode
-        if (self.XCmode == "image"):
+        self.readXCpotential(XCdataFile)
+
+
+    def readXCpotential(self, XCTabulationFile:str = "") -> None:
+        try:
+            self.XCdata = np.load(XCTabulationFile, allow_pickle=True).item()
+            self.zMinimum = self.XCdata["extensionStartPoint"] + 1.e-5
+        except(IOError):
+            print("Warning: XC data file not found. Reverting to simple image XC")
+            self.XCdata = None
             self.zMinimum = 1.e-5
-        elif(self.XCmode == "fractional"):
-            self.setXCpotential()
-
-
-    def setXCpotential(self, nominatorPolynomial:np.ndarray = np.array([ 3.83076793,  2.93641507,  5.303711]), denominatorPolynomial:np.ndarray = np.array([27.04324491,  9.52682019, 1.]), zMin = -.178) -> None:
-        if (self.XCmode == "image"): 
-            return
-        self.nominatorPolynomial = nominatorPolynomial
-        self.denominatorPolynomial = denominatorPolynomial
-        self.zMinimum = zMin
 
     def imagePotential(self, z:np.ndarray):
         return  Globals.imageChargeConstant * ( 1. / z - .5 / self.radius) 
@@ -66,16 +64,32 @@ class GamowCalculator:
         return self.field * (self.radius * (self.gamma - 1.) * z + z**2) / (self.gamma * z + self.radius * (self.gamma - 1.))
     
 
-    def fractionalFunctionXC(self, z):
-        return np.polyval(self.nominatorPolynomial, z) / np.polyval(self.denominatorPolynomial, z)
-
     def XCpotential(self, z:np.ndarray):
-        if self.XCmode == "image":
-            return self.imagePotential(z)
-        elif self.XCmode == "fractional":
-            return self.fractionalFunctionXC(z)
-        else:
-            raise(AssertionError, "unimplemented XCmode")
+
+        convertToFloat = False
+        if not isinstance(z, np.ndarray):
+            z = np.array([z])
+            convertToFloat = True
+
+        imagePotential = self.imagePotential(z)
+        if (self.XCdata is None):
+            return imagePotential
+        
+        imagePotential[z <= 0] = 20.
+        imagePotential[imagePotential > 20.] = 20.
+        potentialPBE = np.polyval(self.XCdata["polynomial"], z)
+        potentialPBE[z > self.XCdata["polynomialRange"][1]] = 0
+
+        lowRange = np.where(z < self.XCdata["polynomialRange"][0])
+        potentialPBE[lowRange] = self.XCdata["extensionPrefactor"] / (z[lowRange] - self.XCdata["extensionStartPoint"])
+        transitionFunction = .5 * scipy.special.erfc((z - self.XCdata["transitionPoint"]) / self.XCdata["transitionWidth"])
+        outPut = transitionFunction * potentialPBE + (1. - transitionFunction) * imagePotential
+
+        if convertToFloat:
+            z = z[0]
+            outPut = outPut[0]
+        return outPut
+
         
     def findBarrierMax(self) -> float:
         optimization =  opt.minimize(self.negativeBarrierFunction,.5, bounds=[(self.zMinimum, 3.)])
@@ -116,7 +130,7 @@ class GamowCalculator:
         return self.maxBarrierDepth
 
 
-    def calculateGamowCurve(self, numberOfPoints:int = 64) -> None:
+    def calculateGamowCurve(self, numberOfPoints:int = 16) -> None:
         self.findBarrierMax()
         self.findMaxBarrierDepth()
 
@@ -126,8 +140,8 @@ class GamowCalculator:
             self.gamowVector[i] = self.calculateGamow(self.barrierDepthVector[i])
 
 class GamowTabulator(GamowCalculator):
-    def __init__(self,  XCmode="image", Nf = 256, Nr = 128, Ngamma = 1, Npoly = 4) -> None:
-        super().__init__(XCmode=XCmode)
+    def __init__(self,  Nf = 256, Nr = 128, Ngamma = 1, Npoly = 4, XCdataFile = "") -> None:
+        super().__init__(XCdataFile=XCdataFile)
 
         self.fieldRange = [0.5, 12.]
         self.minRadius = 0.5

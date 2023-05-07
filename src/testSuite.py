@@ -135,8 +135,8 @@ class tabulatorTests:
 
     def compareOldAndNew(self):
         model = gt.GETELECModel(emitterType="metal")
-        # model.setTabulationPath("tabulated/1D_512_new")
-        # model.emitter.barrier.calculateAndSaveTable(NField=64, NRadius=1, dataFolder="tabulated/1D_512_new")
+        model.setTabulationPath("tabulated/1D_512_new")
+        model.emitter.barrier.calculateAndSaveTable(NField=64, NRadius=1, dataFolder="tabulated/1D_512_new")
         # model.emitter.barrier._loadTablesFromFileIfPossible()
         model.calculateCurrentDensity()
         print("from new = ", model.getCurrentDensity())
@@ -158,9 +158,13 @@ if (__name__ == "__main__"):
     # plt.plot(spectra["energy"][0], spectra["electronCount"][0])
     # plt.savefig("spectra.png")
 
-    tbTest = tabulatorTests()
+    # tbTest = tabulatorTests()
 
 
-    tbTest.compareOldAndNew()
+    # tbTest.compareOldAndNew()
 
-    
+    tabulator = gt.GamowTabulator(Nf=16, Nr=1, XCdataFile="tabulated/XCdata_W110.npy")
+    gt._setTabulationPath("tabulated/1D_512_new")
+
+    tabulator.tabulateGamowTable()
+
