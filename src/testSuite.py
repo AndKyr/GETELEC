@@ -163,8 +163,8 @@ if (__name__ == "__main__"):
 
     # tbTest.compareOldAndNew()
 
-    tabulator = gt.GamowTabulator(Nf=16, Nr=1, XCdataFile="tabulated/XCdata_W110.npy")
-    gt._setTabulationPath("tabulated/1D_512_new")
+    tabulator = gt.GamowTabulator(Nf=256, Nr=1, XCdataFile="tabulated/XCdata_W110.npy")
+    gt._setTabulationPath("tabulated/1D_256_new")
 
     tabulator.tabulateGamowTable()
 

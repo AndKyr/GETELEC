@@ -11,6 +11,8 @@ from scipy.integrate import IntegrationWarning
 import scipy.interpolate as interp
 import subprocess
 from typing import Any, Optional
+import warnings
+warnings.filterwarnings("error")
 
 import threading
 
@@ -78,7 +80,7 @@ class GamowCalculator:
         imagePotential[z <= 0] = 20.
         imagePotential[imagePotential > 20.] = 20.
         potentialPBE = np.polyval(self.XCdata["polynomial"], z)
-        potentialPBE[z > self.XCdata["polynomialRange"][1]] = 0
+        potentialPBE[z > self.XCdata["polynomialRange"][1]] = 0.
 
         lowRange = np.where(z < self.XCdata["polynomialRange"][0])
         potentialPBE[lowRange] = self.XCdata["extensionPrefactor"] / (z[lowRange] - self.XCdata["extensionStartPoint"])
@@ -90,6 +92,13 @@ class GamowCalculator:
             outPut = outPut[0]
         return outPut
 
+    def plotBarrier(self):
+        zPlot = np.linspace(self.zMinimum + .05, 3., 512)
+        plt.plot(zPlot, self.barrierFunction(zPlot, 0.))
+        plt.grid()
+        plt.xlabel("z [nm]")
+        plt.ylabel("barrier [eV]")
+        plt.savefig("barrier.png")
         
     def findBarrierMax(self) -> float:
         optimization =  opt.minimize(self.negativeBarrierFunction,.5, bounds=[(self.zMinimum, 3.)])
@@ -105,17 +114,24 @@ class GamowCalculator:
 
 
     def findZeros(self, barrierDepth:float) -> None:
-        rootResult = opt.root_scalar(self.barrierFunction, args=barrierDepth, bracket=[self.zMinimum, self.barrierMaximumLocation])
+        rootResult = opt.root_scalar(self.barrierFunction, args=barrierDepth, bracket=[self.zMinimum, self.barrierMaximumLocation], xtol=1.e-8)
         self.leftRoot = rootResult.root
         rootResult = opt.root_scalar(self.barrierFunction, args=barrierDepth, bracket=[self.barrierMaximumLocation, 10.])
         self.rightRoot = rootResult.root
 
     def integrantWKB(self, z:float, barrierDepth:float) -> float:
-        return self.barrierFunction(z, barrierDepth) ** .5
+        barrier = np.maximum(self.barrierFunction(z, barrierDepth), 0.)
+        return barrier ** .5
 
     def calculateGamow(self, barrierDepth:float) -> float:
         self.findZeros(barrierDepth)
-        return Globals.gamowPrefactor * ig.quad(self.integrantWKB, self.leftRoot, self.rightRoot, args=barrierDepth)[0]
+        try:
+            return Globals.gamowPrefactor * ig.quad(self.integrantWKB, self.leftRoot, self.rightRoot, args=barrierDepth, epsabs=1.e-5, epsrel=1.e-5)[0]
+        except(ig.IntegrationWarning):
+            print("Warning: quad has a problem. Reverting to trapz")
+            zTrapz = np.linspace(self.leftRoot, self.rightRoot, 256)
+            return Globals.gamowPrefactor * np.trapz(self.integrantWKB(zTrapz, barrierDepth), zTrapz)
+
 
     def findMaxBarrierDepth(self, maximumGamow:float = 50.) -> float:
         self.maxBarrierDepth = self.minBarrierDepth

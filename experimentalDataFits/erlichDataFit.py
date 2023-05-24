@@ -40,10 +40,10 @@ xFN, yFN = np.loadtxt("erlichData.dat", unpack=True, delimiter=",")
 voltageData = 1.e4/xFN
 currentData = np.exp(yFN) * voltageData**2 * 1.e2
 
-
+workFunction = 5.25
 
 ivFitter.setIVdata(voltageData=voltageData, currentData=currentData)
-ivFitter.setParameterRange(workFunction=5.25, prefactorBounds=(1., 1.))
+ivFitter.setParameterRange(workFunction=workFunction, prefactorBounds=(1., 1.))
 ivFitter.fitIVCurve()
 fittedCurrent = ivFitter.getOptCurrentCurve()
 
@@ -58,7 +58,7 @@ gt._setTabulationPath("../tabulated/1D_1024")
 ivFitter = IVDataFitter.IVDataFitter()
 
 ivFitter.setIVdata(voltageData=voltageData, currentData=currentData)
-ivFitter.setParameterRange(workFunction=5.25)
+ivFitter.setParameterRange(workFunction=workFunction)
 ivFitter.fitIVCurve()
 fittedCurrent = ivFitter.getOptCurrentCurve()
 
