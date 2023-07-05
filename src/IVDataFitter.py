@@ -79,7 +79,8 @@ class IVDataFitter(generalFitter):
         
         #normalize by forcing the max values to match
         logOfPrefactor = np.mean(np.log(self.currentData)) - np.mean(np.log(self.calculatedCurrentDensities))
-        self.preFactor = np.exp(logOfPrefactor)
+        self.preFactor = max(np.exp(logOfPrefactor), self.prefactorBounds[0])
+        self.prefactor = min(self.preFactor, self.prefactorBounds[1])
         error = np.log(self.calculatedCurrentDensities / self.currentData) + logOfPrefactor
         return error
 
@@ -87,7 +88,7 @@ class IVDataFitter(generalFitter):
     def fitIVCurve(self) -> None:
         """Performs the fitting"""
         self.optimizationData = opt.least_squares(fun = self.logCurrentDensityError, x0 = list(self.initialParameters.values()), \
-            bounds =(list(self.minParameters.values()), list(self.maxParameters.values())), method = 'trf', jac = '3-point')
+            bounds =(list(self.minParameters.values()), list(self.maxParameters.values())), method = 'trf', jac = '3-point', xtol=1.e-12)
         
         i = 0
         for parameterName in self.fittingParameters:
@@ -97,7 +98,7 @@ class IVDataFitter(generalFitter):
         self.fittedCurrent = self.preFactor * self.currentDensityforVoltages(self.voltageData)
 
 
-    def setParameterRange(self, field:list = [1., 6., 15.], radius = 2000., gamma = 10., workFunction = 4.5, temperature = 300.) ->None:
+    def setParameterRange(self, field:list = [1., 6., 15.], radius = 2000., gamma = 10., workFunction = 4.5, temperature = 300., prefactorBounds = None) ->None:
 
         """Sets the range of the parameters that will be fitted (variables) and the value of those that will be fixed
         
@@ -112,7 +113,7 @@ class IVDataFitter(generalFitter):
         #parameter arguments that are to be fixed
         fixedParameterArgs = {key:value for key,value in locals().items() if type(value) in [float, int]}
         
-        #parameter arguments that are to be 
+        #parameter arguments that are to be fitted
         fittingParameterArgs = {key:value for key,value in locals().items() if type(value) == list and key != "field"}
 
         # set range for all parameters to be fitted
@@ -134,6 +135,12 @@ class IVDataFitter(generalFitter):
                 self.maxParameters.pop(key)
             except KeyError:
                 pass
+
+        if prefactorBounds is None:
+            self.prefactorBounds = (np.finfo(np.float64).tiny, np.finfo(np.float64).max)
+        else:
+            self.prefactorBounds = prefactorBounds
+
 
         #sanity checks
         if "radius" in self.fittingParameters:
@@ -158,6 +165,7 @@ class IVDataFitter(generalFitter):
         print("Optimum parameters: ", self.fittingParameters)
         print("sigma * Aeff: ", self.preFactor)
         print("Fitting Error (relative): ", self.getFittingError())
+        print("orthodoxy status: ", self.orthodoxyStatus())
 
     def orthodoxyStatus(self) -> str:
         maxCurrentDensity = np.max(self.calculatedCurrentDensities)
@@ -371,26 +379,44 @@ if (__name__ == "__main__"): #some testing operations
     plt.semilogy(outData["fieldConversionFactor"] / outData["plotFields"] , fittedCurrent, label = "beta=%.2g, err=%.2g"%(outData["fieldConversionFactor"], outData["fittingError"]))
 
     print(outData)
+    plt.savefig("fittedCurveOnlyBeta.png")
+    plt.close()
 
+    voltageData = np.array([0.0729348 , 0.07171391, 0.07087798, 0.07008738, 0.06931421, \
+       0.06769618, 0.06645514, 0.06525878, 0.06399593, 0.06234496, \
+       0.06105263, 0.05937943, 0.05763645])
+    
+    currentData = np.array([4.24256972e-06, 3.96317508e-06, 3.75021449e-06, 3.51572519e-06, \
+       3.30859717e-06, 2.96829892e-06, 2.61283693e-06, 2.40444228e-06, \
+       2.17155982e-06, 1.69466134e-06, 1.54505191e-06, 1.34140291e-06, 1.11327359e-06])
 
+    plt.figure()
     ivFitter.setIVdata(voltageData=voltageData, currentData=currentData)
-    ivFitter.setParameterRange(radius=[1., 10., 2000.])
-
+    ivFitter.setParameterRange(radius=[3., 10., 2000.])
     ivFitter.fitIVCurve()
     fittedCurrent = ivFitter.getOptCurrentCurve()
-    plt.semilogy(1./voltageData, fittedCurrent, label = "beta = %.2g, R = %.2g, err=%.2g"%(ivFitter.fittingParameters["fieldConversionFactor"], ivFitter.fittingParameters["radius"], ivFitter.getFittingError()))
+
+    ivFitter.printFittingData()
+    plt.semilogy(1 / ivFitter.fittingParameters["fieldConversionFactor"] / voltageData, fittedCurrent / ivFitter.preFactor, label = "beta = %.2g, R = %.2g, err=%.2g"%(ivFitter.fittingParameters["fieldConversionFactor"], ivFitter.fittingParameters["radius"], ivFitter.getFittingError()))
+    plt.semilogy(1 / ivFitter.fittingParameters["fieldConversionFactor"]/voltageData, currentData / ivFitter.preFactor, ".")
+    plt.legend()
+    plt.grid()
+    plt.savefig("fittedCurveChen.png")
+
+    plt.close()
+    plt.figure()
 
 
+    ivFitter.setParameterRange(workFunction=4.6, radius=[1., 10., 200.])
 
-    ivFitter.setParameterRange(workFunction=[2.5, 4.5, 7.], radius=[1., 10., 200.])
-
+    ivFitter.setIVdata(voltageData, currentData)
     ivFitter.fitIVCurve()
     fittedCurrent = ivFitter.getOptCurrentCurve()
-    plt.semilogy(1./voltageData, fittedCurrent, label = "beta = %.2g, R = %.2g, W = %.2g, err = %.2g"%(ivFitter.fittingParameters["fieldConversionFactor"], ivFitter.fittingParameters["radius"], ivFitter.fittingParameters["workFunction"], ivFitter.getFittingError()))
+    plt.semilogy(1./voltageData, fittedCurrent, label = "beta = %.2g, R = %.2g, err = %.2g"%(ivFitter.fittingParameters["fieldConversionFactor"], ivFitter.fittingParameters["radius"], ivFitter.getFittingError()))
 
     plt.legend()
 
-    plt.savefig("fittedcurve.png")
+    plt.savefig("fittedcurve2Emitter.png")
     plt.close()
 
     ivFitter.printFittingData()
