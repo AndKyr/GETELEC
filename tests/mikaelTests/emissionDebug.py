@@ -174,6 +174,6 @@ def main():
 
     }
 
-    #print(json.dumps(outdata))
+    print(json.dumps(outdata))
 
 main()
