@@ -97,7 +97,6 @@ class IVDataFitter(generalFitter):
         
         self.fittedCurrent = self.preFactor * self.currentDensityforVoltages(self.voltageData)
 
-
     def setParameterRange(self, field:list = [1., 6., 15.], radius = 2000., gamma = 10., workFunction = 4.5, temperature = 300., prefactorBounds = None) ->None:
 
         """Sets the range of the parameters that will be fitted (variables) and the value of those that will be fixed
