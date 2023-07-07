@@ -1289,7 +1289,7 @@ class SemiconductorEmitter:
         
         self.barrier.setParameters(field, radius, gamma)
         self.conductionEmitter.setParameters(workfunction=workFunction, kT=kT, effectiveMass=effectiveMassConduction, energyBandLimit=conductionBandBottom)
-        self.conductionEmitter.setParameters(workfunction=workFunction, kT=kT, energyBandLimit=conductionBandBottom - bandGap, effectiveMass=effectiveMassValence)
+        self.valenceEmitter.setParameters(workfunction=workFunction, kT=kT, energyBandLimit=conductionBandBottom - bandGap, effectiveMass=effectiveMassValence)
     
     def conductionToValenceRatioEstimate(self):
         """Calculates an estimation between the current contribution of the valence band and the conduction band. If the ratio is too low, 
@@ -1331,8 +1331,11 @@ class SemiconductorEmitter:
         energyArrayConduction, spectrumConduction = self.conductionEmitter.totalEnergySpectrumArrays(numberOfPoints=numberOfPoints)
         energyArrayValence, spectrumValence = self.valenceEmitter.totalEnergySpectrumArrays(numberOfPoints=numberOfPoints)
 
-        energyArray = energyArrayValence + energyArrayConduction
-        spectrumArray = spectrumValence + spectrumConduction
+        energyArray = np.concatenate((energyArrayValence, energyArrayConduction))
+        spectrumArray = np.concatenate((spectrumValence, spectrumConduction))
+
+
+        
         return energyArray, spectrumArray  
         
 
