@@ -19,8 +19,8 @@ from IVDataFitter import IVDataFitter
 
 def main():
 
-    voltageData = 1./np.array(data['Voltage'])
-    currentData = np.log(np.array(data['Current']))
+    voltageData = np.array(data['Voltage'])
+    currentData = np.array(data['Current'])
     workFunction = np.full(currentData.shape, float(data['Work_function'][0]))
 
     ivFitter = IVDataFitter()
