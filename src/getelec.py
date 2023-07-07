@@ -27,7 +27,7 @@ if (not os.path.exists(filePath + '/libintegrator.so') or os.path.getmtime(fileP
 
 class Globals:
     """Keeps global constants and variables"""
-    tabulationPath:str = filePath + "/../tabulated/1D_1024"
+    tabulationPath:str = filePath + "/../tabulated/2D_256x128"
     BoltzmannConstant:float = 8.617333262e-5
     SommerfeldConstant:float = 1.618311e-4 
     electronMass:float = 9.1093837e-31

@@ -22,22 +22,37 @@ def main():
     voltageData = np.array(data['Voltage'])
     currentData = np.array(data['Current'])
     workFunction = np.full(currentData.shape, float(data['Work_function'][0]))
+    fitRadius = bool(data["CalculateR"])
 
     ivFitter = IVDataFitter()
 
     ivFitter.setIVdata(voltageData=voltageData, currentData=currentData)
-    ivFitter.setParameterRange()
+    ivFitter.setParameterRange(workFunction=workFunction)
+    if fitRadius:
+        ivFitter.setParameterRange(radius=[1., 10. , 2000.])
+        
     ivFitter.fitIVCurve()
 
-    fittedCurrent = ivFitter.getOptCurrentCurve(voltageData)
+    voltageCurveData = 1/np.linspace(1/max(voltageData), 1/min(voltageData), 128)
+
+    fittedCurrent = ivFitter.getOptCurrentCurve(voltageCurveData)
+
+    xplotMrk = 1 / (ivFitter.fittingParameters["fieldConversionFactor"] * voltageData)
+
+    xplotLine = 1 / (ivFitter.fittingParameters["fieldConversionFactor"] * voltageCurveData)
+
+
 
     # Andreas please modify fields below?
 
     outdata = { "type": "ivCalc",
-                "xplot_mrk": fittedCurrent.tolist(), "yplot_mrk": data['Current'], \
-                "xplot_line": fittedCurrent.tolist(), "yplot_line": data['Current'], \
-                "beta": -1, "sigma_Aeff": ivFitter.preFactor, \
+                "xplot_mrk": xplotMrk.tolist(), "yplot_mrk": data['Current'], \
+                "xplot_line": xplotLine.tolist(), "yplot_line": fittedCurrent.tolist(), \
+                "beta": ivFitter.fittingParameters["fieldConversionFactor"], "sigma_Aeff": ivFitter.preFactor, \
                 "xAxisUnit": "1 / (Local Field [V/nm])", "yAxisUnit": "Current [Amps]"}
+    
+    if (fitRadius):
+        outdata["Radius"] = ivFitter.fittingParameters["radius"]
     
     print(json.dumps(outdata))
 
