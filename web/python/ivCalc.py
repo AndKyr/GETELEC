@@ -41,6 +41,9 @@ def main():
 
     xplotLine = 1 / (ivFitter.fittingParameters["fieldConversionFactor"] * voltageCurveData)
 
+    ivFitter.orthodoxyStatus()
+
+
 
 
     # Andreas please modify fields below?
@@ -49,7 +52,7 @@ def main():
                 "xplot_mrk": xplotMrk.tolist(), "yplot_mrk": data['Current'], \
                 "xplot_line": xplotLine.tolist(), "yplot_line": fittedCurrent.tolist(), \
                 "beta": ivFitter.fittingParameters["fieldConversionFactor"], "sigma_Aeff": ivFitter.preFactor, \
-                "xAxisUnit": "1 / (Local Field [V/nm])", "yAxisUnit": "Current [Amps]"}
+                "xAxisUnit": "1 / (Local Field [V/nm])", "yAxisUnit": "Current [Amps]", "orthodoxyMessage": ivFitter.orthodoxyMessage}
     
     if (fitRadius):
         outdata["Radius"] = ivFitter.fittingParameters["radius"]

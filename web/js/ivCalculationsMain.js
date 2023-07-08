@@ -637,11 +637,13 @@ function main() {
         function updateTitle() {
 
             if (inVoltageMode) {
-                if(isNaN(rad) == false) myChart.options.plugins.title.text = "Fitted parameters: Radius: " + rad + " nm, β: " + beta + " nm⁻¹, σAeff: " + sigmaAeff + " nm²";
-                if(isNaN(rad) == true) myChart.options.plugins.title.text = "Fitted parameters: β: " + beta + " nm⁻¹, σAeff: " + sigmaAeff + " nm²";
+                if(isNaN(rad) == false) myChart.options.plugins.title.text = "Fitted parameters: Radius: " + dict.Radius.toExponential(4) + " nm, β (F/V): " + dict.beta.toExponential(4) + " nm⁻¹, σAeff: " + dict.sigma_Aeff.toExponential(6) + " nm²";
+                if(isNaN(rad) == true) myChart.options.plugins.title.text = "Fitted parameters: β (F/V): " + dict.beta.toExponential(4) + " nm⁻¹, σAeff: " + dict.sigma_Aeff.toExponential(6) + " nm²";
             } else {
-                myChart.options.plugins.title.text = "Fitted parameters: Radius: " + rad + " nm, β: " + beta + ", σAeff: " + sigmaAeff + " nm²";
+                myChart.options.plugins.title.text = "Fitted parameters: Radius: " + dict.Radius.toExponential(4) + " nm, β (F/V): " + beta.toExponential(4) + ", σAeff: " + dict.sigma_Aeff.toExponential(6) + " nm²";
             }
+            
+            myChart.options.plugins.title.text += dict.orthodoxyMessage
 
         }
 
