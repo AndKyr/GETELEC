@@ -15,7 +15,7 @@ fieldMult, radiusMult, workFunctionMult, temperatureMult,
 calculateNH, calculateES, calculateEC, gammaMetal, gammaSemi,
 ec, ef, eg, me, mp, _field, _radius, _workFunction, _temperature,
 _ec, _ef, _eg, _me, _mp, _gammaMetal, _gammaSemi, sweepParam,
-data, chart1, chart2, chart3, _data, centerButton
+data, chart1, chart2, chart3, _data, centerButton1, centerButton2, centerButton3
 
 function main(){
 
@@ -332,9 +332,9 @@ function main(){
 
             let sweepingSlider = document.getElementById('sweepingSlider');
 
-            if(calculateEC){ currentChart.hidden = false} else { currentChart.hidden = true}
-            if(calculateNH){ heatChart.hidden = false} else { heatChart.hidden = true}
-            if(calculateES){ spectrumChart.hidden = false; sweepingSlider.hidden = false; centerButton.hidden = false} else { spectrumChart.hidden = true; sweepingSlider.hidden = true; centerButton.hidden = true}
+            if(calculateEC){ currentChart.hidden = false; centerButton1.hidden = false} else { currentChart.hidden = true; centerButton1.hidden = true}
+            if(calculateNH){ heatChart.hidden = false; centerButton2.hidden = false} else { heatChart.hidden = true; centerButton2.hidden = true}
+            if(calculateES){ spectrumChart.hidden = false; sweepingSlider.hidden = false; centerButton3.hidden = false} else { spectrumChart.hidden = true; sweepingSlider.hidden = true; centerButton3.hidden = true}
 
 
         }
@@ -399,7 +399,9 @@ function main(){
 
         const downloadButton = document.getElementById('downloadButton');
 
-        centerButton = document.getElementById('centerButton');
+        centerButton1 = document.getElementById('centerButton1');
+        centerButton2 = document.getElementById('centerButton2');
+        centerButton3 = document.getElementById('centerButton3');
 
         //advancedModeToggleMainDiv.hidden = true;
 
@@ -416,7 +418,9 @@ function main(){
         enterButton.addEventListener("click", checkValidity);
 
         downloadButton.addEventListener('click', downloadData);
-        centerButton.addEventListener('click', centerData);
+        centerButton1.addEventListener('click', centerData1);
+        centerButton2.addEventListener('click', centerData2);
+        centerButton3.addEventListener('click', centerData3);
 
         updatePropertiesPresets();
         
@@ -2904,7 +2908,24 @@ function OLDdownloadData(){
 
 }
 
-function centerData() {
+function centerData1() {
+
+    chart1.resetZoom();
+
+    chart1.update();
+
+}
+
+function centerData2() {
+
+    chart2.resetZoom();
+
+    chart2.update();
+
+}
+
+
+function centerData3() {
 
     chart3.resetZoom();
 
