@@ -643,7 +643,7 @@ function main() {
                 myChart.options.plugins.title.text = "Fitted parameters: Radius: " + dict.Radius.toExponential(4) + " nm, β (F/V): " + beta.toExponential(4) + ", σAeff: " + dict.sigma_Aeff.toExponential(6) + " nm²";
             }
             
-            myChart.options.plugins.title.text += dict.orthodoxyMessage
+            myChart.options.plugins.title.text +=  ". " + dict.orthodoxyMessage
 
         }
 
