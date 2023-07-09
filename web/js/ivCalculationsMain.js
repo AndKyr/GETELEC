@@ -358,7 +358,7 @@ function main() {
 
                     title: {
 
-                        text: "1 / Local Field, (V/nm)⁻¹]",
+                        text: "1 / Local Field, [(V/nm)⁻¹]",
                         display: true,
                         font:{
                             size: 18

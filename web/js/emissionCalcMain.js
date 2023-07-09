@@ -1990,9 +1990,9 @@ function updatePreselectSemiProperties(){
         //[name, energygap300K, me, mp, ef, ec, eg]
         //Taken from Physics of Semiconductor devices 2nd edition book, S. M. Sze
 
-        1: ["Si", 1.12, 0.98, 0.49, 4.61, 4.05, 5.17],
-        2: ["Ge", 0.66, 1.64, 0.28, 4.33, 4, 4.66],
-        3: ["GaAs", 1.42, 0.067, 0.082, 4.78, 4.07, 5.49]
+        1: ["Si", 1.12, 0.98, 0.49, 4.61, 0.56, 5.17],
+        2: ["Ge", 0.66, 1.64, 0.28, 4.33, 0.33, 4.66],
+        3: ["GaAs", 1.42, 0.067, 0.082, 4.78, 0.71, 5.49]
 
     }
 
