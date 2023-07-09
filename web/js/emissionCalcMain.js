@@ -100,7 +100,7 @@ function main(){
             if(workFunction == "") workFunction = "4.5";
             if(temperature == "") temperature = "300";
 
-            if(ec == "") ec = "4.05";
+            if(ec == "") ec = "0.56";
             if(ef == "") ef = "4.61";
             if(eg == "") eg = "1.12";
 
@@ -534,6 +534,8 @@ function main(){
                         position: "bottom",
 
                         ticks: {
+                            
+                            precision: 2,
     
                             callback: function (value, index, ticks) {
     
@@ -669,7 +671,6 @@ function main(){
     
                                 }
     
-                                return null
                             }
                         }
     
@@ -696,6 +697,8 @@ function main(){
                         position: "bottom",
 
                         ticks: {
+
+                            precision: 2,
     
                             callback: function (value, index, ticks) {
     
@@ -898,6 +901,8 @@ function main(){
                         position: "bottom",
 
                         ticks: {
+
+                            precision: 2,
     
                             callback: function (value, index, ticks) {
     
@@ -1033,7 +1038,6 @@ function main(){
     
                                 }
 
-                                return null
                             }
                         }
     
@@ -1060,6 +1064,8 @@ function main(){
                         position: "bottom",
 
                         ticks: {
+
+                            precision: 2,
     
                             callback: function (value, index, ticks) {
     
@@ -1235,147 +1241,23 @@ function main(){
     
                         },
     
-                        type: "logarithmic",
+                        // type: "logarithmic",
 
                         position: "bottom",
 
                         ticks: {
-    
-                            callback: function (value, index, ticks) {
-    
-                                if (value === 1000000) {
-    
-                                    return "1 [M]"
-    
-                                }
-    
-                                if (value === 100000) {
-    
-                                    return "100 [k]"
-    
-                                }
-    
-                                if (value === 10000) {
-    
-                                    return "10 [k]"
-    
-                                }
-    
-                                if (value === 1000) {
-    
-                                    return "1 [k]"
-    
-                                }
-    
-                                if (value === 100) {
-    
-                                    return "100 []"
-    
-                                }
-    
-                                if (value === 10) {
-    
-                                    return "10 []"
-    
-                                }
-    
-                                if (value === 1) {
-    
-                                    return "1 []"
-    
-                                }
-    
-                                if (value === 0.1) {
-    
-                                    return "100 [m]"
-    
-                                }
-    
-                                if (value === 0.01) {
-    
-                                    return "10 [m]"
-    
-                                }
-    
-                                if (value === 0.001) {
-    
-                                    return "1 [m]"
-    
-                                }
 
-                                if (value === 0.0001) {
-    
-                                    return "0.1 [m]"
-    
+                            callback: function(value, index, values) {
+                                if (value === 0) {
+                                    return value;
+                                } else {
+                                    if(value > 0){
+                                        var exponent = Math.floor(Math.log10(value));
+                                        var mantissa = (value / Math.pow(10, exponent)).toFixed(3);
+                                        return mantissa + 'e' + exponent + ' [A/(nm^2*eV)]';      
+                                    }
+                                    return;
                                 }
-
-                                if (value === 0.00001) {
-    
-                                    return "0.01 [m]"
-    
-                                }
-
-                                if (value === 0.000001) {
-    
-                                    return "1000 [n]"
-    
-                                } 
-
-                                if (value === 0.0000001) {
-    
-                                    return "100 [n]"
-    
-                                }
-
-                                if (value === 0.00000001) {
-    
-                                    return "10 [n]"
-    
-                                }
-
-                                if (value === 0.000000001) {
-    
-                                    return "1 [n]"
-    
-                                }
-
-                                if (value === 0.0000000001) {
-    
-                                    return "100 [p]"
-    
-                                }
-
-                                if (value === 0.00000000001) {
-    
-                                    return "10 [p]"
-    
-                                }
-
-                                if (value === 0.000000000001) {
-    
-                                    return "1 [p]"
-    
-                                }
-
-                                if (value === 0.0000000000001) {
-    
-                                    return "100 [f]"
-    
-                                }
-
-                                if (value === 0.00000000000001) {
-    
-                                    return "10 [f]"
-    
-                                }
-
-                                if (value === 0.000000000000001) {
-    
-                                    return "1 [f]"
-    
-                                }
-    
-                                return null
                             }
                         }
     
@@ -1402,6 +1284,8 @@ function main(){
                         position: "bottom",
 
                         ticks: {
+
+                            precision: 2,
     
                             callback: function (value, index, ticks) {
     
@@ -1922,7 +1806,7 @@ function main(){
     
                     break;
     
-                case "temp":
+                case "temperature":
     
                     _sweepValues = _temp;
     
@@ -2935,6 +2819,40 @@ function memorySizeOf(obj) {
 //Download data from graphs as csv
 
 function downloadData(){
+
+    const blob = new Blob([csvmaker(_data)], { type: 'text/csv' });
+ 
+    const url = window.URL.createObjectURL(blob);
+ 
+    const a = document.createElement('a');
+ 
+    a.setAttribute('href', url);
+ 
+    a.setAttribute('download', 'data.csv');
+
+    a.click();
+
+}
+
+const csvmaker = function (data) {
+ 
+    // Empty array for storing the values
+    let csvRows = [];
+    
+    const headers = Object.keys(data);
+
+    for(let key of headers){
+
+        const line = data[key]
+        csvRows.push(key + "," + line);
+
+    }
+ 
+    return csvRows.join('\n')
+}
+
+
+function OLDdownloadData(){
 
     function jsonToCsv(json) {
         let csv = "";

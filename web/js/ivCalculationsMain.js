@@ -3,7 +3,7 @@ let graphData = null;
 
 let errorDivs = [];
 let inVoltageMode = true;
-let helpButton, docDiv;
+let helpButton, docDiv, myChart
 
 main();
 
@@ -147,7 +147,7 @@ function main() {
 
     let regressionData;
 
-    let myChart = new Chart(ctx, {
+    myChart = new Chart(ctx, {
 
         data: {
 
@@ -403,6 +403,13 @@ function main() {
 
                 },
 
+                subtitle: {
+                    display: true,
+                    font: {
+                        size: 16
+                    }
+                },
+
                 zoom: {
 
                     zoom: {
@@ -643,7 +650,7 @@ function main() {
                 myChart.options.plugins.title.text = "Fitted parameters: Radius: " + dict.Radius.toExponential(4) + " nm, β (F/V): " + beta.toExponential(4) + ", σAeff: " + dict.sigma_Aeff.toExponential(6) + " nm²";
             }
             
-            myChart.options.plugins.title.text +=  ". " + dict.orthodoxyMessage
+            myChart.options.plugins.subtitle.text = dict.orthodoxyMessage
 
         }
 
@@ -736,6 +743,9 @@ function main() {
     
         let downloadButton = document.getElementById('downloadDataBtn');
         downloadButton.addEventListener("click", downloadData);
+
+        let centerButton = document.getElementById('centerButton')
+        centerButton.addEventListener('click', centerData);
     
     }
 
@@ -1212,4 +1222,12 @@ const csvmaker = function (data) {
     }
  
     return csvRows.join('\n')
+}
+
+function centerData() {
+
+    myChart.resetZoom();
+
+    myChart.update();
+
 }
