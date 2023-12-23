@@ -8,13 +8,13 @@ import scipy.ndimage
 import scipy.optimize as opt
 import scipy.special
 from scipy.integrate import IntegrationWarning
-import scipy.interpolate as interp
 import subprocess
 from typing import Any, Optional
 import warnings
 warnings.filterwarnings("error")
 
 import threading
+import scipy.sparse as sp
 
 filePath,filename = os.path.split(os.path.realpath(__file__))
 
@@ -37,185 +37,23 @@ class Globals:
     #the limit for which different approximations of the Fermi Dirac functions apply
     exponentLimit =  - 0.5 * np.log(np.finfo(float).eps)
 
+    def transmissionCoefficientForGamow(gamow):
+        if (isinstance(gamow, np.ndarray)):
+            transmissionCoefficient = np.copy(gamow)
+            highGamowArea = gamow > 18.
+            lowGamowArea = gamow <= 18.
+            transmissionCoefficient[lowGamowArea] = 1 / (1 + np.exp(gamow[lowGamowArea]))
+            transmissionCoefficient[highGamowArea] = np.exp(-gamow[highGamowArea])
+            return transmissionCoefficient
+        else:
+            if (gamow < 18.):
+                return 1 / (1 + np.exp(gamow))
+            else:
+                return np.exp(-gamow)
+
 def _setTabulationPath(path:str) -> None:
     """module function that sets the tabulation path where to find the tabulated barrier parameters"""
     Globals.tabulationPath = path
-
-
-class GamowCalculator:
-    def __init__(self, field:float = 5., radius:float = 1000, gamma:float = 10., XCdataFile:str = "tabulated/XCdata_W110.npy") -> None:
-        self.field = field
-        self.radius = radius
-        self.gamma = gamma
-        self.readXCpotential(XCdataFile)
-
-
-    def readXCpotential(self, XCTabulationFile:str = "") -> None:
-        try:
-            self.XCdata = np.load(XCTabulationFile, allow_pickle=True).item()
-            self.zMinimum = self.XCdata["extensionStartPoint"] + 1.e-5
-        except(IOError):
-            print("Warning: XC data file not found. Reverting to simple image XC")
-            self.XCdata = None
-            self.zMinimum = 1.e-5
-
-    def imagePotential(self, z:np.ndarray):
-        return  Globals.imageChargeConstant * ( 1. / z - .5 / self.radius) 
-
-    def electrostaticPotential(self, z:np.ndarray):
-        return self.field * (self.radius * (self.gamma - 1.) * z + z**2) / (self.gamma * z + self.radius * (self.gamma - 1.))
-    
-
-    def XCpotential(self, z:np.ndarray):
-
-        convertToFloat = False
-        if not isinstance(z, np.ndarray):
-            z = np.array([z])
-            convertToFloat = True
-
-        imagePotential = self.imagePotential(z)
-        if (self.XCdata is None):
-            return imagePotential
-        
-        imagePotential[z <= 0] = 20.
-        imagePotential[imagePotential > 20.] = 20.
-        potentialPBE = np.polyval(self.XCdata["polynomial"], z)
-        potentialPBE[z > self.XCdata["polynomialRange"][1]] = 0.
-
-        lowRange = np.where(z < self.XCdata["polynomialRange"][0])
-        potentialPBE[lowRange] = self.XCdata["extensionPrefactor"] / (z[lowRange] - self.XCdata["extensionStartPoint"])
-        transitionFunction = .5 * scipy.special.erfc((z - self.XCdata["transitionPoint"]) / self.XCdata["transitionWidth"])
-        outPut = transitionFunction * potentialPBE + (1. - transitionFunction) * imagePotential
-
-        if convertToFloat:
-            z = z[0]
-            outPut = outPut[0]
-        return outPut
-
-    def plotBarrier(self):
-        zPlot = np.linspace(self.zMinimum + .05, 3., 512)
-        plt.plot(zPlot, self.barrierFunction(zPlot, 0.))
-        plt.grid()
-        plt.xlabel("z [nm]")
-        plt.ylabel("barrier [eV]")
-        plt.savefig("barrier.png")
-        
-    def findBarrierMax(self) -> float:
-        optimization =  opt.minimize(self.negativeBarrierFunction,.5, bounds=[(self.zMinimum, 3.)])
-        self.barrierMaximumLocation = optimization.x
-        self.minBarrierDepth = self.negativeBarrierFunction(self.barrierMaximumLocation)[0] + 1.e-3
-        return self.barrierMaximumLocation
-
-    def barrierFunction(self, z, barrierDepth):
-        return barrierDepth - self.electrostaticPotential(z) - self.XCpotential(z)
-    
-    def negativeBarrierFunction(self, z):
-        return self.electrostaticPotential(z) + self.XCpotential(z)
-
-
-    def findZeros(self, barrierDepth:float) -> None:
-        rootResult = opt.root_scalar(self.barrierFunction, args=barrierDepth, bracket=[self.zMinimum, self.barrierMaximumLocation], xtol=1.e-8)
-        self.leftRoot = rootResult.root
-        rootResult = opt.root_scalar(self.barrierFunction, args=barrierDepth, bracket=[self.barrierMaximumLocation, 10.])
-        self.rightRoot = rootResult.root
-
-    def integrantWKB(self, z:float, barrierDepth:float) -> float:
-        barrier = np.maximum(self.barrierFunction(z, barrierDepth), 0.)
-        return barrier ** .5
-
-    def calculateGamow(self, barrierDepth:float) -> float:
-        self.findZeros(barrierDepth)
-        try:
-            return Globals.gamowPrefactor * ig.quad(self.integrantWKB, self.leftRoot, self.rightRoot, args=barrierDepth, epsabs=1.e-5, epsrel=1.e-5)[0]
-        except(ig.IntegrationWarning):
-            print("Warning: quad has a problem. Reverting to trapz")
-            zTrapz = np.linspace(self.leftRoot, self.rightRoot, 256)
-            return Globals.gamowPrefactor * np.trapz(self.integrantWKB(zTrapz, barrierDepth), zTrapz)
-
-
-    def findMaxBarrierDepth(self, maximumGamow:float = 50.) -> float:
-        self.maxBarrierDepth = self.minBarrierDepth
-        for i in range(100):
-            self.maxBarrierDepth *= 1.5
-            Gnew = self.calculateGamow(self.maxBarrierDepth)
-            if (Gnew > maximumGamow):
-                break
-        
-        GminusGmax = lambda barrierDepth: self.calculateGamow(barrierDepth) - maximumGamow
-        self.maxBarrierDepth = opt.root_scalar(GminusGmax, bracket=[self.maxBarrierDepth/1.5, self.maxBarrierDepth]).root
-        return self.maxBarrierDepth
-
-
-    def calculateGamowCurve(self, numberOfPoints:int = 16) -> None:
-        self.findBarrierMax()
-        self.findMaxBarrierDepth()
-
-        self.barrierDepthVector = np.linspace(self.minBarrierDepth, self.maxBarrierDepth, numberOfPoints)
-        self.gamowVector = np.copy(self.barrierDepthVector)
-        for i in range(numberOfPoints):
-            self.gamowVector[i] = self.calculateGamow(self.barrierDepthVector[i])
-
-class GamowTabulator(GamowCalculator):
-    def __init__(self,  Nf = 256, Nr = 128, Ngamma = 1, Npoly = 4, XCdataFile = "") -> None:
-        super().__init__(XCdataFile=XCdataFile)
-
-        self.fieldRange = [0.5, 12.]
-        self.minRadius = 0.5
-        self.maxGamma = 1.e3
-
-        #in this case the reasonable single Gamma value is 10
-        if(Ngamma == 1):
-            self.maxGamma = 10.
-
-        self.numberOfFieldValues = Nf
-        self.numberOfRadiusValues = Nr
-        self.numberOfGammaValues = Ngamma
-        self.numberOfPolynomialTerms = Npoly
-
-        self.inverseFieldValues = np.linspace(1 / self.fieldRange[1], 1. / self.fieldRange[0], self.numberOfFieldValues)
-        self.inverseRadiusValues = np.linspace(1.e-4, 1 / self.minRadius, self.numberOfRadiusValues)
-        self.inverseGammaValues = np.linspace(1. / self.maxGamma, 1., self.numberOfGammaValues)
-    
-    def tabulateGamowTable(self, outputFolder = None):
-        """Looks for the files where the precaculate barriers are stored. Then it uses interpolation methods to make the most accurate barrier for the given 
-        input (electric field, tip radius and gamma exponent). Gtab is stores the polinomial that gives its shape to the barrier.
-        """
-
-        if outputFolder is None:
-            outputFolder = Globals.tabulationPath
-
-        self.gamowTable = np.ones([self.numberOfGammaValues, self.numberOfRadiusValues, self.numberOfFieldValues, self.numberOfPolynomialTerms + 2])
-
-        for i in range(self.numberOfGammaValues):
-            for j in range(self.numberOfRadiusValues):
-                for k in range(self.numberOfFieldValues):
-                    
-                    self.field = 1 / self.inverseFieldValues[k]
-                    self.radius = 1 / self.inverseRadiusValues[j]
-                    self.gamma = 1 / self.inverseGammaValues[i]
-                    
-                    self.calculateGamowCurve()
-                    
-                    try:
-                        fittedPolynomialCoefficients = np.polyfit(self.barrierDepthVector, self.gamowVector, self.numberOfPolynomialTerms - 1)
-                    except(np.RankWarning):
-                        print("Rank Warning for F = %g, R = %g, gamma = %g"%(field, radius, gamma))
-                        plt.plot(self.barrierDepthVector, self.gamowVector)
-                        plt.show()
-                    self.gamowTable[i, j, k, :] = np.append(fittedPolynomialCoefficients, [self.minBarrierDepth, self.maxBarrierDepth])    
-
-        if (self.numberOfGammaValues == 1):
-            self.gamowTable = np.reshape(self.gamowTable, (self.numberOfRadiusValues, self.numberOfFieldValues, self.numberOfPolynomialTerms + 2))
-            if (self.numberOfRadiusValues == 1):
-                self.gamowTable = np.reshape(self.gamowTable, (self.numberOfFieldValues, self.numberOfPolynomialTerms + 2))
-
-        os.system("mkdir -p %s"%outputFolder)
-        np.save(outputFolder + "/GamowTable.npy", self.gamowTable)
-
-        np.save(outputFolder + "/tabLimits.npy", np.array([min(self.inverseFieldValues), max(self.inverseFieldValues), \
-                min(self.inverseRadiusValues), max(self.inverseRadiusValues), min(self.inverseGammaValues), max(self.inverseGammaValues)]))
-        
-
 
 class Interpolator:
     """
@@ -596,18 +434,7 @@ class Barrier(Interpolator):
         """
         
         gamow = self.calculateGamow(energyDepth)
-        if (isinstance(energyDepth, np.ndarray)):
-            transmissionCoefficient = np.copy(gamow)
-            highGamowArea = gamow > 18.
-            lowGamowArea = gamow <= 18.
-            transmissionCoefficient[lowGamowArea] = 1 / (1 + np.exp(gamow[lowGamowArea]))
-            transmissionCoefficient[highGamowArea] = np.exp(-gamow[highGamowArea])
-            return transmissionCoefficient
-        else:
-            if (gamow < 18.):
-                return 1 / (1 + np.exp(gamow))
-            else:
-                return np.exp(-gamow)
+        return Globals.transmissionCoefficientForGamow(gamow)
       
     def plotGamow(self, minBarrierDepth : float = 0., maxBarrierDepth : float = 0., show = False, saveFile = "") -> None:
         """Plots the Gamow exponent for energy depth between minBarrierDepth and maxBarrierDepth. IF saveFile is given,
