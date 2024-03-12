@@ -33,12 +33,15 @@ colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
 Voltages = np.array([1500, 2000, 2300, 2400, 2500])
 
-fig, ax = plt.subplots(len(Voltages), 1, sharex=True)
+fig, ax = plt.subplots(len(Voltages), 1, sharex=True, figsize=[10,12])
 
 energyShift = 0.7915
 
-workFunction = 2.78
+workFunction = 2.83
 beta = 0.00064
+
+# workFunction = 3.
+# beta = 0.0009
 
 
 
@@ -60,21 +63,34 @@ for i in range(len(Voltages)):
     topOfBarrier = workFunction - 3.79 * np.sqrt(0.1 * beta * Voltages[i])
     
     energy -= energyShift
-    ax[i].plot(energy, spectra, ".", color=colors[i])
+    ax[i].plot(energy, spectra, ".", markersize=5, color=colors[i],\
+               label=r"Exp. $V=%.2g \textrm{ kV}, I =%d \textrm{ }\mu \textrm{A/sr}$"%(1.e-3*Voltages[i], currentDensitiesExp[i]))
 
-    ax[i].plot([0,0], [0,1], "k")
-    ax[i].plot([workFunction, workFunction], [0,1], "b")
-    ax[i].plot([topOfBarrier, topOfBarrier], [0,1], "r")
+    # ax[i].plot([0,0], [0,1], "k")
+    ax[i].plot([workFunction, workFunction], [0,1], "k:")
+    ax[i].plot([topOfBarrier, topOfBarrier], [0,1], "k--")
 
-    ax[i].plot(spectrum["energy"][0], spectrum["electronCount"][0] / np.max(spectrum["electronCount"][0]), "-", color=colors[i])
+    ax[i].plot(spectrum["energy"][0], spectrum["electronCount"][0] / np.max(spectrum["electronCount"][0]), "-", color=colors[i], \
+                label=r"Theory $J =%.2f \textrm{ nA/nm}^2$"%(1.e9*currentDensitiesCalc[i]))
+    ax[i].legend(loc="upper left")
+    ax[i].set_xlim([-1.,3.])
+    ax[i].grid()
 
-plt.savefig("spectraZrO.png")
+ax[-1].set_xlabel(r"$E-E_F$ [eV]")
+ax[-1].text(workFunction+0.05, 0.3, r"$\phi$")
+ax[-1].text(topOfBarrier+0.05, 0.3, r"$U_m$")
+# ax[-1].text(0.05, 0.3, r"$E_F$")
+
+plt.savefig("spectraZrO.pdf")
 
 plt.figure()
-plt.semilogy(beta * Voltages,  currentDensitiesExp / currentDensitiesExp[0], label="Experimental")
-plt.semilogy(beta * Voltages, currentDensitiesCalc / currentDensitiesCalc[0], label="calculation")
+plt.semilogy(beta * Voltages,  currentDensitiesExp / currentDensitiesExp[-1], label="Experimental")
+plt.semilogy(beta * Voltages, currentDensitiesCalc / currentDensitiesCalc[-1], label="calculation")
+plt.xlabel(r"$F= \beta \cdot V$ [GV/m]")
+plt.ylabel(r"Current density [normalized]")
 plt.legend()
-plt.savefig("iVplot.png")
+plt.grid()
+plt.savefig("iVplot.pdf")
 
 plt.show()
 
