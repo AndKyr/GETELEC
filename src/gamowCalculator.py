@@ -6,6 +6,7 @@ from getelec import Globals
 import scipy.optimize as opt
 import scipy.integrate as ig
 import scipy.special
+import scipy.linalg as linalg
 
 
 font = 15
@@ -20,7 +21,7 @@ mb.rcParams["text.usetex"] = True
 figureSize = [16,10]
 colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
-class Schrodinger1DSolver:
+class Schrodinger1DSolverFDM:
     def __init__(self, potential:np.ndarray = np.ones(254), dx:float = 1., energy:float = 0.5):
 
         assert max(potential[0], potential[-1]) < energy, "the energy has to be more than the potential on the left and right edges"
@@ -113,7 +114,7 @@ class Schrodinger1DSolver:
         ax2r.legend()
         ax2.set_xlabel("z [Angstrom]")
         plt.savefig("barrierTest.png")
-        
+     
 
 class GamowCalculator:
     def __init__(self, field:float = 5., radius:float = 1000, gamma:float = 10., XCdataFile:str = "tabulated/XCdata_W110.npy") -> None:
@@ -129,7 +130,7 @@ class GamowCalculator:
         except(IOError):
             print("Warning: XC data file not found. Reverting to simple image XC")
             self.XCdata = None
-            self.zMinimum = 1.e-5
+            self.zMinimum = 1.e-2
 
     def imagePotential(self, z:np.ndarray):
         return  Globals.imageChargeConstant * ( 1. / z - .5 / self.radius) 
@@ -146,17 +147,17 @@ class GamowCalculator:
 
         imagePotential = self.imagePotential(z)
         if (self.XCdata is None):
-            return imagePotential
-        
-        imagePotential[z <= 0] = 20.
-        imagePotential[imagePotential > 20.] = 20.
-        potentialPBE = np.polyval(self.XCdata["polynomial"], z)
-        potentialPBE[z > self.XCdata["polynomialRange"][1]] = 0.
+            outPut = imagePotential
+        else:
+            imagePotential[z <= 0] = 20.
+            imagePotential[imagePotential > 20.] = 20.
+            potentialPBE = np.polyval(self.XCdata["polynomial"], z)
+            potentialPBE[z > self.XCdata["polynomialRange"][1]] = 0.
 
-        lowRange = np.where(z < self.XCdata["polynomialRange"][0])
-        potentialPBE[lowRange] = self.XCdata["extensionPrefactor"] / (z[lowRange] - self.XCdata["extensionStartPoint"])
-        transitionFunction = .5 * scipy.special.erfc((z - self.XCdata["transitionPoint"]) / self.XCdata["transitionWidth"])
-        outPut = transitionFunction * potentialPBE + (1. - transitionFunction) * imagePotential
+            lowRange = np.where(z < self.XCdata["polynomialRange"][0])
+            potentialPBE[lowRange] = self.XCdata["extensionPrefactor"] / (z[lowRange] - self.XCdata["extensionStartPoint"])
+            transitionFunction = .5 * scipy.special.erfc((z - self.XCdata["transitionPoint"]) / self.XCdata["transitionWidth"])
+            outPut = transitionFunction * potentialPBE + (1. - transitionFunction) * imagePotential
 
         if convertToFloat:
             z = z[0]
@@ -225,18 +226,99 @@ class GamowCalculator:
 
         self.transmissionCoefficients = Globals.transmissionCoefficientForGamow(self.gamowVector)
 
-    def calculateGamowCurveFDM(self, numberOfPoints:int = 32) -> None:
-        maxDepth = 10.
-        Npoints = 510
-        zMin = Globals.imageChargeConstant / maxDepth
-        zMax = maxDepth / self.field
+    def calculateGamowCurveFDM(self, numberOfPoints:int = 32, potentialDepth:float = 10., Npoints:int = 510, maxDepth = 6., minDepth=-1.) -> None:
+        self.findZeros(potentialDepth)
 
-        z = np.linspace(zMin, zMax, Npoints)
+        z = np.linspace(self.leftRoot, self.rightRoot, Npoints)
         potential = self.barrierFunction(z, barrierDepth=0.)
-        solver = Schrodinger1DSolver(potential, dx=10. * (z[1] - z[0]), energy=0.)
-        energies, self.transmissionCoefficients = solver.calculateTransmissionForEnergyRange(-6., 1., numberOfPoints)
+        solver = Schrodinger1DSolverFDM(potential, dx=10. * (z[1] - z[0]), energy=0.)
+        energies, self.transmissionCoefficients = solver.calculateTransmissionForEnergyRange(-maxDepth, -minDepth, numberOfPoints)
         self.barrierDepthVector = -energies
+
+class Schrodinger1DSolverIVP(GamowCalculator):
+    def __init__(self, field: float = 5, radius: float = 1000, gamma: float = 10, XCdataFile: str = "tabulated/XCdata_W110.npy", barrierDepth=0.) -> None:
+        super().__init__(field, radius, gamma, XCdataFile)
+        self.barrierDepth = barrierDepth
+        self.kConstant = 100./3.80998212 # 2m/hbar in Å^-2 eV^-1
+        self.maxLength = 3.
+        # self.zMinimum = 0.0001
+
+    def differentialSystem(self, x, y):
+        return [y[1], y[0] *  self.kConstant * (self.barrierFunction(x, self.barrierDepth))]
+    
+    def solveSystem(self):
+        self.solution = ig.solve_ivp(self.differentialSystem, [self.maxLength, self.zMinimum], \
+                                     [1., np.sqrt(0 * 1j + self.kConstant * self.barrierFunction(self.maxLength, self.barrierDepth))], dense_output=False, rtol=1.e-8)#, jac=self.jacobian)
+
+    def jacobian(self, x, y):
+        return [[0., 1.], [self.kConstant * (self.barrierFunction(x, self.barrierDepth)), 0.]]
+    
+    def calculateTransmission(self):
+        leftWaveNumber = np.sqrt(0 * 1j - self.kConstant * self.barrierFunction(self.maxLength, self.barrierDepth))
+        matrix = np.array([[1., 1.], [1j * leftWaveNumber, - 1j * leftWaveNumber ]])
+        sol = np.abs(linalg.solve(matrix, self.solution.y[:,-1]))
+        transmission = (1 / sol[0])**2
+        reflection = (sol[1] / sol[0])**2
+        assert abs(reflection + transmission - 1) < 1.e-5, "reflection + transmission -1 = %g"%(reflection + transmission - 1.)
+        return transmission
         
+    
+    def plotWaveFunction(self):
+        plt.figure(figsize=figureSize)
+        fig, (ax1,ax2) = plt.subplots(2,1, sharex=True)
+        z = np.linspace(self.zMinimum + 0.01, self.maxLength, 256)
+        ax1.plot(z, self.barrierFunction(z, self.barrierDepth), label=r"U(z) - E")
+        ax1.grid()
+        ax1.legend()
+        ax1.set_ylabel(r"barrier [eV]")
+
+        ax2.plot(self.solution.t, np.real(self.solution.y[0]), label=r"$\Re(\Psi)$", color = colors[2])
+        ax2.plot(self.solution.t, np.imag(self.solution.y[0]), label=r"$\Im(\Psi)$", color = colors[3])
+        # ax2r = ax2.twinx()
+        # ax2r.plot(z, np.angle(self.solution[1:-1]), label=r"Phase", color=colors[1])
+        ax2.legend()
+        ax2.grid()
+        ax2.set_ylabel(r"$\Psi$")
+        # ax2r.set_ylabel("Angle ($\Psi$)")
+        # ax2r.legend()
+        ax2.set_xlabel(r"z [$\textrm{\AA}$]")
+        plt.savefig("barrierTest.png")
+
+    def printFinalValue(self):
+        print(self.solution.y[0])
+
+    def calculateGamow(self, barrierDepth):
+        self.barrierDepth = barrierDepth
+        self.maxLength = self.lengthEstimation()
+        self.solveSystem()
+        return self.calculateTransmission()
+
+    def lengthEstimation(self):
+        requiredBarrierDepth = self.barrierDepth + self.field**(2./3) #how much the depth should be to satisfy JWKB approximation 2m(E-V) > (10 m hbar F)^2/3
+        factor = self.radius * (self.gamma - 1.)
+        poly = np.array([1., factor - requiredBarrierDepth * self.gamma / self.field, - requiredBarrierDepth * factor / self.field])
+        roots = np.roots(poly)
+        return max(roots)
+
+    def calculateGamowForDepths(self, barrierDepths):
+        transmissionCoefficients = np.copy(barrierDepths)
+        for i in range(len(barrierDepths)):
+            transmissionCoefficients[i] = self.calculateGamow(barrierDepths[i])
+        return transmissionCoefficients
+
+
+
+    def calculateGamowCurve(self, numberOfPoints:int = 128) -> None:
+        self.findBarrierMax()
+        self.findMaxBarrierDepth()
+
+        self.barrierDepthVector = np.linspace(self.minBarrierDepth, self.maxBarrierDepth, numberOfPoints)
+        self.gamowVector = np.copy(self.barrierDepthVector)
+        for i in range(numberOfPoints):
+            self.transmissionCoefficients[i] = self.calculateGamow(self.barrierDepthVector[i])
+
+
+         
 
 class GamowTabulator(GamowCalculator):
     def __init__(self,  Nf = 256, Nr = 128, Ngamma = 1, Npoly = 4, XCdataFile = "") -> None:
@@ -301,23 +383,36 @@ class GamowTabulator(GamowCalculator):
 
 
 calculator = GamowCalculator(XCdataFile="")
-calculator.plotBarrier()
+
+solver = Schrodinger1DSolverIVP(barrierDepth=4.5, XCdataFile="")
+
+# solver.solveSystem()
+
+# solver.plotWaveFunction()
+# solver.printFinalValue()
+# solver.calculateTransmission()
+
+# print(solver.barrierFunction(solver.lengthEstimation(), solver.barrierDepth))
+
+# calculator.plotBarrier()
+
+
 plt.figure()
 calculator.calculateGamowCurveWKB()
 
 gamowDerivative = (calculator.gamowVector[1] - calculator.gamowVector[0]) / (calculator.barrierDepthVector[1] - calculator.barrierDepthVector[0])
-extraBarrierDepth = np.linspace(-1., calculator.barrierDepthVector[0], 32)
+extraBarrierDepth = np.linspace(0., calculator.barrierDepthVector[0], 32)
 extraGamow = gamowDerivative * (extraBarrierDepth - calculator.barrierDepthVector[0])
 allGamow = np.concatenate((extraGamow, calculator.gamowVector))
 allTransmission = Globals.transmissionCoefficientForGamow(allGamow)
 allDepths = np.concatenate((extraBarrierDepth, calculator.barrierDepthVector))
 
 plt.semilogy(allDepths[allTransmission > 1.e-7], allTransmission[allTransmission > 1.e-7], label="WKB")
-calculator.calculateGamowCurveFDM()
-plt.semilogy(calculator.barrierDepthVector, calculator.transmissionCoefficients, label="FDM")
+D = solver.calculateGamowForDepths(allDepths[allTransmission > 1.e-7])
+plt.semilogy(allDepths[allTransmission > 1.e-7], D, label="RK")
 plt.grid()
 plt.legend()
 plt.xlabel("barrier Depth [eV]")
 plt.ylabel("Transmission Coefficient")
 plt.savefig("TransmissionComparison.png")
-
+# plt.show()
