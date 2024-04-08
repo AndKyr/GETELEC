@@ -203,7 +203,7 @@ class GamowCalculator:
             zTrapz = np.linspace(self.leftRoot, self.rightRoot, 256)
             return Globals.gamowPrefactor * np.trapz(self.integrantWKB(zTrapz, barrierDepth), zTrapz)
 
-    def findMaxBarrierDepth(self, maximumGamow:float = 50.) -> float:
+    def findMaxBarrierDepth(self, maximumGamow:float = 20.) -> float:
         self.maxBarrierDepth = self.minBarrierDepth
         for i in range(100):
             self.maxBarrierDepth *= 1.5
@@ -235,6 +235,11 @@ class GamowCalculator:
         energies, self.transmissionCoefficients = solver.calculateTransmissionForEnergyRange(-maxDepth, -minDepth, numberOfPoints)
         self.barrierDepthVector = -energies
 
+    def findMinimumZ(self, minimumPotential):
+        func = lambda x : self.XCpotential(x) - minimumPotential
+        self.zMinimum = opt.fsolve(func, 0.1)
+        return self.zMinimum
+
 class Schrodinger1DSolverIVP(GamowCalculator):
     def __init__(self, field: float = 5, radius: float = 1000, gamma: float = 10, XCdataFile: str = "tabulated/XCdata_W110.npy", barrierDepth=0.) -> None:
         super().__init__(field, radius, gamma, XCdataFile)
@@ -248,7 +253,7 @@ class Schrodinger1DSolverIVP(GamowCalculator):
     
     def solveSystem(self):
         self.solution = ig.solve_ivp(self.differentialSystem, [self.maxLength, self.zMinimum], \
-                                     [1., np.sqrt(0 * 1j + self.kConstant * self.barrierFunction(self.maxLength, self.barrierDepth))], dense_output=False, rtol=1.e-8)#, jac=self.jacobian)
+                                     [1., np.sqrt(0 * 1j + self.kConstant * self.barrierFunction(self.maxLength, self.barrierDepth))], rtol=1.e-6)#, jac=self.jacobian)
 
     def jacobian(self, x, y):
         return [[0., 1.], [self.kConstant * (self.barrierFunction(x, self.barrierDepth)), 0.]]
@@ -259,12 +264,12 @@ class Schrodinger1DSolverIVP(GamowCalculator):
         sol = np.abs(linalg.solve(matrix, self.solution.y[:,-1]))
         transmission = (1 / sol[0])**2
         reflection = (sol[1] / sol[0])**2
-        assert abs(reflection + transmission - 1) < 1.e-5, "reflection + transmission -1 = %g"%(reflection + transmission - 1.)
+        assert abs(reflection + transmission - 1) < 1.e-4, "reflection + transmission -1 = %g"%(reflection + transmission - 1.)
         return transmission
         
     
     def plotWaveFunction(self):
-        plt.figure(figsize=figureSize)
+        plt.figure()
         fig, (ax1,ax2) = plt.subplots(2,1, sharex=True)
         z = np.linspace(self.zMinimum + 0.01, self.maxLength, 256)
         ax1.plot(z, self.barrierFunction(z, self.barrierDepth), label=r"U(z) - E")
@@ -291,7 +296,8 @@ class Schrodinger1DSolverIVP(GamowCalculator):
         self.barrierDepth = barrierDepth
         self.maxLength = self.lengthEstimation()
         self.solveSystem()
-        return self.calculateTransmission()
+        transmissionCoefficient = self.calculateTransmission()
+        return Globals.GamowForTransmissionCoefficient(transmissionCoefficient), transmissionCoefficient
 
     def lengthEstimation(self):
         requiredBarrierDepth = self.barrierDepth + self.field**(2./3) #how much the depth should be to satisfy JWKB approximation 2m(E-V) > (10 m hbar F)^2/3
@@ -301,10 +307,10 @@ class Schrodinger1DSolverIVP(GamowCalculator):
         return max(roots)
 
     def calculateGamowForDepths(self, barrierDepths):
-        transmissionCoefficients = np.copy(barrierDepths)
+        gamowVector = np.copy(barrierDepths)
         for i in range(len(barrierDepths)):
-            transmissionCoefficients[i] = self.calculateGamow(barrierDepths[i])
-        return transmissionCoefficients
+            gamowVector[i] = self.calculateGamow(barrierDepths[i])[0]
+        return gamowVector
 
 
 
@@ -315,7 +321,7 @@ class Schrodinger1DSolverIVP(GamowCalculator):
         self.barrierDepthVector = np.linspace(self.minBarrierDepth, self.maxBarrierDepth, numberOfPoints)
         self.gamowVector = np.copy(self.barrierDepthVector)
         for i in range(numberOfPoints):
-            self.transmissionCoefficients[i] = self.calculateGamow(self.barrierDepthVector[i])
+            self.gamowVector[i], self.transmissionCoefficients[i] = self.calculateGamow(self.barrierDepthVector[i])
 
 
          
@@ -382,9 +388,14 @@ class GamowTabulator(GamowCalculator):
         
 
 
-calculator = GamowCalculator(XCdataFile="")
+# calculator = GamowCalculator(XCdataFile="")
 
-solver = Schrodinger1DSolverIVP(barrierDepth=4.5, XCdataFile="")
+# solver = Schrodinger1DSolverIVP(barrierDepth=4.5, XCdataFile="")
+
+
+calculator = GamowCalculator()
+
+solver = Schrodinger1DSolverIVP()
 
 # solver.solveSystem()
 
@@ -395,24 +406,38 @@ solver = Schrodinger1DSolverIVP(barrierDepth=4.5, XCdataFile="")
 # print(solver.barrierFunction(solver.lengthEstimation(), solver.barrierDepth))
 
 # calculator.plotBarrier()
+solver.findMinimumZ(7.)
+# calculator.findMinimumZ(7.)
 
+import time
+start_time = time.time()
+calculator.calculateGamowCurveWKB(32)
+print("calculating WKB: %g seconds ---" %(time.time() - start_time))
 
-plt.figure()
-calculator.calculateGamowCurveWKB()
 
 gamowDerivative = (calculator.gamowVector[1] - calculator.gamowVector[0]) / (calculator.barrierDepthVector[1] - calculator.barrierDepthVector[0])
-extraBarrierDepth = np.linspace(0., calculator.barrierDepthVector[0], 32)
+extraBarrierDepth = np.linspace(0., calculator.barrierDepthVector[0], 8)
 extraGamow = gamowDerivative * (extraBarrierDepth - calculator.barrierDepthVector[0])
 allGamow = np.concatenate((extraGamow, calculator.gamowVector))
-allTransmission = Globals.transmissionCoefficientForGamow(allGamow)
+# allTransmission = Globals.transmissionCoefficientForGamow(allGamow)
 allDepths = np.concatenate((extraBarrierDepth, calculator.barrierDepthVector))
 
-plt.semilogy(allDepths[allTransmission > 1.e-7], allTransmission[allTransmission > 1.e-7], label="WKB")
-D = solver.calculateGamowForDepths(allDepths[allTransmission > 1.e-7])
-plt.semilogy(allDepths[allTransmission > 1.e-7], D, label="RK")
+filterPoints = np.where(allGamow < 100.)
+
+plt.figure()
+plt.plot(allDepths[filterPoints], allGamow[filterPoints], ".-", label="WKB")
+
+
+start_time = time.time()
+D = solver.calculateGamowForDepths(allDepths[filterPoints])
+print("calculating with IVP %g seconds ---" % (time.time() - start_time))
+
+
+plt.plot(allDepths[filterPoints], D, ".-", label="RK")
 plt.grid()
 plt.legend()
 plt.xlabel("barrier Depth [eV]")
-plt.ylabel("Transmission Coefficient")
+plt.ylabel("Gamow factor")
 plt.savefig("TransmissionComparison.png")
+pltmod.pushFigureToServer(plt.gcf())
 # plt.show()

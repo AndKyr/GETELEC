@@ -50,6 +50,9 @@ class Globals:
                 return 1 / (1 + np.exp(gamow))
             else:
                 return np.exp(-gamow)
+            
+    def GamowForTransmissionCoefficient(transmissionCoefficient):
+        return np.log(1./transmissionCoefficient - 1.)
 
 def _setTabulationPath(path:str) -> None:
     """module function that sets the tabulation path where to find the tabulated barrier parameters"""
