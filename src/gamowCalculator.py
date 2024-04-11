@@ -34,7 +34,7 @@ class Schrodinger1DSolver:
         if potentialFunction is not None and xLimits is None:
             raise ValueError("If you initialize with potentialFunction, you have to give the limits of evaluation of the function")
         
-        self.hbarSqrOver2m = 3.80998212 # Å^2 (square Ångströms) (eV (electronvolt))
+        self.hbarSqrOver2m = 3.80998212e-2 # nm^2 (square Ångströms) (eV (electronvolt))
         self.potentialVector = potentialVector
         self.xLimits = np.copy(xLimits)
         self.potentialFunction = potentialFunction
@@ -110,8 +110,7 @@ class Schrodinger1DSolverFDM(Schrodinger1DSolver):
         self.getPotentialVector(Npoints=Npoints)
         
         self.Nx = Npoints
-        # self.length = self.Nx * dx
-        self.MConstant = dx**2 / self.hbarSqrOver2m # Å^2 (square Ångströms) (eV (electronvolt))
+        self.MConstant = self.dx**2 / self.hbarSqrOver2m # Å^2 (square Ångströms) (eV (electronvolt))
         self.calculateWaveVectors()
 
     def setPotentialAndEnergy(self, potentialVector:np.ndarray, energy:float):
@@ -207,7 +206,7 @@ class Schrodinger1DSolverFDM(Schrodinger1DSolver):
 class Schrodinger1DSolverIVP(Schrodinger1DSolver):
     def __init__(self, energy:float = 0., potentialFunction:Callable = None, xLimits:np.ndarray = None) -> None:
         super().__init__(potentialFunction=potentialFunction, xLimits=xLimits, energy=energy)
-        self.kConstant = 100./self.hbarSqrOver2m # 2m/hbar in Å^-2 eV^-1
+        self.kConstant = 1/self.hbarSqrOver2m # 2m/hbar in nm^-2 eV^-1
         self.calculateWaveVectors()
 
     def setEnergy(self, energy:float):
@@ -223,7 +222,7 @@ class Schrodinger1DSolverIVP(Schrodinger1DSolver):
         return [[0., 1.], [self.kConstant * (self.potentialFunction(x) - self.energy), 0.]]
     
     def getTransmissionProbability(self) -> float:
-        matrix = np.array([[1., 1.], [1j * self.kLeft, - 1j * self.kLeft ]])
+        matrix = np.array([[1., 1.], [1j * self.kRight, - 1j * self.kRight ]])
         sol = np.abs(linalg.solve(matrix, self.solution.y[:,-1]))
         transmission = (1 / sol[0])**2
         reflection = (sol[1] / sol[0])**2
@@ -441,6 +440,7 @@ calculator.calculateGamowCurve(32)
 
 # calculator.solver.plotWaveFunction()
 print("calculating FDM: %g seconds ---" %(time.time() - start_time))
+print(calculator.solver.dx)
 plt.plot(calculator.barrierDepthVector, calculator.gamowVector, ".-", label="FDM")
 
 calculator = GamowCalculator(solverType="IVP")
