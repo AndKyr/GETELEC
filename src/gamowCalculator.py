@@ -98,7 +98,7 @@ class Schrodinger1DSolver:
         # ax2r.set_ylabel("Angle ($\Psi$)")
         # ax2r.legend()
         ax2.set_xlabel(r"z [$\textrm{\AA}$]")
-        plt.savefig("barrierTest.png")
+        plt.savefig("barrierAndWaveFunctions.png")
 
             
 
@@ -179,7 +179,7 @@ class Schrodinger1DSolverFDM(Schrodinger1DSolver):
     
     def getSolutionVector(self):
         super().getSolutionVector()
-        assert len(self.solution) == len(self.potentialVector) - 2, "the solution vector length doesn't match with the potential vector"
+        assert len(self.solution) == len(self.potentialVector) + 2, "the solution vector length doesn't match with the potential vector"
         self.solutionVector = self.solution[1:-1]
     
 
@@ -252,17 +252,19 @@ class Schrodinger1DSolverIVP(Schrodinger1DSolver):
 
 
 class GamowCalculator:
-    def __init__(self, field:float = 5., radius:float = 1000, gamma:float = 10., XCdataFile:str = "tabulated/XCdata_W110.npy", solverType:str = "WKB") -> None:
+    def __init__(self, field:float = 5., radius:float = 1000, gamma:float = 10., XCdataFile:str = "tabulated/XCdata_W110.npy", solverType:str = "WKB", minimumPotential:float = 7.) -> None:
         self.field = field
         self.radius = radius
         self.gamma = gamma
         self.readXCpotential(XCdataFile)
         self.potentialFunction = lambda x: - self.electrostaticPotential(x) - self.XCpotential(x)
+        self.findMinimumZ(minimumPotential)
+        self.maxLength = 10.
 
         if (solverType == "FDM"):
-            self.solver = Schrodinger1DSolverFDM(potentialFunction=self.potentialFunction)
+            self.solver = Schrodinger1DSolverFDM(potentialFunction=self.potentialFunction, xLimits=np.append(self.zMinimum, self.maxLength))
         elif(solverType == "IVP"):
-            self.solver = Schrodinger1DSolverIVP(potentialFunction=self.potentialFunction)
+            self.solver = Schrodinger1DSolverIVP(potentialFunction=self.potentialFunction, xLimits=np.append(self.zMinimum, self.maxLength))
         else:
             self.solver = None
 
@@ -354,6 +356,8 @@ class GamowCalculator:
     def findMaxBarrierDepth(self, maximumGamow:float = 20.) -> float:
         self.maxBarrierDepth = self.minBarrierDepth
         for i in range(100):
+            if (self.barrierFunction(self.zMinimum, self.maxBarrierDepth * 1.5) > 0):
+                return
             self.maxBarrierDepth *= 1.5
             Gnew = self.calculateGamowWKB(self.maxBarrierDepth)
             if (Gnew > maximumGamow):
@@ -374,20 +378,11 @@ class GamowCalculator:
                 self.gamowVector[i] = self.calculateGamowWKB(self.barrierDepthVector[i])
             self.transmissionCoefficients = Globals.transmissionCoefficientForGamow(self.gamowVector)
         else:
+            self.maxLength = self.lengthEstimation(self.maxBarrierDepth)
+            self.solver.xLimits = np.append(self.zMinimum, self.maxLength)
             self.transmissionCoefficients = self.solver.calculateTransmissionForEnergies(-self.barrierDepthVector)
             self.gamowVector = Globals.GamowForTransmissionCoefficient(self.transmissionCoefficients)
 
-
-
-    # def calculateGamowCurveFDM(self, numberOfPoints:int = 32, potentialDepth:float = 10., Npoints:int = 510, maxDepth = 6., minDepth=-1.) -> None:
-    #     self.findZeros(potentialDepth)
-
-    #     z = np.linspace(self.leftRoot, self.rightRoot, Npoints)
-    #     potential = self.barrierFunction(z, barrierDepth=0.)
-    #     solver = Schrodinger1DSolverFDM(potential, dx=10. * (z[1] - z[0]), energy=0.)
-    #     energies, self.transmissionCoefficients = solver.calculateTransmissionForEnergies(-maxDepth, -minDepth, numberOfPoints)
-    #     self.gamowVector = Globals.GamowForTransmissionCoefficient(self.transmissionCoefficients)
-    #     self.barrierDepthVector = -energies
 
     def findMinimumZ(self, minimumPotential):
         func = lambda x : self.XCpotential(x) - minimumPotential
@@ -411,32 +406,15 @@ class GamowCalculator:
         else:
             return self.calculateGamowWKB(barrierDepth)
 
-    def lengthEstimation(self):
-        requiredBarrierDepth = self.barrierDepth + self.field**(2./3) #how much the depth should be to satisfy JWKB approximation 2m(E-V) > (10 m hbar F)^2/3
+    def lengthEstimation(self, barrierDepth):
+        requiredBarrierDepth = barrierDepth + self.field**(2./3) #how much the depth should be to satisfy JWKB approximation 2m(E-V) > (10 m hbar F)^2/3
         factor = self.radius * (self.gamma - 1.)
         poly = np.array([1., factor - requiredBarrierDepth * self.gamma / self.field, - requiredBarrierDepth * factor / self.field])
         roots = np.roots(poly)
         return max(roots)
 
 
-    def calculateGamowCurve(self, numberOfPoints:int = 128) -> None:
-        self.findBarrierMax()
-        self.findMaxBarrierDepth()
-
-        self.solver.calculateTransmissionForEnergies(-self.maxBarrierDepth, -self.minBarrierDepth, numberOfPoints)
-
-        self.barrierDepthVector = np.linspace(self.minBarrierDepth, self.maxBarrierDepth, numberOfPoints)
-        self.gamowVector = np.copy(self.barrierDepthVector)
-        for i in range(numberOfPoints):
-            self.gamowVector[i], self.transmissionCoefficients[i] = self.calculateGamow(self.barrierDepthVector[i])
-
-
-# calculator = GamowCalculator(XCdataFile="")
-
-# solver = Schrodinger1DSolverIVP(barrierDepth=4.5, XCdataFile="")
-
 calculator = GamowCalculator()
-calculator.findMinimumZ(7.)
 
 
 
@@ -460,6 +438,8 @@ calculator = GamowCalculator(solverType="FDM")
 
 start_time = time.time()
 calculator.calculateGamowCurve(32)
+
+# calculator.solver.plotWaveFunction()
 print("calculating FDM: %g seconds ---" %(time.time() - start_time))
 plt.plot(calculator.barrierDepthVector, calculator.gamowVector, ".-", label="FDM")
 
@@ -467,7 +447,7 @@ calculator = GamowCalculator(solverType="IVP")
 start_time = time.time()
 calculator.calculateGamowCurve(32)
 print("calculating with IVP %g seconds ---" % (time.time() - start_time))
-plt.plot(calculator.barrierDepthVector, calculator.gamowVector, ".-", label="FDM")
+plt.plot(calculator.barrierDepthVector, calculator.gamowVector, ".-", label="IVP")
 
 
 plt.grid()
