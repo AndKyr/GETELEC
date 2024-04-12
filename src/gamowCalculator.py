@@ -11,7 +11,6 @@ import scipy.interpolate as interp
 from collections.abc import Callable
 
 
-
 font = 15
 import matplotlib as mb
 mb.rcParams["font.size"] = font
@@ -34,7 +33,7 @@ class Schrodinger1DSolver:
         if potentialFunction is not None and xLimits is None:
             raise ValueError("If you initialize with potentialFunction, you have to give the limits of evaluation of the function")
         
-        self.hbarSqrOver2m = 3.80998212e-2 # nm^2 (square Ångströms) (eV (electronvolt))
+        self.hbarSqrOver2m = 3.80998212e-2 # nm^2 eV
         self.potentialVector = potentialVector
         self.xLimits = np.copy(xLimits)
         self.potentialFunction = potentialFunction
@@ -44,23 +43,13 @@ class Schrodinger1DSolver:
         if (self.potentialFunction is None):
             self.potentialFunction = interp.interp1d(self.xVector, self.potentialVector)
 
-    def getPotentialVector(self, Npoints:int = 254, updatexVector:bool = True):
-        if (self.potentialFunction is None):
-            return
-        
-        if (updatexVector):
-            self.xVector = np.linspace(self.xLimits[0], self.xLimits[1], Npoints)
-            self.dx = self.xVector[1] - self.xVector[0]
-
-        self.potentialVector = self.potentialFunction(self.xVector)
-
     def calculateWaveVectors(self):
-        if (self.potentialVector is not None and len(self.potentialVector) > 0):
-            leftEdgePotential = self.potentialVector[0]
-            rightEdgePotential = self.potentialVector[-1]
-        else:
+        if (self.potentialFunction is not None):
             leftEdgePotential = self.potentialFunction(self.xLimits[0])
             rightEdgePotential = self.potentialFunction(self.xLimits[1])
+        else:
+            leftEdgePotential = self.potentialVector[0]
+            rightEdgePotential = self.potentialVector[-1]
         
         assert max(leftEdgePotential, rightEdgePotential) < self.energy, "the energy has to be more than the potential on the left and right edges"
 
@@ -68,8 +57,7 @@ class Schrodinger1DSolver:
         self.kRight = np.sqrt((self.energy - rightEdgePotential) / self.hbarSqrOver2m)
 
     def getSolutionVector(self):
-        self.getPotentialVector()
-        self.solutionVector = np.copy(self.potentialVector)
+        raise NotImplementedError("this function should be called only in the bottom classes")
 
     def calculateTransmissionForEnergies(self, energies:np.ndarray)->np.ndarray:
         raise NotImplementedError("function not implemented in the base class")
@@ -78,27 +66,29 @@ class Schrodinger1DSolver:
     def calculateTransmissionForEnergy(self, energy:float):
         raise NotImplementedError("function not implemented in the base class")
     
-    def plotWaveFunction(self):
+    def plotWaveFunction(self, figureFileName = "barrierAndWaveFunctions.png"):
         self.getSolutionVector()
         plt.figure()
         fig, (ax1,ax2) = plt.subplots(2,1, sharex=True)
-        ax1.plot(self.xVector, self.potentialVector, label=r"U(z)")
+        ax1.plot(self.xVector, self.potentialFunction(self.xVector), label=r"U(z)")
         ax1.plot([self.xVector[0], self.xVector[-1]], [self.energy, self.energy], label=r"E")
         ax1.grid()
         ax1.legend()
         ax1.set_ylabel(r"barrier [eV]")
 
-        ax2.plot(self.xVector, np.real(self.solutionVector), label=r"$\Re(\Psi)$", color = colors[2])
-        ax2.plot(self.xVector, np.imag(self.solutionVector), label=r"$\Im(\Psi)$", color = colors[3])
+        ax2.plot(self.xVector, np.abs(self.solutionVector), label=r"$|\Psi|$", color = colors[2])
+        ax3 = ax2.twinx()
+        ax3.plot(self.xVector, np.unwrap(np.angle(self.solutionVector)), label=r"$\angle(\Psi)$", color = colors[3])
         # ax2r = ax2.twinx()
         # ax2r.plot(z, np.angle(self.solution[1:-1]), label=r"Phase", color=colors[1])
         ax2.legend()
         ax2.grid()
-        ax2.set_ylabel(r"$\Psi$")
+        ax2.set_ylabel(r"$|\Psi|$")
+        ax3.set_ylabel(r"$\angle(\Psi)$")
         # ax2r.set_ylabel("Angle ($\Psi$)")
         # ax2r.legend()
         ax2.set_xlabel(r"z [$\textrm{\AA}$]")
-        plt.savefig("barrierAndWaveFunctions.png")
+        plt.savefig(figureFileName)
 
             
 
@@ -107,15 +97,26 @@ class Schrodinger1DSolverFDM(Schrodinger1DSolver):
     def __init__(self, potentialVector:np.ndarray = None, energy:float = 0., potentialFunction:Callable = None, xLimits:np.ndarray = None, dx = 0.1, Npoints:int = 254):
         super().__init__(potentialVector=potentialVector, energy=energy, potentialFunction=potentialFunction, xLimits=xLimits)
         self.dx = dx
-        self.getPotentialVector(Npoints=Npoints)
         
         self.Nx = Npoints
-        self.MConstant = self.dx**2 / self.hbarSqrOver2m # Å^2 (square Ångströms) (eV (electronvolt))
+        self.getPotentialVector()
+
         self.calculateWaveVectors()
 
     def setPotentialAndEnergy(self, potentialVector:np.ndarray, energy:float):
         self.potentialVector = potentialVector
         self.energy = energy
+
+    def getPotentialVector(self, updatexVector:bool = True):
+        if (self.potentialFunction is None):
+            return
+        
+        if (updatexVector):
+            self.xVector = np.linspace(self.xLimits[0], self.xLimits[1], self.Nx)
+            self.dx = self.xVector[1] - self.xVector[0]
+            self.MConstant = self.dx**2 / self.hbarSqrOver2m # Å^2 (square Ångströms) (eV (electronvolt))
+
+        self.potentialVector = self.potentialFunction(self.xVector)
 
     def setSparseMatrixSystem(self):
         #sets the sparse matrix for solving the implicit FDM problem
@@ -142,6 +143,8 @@ class Schrodinger1DSolverFDM(Schrodinger1DSolver):
         self.rightHandSide[1] = 1j * self.kLeft * self.dx
 
     def solveFirstTime(self):
+        self.getPotentialVector()
+        self.calculateWaveVectors()
         self.setSparseMatrixSystem()
         self.sparseMatrixCSC = sp.csc_matrix(self.sparseMatrix)
         self.solution = sp.linalg.spsolve(self.sparseMatrixCSC, self.rightHandSide)
@@ -177,31 +180,9 @@ class Schrodinger1DSolverFDM(Schrodinger1DSolver):
         return transmissionCoefficients
     
     def getSolutionVector(self):
-        super().getSolutionVector()
+        self.solutionVector = np.copy(self.potentialVector)
         assert len(self.solution) == len(self.potentialVector) + 2, "the solution vector length doesn't match with the potential vector"
         self.solutionVector = self.solution[1:-1]
-    
-
-    def plotBarrier(self):
-        plt.figure(figsize=figureSize)
-        fig, (ax1,ax2) = plt.subplots(2,1, sharex=True)
-        z = np.linspace(0., (self.Nx - 1) * self.dx, self.Nx)
-        ax1.plot(z, self.potentialVector, label="U")
-        ax1.plot(z, np.ones(self.Nx) * self.energy, label="E")
-        ax1.grid()
-        ax1.legend()
-        ax1.set_ylabel("barrier [eV]")
-
-        ax2.plot(z, np.abs(self.solution[1:-1]), label=r"|$\Psi$|", color = colors[2])
-        ax2r = ax2.twinx()
-        ax2r.plot(z, np.angle(self.solution[1:-1]), label=r"Phase", color=colors[1])
-        ax2.legend()
-        ax2.grid()
-        ax2.set_ylabel("$\Psi$")
-        ax2r.set_ylabel("Angle ($\Psi$)")
-        ax2r.legend()
-        ax2.set_xlabel("z [Angstrom]")
-        plt.savefig("barrierTest.png")
      
 class Schrodinger1DSolverIVP(Schrodinger1DSolver):
     def __init__(self, energy:float = 0., potentialFunction:Callable = None, xLimits:np.ndarray = None) -> None:
@@ -216,27 +197,27 @@ class Schrodinger1DSolverIVP(Schrodinger1DSolver):
         return [y[1], y[0] *  self.kConstant * (self.potentialFunction(x) - self.energy)]
     
     def solveSystem(self) -> None:
-        self.solution = ig.solve_ivp(self.differentialSystem, [self.xLimits[1], self.xLimits[0]], [1., 1j * self.kRight], rtol=1.e-8, vectorized=True)#, jac=self.jacobian)
+        self.solution = ig.solve_ivp(self.differentialSystem, [self.xLimits[1], self.xLimits[0]], [1., 1j * self.kRight], rtol=1.e-12)#, jac=self.jacobian)
 
     def jacobian(self, x, y):
         return [[0., 1.], [self.kConstant * (self.potentialFunction(x) - self.energy), 0.]]
     
     def getTransmissionProbability(self) -> float:
-        matrix = np.array([[1., 1.], [1j * self.kRight, - 1j * self.kRight ]])
+        matrix = np.array([[1., 1.], [1j * self.kLeft, - 1j * self.kLeft ]])
         sol = np.abs(linalg.solve(matrix, self.solution.y[:,-1]))
-        transmission = (1 / sol[0])**2
+        transmission = sol[0]**-2
         reflection = (sol[1] / sol[0])**2
-        assert abs(reflection + transmission - 1) < 1.e-4, "reflection + transmission -1 = %g"%(reflection + transmission - 1.)
+        assert abs(reflection + transmission - 1) < 1.e-1, "reflection + transmission -1 = %g"%(reflection + transmission - 1.)
         return transmission
     
     def getSolutionVector(self):
-        super().getSolutionVector()
         self.xVector = self.solution.t
         self.solutionVector = self.solution.y[0]
 
 
     def calculateTransmissionForEnergy(self, energy:float):
         self.energy = energy
+        self.calculateWaveVectors()
         self.solveSystem()
         return self.getTransmissionProbability()
 
@@ -244,6 +225,8 @@ class Schrodinger1DSolverIVP(Schrodinger1DSolver):
         transmissionCoefficients = np.copy(energies)
         for i in range(len(energies)):
             self.energy = energies[i]
+            self.calculateWaveVectors()
+
             self.solveSystem()
             transmissionCoefficients[i] = self.getTransmissionProbability()
         return transmissionCoefficients
@@ -261,7 +244,7 @@ class GamowCalculator:
         self.maxLength = 10.
 
         if (solverType == "FDM"):
-            self.solver = Schrodinger1DSolverFDM(potentialFunction=self.potentialFunction, xLimits=np.append(self.zMinimum, self.maxLength))
+            self.solver = Schrodinger1DSolverFDM(potentialFunction=self.potentialFunction, xLimits=np.append(self.zMinimum, self.maxLength), Npoints=510)
         elif(solverType == "IVP"):
             self.solver = Schrodinger1DSolverIVP(potentialFunction=self.potentialFunction, xLimits=np.append(self.zMinimum, self.maxLength))
         else:
@@ -396,10 +379,11 @@ class GamowCalculator:
 
 
     def calculateGamow(self, barrierDepth):
-        self.maxLength = self.lengthEstimation()
-        self.solver.xLimits = np.array([self.zMinimum, self.maxLength])
+        self.findBarrierMax()
+        self.maxLength = self.lengthEstimation(barrierDepth)
 
         if self.solver is not None:
+            self.solver.xLimits = np.append(self.zMinimum, self.maxLength)
             transmissionCoefficient = self.solver.calculateTransmissionForEnergy(-barrierDepth)
             return Globals.GamowForTransmissionCoefficient(transmissionCoefficient), transmissionCoefficient
         else:
@@ -414,23 +398,26 @@ class GamowCalculator:
 
 
 calculator = GamowCalculator()
+print(calculator.calculateGamow(barrierDepth=4.))
+
+calculator = GamowCalculator(solverType="FDM")
+print(calculator.calculateGamow(barrierDepth=4.))
+calculator.solver.plotWaveFunction("waveFunsFDM.png")
 
 
+calculator = GamowCalculator(solverType="IVP")
+print(calculator.calculateGamow(barrierDepth=4.))
+calculator.solver.plotWaveFunction("waveFunsIVP.png")
+
+
+plt.figure()
+calculator = GamowCalculator()
 
 import time
 start_time = time.time()
 calculator.calculateGamowCurve(32)
 print("calculating WKB: %g seconds ---" %(time.time() - start_time))
-
-gamowDerivative = (calculator.gamowVector[1] - calculator.gamowVector[0]) / (calculator.barrierDepthVector[1] - calculator.barrierDepthVector[0])
-extraBarrierDepth = np.linspace(0., calculator.barrierDepthVector[0], 8)
-extraGamow = gamowDerivative * (extraBarrierDepth - calculator.barrierDepthVector[0])
-allGamow = np.concatenate((extraGamow, calculator.gamowVector))
-# allTransmission = Globals.transmissionCoefficientForGamow(allGamow)
-allDepths = np.concatenate((extraBarrierDepth, calculator.barrierDepthVector))
-filterPoints = np.where(allGamow < 100.)
-
-plt.plot(allDepths[filterPoints], allGamow[filterPoints], ".-", label="WKB")
+plt.plot(calculator.barrierDepthVector, calculator.gamowVector, "-", label="WKB")
 
 
 calculator = GamowCalculator(solverType="FDM")
@@ -440,14 +427,13 @@ calculator.calculateGamowCurve(32)
 
 # calculator.solver.plotWaveFunction()
 print("calculating FDM: %g seconds ---" %(time.time() - start_time))
-print(calculator.solver.dx)
 plt.plot(calculator.barrierDepthVector, calculator.gamowVector, ".-", label="FDM")
 
 calculator = GamowCalculator(solverType="IVP")
 start_time = time.time()
 calculator.calculateGamowCurve(32)
 print("calculating with IVP %g seconds ---" % (time.time() - start_time))
-plt.plot(calculator.barrierDepthVector, calculator.gamowVector, ".-", label="IVP")
+plt.plot(calculator.barrierDepthVector, calculator.gamowVector, "s", label="IVP")
 
 
 plt.grid()
@@ -456,4 +442,4 @@ plt.xlabel("barrier Depth [eV]")
 plt.ylabel("Gamow factor")
 plt.savefig("TransmissionComparison.png")
 # pltmod.pushFigureToServer(plt.gcf())
-plt.show()
+# plt.show()
