@@ -10,7 +10,6 @@ import scipy.linalg as linalg
 import scipy.interpolate as interp
 from collections.abc import Callable
 
-
 font = 15
 import matplotlib as mb
 mb.rcParams["font.size"] = font
@@ -317,9 +316,9 @@ class GamowCalculator:
         return self.electrostaticPotential(z) + self.XCpotential(z)
 
     def findZeros(self, barrierDepth:float) -> None:
-        rootResult = opt.root_scalar(self.barrierFunction, args=barrierDepth, bracket=[self.zMinimum, self.barrierMaximumLocation], xtol=1.e-8)
+        rootResult = opt.root_scalar(self.barrierFunction, method='bisect', args=(barrierDepth), bracket=[self.zMinimum[0], self.barrierMaximumLocation[0]], xtol=1.e-8)
         self.leftRoot = rootResult.root
-        rootResult = opt.root_scalar(self.barrierFunction, args=barrierDepth, bracket=[self.barrierMaximumLocation, 10.])
+        rootResult = opt.root_scalar(self.barrierFunction, args=barrierDepth, bracket=[self.barrierMaximumLocation[0], 10.])
         self.rightRoot = rootResult.root
 
     def integrantWKB(self, z:float, barrierDepth:float) -> float:
