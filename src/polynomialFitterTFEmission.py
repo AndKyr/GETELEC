@@ -19,8 +19,8 @@ colors = cycle(plt.rcParams['axes.prop_cycle'].by_key()['color'])
 gt._setTabulationPath("./tabulated/1D_1024")
 
 
-Nfields = 16
-Ntemperatures = 4
+Nfields = 32
+Ntemperatures = 16
 
 vectorOfFields = 1./np.linspace(1./16., 1./2., Nfields)
 vectorOfTemperatures = np.logspace(2., 4.3, Ntemperatures)
@@ -31,34 +31,53 @@ mappable = plt.cm.ScalarMappable(norm ="log", cmap="jet")
 mappable.set_clim(min(vectorOfTemperatures), max(vectorOfTemperatures))
 vectorOfCurrentDensities = np.copy(vectorOfFields)
 
+
+fig = plt.figure()
+ax = fig.gca()
+
 for i in range(len(vectorOfTemperatures)):
-    emitter.setParameters(kT = gt.Globals.BoltzmannConstant * vectorOfTemperatures[i])
-    
+    # fig1 = plt.figure()
+
     for j in range(len(vectorOfFields)):
+
         emitter.barrier.setParameters(field=vectorOfFields[j])
-        emitter.calculateTotalEnergySpectrum()
+        emitter.setParameters(kT = gt.Globals.BoltzmannConstant * vectorOfTemperatures[i])
         
-        E, TED = emitter.totalEnergySpectrumArrays()
-        vectorOfCurrentDensities[j] = np.trapz(TED, E)
-        if (j == 1):
-            plt.plot(E, TED)
+        # E, TED = emitter.totalEnergySpectrumArrays(numberOfPoints=512)
+        # vectorOfCurrentDensities[j] = np.trapz(TED, E)
+
+        try:
+            vectorOfCurrentDensities[j] = emitter.currentDensity()
+        except:
+            emitter.calculateTotalEnergySpectrum()
+            vectorOfCurrentDensities[j]= emitter.currentDensityFromTED()
+
+        # fig1.gca().semilogy(E, TED, label = "F=%g"%vectorOfFields[j])
+        # fig1.gca().set_title("T = %g"%vectorOfTemperatures[i])
+    # plt.legend()
+    # plt.show()
+        # if (j == 1):
+        #     plt.semilogy(E, TED, label = "T = %g"%vectorOfTemperatures[i])
         
     # plt.show()
 
-    print(vectorOfCurrentDensities)
+    # print(vectorOfCurrentDensities)
         
         
     if (np.any(vectorOfCurrentDensities < 1.e-30)):
         continue
+        
+    poly, cov = np.polyfit(1./vectorOfFields, np.log(vectorOfCurrentDensities), 4, cov=True)
+
+    print(poly)
+    # print(np.diag(cov)**0.5)
     
-    poly = np.polyfit(1./vectorOfFields, np.log(vectorOfCurrentDensities), 6)
-    
-    # plt.semilogy(1./vectorOfFields, vectorOfCurrentDensities , ".", c = mappable.to_rgba(vectorOfTemperatures[i]))
-    # plt.semilogy(1./vectorOfFields, np.exp(np.polyval(poly, 1./vectorOfFields)), c = mappable.to_rgba(vectorOfTemperatures[i]))
+    ax.semilogy(1./vectorOfFields, vectorOfCurrentDensities , ".", c = mappable.to_rgba(vectorOfTemperatures[i]))
+    ax.semilogy(1./vectorOfFields, np.exp(np.polyval(poly, 1./vectorOfFields)), c = mappable.to_rgba(vectorOfTemperatures[i]))
 
 
-# cbar = plt.colorbar(mappable=mappable, ax = plt.gca())
-# cbar.ax.set_ylabel("Temperature[K]")
-# plt.xlabel("1/F [nm/V]")
-# plt.ylabel(r"J [A/nm$^2$]")
+cbar = plt.colorbar(mappable=mappable, ax = ax)
+cbar.ax.set_ylabel("Temperature[K]")
+ax.set_xlabel("1/F [nm/V]")
+ax.set_ylabel(r"J [A/nm$^2$]")
 plt.show()

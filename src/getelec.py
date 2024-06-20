@@ -840,6 +840,8 @@ class ConductionBandEmitter(BandEmitter):
         self.setParameters(workfunction=workFunction, kT=kT, effectiveMass=effectiveMass, energyBandLimit=bandBottom)
         self.fastCurrentDensityIntegrandFunction = self.fastIntegrator.currentDensityIntegrandConduction
         self.fastNottinghamHeatIntegrandFunction = self.fastIntegrator.nottinghamHeatIntegrandConduction
+        self.regime = ""
+        self.regimeDeterminingParameter = 0.
     
     # endregion
     def _calculateIntegrationLimits(self, decayCutoff = 8.) -> None:
@@ -853,9 +855,9 @@ class ConductionBandEmitter(BandEmitter):
         #get the maximum (for energies above Fermi level) derivative of Gamow. It is capped at Wmax
         self._maxGamowDerivative = np.polyval(self.barrier.gamowDerivativePolynomial, maxBetaEnergy)
 
-        determiningParameter = self._maxGamowDerivative * self.kT
+        self.regimeDeterminingParameter = self._maxGamowDerivative * self.kT
         
-        if (determiningParameter < 0.002 and self.energyBandLimit < 0.): # Very low temperature and quad() misbehaves. set some help
+        if (self.regimeDeterminingParameter < 0.002 and self.energyBandLimit < 0.): # Very low temperature and quad() misbehaves. set some help
             self.highEnergyLimit = 0.
             
             #TODO fix for the case that Ec > Ef
@@ -866,16 +868,16 @@ class ConductionBandEmitter(BandEmitter):
             self._centerOfSpectrumEnergy = self.workFunction - \
                 realroots[np.nonzero(np.logical_and(realroots > self.workFunction, realroots < self.barrier.maxEnergyDepth))][0]
             self.lowEnergyLimit = self._centerOfSpectrumEnergy - decayCutoff / self._maxGamowDerivative 
-        elif (determiningParameter < 1.): #field regime. The spectrum is centered around Fermi Level
-            if (determiningParameter < 0.95):
-                self.highEnergyLimit = max(0., self.energyBandLimit) +  decayCutoff / (1. / self.kT - self._maxGamowDerivative) # decayCutoff divided by decay rate
-            else:
-                self.highEnergyLimit = max(0., self.energyBandLimit) + 2 * decayCutoff * self.kT # decayCutoff divided by decay rate
+            self.regime = "very field"
+        elif (self.regimeDeterminingParameter < 1.): #field regime. The spectrum is centered around Fermi Level
+            self.highEnergyLimit = max(0., self.energyBandLimit) + min(decayCutoff / (1. / self.kT - self._maxGamowDerivative), max(0,self.workFunction - self.barrier.minEnergyDepth) + decayCutoff * self.kT) # decayCutoff divided by decay rate
+            self.regime = "field"
             self.lowEnergyLimit = - decayCutoff / self._maxGamowDerivative        
         elif (self.barrier.gamowDerivativeAtMinBarrierDepth * self.kT > 1.): #thermal regime. The spctrum is centered around the top of the barrier
             self._centerOfSpectrumEnergy = max(self.energyBandLimit, self.workFunction - self.barrier.minEnergyDepth) #top of the barrier (Um)
-            self.highEnergyLimit = self._centerOfSpectrumEnergy + decayCutoff * self.kT 
-            self.lowEnergyLimit = self._centerOfSpectrumEnergy - 10 / self.barrier.gamowDerivativeAtMinBarrierDepth     
+            self.highEnergyLimit = self._centerOfSpectrumEnergy + 2 * decayCutoff * self.kT 
+            self.lowEnergyLimit = self._centerOfSpectrumEnergy - 1.5 * decayCutoff / self.barrier.gamowDerivativeAtMinBarrierDepth    
+            self.regime = "thermal" 
         else: #intermediate regime. The spectrum center is approximately where dG/dE = 1/kT
             #get the polynomial P for which the equation P(w)=0 finds the place where dG/dw = 1/kT
             polynomialForRoots = np.copy(self.barrier.gamowDerivativePolynomial)
@@ -887,8 +889,9 @@ class ConductionBandEmitter(BandEmitter):
             self._centerOfSpectrumEnergy = max(self.energyBandLimit, self.workFunction - \
                     realroots[np.nonzero(np.logical_and(realroots > self.barrier.minEnergyDepth, realroots < self.workFunction))][0])
             # find energy limits
-            self.highEnergyLimit =  self._centerOfSpectrumEnergy + decayCutoff * self.kT
+            self.highEnergyLimit =  self._centerOfSpectrumEnergy + 2.5 * decayCutoff * self.kT
             self.lowEnergyLimit = self._centerOfSpectrumEnergy - 2.5 * decayCutoff * self.kT
+            self.regime = "intermediate"
         
         #limit the low energy integration limit to the bottom of the conduction band
         self.lowEnergyLimit = max(self.lowEnergyLimit, self.energyBandLimit)
