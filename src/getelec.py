@@ -730,9 +730,15 @@ class BandEmitter:
                 
                 integral += self.aboveFermiRemainder()
             else:
-                integral, abserr = ig.quad(integrantFunction, self.lowEnergyLimit, self.highEnergyLimit, args=integratorArguments, epsabs=-1, epsrel=1.e-10)
+                integral, abserr = ig.quad(integrantFunction, self.lowEnergyLimit, self.highEnergyLimit, args=integratorArguments, epsabs=-1, epsrel=1.e-7)
         except(IntegrationWarning):
-            print("quad function returned with warning")
+            if (mode == "fast"):
+                return self.currentDensity(mode="slow")
+            else:
+                energyVector = np.linspace(self.lowEnergyLimit, self.highEnergyLimit, 256)
+                integrand = self.currentDensityIntegrand(energyVector)
+                integral = np.trapz(integrand, energyVector)
+                print("WARNING: GETELEC quad function for slow returned with warning. Integrated with trapz")
             integral = 0.
 
         if (saveIntegrand):
@@ -870,13 +876,16 @@ class ConductionBandEmitter(BandEmitter):
             self.lowEnergyLimit = self._centerOfSpectrumEnergy - decayCutoff / self._maxGamowDerivative 
             self.regime = "very field"
         elif (self.regimeDeterminingParameter < 1.): #field regime. The spectrum is centered around Fermi Level
-            self.highEnergyLimit = max(0., self.energyBandLimit) + min(decayCutoff / (1. / self.kT - self._maxGamowDerivative), max(0,self.workFunction - self.barrier.minEnergyDepth) + decayCutoff * self.kT) # decayCutoff divided by decay rate
+            #the upper decay rate is (1/kT - maxGamowDerivative) till the top of the barrier
+            #then it becomes 1/kT. the upper limit will be the minimum of the projection of the decay rate and the decay after the barrier top
+            self.highEnergyLimit = max(0., self.energyBandLimit) + \
+                min(decayCutoff / (1. / self.kT - self._maxGamowDerivative), max(0,self.workFunction - self.barrier.minEnergyDepth) + decayCutoff * self.kT)
             self.regime = "field"
             self.lowEnergyLimit = - decayCutoff / self._maxGamowDerivative        
         elif (self.barrier.gamowDerivativeAtMinBarrierDepth * self.kT > 1.): #thermal regime. The spctrum is centered around the top of the barrier
             self._centerOfSpectrumEnergy = max(self.energyBandLimit, self.workFunction - self.barrier.minEnergyDepth) #top of the barrier (Um)
             self.highEnergyLimit = self._centerOfSpectrumEnergy + 2 * decayCutoff * self.kT 
-            self.lowEnergyLimit = self._centerOfSpectrumEnergy - 1.5 * decayCutoff / self.barrier.gamowDerivativeAtMinBarrierDepth    
+            self.lowEnergyLimit = self._centerOfSpectrumEnergy -  min(decayCutoff / (self.barrier.gamowDerivativeAtMinBarrierDepth - 1./self.kT), self._centerOfSpectrumEnergy + decayCutoff / self._maxGamowDerivative)    
             self.regime = "thermal" 
         else: #intermediate regime. The spectrum center is approximately where dG/dE = 1/kT
             #get the polynomial P for which the equation P(w)=0 finds the place where dG/dw = 1/kT
