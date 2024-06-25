@@ -192,6 +192,8 @@ class Schrodinger1DSolverFDM(Schrodinger1DSolver):
         self.solutionVector = self.solution[1:-1]
      
 class Schrodinger1DSolverIVP(Schrodinger1DSolver):
+    #TODO: It will be much more efficient to solve schrodinger in terms of action (norm and phase)
+    #rather than real and imaginary parts that are oscillatory and enforce a small step
     def __init__(self, energy:float = 0., potentialFunction:Callable = None, xLimits:np.ndarray = None) -> None:
         super().__init__(potentialFunction=potentialFunction, xLimits=xLimits, energy=energy)
         self.kConstant = 1/self.hbarSqrOver2m # 2m/hbar in nm^-2 eV^-1
@@ -414,10 +416,6 @@ class GamowCalculator:
 
 
 
-# calculator = GamowCalculator(solverType="FDM")
-# print(calculator.calculateGamow(barrierDepth=4.))
-# calculator.solver.plotWaveFunction("waveFunsFDM.png")
-
 
 calculator = GamowCalculator(solverType="IVP", XCdataFile="", minimumPotential=10.)
 calculator.solver.calculateTransmissionForEnergy(-5.)
@@ -425,34 +423,41 @@ calculator.solver.plotWaveFunction("waveFunsIVP.png")
 
 
 import time
+
+
+# calculator = GamowCalculator(solverType="FDM", XCdataFile="", minimumPotential=10.)
+
 # start_time = time.time()
-# calculator.calculateGamowCurve(32)
-# print("calculating WKB: %g seconds ---" %(time.time() - start_time))
-# plt.plot(calculator.barrierDepthVector, calculator.gamowVector, "-", label="WKB")
+# calculator.calculateGamowCurve(64, minBarrierDepth=-1., maxGamow=50)
+# # calculator.solver.plotWaveFunction()
+# print("calculating FDM: %g seconds ---" %(time.time() - start_time))
+# plt.semilogy(calculator.barrierDepthVector, calculator.transmissionCoefficients, ".", label="FDM")
+# spline = ip.UnivariateSpline(calculator.barrierDepthVector, calculator.gamowVector, w = 1/(1+np.exp(-calculator.gamowVector)), s = 1.e-3 * len(calculator.barrierDepthVector))
+# plt.semilogy(calculator.barrierDepthVector, Globals.transmissionCoefficientForGamow(spline(calculator.barrierDepthVector)), label = "FDM spline")
 
 
-calculator = GamowCalculator(solverType="FDM", XCdataFile="", minimumPotential=8.)
+# print(spline.get_knots())
 
-start_time = time.time()
-calculator.calculateGamowCurve(64, minBarrierDepth=-1., maxGamow=50)
-# calculator.solver.plotWaveFunction()
-print("calculating FDM: %g seconds ---" %(time.time() - start_time))
-plt.plot(calculator.barrierDepthVector, calculator.gamowVector, ".", label="FDM")
-spline = ip.UnivariateSpline(calculator.barrierDepthVector, calculator.gamowVector, s = 1.e-1)
-plt.plot(calculator.barrierDepthVector, spline(calculator.barrierDepthVector))
-
-
-calculator = GamowCalculator(solverType="IVP", XCdataFile="", minimumPotential=8.)
+calculator = GamowCalculator(solverType="IVP", XCdataFile="", minimumPotential=10.)
 start_time = time.time()
 calculator.calculateGamowCurve(64, minBarrierDepth=-1., maxGamow=50)
 print("calculating with IVP %g seconds ---" % (time.time() - start_time))
-plt.plot(calculator.barrierDepthVector, calculator.gamowVector, "s", label="IVP")
+plt.semilogy(calculator.barrierDepthVector, calculator.transmissionCoefficients, ".", label="IVP")
+
+spline = ip.UnivariateSpline(calculator.barrierDepthVector, calculator.gamowVector, w = 1/(1+np.exp(-calculator.gamowVector)), s = 1.e-3 * len(calculator.barrierDepthVector))
+plt.semilogy(calculator.barrierDepthVector, Globals.transmissionCoefficientForGamow(spline(calculator.barrierDepthVector)), label = "Uni spline")
 
 
 
+tck = ip.splrep(calculator.barrierDepthVector, calculator.gamowVector, w = 1/(1+np.exp(-calculator.gamowVector)), s = 1.e-3 * len(calculator.barrierDepthVector))
 
-spline = ip.UnivariateSpline(calculator.barrierDepthVector, calculator.gamowVector, s = 1.e-1)
-plt.plot(calculator.barrierDepthVector, spline(calculator.barrierDepthVector))
+print(tck)
+
+newspline = ip.BSpline(*tck)
+plt.semilogy(calculator.barrierDepthVector, Globals.transmissionCoefficientForGamow(newspline(calculator.barrierDepthVector)), "--", label = "B spline")
+
+
+print(spline.get_knots())
 
 
 plt.grid()
