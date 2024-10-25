@@ -22,4 +22,5 @@
 *.dvi
 *.vscode
 *.npy
+build/
 

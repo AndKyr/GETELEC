@@ -9,6 +9,8 @@
 #include <gsl/gsl_odeiv2.h>
 #include <vector>
 #include <typeinfo>
+#include <fstream>
+#include <string>
 
 using namespace std;
 
@@ -102,29 +104,6 @@ public:
     
 };
 
-int differentialSystem(double x, const double y[], double f[], void *params){
-
-    TunnelingFunctionBase* tunnelingFunction = (TunnelingFunctionBase*) params;
-    
-    f[0] =  -tunnelingFunction->kappaSquared(x) - y[0]*y[0] + y[1]*y[1];
-    f[1] = - 2. * y[0] * y[1];
-    return GSL_SUCCESS;
-}
-
-int differentialSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params){
-
-    TunnelingFunctionBase* tunnelingFunction = (TunnelingFunctionBase*) params;
-
-    gsl_matrix_view dfdy_mat = gsl_matrix_view_array(dfdy, 2, 2);
-    gsl_matrix *matrix = &dfdy_mat.matrix;
-    gsl_matrix_set(matrix, 0, 0, -2 * y[0]);
-    gsl_matrix_set(matrix, 0, 1, 2 * y[1]);
-    gsl_matrix_set(matrix, 1, 0, -2.0*y[1]);
-    gsl_matrix_set(matrix, 1, 1, - 2 * y[0]);
-    dfdt[0] = CONSTANTS.kConstant * tunnelingFunction->potentialFunctionDerivative(x);
-    dfdt[1] = 0.0;
-    return GSL_SUCCESS;
-}
 
 class TransmissionCalculator{
 private:
@@ -132,53 +111,36 @@ private:
     vector<double> xLimits = {1.e-5, 10.}; //limits within which the potential function is defined
     // double kAtLimits[2]; //Values of k vector at the potential edges
 
-    ModifiedSNBarrier tunnelingFunction = ModifiedSNBarrier();
+    const int blockSize = 128; ///< Length of the vector block that the system solution will be saved.
 
-    // vector<double> solutionRealPart;
-    // vector<double> solutionImaginaryPart;
+    TunnelingFunctionBase* tunnelingFunction;
+
+    struct Solution{
+        size_t length;
+        vector<double> position;
+        vector<double> realPart;
+        vector<double> imaginaryPart;  
+        vector<double> realPartDerivative;
+        vector<double> imaginaryPartDerivative;
+        void resize(size_t N);
+        void write(string filename = "differentialSystemSolution.dat");
+    } solution;
+
+
     int maxIntegrationSteps = 1024;
 
 public:
     TransmissionCalculator(){}
-    TransmissionCalculator(int max_steps, vector<double> xLims, const ModifiedSNBarrier& tunnelFunction) : maxIntegrationSteps(max_steps), xLimits(xLims), tunnelingFunction(tunnelFunction){}
+    TransmissionCalculator(TunnelingFunctionBase* tunnelFunctionPtr) : tunnelingFunction(tunnelFunctionPtr){}
     ~TransmissionCalculator(){}
 
-
-    // void calculateEdgeWavevectors(){
-    //     kAtLimits[0] = sqrt(tunnelingFunction.kappaSquared(xLimits[0]));
-    //     kAtLimits[1] = sqrt(tunnelingFunction.kappaSquared(xLimits[1]));
-    // }
-
-
-    int solveDifferentialSystem(){
-        const gsl_odeiv2_step_type *stepType = gsl_odeiv2_step_rkf45;
-
-        gsl_odeiv2_step *step = gsl_odeiv2_step_alloc(stepType, 2);
-        gsl_odeiv2_control *controller = gsl_odeiv2_control_y_new(1e-6, 0.0);
-        gsl_odeiv2_evolve *evolver = gsl_odeiv2_evolve_alloc(2);
-
-        gsl_odeiv2_system sys = {differentialSystem, differentialSystemJacobian, 2, &tunnelingFunction};
-
-        double x = xLimits[1];
-        double dx = -1e-1;
-        double solutionVector[2] = {0, sqrt(tunnelingFunction.kappaSquared(xLimits[1]))};
-        cout << solutionVector[0] << " " << solutionVector[1] << endl;
-
-        for(unsigned i = 0; i < maxIntegrationSteps; i++){
-            int status = gsl_odeiv2_evolve_apply(evolver, controller, step, &sys, &x, xLimits[0], &dx, solutionVector);
-
-            if (status != GSL_SUCCESS || x <= xLimits[0])
-                break;
-
-            printf ("%g %g %g %g %g %g\n", x, dx, solutionVector[0], solutionVector[1], evolver->dydt_out[0], evolver->dydt_out[1]);
-        }
-
-        gsl_odeiv2_evolve_free(evolver);
-        gsl_odeiv2_control_free(controller);
-        gsl_odeiv2_step_free(step);
-        return 0;
-    }
+    int solveDifferentialSystem();
 
 };  
+
+
+int differentialSystem(double x, const double y[], double f[], void *params);
+
+int differentialSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params);
 
 #endif /* TRANSMISSIONCALCULATOR */
