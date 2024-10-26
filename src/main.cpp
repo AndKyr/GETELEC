@@ -6,5 +6,5 @@ int main(){
     TransmissionCalculator calculator =  TransmissionCalculator(&tunnelFunction);
 
     calculator.solveDifferentialSystem();
-
+    calculator.writeSolution();
 }

@@ -7,6 +7,9 @@
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_odeiv2.h>
+#include <gsl/gsl_bspline.h>
+#include <gsl/gsl_interp.h>
+
 #include <vector>
 #include <typeinfo>
 #include <fstream>
@@ -20,6 +23,9 @@ static constexpr struct PhysicalConstants{
     double imageChargeConstant = .359991137;
 
 } CONSTANTS;
+
+
+gsl_vector* vector2gsl(vector<double>& vec);
 
 
 class TunnelingFunctionBase{
@@ -105,10 +111,54 @@ public:
 };
 
 
+class HermiteSpline{
+public:
+    HermiteSpline(vector<double>& x, vector<double>& y, vector<double>& dy_dx) : positions(vector2gsl(x)){
+        // Ensure the input vectors have the same size
+        if (x.size() != y.size() || x.size() != dy_dx.size())
+            throw std::invalid_argument("Input vectors must have the same size");
+
+        gsl_bspline_init_hermite(1, positions, workSpace);
+        gsl_bspline_interp_chermite(vector2gsl(x), vector2gsl(y), vector2gsl(dy_dx), coefficients, workSpace);
+
+    }
+
+    ~HermiteSpline() {
+        gsl_bspline_free(workSpace);
+        gsl_vector_free(coefficients);
+    }
+
+    // Function to evaluate the spline at a given point
+    double evaluate(double x) const {
+        double result;
+        gsl_bspline_calc(x, coefficients, &result, workSpace);
+        return result;
+    }
+
+    // Function to evaluate the derivative of the spline at a given point
+    double evaluateDerivative(double x) const {
+        double result;
+        gsl_bspline_calc_deriv(x, coefficients, 1, &result, workSpace);
+        return result;
+    }
+
+    double evaluateIntegral(double a, double b){
+        double result;
+        gsl_bspline_calc_integ(a, b, coefficients, &result, workSpace);
+        return result;
+    }
+
+private:
+    gsl_bspline_workspace* workSpace;  // Workspace for spline evaluation
+    gsl_vector* coefficients;
+    gsl_vector* positions;
+};
+
+
 class TransmissionCalculator{
 private:
 
-    vector<double> xLimits = {1.e-5, 10.}; //limits within which the potential function is defined
+    vector<double> xLimits = {1.e-1, 4.}; //limits within which the potential function is defined
     // double kAtLimits[2]; //Values of k vector at the potential edges
 
     const int blockSize = 128; ///< Length of the vector block that the system solution will be saved.
@@ -116,7 +166,7 @@ private:
     TunnelingFunctionBase* tunnelingFunction;
 
     struct Solution{
-        size_t length;
+        size_t length = 0;
         vector<double> position;
         vector<double> realPart;
         vector<double> imaginaryPart;  
@@ -135,6 +185,10 @@ public:
     ~TransmissionCalculator(){}
 
     int solveDifferentialSystem();
+
+    int getSolutionSpline();
+
+    void writeSolution(string filename = "differentialSystemSolution.dat");
 
 };  
 
