@@ -25,8 +25,21 @@ static constexpr struct PhysicalConstants{
 } CONSTANTS;
 
 
-gsl_vector* vector2gsl(vector<double>& vec);
+// gsl_vector* vector2gsl(vector<double>& vec);
 
+
+int differentialSystem2D(double x, const double y[], double f[], void *params);
+
+int differentialSystem3D(double x, const double y[], double f[], void *params);
+
+int differentialSystem4D(double x, const double y[], double f[], void *params);
+
+
+int differentialSystemJacobian2D(double x, const double y[], double *dfdy, double dfdt[], void *params);
+
+int differentialSystemJacobian3D(double x, const double y[], double *dfdy, double dfdt[], void *params);
+
+int differentialSystemJacobian4D(double x, const double y[], double *dfdy, double dfdt[], void *params);
 
 class TunnelingFunctionBase{
 private:
@@ -56,7 +69,7 @@ public:
 
 class ModifiedSNBarrier : public TunnelingFunctionBase{
 private:
-    double radius = 1.e5;
+    double radius = 1.e3;
     double field = 5.;
     double gamma = 10.;
 
@@ -73,8 +86,8 @@ private:
     }
 
     double electrostaticPotentialDerivative(double z){
-        return field * ((gamma*gamma - 2*gamma + 1) * radius*radius + (2*gamma - 2) * radius*z + gamma*z*z) / 
-        (((gamma - 1)*radius + gamma*z, 2) * ((gamma - 1)*radius + gamma*z, 2));
+        return field * ((gamma-1)*(gamma-1) * radius*radius + 2*(gamma-1)*radius*z + gamma*z*z) / 
+        (((gamma - 1)*radius + gamma*z) * ((gamma - 1)*radius + gamma*z));
     }
 
 public:
@@ -110,7 +123,7 @@ public:
     
 };
 
-
+/*
 class HermiteSpline{
 public:
     HermiteSpline(vector<double>& x, vector<double>& y, vector<double>& dy_dx) : positions(vector2gsl(x)){
@@ -153,48 +166,88 @@ private:
     gsl_vector* coefficients;
     gsl_vector* positions;
 };
-
+*/
 
 class TransmissionCalculator{
 private:
 
-    vector<double> xLimits = {1.e-1, 4.}; //limits within which the potential function is defined
-    // double kAtLimits[2]; //Values of k vector at the potential edges
+    vector<double> xLimits = {0.03599847, 2.00400712}; //limits within which the potential function is defined
+    vector<double> kAtLimits = {1., 1.}; //Values of k vector at the potential edges
 
-    const int blockSize = 128; ///< Length of the vector block that the system solution will be saved.
+    int systemDimension = 3;
+    double relativeTolerance = 1.e-3;
+    double absoluteTolerance = 1.e-1;
 
     TunnelingFunctionBase* tunnelingFunction;
 
-    struct Solution{
-        size_t length = 0;
-        vector<double> position;
-        vector<double> realPart;
-        vector<double> imaginaryPart;  
-        vector<double> realPartDerivative;
-        vector<double> imaginaryPartDerivative;
-        void resize(size_t N);
-        void write(string filename = "differentialSystemSolution.dat");
-    } solution;
+    const gsl_odeiv2_step_type *stepType = gsl_odeiv2_step_rk4;
+    gsl_odeiv2_step *step = gsl_odeiv2_step_alloc(stepType, systemDimension);
+    gsl_odeiv2_control *controller = gsl_odeiv2_control_y_new(absoluteTolerance, relativeTolerance);
+    gsl_odeiv2_evolve *evolver = gsl_odeiv2_evolve_alloc(systemDimension);
+    gsl_odeiv2_system sys;
 
-
-    int maxIntegrationSteps = 1024;
+    vector<double> solutionVector = vector<double>(systemDimension, 0.0);
 
 public:
-    TransmissionCalculator(){}
-    TransmissionCalculator(TunnelingFunctionBase* tunnelFunctionPtr) : tunnelingFunction(tunnelFunctionPtr){}
-    ~TransmissionCalculator(){}
+    
+    void updateKappaAtLimits(){
+        kAtLimits[0] = sqrt(tunnelingFunction->kappaSquared(xLimits[0]));
+        kAtLimits[1] = sqrt(tunnelingFunction->kappaSquared(xLimits[1]));
+    }
+
+    void setTolerances(double absoluteTolerance = 1.e-5, double relativeTolerance = 1.e-5){
+        relativeTolerance = relativeTolerance;
+        absoluteTolerance = absoluteTolerance;
+        controller = gsl_odeiv2_control_y_new(absoluteTolerance, relativeTolerance);
+    }
+
+
+    TransmissionCalculator( TunnelingFunctionBase* tunnelFunctionPtr, 
+                            int systemDimension = 3, 
+                            vector<double> xLims = {0.03599847, 2.00400712},
+                            double relativeTolerance = 1.e-4,
+                            double absoluteTolerance = 1.e-4,
+                            const gsl_odeiv2_step_type* stepType = gsl_odeiv2_step_rk8pd
+                        ) : tunnelingFunction(tunnelFunctionPtr),
+                            systemDimension(systemDimension),
+                            xLimits(xLims),
+                            relativeTolerance(relativeTolerance),
+                            absoluteTolerance(absoluteTolerance),
+                            controller(gsl_odeiv2_control_y_new(absoluteTolerance, relativeTolerance)),
+                            step(gsl_odeiv2_step_alloc(stepType, systemDimension)),
+                            evolver(gsl_odeiv2_evolve_alloc(systemDimension)),
+                            stepType(stepType)
+    {
+        int x = GSL_DBL_MAX;
+        if (systemDimension == 2)
+            sys = {differentialSystem2D, differentialSystemJacobian2D, 2, tunnelingFunction};
+        else if (systemDimension == 3)
+            sys = {differentialSystem3D, differentialSystemJacobian3D, 3, tunnelingFunction};
+        else if (systemDimension == 4)
+            sys = {differentialSystem4D, differentialSystemJacobian4D, 4, tunnelingFunction};
+        else
+            throw invalid_argument("systemDimension must be 2, 3, or 4");
+
+        updateKappaAtLimits();
+    }
+
+
+    ~TransmissionCalculator(){
+        gsl_odeiv2_evolve_free(evolver);
+        gsl_odeiv2_control_free(controller);
+        gsl_odeiv2_step_free(step);
+    }
+
+
 
     int solveDifferentialSystem();
 
-    int getSolutionSpline();
+    double transmissionCoefficient() const;
 
-    void writeSolution(string filename = "differentialSystemSolution.dat");
+
 
 };  
 
 
-int differentialSystem(double x, const double y[], double f[], void *params);
-
-int differentialSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params);
 
 #endif /* TRANSMISSIONCALCULATOR */

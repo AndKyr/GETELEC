@@ -101,7 +101,7 @@ public:
     
 };
 
-int differentialSystem(double x, const double y[], double f[], void *params){
+int differentialSystem2D(double x, const double y[], double f[], void *params){
 
     TunnelingFunctionBase* tunnelingFunction = (TunnelingFunctionBase*) params;
     
@@ -155,7 +155,7 @@ public:
         gsl_odeiv2_control *controller = gsl_odeiv2_control_y_new(1e-6, 0.0);
         gsl_odeiv2_evolve *evolver = gsl_odeiv2_evolve_alloc(2);
 
-        gsl_odeiv2_system sys = {differentialSystem, differentialSystemJacobian, 2, NULL};
+        gsl_odeiv2_system sys = {differentialSystem2D, differentialSystemJacobian, 2, NULL};
 
         double x = xLimits[1];
         double dx = -1e-2;
