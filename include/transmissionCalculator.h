@@ -2,13 +2,10 @@
 #define TRANSMISSIONCALCULATOR_H_
 
 #include <math.h>
-#include <iostream>
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_odeiv2.h>
-#include <gsl/gsl_bspline.h>
-#include <gsl/gsl_interp.h>
 
 #include <vector>
 #include <typeinfo>

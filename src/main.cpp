@@ -1,5 +1,6 @@
 #include "transmissionCalculator.h"
 #include <vector>
+#include <iostream>
 #include <chrono>
 
 std::vector<double> linspace(double start, double end, int n) {
