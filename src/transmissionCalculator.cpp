@@ -90,25 +90,25 @@ int differentialSystemJacobian4D(double x, const double y[], double *dfdy, doubl
 
 int TransmissionCalculator::solveDifferentialSystem(){
 
-    double x = xLimits[1];
-    double dx = -1e-2;
+    double x = xLimits[0];
+    double dx = initialStep;
     int status;
     solutionVector = vector<double>(systemDimension, 0.0);
-    solutionVector[1] = kAtLimits[1];
+    solutionVector[1] = kAtLimits[0];
     
 
     #ifndef RELEASE
         ofstream outFile("differentialSystemSolution.dat", ios::out);        
     #endif
 
-    while(x > xLimits[0]){ //loop over blocks
+    while(x > xLimits[1]){ //loop over blocks
         #ifndef RELEASE
             outFile << x << " ";
             for (auto &y : solutionVector) outFile << y << " ";
             outFile << tunnelingFunction->kappaSquared(x) << endl;       
         #endif
 
-        int status = gsl_odeiv2_evolve_apply(evolver, controller, step, &sys, &x, xLimits[0], &dx, solutionVector.data());             
+        status = gsl_odeiv2_evolve_apply(evolver, controller, step, &sys, &x, xLimits[1], &dx, solutionVector.data());             
     }
 
     #ifndef RELEASE
@@ -127,9 +127,8 @@ int TransmissionCalculator::solveDifferentialSystem(){
 double TransmissionCalculator::transmissionCoefficient() const{
 
     double CplusCoefficientSquared = 0.25 * exp(2. * solutionVector[2]) * (1. + 
-        (solutionVector[0]*solutionVector[0] + solutionVector[1]*solutionVector[1]) / (kAtLimits[0]*kAtLimits[0]) +
-            2. * solutionVector[1] / kAtLimits[0]);
+        (solutionVector[0]*solutionVector[0] + solutionVector[1]*solutionVector[1]) / (kAtLimits[1]*kAtLimits[1]) +
+            2. * solutionVector[1] / kAtLimits[1]);
 
-
-    return kAtLimits[1] / (kAtLimits[0] * CplusCoefficientSquared);
+    return kAtLimits[0] / (kAtLimits[1] * CplusCoefficientSquared);
 }

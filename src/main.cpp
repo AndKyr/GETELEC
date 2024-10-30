@@ -22,7 +22,8 @@ int main(){
     ModifiedSNBarrier tunnelFunction;
     TransmissionCalculator calculator =  TransmissionCalculator(&tunnelFunction, 3);
 
-    vector<double> energies = linspace(1., -10., 2048);
+    int Nruns = 1.e4;
+    vector<double> energies = linspace(1., -10., Nruns);
     
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -36,6 +37,6 @@ int main(){
 
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    std::cout << "Time per D calculation: " << duration.count() / 2048. << " us" << std::endl;
+    std::cout << "Time per D calculation: " << duration.count() / (double) Nruns << " us" << std::endl;
 
 }

@@ -177,6 +177,7 @@ private:
     int systemDimension = 3;
     double relativeTolerance = 1.e-3;
     double absoluteTolerance = 1.e-1;
+    double initialStep;
 
     TunnelingFunctionBase* tunnelingFunction;
 
@@ -204,7 +205,7 @@ public:
 
     TransmissionCalculator( TunnelingFunctionBase* tunnelFunctionPtr, 
                             int systemDimension = 3, 
-                            vector<double> xLims = {0.03599847, 2.00400712},
+                            vector<double> xLims = {2.00400712, 0.03599847},
                             double relativeTolerance = 1.e-4,
                             double absoluteTolerance = 1.e-4,
                             const gsl_odeiv2_step_type* stepType = gsl_odeiv2_step_rk8pd
@@ -216,9 +217,9 @@ public:
                             controller(gsl_odeiv2_control_y_new(absoluteTolerance, relativeTolerance)),
                             step(gsl_odeiv2_step_alloc(stepType, systemDimension)),
                             evolver(gsl_odeiv2_evolve_alloc(systemDimension)),
-                            stepType(stepType)
+                            stepType(stepType),
+                            initialStep((xLimits[1] - xLimits[0]) * 1.e-3)
     {
-        int x = GSL_DBL_MAX;
         if (systemDimension == 2)
             sys = {differentialSystem2D, differentialSystemJacobian2D, 2, tunnelingFunction};
         else if (systemDimension == 3)
@@ -243,8 +244,6 @@ public:
     int solveDifferentialSystem();
 
     double transmissionCoefficient() const;
-
-
 
 };  
 
