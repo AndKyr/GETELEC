@@ -25,9 +25,6 @@ static constexpr struct PhysicalConstants{
 } CONSTANTS;
 
 
-// gsl_vector* vector2gsl(vector<double>& vec);
-
-
 int differentialSystem2D(double x, const double y[], double f[], void *params);
 
 int differentialSystem3D(double x, const double y[], double f[], void *params);
@@ -203,34 +200,13 @@ public:
     }
 
 
-    TransmissionCalculator( TunnelingFunctionBase* tunnelFunctionPtr, 
+    TransmissionCalculator(TunnelingFunctionBase* tunnelFunctionPtr, 
                             int systemDimension = 3, 
                             vector<double> xLims = {2.00400712, 0.03599847},
                             double relativeTolerance = 1.e-4,
                             double absoluteTolerance = 1.e-4,
                             const gsl_odeiv2_step_type* stepType = gsl_odeiv2_step_rk8pd
-                        ) : tunnelingFunction(tunnelFunctionPtr),
-                            systemDimension(systemDimension),
-                            xLimits(xLims),
-                            relativeTolerance(relativeTolerance),
-                            absoluteTolerance(absoluteTolerance),
-                            controller(gsl_odeiv2_control_y_new(absoluteTolerance, relativeTolerance)),
-                            step(gsl_odeiv2_step_alloc(stepType, systemDimension)),
-                            evolver(gsl_odeiv2_evolve_alloc(systemDimension)),
-                            stepType(stepType),
-                            initialStep((xLimits[1] - xLimits[0]) * 1.e-3)
-    {
-        if (systemDimension == 2)
-            sys = {differentialSystem2D, differentialSystemJacobian2D, 2, tunnelingFunction};
-        else if (systemDimension == 3)
-            sys = {differentialSystem3D, differentialSystemJacobian3D, 3, tunnelingFunction};
-        else if (systemDimension == 4)
-            sys = {differentialSystem4D, differentialSystemJacobian4D, 4, tunnelingFunction};
-        else
-            throw invalid_argument("systemDimension must be 2, 3, or 4");
-
-        updateKappaAtLimits();
-    }
+                        );
 
 
     ~TransmissionCalculator(){
@@ -238,7 +214,6 @@ public:
         gsl_odeiv2_control_free(controller);
         gsl_odeiv2_step_free(step);
     }
-
 
 
     int solveDifferentialSystem();

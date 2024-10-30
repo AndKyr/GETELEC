@@ -87,6 +87,33 @@ int differentialSystemJacobian4D(double x, const double y[], double *dfdy, doubl
     return GSL_SUCCESS;
 }
 
+TransmissionCalculator::TransmissionCalculator( 
+                            TunnelingFunctionBase* tunnelFunctionPtr, int systemDimension, 
+                            vector<double> xLims, double relativeTolerance, 
+                            double absoluteTolerance, const gsl_odeiv2_step_type* stepType
+                        ) : tunnelingFunction(tunnelFunctionPtr),
+                            systemDimension(systemDimension),
+                            xLimits(xLims),
+                            relativeTolerance(relativeTolerance),
+                            absoluteTolerance(absoluteTolerance),
+                            controller(gsl_odeiv2_control_y_new(absoluteTolerance, relativeTolerance)),
+                            step(gsl_odeiv2_step_alloc(stepType, systemDimension)),
+                            evolver(gsl_odeiv2_evolve_alloc(systemDimension)),
+                            stepType(stepType),
+                            initialStep((xLimits[1] - xLimits[0]) * 1.e-3)
+{
+    if (systemDimension == 2)
+        sys = {differentialSystem2D, differentialSystemJacobian2D, 2, tunnelingFunction};
+    else if (systemDimension == 3)
+        sys = {differentialSystem3D, differentialSystemJacobian3D, 3, tunnelingFunction};
+    else if (systemDimension == 4)
+        sys = {differentialSystem4D, differentialSystemJacobian4D, 4, tunnelingFunction};
+    else
+        throw invalid_argument("systemDimension must be 2, 3, or 4");
+
+    updateKappaAtLimits();
+}
+
 
 int TransmissionCalculator::solveDifferentialSystem(){
 
