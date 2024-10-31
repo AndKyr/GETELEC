@@ -21,6 +21,22 @@ static constexpr struct PhysicalConstants{
 
 } CONSTANTS;
 
+struct Utilities{
+    static vector<double> linspace(double start, double end, int n) {
+        vector<double> result(n);
+        if (n == 1) {
+            result[0] = start;
+            return result;
+        }
+
+        double step = (end - start) / (n - 1);
+        for (int i = 0; i < n; ++i) {
+            result[i] = start + i * step;
+        }
+        return result;
+    }
+};
+
 class TunnelingFunctionBase{
 private:
     double energy = 0.;

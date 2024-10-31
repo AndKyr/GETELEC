@@ -3,19 +3,7 @@
 #include <iostream>
 #include <chrono>
 
-std::vector<double> linspace(double start, double end, int n) {
-    std::vector<double> result(n);
-    if (n == 1) {
-        result[0] = start;
-        return result;
-    }
 
-    double step = (end - start) / (n - 1);
-    for (int i = 0; i < n; ++i) {
-        result[i] = start + i * step;
-    }
-    return result;
-}
 
 int main(){
 
@@ -23,7 +11,7 @@ int main(){
     TransmissionSolver calculator =  TransmissionSolver(&tunnelFunction);
 
     int Nruns = 100;
-    vector<double> energies = linspace(1., -10., Nruns);
+    vector<double> energies = Utilities::linspace(1., -10., Nruns);
     
     auto start = std::chrono::high_resolution_clock::now();
 
