@@ -162,8 +162,96 @@ private:
 };
 */
 
+class ODESolver{
+protected:
+    int systemDimension;
+    double xInitial;
+    double xFinal;
+    double relativeTolerance;
+    double absoluteTolerance;
+    int maxAllowedSteps;
+    int stepsExpectedForInitialStep = 64;
+    double initialStep;
+    
+    const gsl_odeiv2_step_type *stepType = gsl_odeiv2_step_rk4;
+    gsl_odeiv2_step *step;
+    gsl_odeiv2_control *controller;
+    gsl_odeiv2_evolve *evolver;
+    gsl_odeiv2_system sys;
+    vector<double> initialValues;
+    vector<vector<double>> savedSolution;
+    vector<double>xSaved;
+
+
+    int (*differentialSystem)(double, const double*, double* , void*);
+    int (*differentialSystemJacobian)(double, const double*, double*, double*, void*);
+
+    vector<double> solutionVector = vector<double>(systemDimension, 0.0);
+
+public:
+
+    ODESolver( 
+                int systemDimension = 3, 
+                vector<double> xLims = {0., 1.},
+                double relativeTolerance = 1.e-4,
+                double absoluteTolerance = 1.e-4,
+                const gsl_odeiv2_step_type* stepType = gsl_odeiv2_step_rk8pd,
+                int maxSteps = 4096,
+                int stepExpectedForInitialStep = 64,
+                vector<double>initialValues
+            );
+
+    ~ODESolver(){
+        gsl_odeiv2_evolve_free(evolver);
+        gsl_odeiv2_control_free(controller);
+        gsl_odeiv2_step_free(step);
+    }
+
+    void setTolerances(double absoluteTolerance = 1.e-5, double relativeTolerance = 1.e-5){
+        relativeTolerance = relativeTolerance;
+        absoluteTolerance = absoluteTolerance;
+        controller = gsl_odeiv2_control_y_new(absoluteTolerance, relativeTolerance);
+    }
+
+    void setInitialValues(vector<double> initValues){initialValues = initValues;}
+
+    void reinitialize(){
+        solutionVector = initialValues;
+        gsl_odeiv2_step_reset(step);
+        gsl_odeiv2_evolve_reset(evolver);
+        savedSolution.clear();
+        xSaved.clear();
+    }
+
+    int solve(bool saveSolution = false);
+
+};
+
+
+class GamowSolver : ODESolver{
+private:
+    TunnelingFunctionBase* tunnelingFunction;
+     
+    double kappaInitial;
+    double kappaFinal;
+
+    static int tunnelingDifferentialSystem(double x, const double y[], double f[], void *params);
+    static int tunnelingSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params);
+
+public:
+
+    GamowSolver()
+    
+    void updateKappaAtLimits(){
+        kappaInitial = sqrt(tunnelingFunction->kappaSquared(xInitial));
+        kappaFinal = sqrt(tunnelingFunction->kappaSquared(xFinal));
+    }
+};
+
+
 class TransmissionCalculator{
 private:
+    TunnelingFunctionBase* tunnelingFunction;
 
     vector<double> xLimits = {0.03599847, 2.00400712}; //limits within which the potential function is defined
     vector<double> kAtLimits = {1., 1.}; //Values of k vector at the potential edges
@@ -173,7 +261,6 @@ private:
     double absoluteTolerance = 1.e-1;
     double initialStep;
 
-    TunnelingFunctionBase* tunnelingFunction;
 
     const gsl_odeiv2_step_type *stepType = gsl_odeiv2_step_rk4;
     gsl_odeiv2_step *step = gsl_odeiv2_step_alloc(stepType, systemDimension);

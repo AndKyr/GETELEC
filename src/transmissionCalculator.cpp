@@ -87,6 +87,29 @@ int differentialSystemJacobian4D(double x, const double y[], double *dfdy, doubl
     return GSL_SUCCESS;
 }
 
+
+int ODESolver::solve(bool saveSolution){
+
+    double x = xInitial;
+    double dx = initialStep;
+    int status;
+    reinitialize();
+
+    for (size_t i; i < maxAllowedSteps; i++){ //loop over blocks
+        if (saveSolution){
+            savedSolution.push_back(solutionVector);
+            xSaved.push_back(x);
+        } 
+
+        status = gsl_odeiv2_evolve_apply(evolver, controller, step, &sys, &x, xFinal, &dx, solutionVector.data());
+
+        if (x == xFinal || status != GSL_SUCCESS)    
+            return status;         
+    }
+}
+
+
+
 TransmissionCalculator::TransmissionCalculator( 
                             TunnelingFunctionBase* tunnelFunctionPtr, int systemDimension, 
                             vector<double> xLims, double relativeTolerance, 
