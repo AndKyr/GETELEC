@@ -17,13 +17,12 @@ std::vector<double> linspace(double start, double end, int n) {
     return result;
 }
 
-
 int main(){
 
     ModifiedSNBarrier tunnelFunction;
-    TransmissionCalculator calculator =  TransmissionCalculator(&tunnelFunction, 3);
+    TransmissionSolver calculator =  TransmissionSolver(&tunnelFunction);
 
-    int Nruns = 1.e4;
+    int Nruns = 100;
     vector<double> energies = linspace(1., -10., Nruns);
     
     auto start = std::chrono::high_resolution_clock::now();
@@ -31,9 +30,9 @@ int main(){
     for (auto& energy : energies){
         tunnelFunction.setEnergy(energy);
         calculator.updateKappaAtLimits();
-        calculator.solveDifferentialSystem();
+        calculator.solveNoSave();
         double D = calculator.transmissionCoefficient();
-        // cout << " D = " << D << endl;
+        cout << " D = " << D << endl;
     }
 
     auto end = std::chrono::high_resolution_clock::now();

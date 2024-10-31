@@ -21,20 +21,6 @@ static constexpr struct PhysicalConstants{
 
 } CONSTANTS;
 
-
-int differentialSystem2D(double x, const double y[], double f[], void *params);
-
-int differentialSystem3D(double x, const double y[], double f[], void *params);
-
-int differentialSystem4D(double x, const double y[], double f[], void *params);
-
-
-int differentialSystemJacobian2D(double x, const double y[], double *dfdy, double dfdt[], void *params);
-
-int differentialSystemJacobian3D(double x, const double y[], double *dfdy, double dfdt[], void *params);
-
-int differentialSystemJacobian4D(double x, const double y[], double *dfdy, double dfdt[], void *params);
-
 class TunnelingFunctionBase{
 private:
     double energy = 0.;
@@ -181,7 +167,7 @@ protected:
     vector<double> initialValues;
     vector<vector<double>> savedSolution;
     vector<double>xSaved;
-
+    void* parameters;
 
     int (*differentialSystem)(double, const double*, double* , void*);
     int (*differentialSystemJacobian)(double, const double*, double*, double*, void*);
@@ -191,6 +177,8 @@ protected:
 public:
 
     ODESolver( 
+                vector<double>initialValues,
+                int (*differentialSystem)(double, const double*, double*, void*),
                 int systemDimension = 3, 
                 vector<double> xLims = {0., 1.},
                 double relativeTolerance = 1.e-4,
@@ -198,7 +186,8 @@ public:
                 const gsl_odeiv2_step_type* stepType = gsl_odeiv2_step_rk8pd,
                 int maxSteps = 4096,
                 int stepExpectedForInitialStep = 64,
-                vector<double>initialValues
+                int (*differentialSystemJacobian)(double, const double*, double*, double*, void*) = NULL,
+                void* params = NULL
             );
 
     ~ODESolver(){
@@ -225,87 +214,67 @@ public:
 
     int solve(bool saveSolution = false);
 
+    int solveNoSave();
+
+    void writeSolution(string filename = "odeSolution.dat");
+
 };
 
 
-class GamowSolver : ODESolver{
+class TransmissionSolver : public ODESolver{
 private:
     TunnelingFunctionBase* tunnelingFunction;
      
     double kappaInitial;
     double kappaFinal;
 
-    static int tunnelingDifferentialSystem(double x, const double y[], double f[], void *params);
-    static int tunnelingSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params);
+    static int tunnelingDifferentialSystem(double x, const double y[], double f[], void *params){
+        TunnelingFunctionBase* barrier = (TunnelingFunctionBase*) params;
+        f[0] =  -barrier->kappaSquared(x) - y[0]*y[0] + y[1]*y[1];
+        f[1] = - 2. * y[0] * y[1];
+        f[2] = y[0];
+        return GSL_SUCCESS;
+    }
 
-public:
+    static int tunnelingSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params){
+        TunnelingFunctionBase* barrier = (TunnelingFunctionBase*) params;
+        gsl_matrix_view dfdy_mat = gsl_matrix_view_array(dfdy, 3, 3);
+        gsl_matrix *matrix = &dfdy_mat.matrix;
 
-    GamowSolver()
-    
+        gsl_matrix_set(matrix, 0, 0, -2*y[0]); gsl_matrix_set(matrix, 0, 1, 2*y[1]);  gsl_matrix_set(matrix, 0, 2, 0.);
+        gsl_matrix_set(matrix, 1, 0, -2*y[1]); gsl_matrix_set(matrix, 1, 1, -2*y[0]); gsl_matrix_set(matrix, 1, 2, 0.);
+        gsl_matrix_set(matrix, 2, 0, 1.);      gsl_matrix_set(matrix, 2, 1, 0.);      gsl_matrix_set(matrix, 2, 2, 0.);
+
+        dfdt[0] = CONSTANTS.kConstant * barrier->potentialFunctionDerivative(x);
+        dfdt[1] = 0.0; dfdt[2] = 0.0;
+        return GSL_SUCCESS;
+    }
+
+public:   
+
+    TransmissionSolver(
+            TunnelingFunctionBase* tunnelFunctionPtr, 
+            double relativeTolerance = 1.e-4,
+            double absoluteTolerance = 1.e-4,
+            const gsl_odeiv2_step_type* stepType = gsl_odeiv2_step_rk8pd,
+            int maxSteps = 4096,
+            int stepExpectedForInitialStep = 64
+        );
+
+
     void updateKappaAtLimits(){
         kappaInitial = sqrt(tunnelingFunction->kappaSquared(xInitial));
         kappaFinal = sqrt(tunnelingFunction->kappaSquared(xFinal));
+        initialValues = {0., kappaInitial, 0.};
+    }
+
+    double transmissionCoefficient() const{
+        double CplusCoefficientSquared = 0.25 * exp(2. * solutionVector[2]) * (1. + 
+            (solutionVector[0]*solutionVector[0] + solutionVector[1]*solutionVector[1]) / (kappaFinal*kappaFinal) +
+                2. * solutionVector[1] / kappaFinal);
+
+        return kappaInitial / (kappaFinal * CplusCoefficientSquared);
     }
 };
-
-
-class TransmissionCalculator{
-private:
-    TunnelingFunctionBase* tunnelingFunction;
-
-    vector<double> xLimits = {0.03599847, 2.00400712}; //limits within which the potential function is defined
-    vector<double> kAtLimits = {1., 1.}; //Values of k vector at the potential edges
-
-    int systemDimension = 3;
-    double relativeTolerance = 1.e-3;
-    double absoluteTolerance = 1.e-1;
-    double initialStep;
-
-
-    const gsl_odeiv2_step_type *stepType = gsl_odeiv2_step_rk4;
-    gsl_odeiv2_step *step = gsl_odeiv2_step_alloc(stepType, systemDimension);
-    gsl_odeiv2_control *controller = gsl_odeiv2_control_y_new(absoluteTolerance, relativeTolerance);
-    gsl_odeiv2_evolve *evolver = gsl_odeiv2_evolve_alloc(systemDimension);
-    gsl_odeiv2_system sys;
-
-    vector<double> solutionVector = vector<double>(systemDimension, 0.0);
-
-public:
-    
-    void updateKappaAtLimits(){
-        kAtLimits[0] = sqrt(tunnelingFunction->kappaSquared(xLimits[0]));
-        kAtLimits[1] = sqrt(tunnelingFunction->kappaSquared(xLimits[1]));
-    }
-
-    void setTolerances(double absoluteTolerance = 1.e-5, double relativeTolerance = 1.e-5){
-        relativeTolerance = relativeTolerance;
-        absoluteTolerance = absoluteTolerance;
-        controller = gsl_odeiv2_control_y_new(absoluteTolerance, relativeTolerance);
-    }
-
-
-    TransmissionCalculator(TunnelingFunctionBase* tunnelFunctionPtr, 
-                            int systemDimension = 3, 
-                            vector<double> xLims = {2.00400712, 0.03599847},
-                            double relativeTolerance = 1.e-4,
-                            double absoluteTolerance = 1.e-4,
-                            const gsl_odeiv2_step_type* stepType = gsl_odeiv2_step_rk8pd
-                        );
-
-
-    ~TransmissionCalculator(){
-        gsl_odeiv2_evolve_free(evolver);
-        gsl_odeiv2_control_free(controller);
-        gsl_odeiv2_step_free(step);
-    }
-
-
-    int solveDifferentialSystem();
-
-    double transmissionCoefficient() const;
-
-};  
-
-
 
 #endif /* TRANSMISSIONCALCULATOR */
