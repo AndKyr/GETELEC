@@ -9,6 +9,7 @@ int main(){
 
     ModifiedSNBarrier tunnelFunction;
     TransmissionSolver calculator =  TransmissionSolver(&tunnelFunction);
+    calculator.printXLimits();
 
     int Nruns = 100;
     vector<double> energies = Utilities::linspace(1., -10., Nruns);

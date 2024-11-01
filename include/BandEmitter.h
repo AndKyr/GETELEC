@@ -18,37 +18,15 @@ using namespace std;
 
 
 
-int differentialSystem(double x, const double y[], double f[], void *params);
-
-class BandEmitter{
+class BandEmitter : public ODESolver{
 private:
 
     TunnelingFunctionBase* barrier;
-    TransmissionCalculator& transmissionCalculator;
-
-    int systemDimension = 2;
-    double relativeTolerance = 1.e-3;
-    double absoluteTolerance = 1.e-1;
-    double initialStep;
-
-    TunnelingFunctionBase* tunnelingFunction;
-
-    const gsl_odeiv2_step_type *stepType = gsl_odeiv2_step_rk4;
-    gsl_odeiv2_step *step = gsl_odeiv2_step_alloc(stepType, systemDimension);
-    gsl_odeiv2_control *controller = gsl_odeiv2_control_y_new(absoluteTolerance, relativeTolerance);
-    gsl_odeiv2_evolve *evolver = gsl_odeiv2_evolve_alloc(systemDimension);
-    gsl_odeiv2_system sys;
-
-    vector<double> solutionVector = vector<double>(systemDimension, 0.0);
+    TransmissionSolver& transmissionCalculator;
 
 public:
     
 
-    void setTolerances(double absoluteTolerance = 1.e-5, double relativeTolerance = 1.e-5){
-        relativeTolerance = relativeTolerance;
-        absoluteTolerance = absoluteTolerance;
-        controller = gsl_odeiv2_control_y_new(absoluteTolerance, relativeTolerance);
-    }
 
 
     BandEmitter(TunnelingFunctionBase* tunnelFunctionPtr, 
@@ -57,13 +35,6 @@ public:
                             double absoluteTolerance = 1.e-4,
                             const gsl_odeiv2_step_type* stepType = gsl_odeiv2_step_rk8pd
                         );
-
-
-    ~BandEmitter(){
-        gsl_odeiv2_evolve_free(evolver);
-        gsl_odeiv2_control_free(controller);
-        gsl_odeiv2_step_free(step);
-    }
 
 
     int solveDifferentialSystem();

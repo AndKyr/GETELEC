@@ -11,6 +11,8 @@
 #include <typeinfo>
 #include <fstream>
 #include <string>
+#include <iostream>
+#include <limits>
 
 using namespace std;
 
@@ -18,6 +20,7 @@ static constexpr struct PhysicalConstants{
     double hbarSqrOver2m = 3.80998212e-2;
     double kConstant = 1./hbarSqrOver2m;
     double imageChargeConstant = .359991137;
+    double exponentLimit = - 0.5 * log(numeric_limits<doble>::epsilon())
 
 } CONSTANTS;
 
@@ -35,6 +38,24 @@ struct Utilities{
         }
         return result;
     }
+
+    static double fermiDiracFunction(double energy, double kT){
+        if (energy > CONSTANTS.exponentLimit * kT)
+            return exp(-energy / kT);
+        else if(energy < - CONSTANTS.exponentLimit * kT)
+            return 1. - exp(energy / kT);
+        else
+            return 1. / (1. + exp(energy / kT));
+    }
+
+    static double logFermiDiracFunction(double energy, double kT){
+        if (energy > CONSTANTS.exponentLimit * kT)
+            return exp(-energy / kT);
+        else if(energy < - CONSTANTS.exponentLimit * kT)
+           -energy / kT + exp(energy / kT);
+        else
+            return log(1. + exp(-energy / kT));
+    }
 };
 
 class TunnelingFunctionBase{
@@ -46,13 +67,13 @@ public:
     TunnelingFunctionBase(double E) : energy(E){}
     ~TunnelingFunctionBase(){}
 
-    virtual double potentialFunction(double x){
-        return 0. * x;
-    }
+    virtual double potentialFunction(double x){ return 0. * x;}
 
-    virtual double potentialFunctionDerivative(double x){
-        return 0. * x;
-    }
+    virtual double potentialFunctionDerivative(double x){return 0. * x;}
+
+    virtual double findLeftXLimit(double maxPotentialDepth){ return 0.;}
+
+    virtual double findRightXLimit(double maxPotentialDepth){ return 0.;}
 
     double kappaSquared(double x){
         return CONSTANTS.kConstant * (energy - this->potentialFunction(x));
@@ -117,6 +138,15 @@ public:
         return -imagePotentialDerivative(z) - electrostaticPotentialDerivative(z);
     }
     
+    double findLeftXLimit(double maxPotentialDepth) override{
+        return 1. / (maxPotentialDepth / CONSTANTS.imageChargeConstant + 0.5 / radius);
+    }
+
+    double findRightXLimit(double maxPotentialDepth) override{
+        double b = field * radius * (gamma - 1.) - gamma * maxPotentialDepth;
+        double c = - maxPotentialDepth * radius * (gamma - 1.);
+        return 0.5 * (-b + sqrt(b*b - 4*field*c)) / field;
+    }
 };
 
 /*
@@ -274,9 +304,14 @@ public:
             double absoluteTolerance = 1.e-4,
             const gsl_odeiv2_step_type* stepType = gsl_odeiv2_step_rk8pd,
             int maxSteps = 4096,
-            int stepExpectedForInitialStep = 64
+            int stepExpectedForInitialStep = 64,
+            double maxPotentialDepth = 10.
         );
 
+    void setXlimits(double maxPotentialDepth){
+        xInitial = tunnelingFunction->findRightXLimit(maxPotentialDepth);
+        xFinal = tunnelingFunction->findLeftXLimit(maxPotentialDepth);
+    }
 
     void updateKappaAtLimits(){
         kappaInitial = sqrt(tunnelingFunction->kappaSquared(xInitial));
@@ -291,6 +326,8 @@ public:
 
         return kappaInitial / (kappaFinal * CplusCoefficientSquared);
     }
+
+    void printXLimits(){ cout << "xInitial = " << xInitial << " xFinal = " << xFinal << endl;}
 };
 
 #endif /* TRANSMISSIONCALCULATOR */
