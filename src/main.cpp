@@ -1,4 +1,4 @@
-#include "transmissionCalculator.h"
+#include "TransmissionSolver.h"
 #include <vector>
 #include <iostream>
 #include <chrono>
