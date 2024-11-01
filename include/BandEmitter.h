@@ -12,7 +12,8 @@
 #include <fstream>
 #include <string>
 
-#include "transmissionCalculator.h"
+
+#include "TransmissionSolver.h"
 
 using namespace std;
 
@@ -21,8 +22,24 @@ using namespace std;
 class BandEmitter : public ODESolver{
 private:
 
-    TunnelingFunctionBase* barrier;
-    TransmissionSolver& transmissionCalculator;
+    TransmissionSolver* transmissionCalculator;
+
+    double workFunction = 4.5;
+    double kT = 0.025;
+    double effectiveMass = 1.;
+    double bandDepth = 10.;
+
+    static int differentialSystem(double energy, const double y[], double f[], void *params){
+        TransmissionSolver* tSolver = (TransmissionSolver*) params;
+
+        tSolver->setEnergy(energy);
+        tSolver->solveNoSave();
+        double D = tSolver->transmissionCoefficient();
+
+        f[0] = Utilities::fermiDiracFunction(energy, kT) * (D - y[0] * exp(energy/kT) / kT);
+    }
+
+    static int differentialSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params);
 
 public:
     
@@ -35,9 +52,6 @@ public:
                             double absoluteTolerance = 1.e-4,
                             const gsl_odeiv2_step_type* stepType = gsl_odeiv2_step_rk8pd
                         );
-
-
-    int solveDifferentialSystem();
 
 };  
 
