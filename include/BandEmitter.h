@@ -22,21 +22,28 @@ using namespace std;
 class BandEmitter : public ODESolver{
 private:
 
-    TransmissionSolver* transmissionCalculator;
 
-    double workFunction = 4.5;
-    double kT = 0.025;
-    double effectiveMass = 1.;
+    struct SystemParameters{
+        double workFunction = 4.5;
+        double kT = 0.025;
+        double effectiveMass = 1.;
+        TransmissionSolver* transmissionCalculator;
+    } systemParams;
+
+
     double bandDepth = 10.;
 
     static int differentialSystem(double energy, const double y[], double f[], void *params){
-        TransmissionSolver* tSolver = (TransmissionSolver*) params;
+        SystemParameters* sysParams = (SystemParameters*) params;
 
-        tSolver->setEnergy(energy);
-        tSolver->solveNoSave();
-        double D = tSolver->transmissionCoefficient();
+        sysParams->transmissionCalculator->setEnergy(-sysParams->workFunction + energy);
+        sysParams->transmissionCalculator->solveNoSave();
+        double D = sysParams->transmissionCalculator->transmissionCoefficient();
 
-        f[0] = Utilities::fermiDiracFunction(energy, kT) * (D - y[0] * exp(energy/kT) / kT);
+        f[0] = Utilities::fermiDiracFunction(energy, sysParams->kT) * (D - y[0] * exp(energy/sysParams->kT) / sysParams->kT);
+        f[1] = y[0];
+        return GSL_SUCCESS;
+
     }
 
     static int differentialSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params);
