@@ -63,9 +63,9 @@ public:
         gsl_odeiv2_step_free(step);
     }
 
-    void setTolerances(double absoluteTolerance = 1.e-5, double relativeTolerance = 1.e-5){
-        relativeTolerance = relativeTolerance;
-        absoluteTolerance = absoluteTolerance;
+    void setTolerances(double aTol = 1.e-5, double rTol = 1.e-5){
+        relativeTolerance = rTol;
+        absoluteTolerance = aTol;
         controller = gsl_odeiv2_control_y_new(absoluteTolerance, relativeTolerance);
     }
 

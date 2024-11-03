@@ -37,7 +37,7 @@ int ODESolver::solve(bool saveSolution){
     int status;
     reinitialize();
 
-    for (size_t i; i < maxAllowedSteps; i++){ //loop over blocks
+    for (size_t i = 0; i < maxAllowedSteps; i++){ //loop over blocks
         if (saveSolution){
             savedSolution.push_back(solutionVector);
             xSaved.push_back(x);
@@ -58,7 +58,7 @@ int ODESolver::solveNoSave(){
     int status;
     reinitialize();
 
-    for (size_t i; i < maxAllowedSteps; i++){ //loop over blocks
+    for (size_t i = 0; i < maxAllowedSteps; i++){ //loop over blocks
         status = gsl_odeiv2_evolve_apply(evolver, controller, step, &sys, &x, xFinal, &dx, solutionVector.data());
         if (x == xFinal || status != GSL_SUCCESS)    
             return status;         

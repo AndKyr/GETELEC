@@ -57,21 +57,22 @@ public:
         systemParams.effectiveMass = effectiveMass;
         systemParams.kT = kT;
         systemParams.bandDepth = bandDepth;
-        systemParams.transmissionSolver->setXlimits(-systemParams.workFunction - systemParams.bandDepth);
-        xInitial = -bandDepth - workFunction + 0.1;
+        systemParams.transmissionSolver->setXlimits(systemParams.workFunction + systemParams.bandDepth + 2.);
+        xInitial = -bandDepth + 0.1;
         xFinal = 10. * systemParams.kT;
+        initialStep = (xFinal - xInitial) / stepsExpectedForInitialStep;
     }
     
 
     BandEmitter(TransmissionSolver* solver, 
                 int systemDimension = 2, 
-                double rtol = 1.e-4,
-                double atol = 1.e-4,
+                double rtol = 1.e-5,
+                double atol = 1.e-12,
                 const gsl_odeiv2_step_type* stepType = gsl_odeiv2_step_rk8pd,
                 int maxSteps = 4096,
                 int stepExpectedForInitialStep = 64,
                 double maxPotentialDepth = 10.
-                )   :   ODESolver(vector<double>(2, 0.0), differentialSystem, 2, {-systemParams.bandDepth, 10.},
+                )   :   ODESolver(vector<double>(2, 0.0), differentialSystem, 2, {-systemParams.bandDepth + 0.1, 10. * systemParams.kT},
                                 rtol, atol, stepType, maxSteps, stepExpectedForInitialStep, NULL, &systemParams)
     {
         systemParams.transmissionSolver = solver;
@@ -80,7 +81,7 @@ public:
         setInitialValues({0.,0.});
     }
 
-    int calculateCurrentDensityAndSpectra(double convergenceTolerance = 1.e-5){
+    int calculateCurrentDensityAndSpectra(double convergenceTolerance = 1.e-6){
         double x = xInitial;
         double dx = initialStep;
         int status;
