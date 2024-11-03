@@ -1,6 +1,6 @@
 #include "TransmissionSolver.h"
 
-TransmissionSolver::TransmissionSolver(TunnelingFunctionBase* tunnelFunctionPtr, double rtol, double atol, const gsl_odeiv2_step_type* stepType,
+TransmissionSolver::TransmissionSolver(TunnelingFunction* tunnelFunctionPtr, double rtol, double atol, const gsl_odeiv2_step_type* stepType,
                          int maxSteps, int stepExpectedForInitialStep, double maxPotentialDepth
                         ) : ODESolver(vector<double>(3, 0.0), tunnelingDifferentialSystem, 3, {2.00400712, 0.03599847},
                                         rtol, atol, stepType, maxSteps, stepExpectedForInitialStep, tunnelingSystemJacobian, tunnelFunctionPtr),
@@ -13,7 +13,7 @@ TransmissionSolver::TransmissionSolver(TunnelingFunctionBase* tunnelFunctionPtr,
 }
 
 int TransmissionSolver::tunnelingDifferentialSystem(double x, const double y[], double f[], void *params){
-        TunnelingFunctionBase* barrier = (TunnelingFunctionBase*) params;
+        TunnelingFunction* barrier = (TunnelingFunction*) params;
         f[0] =  -barrier->kappaSquared(x) - y[0]*y[0] + y[1]*y[1];
         f[1] = - 2. * y[0] * y[1];
         f[2] = y[0];
@@ -21,7 +21,7 @@ int TransmissionSolver::tunnelingDifferentialSystem(double x, const double y[], 
 }
 
 int TransmissionSolver::tunnelingSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params){
-        TunnelingFunctionBase* barrier = (TunnelingFunctionBase*) params;
+        TunnelingFunction* barrier = (TunnelingFunction*) params;
         gsl_matrix_view dfdy_mat = gsl_matrix_view_array(dfdy, 3, 3);
         gsl_matrix *matrix = &dfdy_mat.matrix;
 

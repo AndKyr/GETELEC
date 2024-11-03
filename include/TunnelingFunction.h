@@ -7,14 +7,14 @@
 using namespace std;
 
 
-class TunnelingFunctionBase{
+class TunnelingFunction{
 private:
     double energy = 0.;
 
 public:
-    TunnelingFunctionBase(){}
-    TunnelingFunctionBase(double E) : energy(E){}
-    ~TunnelingFunctionBase(){}
+    TunnelingFunction(){}
+    TunnelingFunction(double E) : energy(E){}
+    ~TunnelingFunction(){}
 
     virtual double potentialFunction(double x){ return 0. * x;}
 
@@ -33,7 +33,7 @@ public:
     double getEnergy(){return energy;}
 };
 
-class ModifiedSNBarrier : public TunnelingFunctionBase{
+class ModifiedSNBarrier : public TunnelingFunction{
 private:
     double radius = 1.e3;
     double field = 5.;
@@ -79,19 +79,19 @@ public:
         gamma = g;
     }
 
-    double potentialFunction(double z) override{
+    double potentialFunction(double z){
         return -imagePotential(z) - electrostaticPotential(z);
     }
 
-    double potentialFunctionDerivative(double z) override{
+    double potentialFunctionDerivative(double z){
         return -imagePotentialDerivative(z) - electrostaticPotentialDerivative(z);
     }
     
-    double findLeftXLimit(double maxPotentialDepth) override{
+    double findLeftXLimit(double maxPotentialDepth){
         return 1. / (maxPotentialDepth / CONSTANTS.imageChargeConstant + 0.5 / radius);
     }
 
-    double findRightXLimit(double maxPotentialDepth) override{
+    double findRightXLimit(double maxPotentialDepth){
         double b = field * radius * (gamma - 1.) - gamma * maxPotentialDepth;
         double c = - maxPotentialDepth * radius * (gamma - 1.);
         return 0.5 * (-b + sqrt(b*b - 4*field*c)) / field;

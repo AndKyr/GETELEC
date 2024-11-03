@@ -21,7 +21,7 @@ using namespace std;
 
 class TransmissionSolver : public ODESolver{
 private:
-    TunnelingFunctionBase* tunnelingFunction;
+    TunnelingFunction* tunnelingFunction;
      
     double kappaInitial;
     double kappaFinal;
@@ -33,7 +33,7 @@ private:
 public:   
 
     TransmissionSolver(
-            TunnelingFunctionBase* tunnelFunctionPtr, 
+            TunnelingFunction* tunnelFunctionPtr, 
             double relativeTolerance = 1.e-4,
             double absoluteTolerance = 1.e-4,
             const gsl_odeiv2_step_type* stepType = gsl_odeiv2_step_rk8pd,
@@ -42,9 +42,6 @@ public:
             double maxPotentialDepth = 10.
         );
 
-    void setEnergy(double E){
-        tunnelingFunction->setEnergy(E);
-    }
 
     void setXlimits(double maxPotentialDepth){
         xInitial = tunnelingFunction->findRightXLimit(maxPotentialDepth);
@@ -57,7 +54,19 @@ public:
         initialValues = {0., kappaInitial, 0.};
     }
 
+    void setEnergy(double E){
+        tunnelingFunction->setEnergy(E);
+        updateKappaAtLimits();
+    }
+
+
     double transmissionCoefficient() const;
+
+    double calculateTransmissionCoefficientForEnergy(double energy){
+        setEnergy(energy);
+        solveNoSave();
+        return transmissionCoefficient();
+    }
 
     void printXLimits(){ cout << "xInitial = " << xInitial << " xFinal = " << xFinal << endl;}
 };
