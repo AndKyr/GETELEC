@@ -1,15 +1,8 @@
 #ifndef TRANSMISSIONSOLVER_H_
 #define TRANSMISSIONSOLVER_H_
 
-#include <gsl/gsl_errno.h>
-#include <gsl/gsl_matrix.h>
-#include <gsl/gsl_vector.h>
-#include <gsl/gsl_odeiv2.h>
 
-#include <math.h>
-#include <vector>
-#include <fstream>
-#include <string>
+
 #include <iostream>
 
 #include "ODESolver.h"
@@ -29,6 +22,8 @@ private:
     static int tunnelingDifferentialSystem(double x, const double y[], double f[], void *params);
 
     static int tunnelingSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params);
+
+    int numberOfCalls = 0;
 
 public:   
 
@@ -59,14 +54,18 @@ public:
         updateKappaAtLimits();
     }
 
+    void resetNumberOfCalls(){numberOfCalls = 0;}
 
     double transmissionCoefficient() const;
 
     double calculateTransmissionCoefficientForEnergy(double energy){
         setEnergy(energy);
         solveNoSave();
+        numberOfCalls++;
         return transmissionCoefficient();
     }
+
+    int getNumberOfCalls(){return numberOfCalls;}
 
     void printXLimits(){ cout << "xInitial = " << xInitial << " xFinal = " << xFinal << endl;}
 };

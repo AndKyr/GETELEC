@@ -1,7 +1,7 @@
 #ifndef UTILITIES_H_
 #define UTILITIES_H_
 
-#include <math.h>
+#include <cmath>
 #include <vector>
 #include <limits>
 
@@ -11,6 +11,8 @@ static constexpr struct PhysicalConstants{
     double hbarSqrOver2m = 3.80998212e-2;
     double kConstant = 1./hbarSqrOver2m;
     double imageChargeConstant = .359991137;
+    double BoltzmannConstant = 8.617333262e-5;
+    double SommerfeldConstant = 1.618311e-4;
     double exponentLimit = - 0.5 * log(numeric_limits<double>::epsilon());
 
 } CONSTANTS;

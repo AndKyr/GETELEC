@@ -19,7 +19,7 @@ int main(){
 
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    std::cout << "Time for current density: " << duration.count() << " us" << std::endl;
+    std::cout << "Time for current density: " << duration.count() << " us. Number of Calls: " << calculator.getNumberOfCalls() << std::endl;
 
     emitter.writeSolution("spectra.dat");
 

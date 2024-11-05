@@ -1,19 +1,19 @@
 #ifndef BANDEMITTER_H_
 #define BANDEMITTER_H_
 
-#include <math.h>
-#include <gsl/gsl_errno.h>
-#include <gsl/gsl_matrix.h>
-#include <gsl/gsl_vector.h>
-#include <gsl/gsl_odeiv2.h>
-
-#include <vector>
-#include <typeinfo>
-#include <fstream>
-#include <string>
-
-
+#include <gsl/gsl_interp.h>
 #include "TransmissionSolver.h"
+
+// #include <gsl/gsl_errno.h>
+// #include <gsl/gsl_matrix.h>
+// #include <gsl/gsl_vector.h>
+// #include <gsl/gsl_odeiv2.h>
+
+// #include <vector>
+// #include <typeinfo>
+// #include <fstream>
+// #include <string>
+
 
 using namespace std;
 
@@ -32,20 +32,63 @@ private:
         double kT = 0.025;
         double effectiveMass = 1.;
         double bandDepth = 10.; // the depth of the band as measured from the Fermi level
+        vector<double> savedEnergies;
+        vector<double> savedLogD;
         TransmissionSolver* transmissionSolver;
+
+
+        gsl_interp* interpolator = NULL;
+        gsl_interp_accel* accelerator = gsl_interp_accel_alloc();
+
+        double transmissionCoefficient(double energy){
+            if(savedEnergies.size() < 2 || savedEnergies.back() < energy){
+                double D = transmissionSolver->calculateTransmissionCoefficientForEnergy(-workFunction + energy);
+                savedEnergies.push_back(energy);
+                savedLogD.push_back(log(D));
+                return D;
+            } 
+
+            if (interpolator && interpolator->size == savedEnergies.size())
+                return exp(gsl_interp_eval(interpolator, savedEnergies.data(), savedLogD.data(), energy, accelerator));
+            gsl_interp_free(interpolator);
+            interpolator = gsl_interp_alloc(gsl_interp_linear, savedEnergies.size());
+            gsl_interp_init(interpolator, savedEnergies.data(), savedLogD.data(), savedEnergies.size());
+            return exp(gsl_interp_eval(interpolator, savedEnergies.data(), savedLogD.data(), energy, accelerator));
+        }
+
+        ~SystemParameters(){
+            gsl_interp_free(interpolator);
+            gsl_interp_accel_free(accelerator);
+        }
     } systemParams;
 
     static int differentialSystem(double energy, const double y[], double f[], void *params){
         SystemParameters* sysParams = (SystemParameters*) params; //cast the void pointer as SystemParams
 
         //calculate transmission coefficient
-        // TODO: this works only for effectiveMass = 1. FIX IT
-        double D = sysParams->transmissionSolver->calculateTransmissionCoefficientForEnergy(-sysParams->workFunction + energy);
+        double D = sysParams->transmissionCoefficient(energy);
+        
+        if (sysParams->effectiveMass != 1.){
+            double aBarX = -sysParams->workFunction - sysParams->bandDepth + (1. - sysParams->effectiveMass) * (energy + sysParams->bandDepth);
+            D -= (1. - sysParams->effectiveMass) * sysParams->transmissionCoefficient(aBarX);
+        }
 
+        //derivatives
         f[0] = Utilities::fermiDiracFunction(energy, sysParams->kT) * (D - y[0] * exp(energy/sysParams->kT) / sysParams->kT);
         f[1] = y[0];
+        f[2] = energy * y[0];
         return GSL_SUCCESS;
+    }
 
+    static int differentialSystemLog(double energy, const double y[], double f[], void *params){
+        SystemParameters* sysParams = (SystemParameters*) params; //cast the void pointer as SystemParams
+        double D;
+        //calculate transmission coefficient
+        // TODO: this works only for effectiveMass = 1. FIX IT
+        
+        f[0] = Utilities::fermiDiracFunction(energy, sysParams->kT) * (D * exp(-y[0]) - exp(energy/sysParams->kT) / sysParams->kT);
+        f[1] = exp(y[0] - y[1]);
+        return GSL_SUCCESS;
     }
 
     // static int differentialSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params);
@@ -58,30 +101,32 @@ public:
         systemParams.kT = kT;
         systemParams.bandDepth = bandDepth;
         systemParams.transmissionSolver->setXlimits(systemParams.workFunction + systemParams.bandDepth + 2.);
-        xInitial = -bandDepth + 0.1;
-        xFinal = 10. * systemParams.kT;
+        xInitial = -bandDepth;
+        xFinal = systemParams.workFunction + 10. * systemParams.kT;
         initialStep = (xFinal - xInitial) / stepsExpectedForInitialStep;
+        setInitialValues({0., 0., 0.});
+
+        // double D = systemParams.transmissionSolver->calculateTransmissionCoefficientForEnergy(-systemParams.workFunction + xInitial);
+        // double fermiDiracAtInitial = Utilities::fermiDiracFunction(xInitial, systemParams.kT);
+        // setInitialValues({log(initialStep*D*fermiDiracAtInitial), log(initialStep*D*fermiDiracAtInitial*initialStep*0.5)});
+        // xInitial += initialStep;
     }
     
 
     BandEmitter(TransmissionSolver* solver, 
-                int systemDimension = 2, 
                 double rtol = 1.e-5,
                 double atol = 1.e-12,
-                const gsl_odeiv2_step_type* stepType = gsl_odeiv2_step_rk8pd,
                 int maxSteps = 4096,
-                int stepExpectedForInitialStep = 64,
-                double maxPotentialDepth = 10.
-                )   :   ODESolver(vector<double>(2, 0.0), differentialSystem, 2, {-systemParams.bandDepth + 0.1, 10. * systemParams.kT},
-                                rtol, atol, stepType, maxSteps, stepExpectedForInitialStep, NULL, &systemParams)
+                int stepExpectedForInitialStep = 256
+                )   :   ODESolver(vector<double>(3, 0.0), differentialSystem, 3, {0., 1.}, rtol, atol, 
+                            gsl_odeiv2_step_rkck, maxSteps, stepExpectedForInitialStep, NULL, &systemParams)
     {
         systemParams.transmissionSolver = solver;
         systemParams.transmissionSolver->setXlimits(systemParams.workFunction + systemParams.bandDepth);
         setParameters();
-        setInitialValues({0.,0.});
     }
 
-    int calculateCurrentDensityAndSpectra(double convergenceTolerance = 1.e-6){
+    int calculateCurrentDensityAndSpectra(double convergenceTolerance = 1.e-7){
         double x = xInitial;
         double dx = initialStep;
         int status;
@@ -92,12 +137,14 @@ public:
             savedSolution.push_back(solutionVector);
             xSaved.push_back(x);
             status = gsl_odeiv2_evolve_apply(evolver, controller, step, &sys, &x, xFinal, &dx, solutionVector.data());
-            bool hasConverged = abs(previousSolution[1] - solutionVector[1]) / abs(previousSolution[1]) < convergenceTolerance;
+            bool hasConverged = abs(previousSolution[1] - solutionVector[1]) / previousSolution[1]  < convergenceTolerance;
             if (x == xFinal || status != GSL_SUCCESS || hasConverged)    
                 return status;         
         }
         return GSL_CONTINUE; 
     }
+
+
 };  
 
 
