@@ -2,6 +2,7 @@
 #define BANDEMITTER_H_
 
 #include <gsl/gsl_interp.h>
+#include <gsl/gsl_integration.h>
 #include "TransmissionSolver.h"
 
 // #include <gsl/gsl_errno.h>
@@ -40,39 +41,28 @@ private:
         gsl_interp* interpolator = NULL;
         gsl_interp_accel* accelerator = gsl_interp_accel_alloc();
 
-        double transmissionCoefficient(double energy){
-            if(savedEnergies.size() < 2 || savedEnergies.back() < energy){
-                double D = transmissionSolver->calculateTransmissionCoefficientForEnergy(-workFunction + energy);
-                savedEnergies.push_back(energy);
-                savedLogD.push_back(log(D));
-                return D;
-            } 
-
-            if (interpolator && interpolator->size == savedEnergies.size())
-                return exp(gsl_interp_eval(interpolator, savedEnergies.data(), savedLogD.data(), energy, accelerator));
-            gsl_interp_free(interpolator);
-            interpolator = gsl_interp_alloc(gsl_interp_linear, savedEnergies.size());
-            gsl_interp_init(interpolator, savedEnergies.data(), savedLogD.data(), savedEnergies.size());
-            return exp(gsl_interp_eval(interpolator, savedEnergies.data(), savedLogD.data(), energy, accelerator));
+        double calculateIntegrand(double energy){
+            
+            double result = transmissionSolver->calculateTransmissionCoefficientForEnergy(-workFunction + energy);
+            if (effectiveMass != 1.){
+                double aBarX = -workFunction - bandDepth + (1. - effectiveMass) * (energy + bandDepth);
+                result -= (1. - effectiveMass) * transmissionSolver->calculateTransmissionCoefficientForEnergy(aBarX);
+            }
+            return result;
         }
 
         ~SystemParameters(){
             gsl_interp_free(interpolator);
             gsl_interp_accel_free(accelerator);
         }
+
     } systemParams;
 
     static int differentialSystem(double energy, const double y[], double f[], void *params){
         SystemParameters* sysParams = (SystemParameters*) params; //cast the void pointer as SystemParams
 
         //calculate transmission coefficient
-        double D = sysParams->transmissionCoefficient(energy);
-        
-        if (sysParams->effectiveMass != 1.){
-            double aBarX = -sysParams->workFunction - sysParams->bandDepth + (1. - sysParams->effectiveMass) * (energy + sysParams->bandDepth);
-            D -= (1. - sysParams->effectiveMass) * sysParams->transmissionCoefficient(aBarX);
-        }
-
+        double D = sysParams->calculateIntegrand(energy);
         //derivatives
         f[0] = Utilities::fermiDiracFunction(energy, sysParams->kT) * (D - y[0] * exp(energy/sysParams->kT) / sysParams->kT);
         f[1] = y[0];
@@ -90,6 +80,18 @@ private:
         f[1] = exp(y[0] - y[1]);
         return GSL_SUCCESS;
     }
+
+    static double normalEnergyDistribution(double energy, void* params){
+        SystemParameters* sysParams = (SystemParameters*) params; //cast the void pointer as SystemParams
+        double result = log(sysParams->calculateIntegrand(energy));// * Utilities::logFermiDiracFunction(energy, sysParams->kT);
+        sysParams->savedEnergies.push_back(energy);
+        sysParams->savedLogD.push_back(result);
+        return result;
+    }
+
+    gsl_function integrationFunction = {&normalEnergyDistribution, &systemParams};
+
+    gsl_integration_workspace* integrationWorkspace;
 
     // static int differentialSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params);
 
@@ -114,7 +116,7 @@ public:
     
 
     BandEmitter(TransmissionSolver* solver, 
-                double rtol = 1.e-5,
+                double rtol = 1.e-3,
                 double atol = 1.e-12,
                 int maxSteps = 4096,
                 int stepExpectedForInitialStep = 256
@@ -124,6 +126,7 @@ public:
         systemParams.transmissionSolver = solver;
         systemParams.transmissionSolver->setXlimits(systemParams.workFunction + systemParams.bandDepth);
         setParameters();
+        integrationWorkspace = gsl_integration_workspace_alloc(maxSteps);
     }
 
     int calculateCurrentDensityAndSpectra(double convergenceTolerance = 1.e-7){
@@ -143,6 +146,20 @@ public:
         }
         return GSL_CONTINUE; 
     }
+
+    double calcualteCurrentDensity(){
+        double result, error;
+        gsl_integration_qag(&integrationFunction, xInitial, xFinal, 0., relativeTolerance, maxAllowedSteps, GSL_INTEG_GAUSS41, integrationWorkspace, &result, &error);
+        cout << "result: " << result << " error: " << error << endl;
+        return result;
+    }
+
+    void writeSavedLogD(string filename = "energyTransmission.dat"){
+            ofstream outFile(filename, ios::out);        
+            for (size_t i = 0; i < systemParams.savedEnergies.size(); i++)
+                outFile << systemParams.savedEnergies[i] << " " << systemParams.savedLogD[i] << endl;
+    }
+
 
 
 };  
