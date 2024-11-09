@@ -1,0 +1,58 @@
+{
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "cmakeDebug",
+            "command": "/usr/bin/cmake",
+            "args": ["..", "-DCMAKE_BUILD_TYPE=Debug"],
+            "options": {
+                "cwd": "${workspaceFolder}/build"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "type": "shell",
+            "label": "make",
+            "command": "/usr/bin/make",
+            "args": [""],
+            "options": {
+                "cwd": "${workspaceFolder}/build"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "type": "shell",
+            "label": "cmakeRelease",
+            "command": "/usr/bin/cmake",
+            "args": ["..", "-DCMAKE_BUILD_TYPE=Release"],
+            "options": {
+                "cwd": "${workspaceFolder}/build"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
+        },
+        {
+            "label": "buildDebug",
+            "dependsOn": [
+                "cmakeDebug",
+                "make"
+            ]
+        },
+        {
+            "label": "buildRelease",
+            "dependsOn": [
+                "cmakeRelease",
+                "make"
+            ]
+        }
+    ],
+    "version": "2.0.0"
+}

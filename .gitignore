@@ -6,7 +6,6 @@
 *.dat
 *.mat
 *.out
-*.txt
 *.xyz
 *.png
 *.pyc
@@ -20,7 +19,6 @@
 *.pdf
 *.gz
 *.dvi
-*.vscode
 *.npy
 build/
 

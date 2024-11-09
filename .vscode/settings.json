@@ -1,0 +1,7 @@
+{
+    "python.analysis.extraPaths": [
+        "./src",
+        "./oldGETELEC/python"
+        "/home/kyritsak/Code/plotandvisuals"
+    ]
+}
