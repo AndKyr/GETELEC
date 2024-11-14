@@ -36,10 +36,7 @@ private:
         vector<double> savedEnergies;
         vector<double> savedLogD;
         TransmissionSolver* transmissionSolver;
-
-
-        gsl_interp* interpolator = NULL;
-        gsl_interp_accel* accelerator = gsl_interp_accel_alloc();
+        // TransmissionInterpolator& interpolator;
 
         double calculateIntegrand(double energy){
             
@@ -49,11 +46,6 @@ private:
                 result -= (1. - effectiveMass) * transmissionSolver->calculateTransmissionCoefficientForEnergy(aBarX);
             }
             return result;
-        }
-
-        ~SystemParameters(){
-            gsl_interp_free(interpolator);
-            gsl_interp_accel_free(accelerator);
         }
 
     } systemParams;

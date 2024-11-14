@@ -31,3 +31,58 @@ double Utilities::logFermiDiracFunction(double energy, double kT){
     else
         return log(1. + exp(-energy / kT));
 }
+
+int FunctionInterpolator::updateSpline(){
+    gsl_spline_free(spline);
+    gsl_interp_accel_free(accelerator);
+
+    accelerator = gsl_interp_accel_alloc();
+    spline = gsl_spline_alloc(gsl_interp_cspline, samplingList.size());
+
+    vector<double> x(samplingList.size());
+    vector<double> y(samplingList.size());
+
+    int i = 0;
+    for (auto& val : samplingList){
+        x[i] = val.x;
+        y[i++] = val.y;
+    }
+
+    return gsl_spline_init(spline, x.data(), y.data(), x.size());
+}
+
+void FunctionInterpolator::initialize(double xInit, double xFinal, int numberOfInitialElements){
+    samplingList.clear();
+    if (spline) gsl_spline_free(spline);
+    if (accelerator) gsl_interp_accel_free(accelerator);
+
+    vector<double> xPoints = Utilities::linspace(xInit, xFinal, numberOfInitialElements);
+    vector<double> yPoints(xPoints);
+    for (int i = 0; i < xPoints.size(); i++){
+        yPoints[i] = this->calculateYforX(xPoints[i]);
+        samplingList.push_back(SplineElement(xPoints[i], yPoints[i], true));
+    }
+    samplingList.front().bisect = false;
+    spline = gsl_spline_alloc(gsl_interp_cspline, xPoints.size());
+    accelerator = gsl_interp_accel_alloc();
+    gsl_spline_init(spline, xPoints.data(), yPoints.data(), xPoints.size());
+}   
+
+int FunctionInterpolator::refineSampling(){
+    //TODO: check if initialized
+    int numberOfAddedNodes = 0;
+    for(auto it = samplingList.begin(); it != samplingList.end(); it++){
+        if (it->bisect){
+            numberOfAddedNodes++;
+            double xNew = .5*(it->x + prev(it)->x);
+            double yNew = this->calculateYforX(xNew);
+            double error = this->calculateError(xNew, yNew);
+            if (error < this->calculateTolerance(yNew)){
+                samplingList.emplace(it, SplineElement(xNew, yNew, false));
+                it->bisect = false;
+            } else
+                samplingList.emplace(it, SplineElement(xNew, yNew, true));
+        }
+    }
+    return numberOfAddedNodes;
+}

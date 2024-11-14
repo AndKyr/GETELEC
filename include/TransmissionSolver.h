@@ -3,10 +3,6 @@
 
 
 
-#include <iostream>
-#include <gsl/gsl_interp.h>
-#include <gsl/gsl_spline.h>
-#include <list>
 
 #include "ODESolver.h"
 #include "TunnelingFunction.h"
@@ -74,91 +70,46 @@ public:
 };
 
 
-class FunctionInterpolator{
-private:
-    // TransmissionSolver& solver;
-    double absoluteTolerance = 1.e-12;
-    double relativeTolerance = 1.e-5;
+class TransmissionInterpolator : public FunctionInterpolator{
+private: 
+    TransmissionSolver& solver;
+    double kT;
+    double workFunction;
 
-
-    gsl_interp_accel *accelerator;
-    gsl_spline *spline;
-
-    struct SplineElement{
-        double x;
-        double y;
-        bool bisect;
-
-        SplineElement(double xx, double yy, bool b) : x(xx), y(yy), bisect(b){}
-    };
-
-    list<SplineElement> samplingList;
-
-    virtual double calculateYforX(double x){return x;}
-
-    int updateSpline(){
-        gsl_spline_free(spline);
-        gsl_interp_accel_free(accelerator);
-
-        accelerator = gsl_interp_accel_alloc();
-        spline = gsl_spline_alloc(gsl_interp_cspline, samplingList.size());
-
-        vector<double> x(samplingList.size());
-        vector<double> y(samplingList.size());
-
-        int i = 0;
-        for (auto& val : samplingList){
-            x[i] = val.x;
-            y[i++] = val.y;
-        }
-
-        return gsl_spline_init(spline, x.data(), y.data(), x.size());
+    double calculateYforX(double energy) override{
+        return log(solver.calculateTransmissionCoefficientForEnergy(-workFunction + energy));
     }
 
-    int initialize(double xInit, double xFinal, int numberOfInitialElements){
-        samplingList.clear();
-        gsl_spline_free(spline);
-        gsl_interp_accel_free(accelerator);
+    double calculateError(double energy, double yCalculated) override{
+        return Utilities::fermiDiracFunction(energy, kT) * abs(exp(yCalculated) - exp(gsl_spline_eval(spline, energy, accelerator)));
+    }
 
-        vector<double> xPoints = Utilities::linspace(xInit, xFinal, numberOfInitialElements);
-
-        for (const auto& x : xPoints){
-            samplingList.push_back(SplineElement(x, calculateYforX(x), true));
-        }
-
-        samplingList.front().bisect = false;
-    }   
-
-    int refineSampling(double atol, double rtol){
-        for(auto it = samplingList.begin(); it != samplingList.end(); it++){
-            if (it->bisect){
-                double xNew = .5*(it->x + prev(it)->x);
-                double yNew = calculateYforX(xNew);
-                double error = abs(yNew - gsl_spline_eval(spline, xNew, accelerator));
-                if (error < atol + rtol * abs(yNew)){
-                    samplingList.emplace(it, SplineElement(xNew, yNew, false));
-                    it->bisect = false;
-                } else
-                    samplingList.emplace(it, SplineElement(xNew, yNew, true));
-            }
-        }
-        return 0;
+    double calculateTolerance(double value) override {
+        return absoluteTolerance + exp(value);
     }
 
 public:
-    FunctionInterpolator();
-    FunctionInterpolator(double xa = 0, double xb = 1, int N = 8, 
-                        double aTol = 1.e-12, double rTol = 1.e-5, 
-                        ) : 
-        absoluteTolerance(aTol), relativeTolerance(rTol)
+
+    /**The interpolator lives in the E_F = 0 convention */
+    TransmissionInterpolator(TransmissionSolver& solver_, double workFunction_, double kT_,
+                                double minEnergy = -5.5, double maxEnergy = 1., int N = 8, 
+                                double aTol = 1.e-12, double rTol = 1.e-5) 
+                            : FunctionInterpolator(aTol, rTol), solver(solver_),
+                                workFunction(workFunction_), kT(kT_)
     {
-        initialize(xa, xb, N);
+        initialize(minEnergy, maxEnergy, N);
+    }
+    
+
+    void setParameters(double kT_, double W){
+        kT = kT_;
+        workFunction = W;
     }
 
-    ~FunctionInterpolator(){
-        gsl_spline_free(spline);
-        gsl_interp_accel_free(accelerator);
+    double evaluate(double x) override{
+        return exp(gsl_spline_eval(spline, x, accelerator));
     }
-}
+};
+
 
 #endif /* TRANSMISSIONSOLVER_H_ */
