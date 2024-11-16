@@ -69,6 +69,7 @@ void FunctionInterpolator::initialize(double xInit, double xFinal, int numberOfI
 }   
 
 int FunctionInterpolator::refineSampling(){
+    if (!spline) throw std::runtime_error("the class FunctionInterpolator is not properly initialized. Make sure you call initialize()");
     //TODO: check if initialized
     int numberOfAddedNodes = 0;
     for(auto it = samplingList.begin(); it != samplingList.end(); it++){
@@ -77,7 +78,8 @@ int FunctionInterpolator::refineSampling(){
             double xNew = .5*(it->x + prev(it)->x);
             double yNew = this->calculateYforX(xNew);
             double error = this->calculateError(xNew, yNew);
-            if (error < this->calculateTolerance(yNew)){
+            double tolerance = this->calculateTolerance(xNew, yNew);
+            if (error < tolerance){
                 samplingList.emplace(it, SplineElement(xNew, yNew, false));
                 it->bisect = false;
             } else

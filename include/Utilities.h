@@ -59,13 +59,11 @@ protected:
         return abs(yCalculated - gsl_spline_eval(spline, x, accelerator));
     }
 
-    virtual double calculateTolerance(double yValue){
+    virtual double calculateTolerance(double x, double yValue){
         return absoluteTolerance + relativeTolerance * abs(yValue);
     }
 
     int updateSpline();
-
-    void initialize(double xInit, double xFinal, int numberOfInitialElements);
 
     int refineSampling();
 
@@ -83,6 +81,9 @@ public:
     virtual double evaluate(double x){
         return gsl_spline_eval(spline, x, accelerator);
     }
+
+    void initialize(double xInit, double xFinal, int numberOfInitialElements);
+
 
     void refineToTolerance(int maxRefiningSteps = 10){
         for (int i = 0; i < maxRefiningSteps; i++)

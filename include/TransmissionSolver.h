@@ -84,21 +84,30 @@ private:
         return Utilities::fermiDiracFunction(energy, kT) * abs(exp(yCalculated) - exp(gsl_spline_eval(spline, energy, accelerator)));
     }
 
-    double calculateTolerance(double value) override {
-        return absoluteTolerance + exp(value);
+    double calculateTolerance(double energy, double transmission) override {
+        double maxEmissionEstimate = 0.;
+        for (auto& v : samplingList){
+            double emissionEstimate = exp(v.y) * Utilities::fermiDiracFunction(v.x, kT);
+            if (emissionEstimate > maxEmissionEstimate)
+                maxEmissionEstimate = emissionEstimate;
+        }
+
+        double emissionEstimate = exp(transmission) * Utilities::fermiDiracFunction(energy, kT);
+
+        if (energy <= 0)
+            return absoluteTolerance + (emissionEstimate + maxEmissionEstimate) * relativeTolerance;
+        else
+            return absoluteTolerance + emissionEstimate * relativeTolerance;
     }
 
 public:
 
     /**The interpolator lives in the E_F = 0 convention */
-    TransmissionInterpolator(TransmissionSolver& solver_, double workFunction_, double kT_,
-                                double minEnergy = -5.5, double maxEnergy = 1., int N = 8, 
+    TransmissionInterpolator(TransmissionSolver& solver_, double workFunction_ = 4.5, double kT_ = .025, 
                                 double aTol = 1.e-12, double rTol = 1.e-5) 
                             : FunctionInterpolator(aTol, rTol), solver(solver_),
                                 workFunction(workFunction_), kT(kT_)
-    {
-        initialize(minEnergy, maxEnergy, N);
-    }
+    {}
     
 
     void setParameters(double kT_, double W){

@@ -10,7 +10,7 @@ int main(){
     ModifiedSNBarrier tunnelFunction;
     TransmissionSolver calculator =  TransmissionSolver(&tunnelFunction);
 
-    BandEmitter emitter = BandEmitter(&calculator);
+    BandEmitter emitter = BandEmitter(calculator);
 
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -23,12 +23,12 @@ int main(){
 
     emitter.writeSolution("spectra.dat");
 
-    TransmissionInterpolator interpolator = TransmissionInterpolator(calculator, 4.5, 0.025, -5.4, 3.5, 4);
-
-    interpolator.refineToTolerance(20);
+    TransmissionInterpolator interpolator = TransmissionInterpolator(calculator, 4.5, 0.025, 1.e-12, 1.e-4);
+    interpolator.initialize(-5.4, 3.5, 4);
+    interpolator.refineToTolerance();
     interpolator.writeSplineNodes();
     ofstream outFile("interpolatedTransmission.dat", ios::out);        
-
+    outFile << " E D_calc D_interp error" << endl;
     for (double x = -5.4; x < 3.5; x+=0.001){
         double D = calculator.calculateTransmissionCoefficientForEnergy(x - 4.5);
         outFile << x << " " << D << " " << interpolator.evaluate(x) << " " << abs(D - interpolator.evaluate(x)) << endl;

@@ -26,7 +26,7 @@ ODESolver::ODESolver(
                     evolver(gsl_odeiv2_evolve_alloc(systemDimension))
 {
     initialStep = (xFinal - xInitial) / stepsExpectedForInitialStep;
-    sys = {differentialSystem, differentialSystemJacobian, (unsigned long) systemDimension, parameters};
+    sys = {differentialSystem, differentialSystemJacobian, (size_t) systemDimension, parameters};
     setTolerances(atol, rtol);
 }
 
