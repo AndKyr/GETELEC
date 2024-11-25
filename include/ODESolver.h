@@ -20,9 +20,11 @@ protected:
     int systemDimension;
     double xInitial;
     double xFinal;
-    double relativeTolerance;
-    double absoluteTolerance;
-    int maxAllowedSteps;
+    double maxStepSize;
+    double relativeTolerance = 1.e-4;
+    double absoluteTolerance = 1.e-12;
+    int maxAllowedSteps = 4096;
+    int minAllowedSteps = 32;
     int stepsExpectedForInitialStep = 64;
     double initialStep;
     
@@ -52,6 +54,7 @@ public:
                 double absoluteTolerance = 1.e-4,
                 const gsl_odeiv2_step_type* stepType = gsl_odeiv2_step_rk8pd,
                 int maxSteps = 4096,
+                int minSteps = 32,
                 int stepExpectedForInitialStep = 64,
                 int (*differentialSystemJacobian)(double, const double*, double*, double*, void*) = NULL,
                 void* params = NULL

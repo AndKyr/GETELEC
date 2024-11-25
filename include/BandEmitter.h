@@ -36,14 +36,13 @@ private:
     vector<double> savedLogD;
     TransmissionSolver& transmissionSolver;
     TransmissionInterpolator interpolator;
-    // TransmissionInterpolator& interpolator;
 
     double calculateIntegrand(double energy){
         
-        double result = transmissionSolver.calculateTransmissionCoefficientForEnergy(-workFunction + energy);
+        double result = interpolator.evaluate(energy);
         if (effectiveMass != 1.){
-            double aBarX = -workFunction - bandDepth + (1. - effectiveMass) * (energy + bandDepth);
-            result -= (1. - effectiveMass) * transmissionSolver.calculateTransmissionCoefficientForEnergy(aBarX);
+            double aBarX = - bandDepth + (1. - effectiveMass) * (energy + bandDepth);
+            result -= (1. - effectiveMass) * interpolator.evaluate(aBarX);
         }
         return result;
     }
@@ -81,27 +80,26 @@ private:
 
     gsl_function integrationFunction = {&normalEnergyDistribution, this};
 
-    gsl_integration_workspace* integrationWorkspace;
+    gsl_integration_workspace* integrationWorkspace = NULL;
 
-    // static int differentialSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params);
+    static int differentialSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params);
 
 public:
 
     void setParameters(double workFunction_ = 4.5, double kT_ = 0.025, double effectiveMass_ = 1., double bandDepth_ = 10.){
-        workFunction = workFunction_;
+        if (workFunction != workFunction_ || bandDepth_ != bandDepth){
+            workFunction = workFunction_;
+            bandDepth = bandDepth_;
+            transmissionSolver.setXlimits(workFunction + bandDepth + 2.);
+        }
+        
+        xInitial = -bandDepth;
+
         effectiveMass = effectiveMass_;
         kT = kT_;
-        bandDepth = bandDepth_;
-        transmissionSolver.setXlimits(workFunction + bandDepth + 2.);
-        xInitial = -bandDepth;
         xFinal = workFunction + 10. * kT;
         initialStep = (xFinal - xInitial) / stepsExpectedForInitialStep;
         setInitialValues({0., 0., 0.});
-
-        // double D = systemParams.transmissionSolver->calculateTransmissionCoefficientForEnergy(-systemParams.workFunction + xInitial);
-        // double fermiDiracAtInitial = Utilities::fermiDiracFunction(xInitial, systemParams.kT);
-        // setInitialValues({log(initialStep*D*fermiDiracAtInitial), log(initialStep*D*fermiDiracAtInitial*initialStep*0.5)});
-        // xInitial += initialStep;
     }
     
 
@@ -113,17 +111,21 @@ public:
                 double rtol = 1.e-4,
                 double atol = 1.e-12,
                 int maxSteps = 4096,
+                int minSteps = 64,
                 int stepExpectedForInitialStep = 256
                 )   :   ODESolver(vector<double>(3, 0.0), differentialSystem, 3, {0., 1.}, rtol, atol, 
-                            gsl_odeiv2_step_rkck, maxSteps, stepExpectedForInitialStep, NULL, this), 
+                            gsl_odeiv2_step_rkck, maxSteps, minSteps, stepExpectedForInitialStep, NULL, this), 
                             transmissionSolver(solver), 
                             interpolator(solver, workFun, kT_, atol, rtol)
     {
-        transmissionSolver.setXlimits(workFunction + bandDepth);
         setParameters(workFun, kT_, effMass, bandDepth_);
-        interpolator.initialize(-bandDepth_, 10 * kT_ + workFun, 4);
+        updateBarrier();
+    }
+
+    void updateBarrier(){
+        transmissionSolver.setXlimits(workFunction + bandDepth + 1.);
+        interpolator.initialize(-bandDepth, 10 * kT + workFunction, 8);
         interpolator.refineToTolerance();
-        integrationWorkspace = gsl_integration_workspace_alloc(maxSteps);
     }
 
     int calculateCurrentDensityAndSpectra(double convergenceTolerance = 1.e-7){
@@ -136,6 +138,7 @@ public:
             previousSolution = solutionVector;
             savedSolution.push_back(solutionVector);
             xSaved.push_back(x);
+            dx = GSL_SIGN(dx) *  min(abs(maxStepSize), abs(dx));
             status = gsl_odeiv2_evolve_apply(evolver, controller, step, &sys, &x, xFinal, &dx, solutionVector.data());
             bool hasConverged = abs(previousSolution[1] - solutionVector[1]) / previousSolution[1]  < convergenceTolerance;
             if (x == xFinal || status != GSL_SUCCESS || hasConverged)    
@@ -146,8 +149,10 @@ public:
 
     double calcualteCurrentDensity(){
         double result, error;
+        if (!integrationWorkspace)
+            integrationWorkspace = gsl_integration_workspace_alloc(maxAllowedSteps);
+
         gsl_integration_qag(&integrationFunction, xInitial, xFinal, 0., relativeTolerance, maxAllowedSteps, GSL_INTEG_GAUSS41, integrationWorkspace, &result, &error);
-        cout << "result: " << result << " error: " << error << endl;
         return result;
     }
 
@@ -157,8 +162,22 @@ public:
                 outFile << savedEnergies[i] << " " << savedLogD[i] << endl;
     }
 
+    void writePlottingData(string filename = "bandEmitterPlotting.dat"){
+        ofstream outFile(filename, ios::out);        
+        outFile << " E D_calc D_interp error NED lFD(E) tolerance" << endl;
+        for (double x = xInitial; x < xFinal; x += 0.001){
+            double D = transmissionSolver.calculateTransmissionCoefficientForEnergy(x - workFunction);
+            double lFD = Utilities::logFermiDiracFunction(x, kT);
+            double err = interpolator.calculateError(x, log(D));
+            double tol = interpolator.calculateTolerance(x, log(D));
+            outFile << x << " " << D << " " << interpolator.evaluate(x) << " " << err << " " << lFD * D << " " << lFD << " " << tol <<  endl;
+        }
+        interpolator.writeSplineNodes();
+    }
 
-
+    double getCurrentDensity(){
+        return solutionVector[1] * CONSTANTS.SommerfeldConstant;
+    }
 };  
 
 

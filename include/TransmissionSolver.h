@@ -32,6 +32,7 @@ public:
             double absoluteTolerance = 1.e-5,
             const gsl_odeiv2_step_type* stepType = gsl_odeiv2_step_rk8pd,
             int maxSteps = 4096,
+            int minSteps = 64,
             int stepExpectedForInitialStep = 64,
             double maxPotentialDepth = 10.
         );
@@ -76,30 +77,6 @@ private:
     double kT;
     double workFunction;
 
-    double calculateYforX(double energy) override{
-        return log(solver.calculateTransmissionCoefficientForEnergy(-workFunction + energy));
-    }
-
-    double calculateError(double energy, double yCalculated) override{
-        return Utilities::fermiDiracFunction(energy, kT) * abs(exp(yCalculated) - exp(gsl_spline_eval(spline, energy, accelerator)));
-    }
-
-    double calculateTolerance(double energy, double transmission) override {
-        double maxEmissionEstimate = 0.;
-        for (auto& v : samplingList){
-            double emissionEstimate = exp(v.y) * Utilities::fermiDiracFunction(v.x, kT);
-            if (emissionEstimate > maxEmissionEstimate)
-                maxEmissionEstimate = emissionEstimate;
-        }
-
-        double emissionEstimate = exp(transmission) * Utilities::fermiDiracFunction(energy, kT);
-
-        if (energy <= 0)
-            return absoluteTolerance + (emissionEstimate + maxEmissionEstimate) * relativeTolerance;
-        else
-            return absoluteTolerance + emissionEstimate * relativeTolerance;
-    }
-
 public:
 
     /**The interpolator lives in the E_F = 0 convention */
@@ -108,6 +85,30 @@ public:
                             : FunctionInterpolator(aTol, rTol), solver(solver_),
                                 workFunction(workFunction_), kT(kT_)
     {}
+
+    double calculateYforX(double energy) override{
+        return log(solver.calculateTransmissionCoefficientForEnergy(-workFunction + energy));
+    }
+
+    double calculateError(double energy, double logD) override{
+        return Utilities::fermiDiracFunction(energy, kT) * abs(exp(logD) - exp(gsl_spline_eval(spline, energy, accelerator)));
+    }
+
+    double calculateTolerance(double energy, double logD) override {
+        double maxEmissionEstimate = 0.;
+        for (auto& v : samplingList){
+            double emissionEstimate = exp(v.y) * Utilities::logFermiDiracFunction(v.x, kT);
+            if (emissionEstimate > maxEmissionEstimate)
+                maxEmissionEstimate = emissionEstimate;
+        }
+
+        double emissionEstimate = exp(logD) * Utilities::logFermiDiracFunction(energy, kT);
+
+        if (energy <= 0 || logD > -2.) // if we are out of the sensitive region
+            return absoluteTolerance + (maxEmissionEstimate) * relativeTolerance;
+        else
+            return absoluteTolerance + emissionEstimate * relativeTolerance;
+    }
     
 
     void setParameters(double kT_, double W){
