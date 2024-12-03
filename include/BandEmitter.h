@@ -86,7 +86,7 @@ private:
 
 public:
 
-    void setParameters(double workFunction_ = 4.5, double kT_ = 0.025, double effectiveMass_ = 1., double bandDepth_ = 10.){
+    void setParameters(double workFunction_ = 4.5, double kT_ = 0.025, double effectiveMass_ = 1., double bandDepth_ = 7.){
         if (workFunction != workFunction_ || bandDepth_ != bandDepth){
             workFunction = workFunction_;
             bandDepth = bandDepth_;
@@ -98,10 +98,10 @@ public:
         effectiveMass = effectiveMass_;
         kT = kT_;
         xFinal = workFunction + 10. * kT;
+        maxStepSize = (xFinal - xInitial) / minAllowedSteps;
         initialStep = (xFinal - xInitial) / stepsExpectedForInitialStep;
         setInitialValues({0., 0., 0.});
     }
-    
 
     BandEmitter(TransmissionSolver& solver,
                 double workFun = 4.5,
@@ -111,7 +111,7 @@ public:
                 double rtol = 1.e-4,
                 double atol = 1.e-12,
                 int maxSteps = 4096,
-                int minSteps = 64,
+                int minSteps = 16,
                 int stepExpectedForInitialStep = 256
                 )   :   ODESolver(vector<double>(3, 0.0), differentialSystem, 3, {0., 1.}, rtol, atol, 
                             gsl_odeiv2_step_rkck, maxSteps, minSteps, stepExpectedForInitialStep, NULL, this), 
@@ -128,7 +128,7 @@ public:
         interpolator.refineToTolerance();
     }
 
-    int calculateCurrentDensityAndSpectra(double convergenceTolerance = 1.e-7){
+    int calculateCurrentDensityAndSpectra(double convergenceTolerance = 1.e-5){
         double x = xInitial;
         double dx = initialStep;
         int status;
@@ -141,7 +141,7 @@ public:
             dx = GSL_SIGN(dx) *  min(abs(maxStepSize), abs(dx));
             status = gsl_odeiv2_evolve_apply(evolver, controller, step, &sys, &x, xFinal, &dx, solutionVector.data());
             bool hasConverged = abs(previousSolution[1] - solutionVector[1]) / previousSolution[1]  < convergenceTolerance;
-            if (x == xFinal || status != GSL_SUCCESS || hasConverged)    
+            if (x >= xFinal || status != GSL_SUCCESS || hasConverged)    
                 return status;         
         }
         return GSL_CONTINUE; 
