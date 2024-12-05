@@ -4,90 +4,107 @@
 #include <gsl/gsl_interp.h>
 #include <gsl/gsl_integration.h>
 #include "TransmissionSolver.h"
-
-// #include <gsl/gsl_errno.h>
-// #include <gsl/gsl_matrix.h>
-// #include <gsl/gsl_vector.h>
-// #include <gsl/gsl_odeiv2.h>
-
-// #include <vector>
-// #include <typeinfo>
-// #include <fstream>
-// #include <string>
-
-
+#include <vector>
+#include <string>
+#include <fstream>
 using namespace std;
 
+/**
+ * TODO: all documentation and comments are chatgpt generated
+ */
 
-
-class BandEmitter : public ODESolver{
+/**
+ * @class BandEmitter
+ * @brief Simulates the electron emission process by solving a system of differential equations
+ * and calculating transmission coefficients.
+ */
+class BandEmitter : public ODESolver {
 private:
-
-
-    /**
-     * @brief A struct that keeps all the important parameters of the emitter. It is necessary so that a void pointer is passed to the
-     * differentialSystem function as params, to avoid passing "this" object itself (ugly self-reference)
-     */
+    /** @brief The work function of the material in eV. */
     double workFunction = 4.5;
+
+    /** @brief Thermal energy in eV, proportional to temperature (kT). */
     double kT = 0.025;
+
+    /** @brief Effective mass of electrons in the material, relative to the free electron mass. */
     double effectiveMass = 1.;
-    double bandDepth = 10.; // the depth of the band as measured from the Fermi level
+
+    /** @brief Depth of the electronic band from the Fermi level in eV. */
+    double bandDepth = 10.;
+
+    /** @brief Stores energy values for later analysis. */
     vector<double> savedEnergies;
+
+    /** @brief Stores logarithmic transmission coefficients for later analysis. */
     vector<double> savedLogD;
+
+    /** @brief A reference to the transmission solver used for calculating coefficients. */
     TransmissionSolver& transmissionSolver;
+
+    /** @brief An interpolator for efficient evaluation of transmission coefficients. */
     TransmissionInterpolator interpolator;
 
-    double calculateIntegrand(double energy){
-        
+    /**
+     * @brief Calculates the integrand based on electron energy and transmission coefficients.
+     * @param energy The energy of the electron.
+     * @return The calculated integrand value.
+     */
+    double calculateIntegrand(double energy) {
         double result = interpolator.evaluate(energy);
-        if (effectiveMass != 1.){
-            double aBarX = - bandDepth + (1. - effectiveMass) * (energy + bandDepth);
+        if (effectiveMass != 1.) {
+            double aBarX = -bandDepth + (1. - effectiveMass) * (energy + bandDepth);
             result -= (1. - effectiveMass) * interpolator.evaluate(aBarX);
         }
         return result;
     }
 
-    static int differentialSystem(double energy, const double y[], double f[], void *params){
-        BandEmitter* sysParams = (BandEmitter*) params; //cast the void pointer as SystemParams
+    /**
+     * @brief Defines the system of differential equations to solve.
+     * @param energy The independent variable (energy).
+     * @param y The dependent variables.
+     * @param f The derivatives of the dependent variables.
+     * @param params Additional system parameters.
+     * @return GSL_SUCCESS on success.
+     */
+    static int differentialSystem(double energy, const double y[], double f[], void *params);
 
-        //calculate transmission coefficient
-        double D = sysParams->calculateIntegrand(energy);
-        //derivatives
-        f[0] = Utilities::fermiDiracFunction(energy, sysParams->kT) * (D - y[0] * exp(energy/sysParams->kT) / sysParams->kT);
-        f[1] = y[0];
-        f[2] = energy * y[0];
-        return GSL_SUCCESS;
-    }
+    /**
+     * @brief Defines the system of differential equations in logarithmic form.
+     * @param energy The independent variable (energy).
+     * @param y The dependent variables.
+     * @param f The derivatives of the dependent variables.
+     * @param params Additional system parameters.
+     * @return GSL_SUCCESS on success.
+     */
+    static int differentialSystemLog(double energy, const double y[], double f[], void *params);
 
-    static int differentialSystemLog(double energy, const double y[], double f[], void *params){
-        BandEmitter* sysParams = (BandEmitter*) params; //cast the void pointer as SystemParams
-        double D;
-        //calculate transmission coefficient
-        // TODO: this works only for effectiveMass = 1. FIX IT
-        
-        f[0] = Utilities::fermiDiracFunction(energy, sysParams->kT) * (D * exp(-y[0]) - exp(energy/sysParams->kT) / sysParams->kT);
-        f[1] = exp(y[0] - y[1]);
-        return GSL_SUCCESS;
-    }
+    /**
+     * @brief Function for calculating the normal energy distribution.
+     * @param energy The energy of the electron.
+     * @param params Additional parameters.
+     * @return The calculated distribution value.
+     */
+    static double normalEnergyDistribution(double energy, void* params);
 
-    static double normalEnergyDistribution(double energy, void* params){
-        BandEmitter* sysParams = (BandEmitter*) params; //cast the void pointer as SystemParams
-        double result = log(sysParams->calculateIntegrand(energy));// * Utilities::logFermiDiracFunction(energy, sysParams->kT);
-        sysParams->savedEnergies.push_back(energy);
-        sysParams->savedLogD.push_back(result);
-        return result;
-    }
-
+    /** @brief Integration function used by GSL. */
     gsl_function integrationFunction = {&normalEnergyDistribution, this};
 
+    /** @brief Workspace for numerical integration using GSL. */
     gsl_integration_workspace* integrationWorkspace = NULL;
 
+    /** @brief Defines the Jacobian matrix for the differential system (optional, currently unused). */
     static int differentialSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params);
 
 public:
-
-    void setParameters(double workFunction_ = 4.5, double kT_ = 0.025, double effectiveMass_ = 1., double bandDepth_ = 7.){
-        if (workFunction != workFunction_ || bandDepth_ != bandDepth){
+    /**
+     * @brief Sets the parameters for the band emitter simulation.
+     * @param workFunction_ The work function in eV.
+     * @param kT_ Thermal energy in eV.
+     * @param effectiveMass_ The effective mass of the electron.
+     * @param bandDepth_ The depth of the electronic band in eV.
+     */
+    void setParameters(double workFunction_ = 4.5, double kT_ = 0.025, double effectiveMass_ = 1., double bandDepth_ = 7.) {
+        if (workFunction != workFunction_ || bandDepth_ != bandDepth) {
             workFunction = workFunction_;
             bandDepth = bandDepth_;
             transmissionSolver.setXlimits(workFunction + bandDepth + 2.);
@@ -103,6 +120,19 @@ public:
         setInitialValues({0., 0., 0.});
     }
 
+    /**
+     * @brief Constructs a BandEmitter object.
+     * @param solver A reference to the transmission solver.
+     * @param workFun The work function in eV.
+     * @param kT_ Thermal energy in eV.
+     * @param effMass Effective mass of the electron.
+     * @param bandDepth_ The depth of the electronic band in eV.
+     * @param rtol Relative tolerance for ODE solving.
+     * @param atol Absolute tolerance for ODE solving.
+     * @param maxSteps Maximum allowed steps for ODE solving.
+     * @param minSteps Minimum allowed steps for ODE solving.
+     * @param stepExpectedForInitialStep Initial step expectation for ODE solving.
+     */
     BandEmitter(TransmissionSolver& solver,
                 double workFun = 4.5,
                 double kT_ = .025,
@@ -112,74 +142,52 @@ public:
                 double atol = 1.e-12,
                 int maxSteps = 4096,
                 int minSteps = 16,
-                int stepExpectedForInitialStep = 256
-                )   :   ODESolver(vector<double>(3, 0.0), differentialSystem, 3, {0., 1.}, rtol, atol, 
-                            gsl_odeiv2_step_rkck, maxSteps, minSteps, stepExpectedForInitialStep, NULL, this), 
-                            transmissionSolver(solver), 
-                            interpolator(solver, workFun, kT_, atol, rtol)
-    {
+                int stepExpectedForInitialStep = 256)
+        : ODESolver(vector<double>(3, 0.0), differentialSystem, 3, {0., 1.}, rtol, atol, 
+                    gsl_odeiv2_step_rkck, maxSteps, minSteps, stepExpectedForInitialStep, NULL, this), 
+          transmissionSolver(solver), 
+          interpolator(solver, workFun, kT_, atol, rtol) {
         setParameters(workFun, kT_, effMass, bandDepth_);
         updateBarrier();
     }
 
-    void updateBarrier(){
-        transmissionSolver.setXlimits(workFunction + bandDepth + 1.);
-        interpolator.initialize(-bandDepth, 10 * kT + workFunction, 8);
-        interpolator.refineToTolerance();
-    }
+    /**
+     * @brief Updates the barrier parameters and interpolator grid.
+     */
+    void updateBarrier();
 
-    int calculateCurrentDensityAndSpectra(double convergenceTolerance = 1.e-5){
-        double x = xInitial;
-        double dx = initialStep;
-        int status;
-        reinitialize();
-        vector<double> previousSolution;
-        for (size_t i = 0; i < maxAllowedSteps; i++){ //loop over blocks
-            previousSolution = solutionVector;
-            savedSolution.push_back(solutionVector);
-            xSaved.push_back(x);
-            dx = GSL_SIGN(dx) *  min(abs(maxStepSize), abs(dx));
-            status = gsl_odeiv2_evolve_apply(evolver, controller, step, &sys, &x, xFinal, &dx, solutionVector.data());
-            bool hasConverged = abs(previousSolution[1] - solutionVector[1]) / previousSolution[1]  < convergenceTolerance;
-            if (x >= xFinal || status != GSL_SUCCESS || hasConverged)    
-                return status;         
-        }
-        return GSL_CONTINUE; 
-    }
+    /**
+     * @brief Solves the ODE system to calculate current density and energy spectra.
+     * @param convergenceTolerance The tolerance for convergence.
+     * @return Status of the calculation (e.g., GSL_SUCCESS).
+     */
+    int calculateCurrentDensityAndSpectra(double convergenceTolerance = 1.e-5);
 
-    double calcualteCurrentDensity(){
-        double result, error;
-        if (!integrationWorkspace)
-            integrationWorkspace = gsl_integration_workspace_alloc(maxAllowedSteps);
+    /**
+     * @brief Calculates the current density using numerical integration.
+     * @return The calculated current density.
+     */
+    double calcualteCurrentDensity();
 
-        gsl_integration_qag(&integrationFunction, xInitial, xFinal, 0., relativeTolerance, maxAllowedSteps, GSL_INTEG_GAUSS41, integrationWorkspace, &result, &error);
-        return result;
-    }
+    /**
+     * @brief Writes the saved logarithmic transmission data to a file.
+     * @param filename The name of the output file.
+     */
+    void writeSavedLogD(string filename = "energyTransmission.dat");
 
-    void writeSavedLogD(string filename = "energyTransmission.dat"){
-            ofstream outFile(filename, ios::out);        
-            for (size_t i = 0; i < savedEnergies.size(); i++)
-                outFile << savedEnergies[i] << " " << savedLogD[i] << endl;
-    }
+    /**
+     * @brief Writes data for plotting the band emitter's behavior.
+     * @param filename The name of the output file.
+     */
+    void writePlottingData(string filename = "bandEmitterPlotting.dat");
 
-    void writePlottingData(string filename = "bandEmitterPlotting.dat"){
-        ofstream outFile(filename, ios::out);        
-        outFile << " E D_calc D_interp error NED lFD(E) tolerance" << endl;
-        for (double x = xInitial; x < xFinal; x += 0.001){
-            double D = transmissionSolver.calculateTransmissionCoefficientForEnergy(x - workFunction);
-            double lFD = Utilities::logFermiDiracFunction(x, kT);
-            double err = interpolator.calculateError(x, log(D));
-            double tol = interpolator.calculateTolerance(x, log(D));
-            outFile << x << " " << D << " " << interpolator.evaluate(x) << " " << err << " " << lFD * D << " " << lFD << " " << tol <<  endl;
-        }
-        interpolator.writeSplineNodes();
-    }
-
-    double getCurrentDensity(){
+    /**
+     * @brief Gets the current density from the solution vector.
+     * @return The current density in appropriate units.
+     */
+    double getCurrentDensity() {
         return solutionVector[1] * CONSTANTS.SommerfeldConstant;
     }
-};  
-
-
+};
 
 #endif /* BANDEMITTER_H_ */

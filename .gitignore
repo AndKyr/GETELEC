@@ -21,4 +21,6 @@
 *.dvi
 *.npy
 build/
+docs/
+.venv
 
