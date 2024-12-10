@@ -88,3 +88,17 @@ int FunctionInterpolator::refineSampling(){
     }
     return numberOfAddedNodes;
 }
+
+void FunctionInterpolator::refineToTolerance(int maxRefiningSteps){
+    for (int i = 0; i < maxRefiningSteps; i++)
+        if(refineSampling())
+            updateSpline();
+        else
+            return;
+}
+
+void FunctionInterpolator::writeSplineNodes(string filename){
+    ofstream outFile(filename, ios::out);        
+    for (SplineElement& element : samplingList)
+        outFile << element.x << " " << element.y << endl;
+}

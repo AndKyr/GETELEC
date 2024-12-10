@@ -7,97 +7,187 @@
 #include <list>
 #include <iostream>
 #include <fstream>
-
 #include <string>
-
-
 #include <gsl/gsl_interp.h>
 #include <gsl/gsl_spline.h>
 
 using namespace std;
 
-static constexpr struct PhysicalConstants{
-    double hbarSqrOver2m = 3.80998212e-2;
-    double kConstant = 1./hbarSqrOver2m;
-    double imageChargeConstant = .359991137;
-    double BoltzmannConstant = 8.617333262e-5;
-    double SommerfeldConstant = 1.618311e-4;
-    double exponentLimit = - 0.5 * log(numeric_limits<double>::epsilon());
-
+/**
+ * @struct PhysicalConstants
+ * @brief Defines physical constants used throughout the project.
+ * 
+ * These constants include fundamental physical values such as Planck's constant,
+ * the Boltzmann constant, and others used in various calculations.
+ */
+static constexpr struct PhysicalConstants {
+    double hbarSqrOver2m = 3.80998212e-2; /**< Reduced Planck's constant squared over 2m (eV·nm²). */
+    double kConstant = 1. / hbarSqrOver2m; /**< Energy-dependent constant. */
+    double imageChargeConstant = 0.359991137; /**< Constant for image charge effects (eV·nm). */
+    double BoltzmannConstant = 8.617333262e-5; /**< Boltzmann constant in eV/K. */
+    double SommerfeldConstant = 1.618311e-4; /**< Sommerfeld constant for current density. */
+    double exponentLimit = -0.5 * log(numeric_limits<double>::epsilon()); /**< Exponent limit to prevent underflow. */
 } CONSTANTS;
 
-struct Utilities{
+/**
+ * @struct Utilities
+ * @brief Provides a collection of static utility functions for numerical and physical calculations.
+ * 
+ * This struct includes functions for generating linearly spaced values, 
+ * as well as computing the Fermi-Dirac distribution and its logarithmic counterpart.
+ */
+struct Utilities {
+    /**
+     * @brief Generates a vector of linearly spaced values.
+     * 
+     * @param start The starting value of the range.
+     * @param end The ending value of the range.
+     * @param n The number of points to generate.
+     * @return A vector containing `n` linearly spaced values between `start` and `end`.
+     * 
+     * @note If `n == 1`, the result will contain only the `start` value.
+     */
     static vector<double> linspace(double start, double end, int n);
 
+    /**
+     * @brief Computes the Fermi-Dirac distribution for a given energy.
+     * 
+     * @param energy The energy level in eV.
+     * @param kT The thermal energy (kT) in eV.
+     * @return The value of the Fermi-Dirac function at the specified energy level.
+     * 
+     * @details This function accounts for extreme energy cases to prevent underflow:
+     * - For very high energy values, it approximates the exponential behavior.
+     * - For very low energy values, it approximates to 1 minus the exponential.
+     */
     static double fermiDiracFunction(double energy, double kT);
 
+    /**
+     * @brief Computes the logarithmic Fermi-Dirac distribution.
+     * 
+     * @param energy The energy level in eV.
+     * @param kT The thermal energy (kT) in eV.
+     * @return The logarithmic value of the Fermi-Dirac function at the specified energy level.
+     * 
+     * @details This function handles extreme cases:
+     * - For very high energy values, it directly computes the exponential.
+     * - For very low energy values, it calculates `-energy / kT` with adjustments.
+     * - For intermediate values, it computes the logarithmic representation of the distribution.
+     */
     static double logFermiDiracFunction(double energy, double kT);
 };
 
-
-class FunctionInterpolator{
+/**
+ * @class FunctionInterpolator
+ * @brief Provides functionality for interpolating a given function.
+ * 
+ * This class uses GSL's interpolation framework to evaluate functions at arbitrary points,
+ * refine sampling to meet tolerance, and output spline nodes.
+ */
+class FunctionInterpolator {
 protected:
-    // TransmissionSolver& solver;
-    double absoluteTolerance = 1.e-12;
-    double relativeTolerance = 1.e-4;
+    double absoluteTolerance = 1.e-12; /**< Absolute tolerance for the interpolation process. */
+    double relativeTolerance = 1.e-4; /**< Relative tolerance for the interpolation process. */
+    gsl_interp_accel* accelerator = NULL; /**< GSL interpolation accelerator for improved performance. */
+    gsl_spline* spline = NULL; /**< GSL spline object for interpolation. */
 
-    gsl_interp_accel *accelerator = NULL;
-    gsl_spline *spline = NULL;
+    /**
+     * @struct SplineElement
+     * @brief Represents an element in the spline sampling list.
+     */
+    struct SplineElement {
+        double x; /**< The x-coordinate of the sample. */
+        double y; /**< The y-coordinate of the sample. */
+        bool bisect; /**< Flag indicating if this element requires refinement. */
 
-    struct SplineElement{
-        double x;
-        double y;
-        bool bisect;
-        SplineElement(double xx, double yy, bool b) : x(xx), y(yy), bisect(b){}
+        /**
+         * @brief Constructs a SplineElement with given x, y, and bisect values.
+         * @param xx The x-coordinate.
+         * @param yy The y-coordinate.
+         * @param b Whether the element requires refinement.
+         */
+        SplineElement(double xx, double yy, bool b) : x(xx), y(yy), bisect(b) {}
     };
 
-    list<SplineElement> samplingList;
+    list<SplineElement> samplingList; /**< List of sampling points used for spline interpolation. */
 
-    virtual double calculateYforX(double x){return exp(x);}
+    /**
+     * @brief Calculates the y-value for a given x-coordinate.
+     * @param x The x-coordinate.
+     * @return The y-value calculated for the given x.
+     * 
+     * @note The default implementation is `exp(x)`. Override for custom behavior.
+     */
+    virtual double calculateYforX(double x) { return exp(x); }
 
+    /**
+     * @brief Calculates the error between a calculated y-value and the spline estimate.
+     * @param x The x-coordinate.
+     * @param yCalculated The calculated y-value.
+     * @return The error between the calculated and estimated y-values.
+     */
     virtual double calculateError(double x, double yCalculated){
         return abs(yCalculated - gsl_spline_eval(spline, x, accelerator));
     }
 
+    /**
+     * @brief Calculates the tolerance for a given x and y-value.
+     * @param x The x-coordinate.
+     * @param yValue The y-value.
+     * @return The calculated tolerance.
+     */
     virtual double calculateTolerance(double x, double yValue){
         return absoluteTolerance + relativeTolerance * abs(yValue);
     }
 
-    int updateSpline();
-
-    int refineSampling();
+    int updateSpline(); /**< Updates the spline object based on the current sampling list. */
+    int refineSampling(); /**< Refines the sampling list to meet the specified tolerance. */
 
 public:
-    FunctionInterpolator(double aTol = 1.e-12, double rTol = 1.e-5
-                        ) : 
-        absoluteTolerance(aTol), relativeTolerance(rTol)
-    {}
+    /**
+     * @brief Constructs a FunctionInterpolator with specified tolerances.
+     * @param aTol Absolute tolerance for interpolation.
+     * @param rTol Relative tolerance for interpolation.
+     */
+    FunctionInterpolator(double aTol = 1.e-12, double rTol = 1.e-5)
+        : absoluteTolerance(aTol), relativeTolerance(rTol) {}
 
-    ~FunctionInterpolator(){
+    /**
+     * @brief Destructor that frees GSL resources.
+     */
+    ~FunctionInterpolator() {
         gsl_spline_free(spline);
         gsl_interp_accel_free(accelerator);
     }
 
-    virtual double evaluate(double x){
+    /**
+     * @brief Evaluates the spline at a given x-coordinate.
+     * @param x The x-coordinate.
+     * @return The interpolated y-value.
+     */
+    virtual double evaluate(double x) {
         return gsl_spline_eval(spline, x, accelerator);
     }
 
+    /**
+     * @brief Initializes the spline with initial sampling points.
+     * @param xInit The initial x-coordinate.
+     * @param xFinal The final x-coordinate.
+     * @param numberOfInitialElements The number of initial sampling points.
+     */
     void initialize(double xInit, double xFinal, int numberOfInitialElements);
 
+    /**
+     * @brief Refines the sampling list to meet the specified tolerance.
+     * @param maxRefiningSteps The maximum number of refining steps allowed.
+     */
+    void refineToTolerance(int maxRefiningSteps = 10);
 
-    void refineToTolerance(int maxRefiningSteps = 10){
-        for (int i = 0; i < maxRefiningSteps; i++)
-            if(refineSampling())
-                updateSpline();
-            else
-                return;
-    }
-
-    void writeSplineNodes(string filename = "SplineNodes.dat"){
-        ofstream outFile(filename, ios::out);        
-        for (SplineElement& element : samplingList)
-            outFile << element.x << " " << element.y << endl;
-    }
+    /**
+     * @brief Writes the spline nodes to a file.
+     * @param filename The name of the output file.
+     */
+    void writeSplineNodes(string filename = "SplineNodes.dat");
 };
 
-#endif //UTILITIES_H_
+#endif // UTILITIES_H_
