@@ -4,6 +4,7 @@
 #include <gsl/gsl_interp.h>
 #include <gsl/gsl_integration.h>
 #include "TransmissionSolver.h"
+#include "TransmissionInterpolator.h"
 #include <vector>
 #include <string>
 #include <fstream>
