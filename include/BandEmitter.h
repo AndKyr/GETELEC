@@ -114,7 +114,12 @@ public:
 
         effectiveMass = effectiveMass_;
         kT = kT_;
+        double xFinalOld = xFinal;
         xFinal = workFunction + 10. * kT;
+
+        if (xFinal > xFinalOld) {
+            updateBarrier();
+        }
         maxStepSize = (xFinal - xInitial) / minAllowedSteps;
         initialStep = (xFinal - xInitial) / stepsExpectedForInitialStep;
         setInitialValues({0., 0., 0.});
