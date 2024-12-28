@@ -41,3 +41,15 @@ endif()
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
     target_compile_options(getelec PRIVATE -O3 -DRELEASE)
 endif()
+
+# Define a library target for your project
+add_library(getelec_lib SHARED
+    ${CMAKE_SOURCE_DIR}/src/BandEmitter.cpp
+    ${CMAKE_SOURCE_DIR}/src/ODESolver.cpp
+    ${CMAKE_SOURCE_DIR}/src/TransmissionSolver.cpp
+    ${CMAKE_SOURCE_DIR}/src/Utilities.cpp
+)
+
+# Include the tests directory
+add_subdirectory(tests)
+
