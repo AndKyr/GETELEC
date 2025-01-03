@@ -4,6 +4,7 @@
 #include "ODESolver.h"
 #include "TunnelingFunction.h"
 #include "Utilities.h"
+#include <cassert>
 
 using namespace std;
 
@@ -75,8 +76,14 @@ public:
      * @brief Updates the wavevector (kappa) values at the integration limits.
      */
     void updateKappaAtLimits(){
-        kappaInitial = sqrt(tunnelingFunction->kappaSquared(xInitial));
-        kappaFinal = sqrt(tunnelingFunction->kappaSquared(xFinal));
+
+        double kappaSquaredInitial = tunnelingFunction->kappaSquared(xInitial);
+        double kappaSquaredFinal = tunnelingFunction->kappaSquared(xFinal);
+
+        assert(kappaSquaredInitial >= 0. && kappaSquaredFinal >= 0. && "The tunneling energy is lower than the edge potential values. The integration interval must extend beyond the classically forbidden region.");
+        
+        kappaInitial = sqrt(kappaSquaredInitial);
+        kappaFinal = sqrt(kappaSquaredFinal);
         initialValues = {0., kappaInitial, 0.};
     }
 

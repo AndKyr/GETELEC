@@ -10,6 +10,7 @@
 #include <string>
 #include <gsl/gsl_interp.h>
 #include <gsl/gsl_spline.h>
+#include <random>
 
 using namespace std;
 
@@ -75,7 +76,24 @@ struct Utilities {
      * - For intermediate values, it computes the logarithmic representation of the distribution.
      */
     static double logFermiDiracFunction(double energy, double kT);
+
+    /**
+     * @brief Generates a random double uniformly distributed in the range [a, b].
+     * 
+     * @param a The lower bound of the range.
+     * @param b The upper bound of the range.
+     * @return A random double value in the range [a, b].
+     * 
+     * @details This function uses the Mersenne Twister engine for random number generation.
+     */
+    static double getUniformRandomDouble(double a, double b) {
+        std::random_device rd;  // Seed source
+        std::mt19937 gen(rd()); // Random number generator
+        std::uniform_real_distribution<> dis(a, b); // Distribution in range [a, b]
+        return dis(gen);
+    }
 };
+
 
 /**
  * @class FunctionInterpolator
@@ -188,6 +206,16 @@ public:
      * @param filename The name of the output file.
      */
     void writeSplineNodes(string filename = "SplineNodes.dat");
+
+    /**
+     * @brief Getter for the absolute tolerance.
+     */
+    double getAbsoluteTolerance() const { return absoluteTolerance; }
+    
+    /**
+     * @brief Getter for the relative tolerance.
+     */
+    double getRelativeTolerance() const { return relativeTolerance; }
 };
 
 #endif // UTILITIES_H_

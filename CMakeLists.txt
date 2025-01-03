@@ -24,14 +24,25 @@ find_package(GSL REQUIRED)
 # Add the source files
 file(GLOB_RECURSE SOURCES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 
-# Create the executable
-add_executable(getelec ${SOURCES})
+# Define a library target for your project
+add_library(getelec_lib SHARED ${SOURCES})
 
 # Link the GSL and math library
-target_link_libraries(getelec GSL::gsl GSL::gslcblas m)
+target_link_libraries(getelec_lib GSL::gsl GSL::gslcblas m)
+
+# Set the library's output name to "getelec"
+set_target_properties(getelec_lib PROPERTIES OUTPUT_NAME getelec)
+
+# Create the executable
+add_executable(getelec ${PROJECT_SOURCE_DIR}/src/main.cpp)
+
+# Link the GSL and math library
+target_link_libraries(getelec getelec_lib)
 
 # Add debug flags if building in Debug mode
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_definitions(getelec_lib PRIVATE DEBUG_MODE)
+    target_compile_options(getelec_lib PRIVATE -g -O0 -DDEBUG)
     target_compile_definitions(getelec PRIVATE DEBUG_MODE)
     target_compile_options(getelec PRIVATE -g -O0 -DDEBUG)
 endif()
@@ -39,16 +50,13 @@ endif()
 
 # Add release-specific flags if building in Release mode
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
+    target_compile_options(getelec_lib PRIVATE -O3 -DRELEASE)
     target_compile_options(getelec PRIVATE -O3 -DRELEASE)
 endif()
 
-# Define a library target for your project
-add_library(getelec_lib SHARED
-    ${CMAKE_SOURCE_DIR}/src/BandEmitter.cpp
-    ${CMAKE_SOURCE_DIR}/src/ODESolver.cpp
-    ${CMAKE_SOURCE_DIR}/src/TransmissionSolver.cpp
-    ${CMAKE_SOURCE_DIR}/src/Utilities.cpp
-)
+
+#enable the tests
+enable_testing()
 
 # Include the tests directory
 add_subdirectory(tests)

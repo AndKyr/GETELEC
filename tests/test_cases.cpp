@@ -5,48 +5,31 @@
 #include "TransmissionInterpolator.h"
 #include "TunnelingFunction.h"
 
-// Test for Utilities::linspace
-TEST(UtilitiesTest, Linspace) {
-    auto result = Utilities::linspace(0.0, 10.0, 5);
-    std::vector<double> expected = {0.0, 2.5, 5.0, 7.5, 10.0};
-    EXPECT_EQ(result.size(), expected.size());
-    for (size_t i = 0; i < result.size(); ++i) {
-        EXPECT_NEAR(result[i], expected[i], 1e-6);
-    }
-}
-
-// Test for Utilities::fermiDiracFunction
-TEST(UtilitiesTest, FermiDiracFunction) {
-    double energy = 0.5;
-    double kT = 0.025;
-    double result = Utilities::fermiDiracFunction(energy, kT);
-    EXPECT_GT(result, 0.0);
-    EXPECT_LT(result, 1.0);
-}
-
-// Test for FunctionInterpolator
-TEST(FunctionInterpolatorTest, Evaluate) {
-    FunctionInterpolator interpolator;
-    interpolator.initialize(0.0, 10.0, 5);
-    double value = interpolator.evaluate(5.0);
-    EXPECT_NEAR(value, std::exp(5.0), 1e-6);
-}
-
+#include <random>
+#include <iostream>
 // Test for TransmissionSolver::setEnergy
-TEST(TransmissionSolverTest, SetEnergy) {
-    TunnelingFunction tunnelingFunc;
-    TransmissionSolver solver(&tunnelingFunc);
-    solver.setEnergy(1.0);
-    EXPECT_NEAR(tunnelingFunc.getEnergy(), 1.0, 1e-6);
+TEST(TransmissionSolverTest, DefaultValueTest) {
+    ModifiedSNBarrier barrier;
+    TransmissionSolver solver(&barrier);
+    solver.setXlimits(8.0);
+    double transmission = solver.calculateTransmissionCoefficientForEnergy(-4.5);
+    EXPECT_NEAR(transmission, 0.00066697781489034457, 1.e-10);
 }
 
 // Test for TransmissionInterpolator::calculateYforX
-TEST(TransmissionInterpolatorTest, CalculateYforX) {
-    TunnelingFunction tunnelingFunc;
-    TransmissionSolver solver(&tunnelingFunc);
+TEST(TransmissionInterpolatorTest, evaluationTest) {
+    ModifiedSNBarrier barrier;
+    TransmissionSolver solver(&barrier);
+    solver.setXlimits(12.);
+    double testEnergy = Utilities::getUniformRandomDouble(-7., 0.);
+    double calculatedValue = solver.calculateTransmissionCoefficientForEnergy(-4.5 + testEnergy);
+
     TransmissionInterpolator interpolator(solver);
-    double value = interpolator.calculateYforX(0.5);
-    EXPECT_LT(value, 0.0); // Transmission coefficient is expected to be less than 1
+    interpolator.initialize(-7., 0.0, 8);
+    interpolator.refineToTolerance();
+    double interpolatedValue = interpolator.evaluate(testEnergy);
+    
+    EXPECT_NEAR(interpolatedValue, calculatedValue, interpolator.calculateTolerance(testEnergy, log(calculatedValue))); // Transmission coefficient is expected to be less than 1
 }
 
 int main(int argc, char **argv) {

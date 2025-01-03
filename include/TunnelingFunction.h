@@ -38,9 +38,12 @@ public:
      * @param x Position coordinate.
      * @return Potential value at the specified position.
      * 
-     * @note This method can be overridden in derived classes for specific potential models.
+     * @note This method should be overridden in derived classes for specific potential models.
      */
-    virtual double potentialFunction(double x) { return 0. * x; }
+    virtual double potentialFunction(double x) {
+        cout << "This is the base class potential function (virtual). It should not be used directly. Just returns 0" << endl;
+        return 0. * x; 
+    }
 
     /**
      * @brief Computes the derivative of the potential function.
@@ -49,21 +52,31 @@ public:
      * 
      * @note Override this method in derived classes for custom behavior.
      */
-    virtual double potentialFunctionDerivative(double x) { return 0. * x; }
+    virtual double potentialFunctionDerivative(double x) {
+        cout << "This is the base class potential derivative function (virtual). It should not be used directly. Just returns 0" << endl;
+        return 0. * x;
+    }
 
     /**
      * @brief Finds the left boundary of the tunneling region.
      * @param maxPotentialDepth The maximum potential depth.
      * @return The left boundary of the potential well.
      */
-    virtual double findLeftXLimit(double maxPotentialDepth) { return 0.; }
+    virtual double findLeftXLimit(double maxPotentialDepth) { 
+        cout << "This is a base class function (virtual). It should not be used directly. Just returns 0" << endl;
+        return 0.; 
+    }
 
     /**
      * @brief Finds the right boundary of the tunneling region.
      * @param maxPotentialDepth The maximum potential depth.
      * @return The right boundary of the potential well.
      */
-    virtual double findRightXLimit(double maxPotentialDepth) { return 0.; }
+    virtual double findRightXLimit(double maxPotentialDepth) { 
+        cout << "This is the base class potential function (virtual). It should not be used directly. Just returns 0" << endl;
+
+        return 0.;
+    }
 
     /**
      * @brief Computes the squared kappa value for tunneling calculations.
