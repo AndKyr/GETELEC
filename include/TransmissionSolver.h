@@ -80,7 +80,8 @@ public:
         double kappaSquaredInitial = tunnelingFunction->kappaSquared(xInitial);
         double kappaSquaredFinal = tunnelingFunction->kappaSquared(xFinal);
 
-        assert(kappaSquaredInitial >= 0. && kappaSquaredFinal >= 0. && "The tunneling energy is lower than the edge potential values. The integration interval must extend beyond the classically forbidden region.");
+        if (kappaSquaredInitial <= 0. || kappaSquaredFinal <= 0.) 
+            throw std::runtime_error("The tunneling energy is lower than the edge potential values. The integration interval must extend beyond the classically forbidden region.");
         
         kappaInitial = sqrt(kappaSquaredInitial);
         kappaFinal = sqrt(kappaSquaredFinal);
