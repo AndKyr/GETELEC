@@ -152,6 +152,15 @@ public:
      * @param filename Name of the output file.
      */
     void writeSolution(string filename = "odeSolution.dat");
+
+    /** 
+     * @brief gets the tolerance of the method for a given value of the solution (value * relativeTolerance + absoluteTolerance)
+     * @param value The value of the solution
+     * @return The tolerance for the value
+     */
+    double getToleranceForValue(double value){
+        return value * relativeTolerance + absoluteTolerance;
+    }
 };
 
 #endif /* ODESOLVER_H_ */

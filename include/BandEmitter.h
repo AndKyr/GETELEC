@@ -104,27 +104,7 @@ public:
      * @param effectiveMass_ The effective mass of the electron.
      * @param bandDepth_ The depth of the electronic band in eV.
      */
-    void setParameters(double workFunction_ = 4.5, double kT_ = 0.025, double effectiveMass_ = 1., double bandDepth_ = 7.) {
-        if (workFunction != workFunction_ || bandDepth_ != bandDepth) {
-            workFunction = workFunction_;
-            bandDepth = bandDepth_;
-            transmissionSolver.setXlimits(workFunction + bandDepth + 2.);
-        }
-        
-        xInitial = -bandDepth;
-
-        effectiveMass = effectiveMass_;
-        kT = kT_;
-        double xFinalOld = xFinal;
-        xFinal = workFunction + 10. * kT;
-
-        if (xFinal > xFinalOld) {
-            updateBarrier();
-        }
-        maxStepSize = (xFinal - xInitial) / minAllowedSteps;
-        initialStep = (xFinal - xInitial) / stepsExpectedForInitialStep;
-        setInitialValues({0., 0., 0.});
-    }
+    void setParameters(double workFunction_ = 4.5, double kT_ = 0.025, double effectiveMass_ = 1., double bandDepth_ = 7.);
 
     /**
      * @brief Constructs a BandEmitter object.
@@ -163,11 +143,20 @@ public:
     void updateBarrier();
 
     /**
-     * @brief Solves the ODE system to calculate current density and energy spectra.
+     * @brief Solves the ODE system to calculate current density, Nottingham heat and energy spectra.
      * @param convergenceTolerance The tolerance for convergence.
      * @return Status of the calculation (e.g., GSL_SUCCESS).
      */
     int calculateCurrentDensityAndSpectra(double convergenceTolerance = 1.e-5);
+
+    /**
+     * @brief Solves the ODE system to calculate current density and Nottingham heat.
+     * @param convergenceTolerance The tolerance for convergence.
+     * @return Status of the calculation (e.g., GSL_SUCCESS).
+     * 
+     * @note This method runs the same as calculateCurrentDensityAndSpectra but a bit faster because it does not save the spectra.
+     */
+    int calculateCurrentDensityAndNottingham(double convergenceTolerance);
 
     /**
      * @brief Calculates the current density using numerical integration.
@@ -193,6 +182,14 @@ public:
      */
     double getCurrentDensity() {
         return solutionVector[1] * CONSTANTS.SommerfeldConstant;
+    }
+
+    /**
+     * @brief Gets the Nottingham heat from the solution vector.
+     * @return The Nottingham heat in appropriate units.
+     */
+    double getNottinghamHeat() {
+        return solutionVector[2] * CONSTANTS.SommerfeldConstant;
     }
 };
 
