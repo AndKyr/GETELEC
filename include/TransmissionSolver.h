@@ -64,7 +64,16 @@ public:
         int minSteps = 64,
         int stepExpectedForInitialStep = 64,
             double maxPotentialDepth = 10.
-        );
+        )   : ODESolver(vector<double>(3, 0.0), tunnelingDifferentialSystem, 3, 
+                        {2.00400712, 0.03599847}, relativeTolerance, absoluteTolerance, stepType, 
+                        maxSteps, minSteps,stepExpectedForInitialStep, 
+                        tunnelingSystemJacobian, tunnelFunctionPtr),
+                        tunnelingFunction(tunnelFunctionPtr)
+    {
+        setXlimits(maxPotentialDepth);
+        updateKappaAtLimits();
+    }
+
 
 
     void setXlimits(double maxPotentialDepth){
@@ -75,18 +84,7 @@ public:
     /**
      * @brief Updates the wavevector (kappa) values at the integration limits.
      */
-    void updateKappaAtLimits(){
-
-        double kappaSquaredInitial = tunnelingFunction->kappaSquared(xInitial);
-        double kappaSquaredFinal = tunnelingFunction->kappaSquared(xFinal);
-
-        if (kappaSquaredInitial <= 0. || kappaSquaredFinal <= 0.) 
-            throw std::runtime_error("The tunneling energy is lower than the edge potential values. The integration interval must extend beyond the classically forbidden region.");
-        
-        kappaInitial = sqrt(kappaSquaredInitial);
-        kappaFinal = sqrt(kappaSquaredFinal);
-        initialValues = {0., kappaInitial, 0.};
-    }
+    void updateKappaAtLimits();
 
     /**
      * @brief Sets the energy level for the tunneling calculation.
@@ -110,12 +108,7 @@ public:
      * @param energy Energy level (eV).
      * @return The transmission coefficient.
      */
-    double calculateTransmissionCoefficientForEnergy(double energy){
-        setEnergy(energy);
-        solveNoSave();
-        numberOfCalls++;
-        return transmissionCoefficient();
-    }
+    double calculateTransmissionCoefficientForEnergy(double energy);
 
     /**
      * @brief Retrieves the number of times the transmission coefficient has been calculated.

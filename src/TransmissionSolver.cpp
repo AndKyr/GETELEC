@@ -1,16 +1,6 @@
 #include "TransmissionSolver.h"
 
-TransmissionSolver::TransmissionSolver(TunnelingFunction* tunnelFunctionPtr, double rtol, double atol, const gsl_odeiv2_step_type* stepType,
-                         int maxSteps, int minSteps, int stepExpectedForInitialStep, double maxPotentialDepth
-                        ) : ODESolver(vector<double>(3, 0.0), tunnelingDifferentialSystem, 3, {2.00400712, 0.03599847},
-                                        rtol, atol, stepType, maxSteps, minSteps,stepExpectedForInitialStep, tunnelingSystemJacobian, tunnelFunctionPtr),
-                            tunnelingFunction(tunnelFunctionPtr)
-                            
 
-{
-    setXlimits(maxPotentialDepth);
-    updateKappaAtLimits();
-}
 
 int TransmissionSolver::tunnelingDifferentialSystem(double x, const double y[], double f[], void *params){
         TunnelingFunction* barrier = (TunnelingFunction*) params;
@@ -40,4 +30,25 @@ double TransmissionSolver::transmissionCoefficient() const{
             2. * solutionVector[1] / kappaFinal);
 
     return kappaInitial / (kappaFinal * CplusCoefficientSquared);
+}
+
+void TransmissionSolver::updateKappaAtLimits(){
+    double kappaSquaredInitial = tunnelingFunction->kappaSquared(xInitial);
+    double kappaSquaredFinal = tunnelingFunction->kappaSquared(xFinal);
+
+    if (kappaSquaredInitial <= 0. || kappaSquaredFinal <= 0.) 
+        throw std::runtime_error("The tunneling energy is lower than the edge potential values. The integration interval must extend beyond the classically forbidden region.");
+    
+    kappaInitial = sqrt(kappaSquaredInitial);
+    kappaFinal = sqrt(kappaSquaredFinal);
+    initialValues = {0., kappaInitial, 0.};
+}
+
+double TransmissionSolver::calculateTransmissionCoefficientForEnergy(double energy){
+    setEnergy(energy);
+    if (xFinal > 10.) 
+        return 0.;
+    solveNoSave();
+    numberOfCalls++;
+    return transmissionCoefficient();
 }
