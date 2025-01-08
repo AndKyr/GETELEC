@@ -171,6 +171,17 @@ public:
     } 
 
     /**
+     * @brief sets all the parameter of the barrier to (meaningful) random values
+     */
+
+    void setRandomParameters(){
+        field = Utilities::getUniformRandomDouble(1.e-5, 50.);
+        double curvature = Utilities::getUniformRandomDouble(1.e-5, 10.);
+        radius = 1. / curvature;
+        gamma = Utilities::getUniformRandomDouble(1., 20.);
+    }
+
+    /**
      * @brief Setter for the field parameter.
      * @param f Electric field strength (V/nm).
      */

@@ -48,10 +48,16 @@ TEST(BandEmitterTest, CurrentDensityMethodComparison){
     ModifiedSNBarrier barrier;
     TransmissionSolver solver(&barrier);
     BandEmitter emitter(solver);
-    emitter.calculateCurrentDensityAndSpectra();
-    double currentDensity = emitter.getCurrentDensity();
-    double currentDensity2 = emitter.calcualteCurrentDensity();
-    EXPECT_NEAR(currentDensity, currentDensity2, emitter.getToleranceForValue(currentDensity));
+
+    for (int i = 0; i < 100; i++){
+        barrier.setRandomParameters();
+        emitter.setRandomParameters();
+        emitter.updateBarrier();
+        emitter.calculateCurrentDensityAndSpectra();
+        double currentDensity = emitter.getCurrentDensity();
+        double currentDensity2 = emitter.calcualteCurrentDensity();
+        EXPECT_NEAR(currentDensity, currentDensity2, emitter.getToleranceForValue(currentDensity));
+    }
 }
 
 int main(int argc, char **argv) {

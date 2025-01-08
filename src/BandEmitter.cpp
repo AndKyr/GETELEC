@@ -48,6 +48,7 @@ void BandEmitter::setParameters(double workFunction_, double kT_, double effecti
     kT = kT_;
     double xFinalOld = xFinal;
     xFinal = workFunction + 10. * kT;
+    interpolator.setParameters(kT, workFunction);
 
     if (xFinal > xFinalOld) {
         updateBarrier();

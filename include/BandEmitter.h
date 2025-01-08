@@ -138,6 +138,27 @@ public:
     }
 
     /**
+     * @brief Destructor for the BandEmitter object.
+     */
+    ~BandEmitter() {
+        if (integrationWorkspace)
+            gsl_integration_workspace_free(integrationWorkspace);
+    }
+
+    /**
+     * @brief Sets parameters to (meaningful) random values
+     * @note This is a convenience function for testing purposes.
+     */
+
+    void setRandomParameters(){
+        double bandDepth = Utilities::getUniformRandomDouble(0., 10.);
+        double workFunction = Utilities::getUniformRandomDouble(0., 6.);
+        double effMass = Utilities::getUniformRandomDouble(0.8, 1.);
+        double kT_ = Utilities::getUniformRandomDouble(0., 2.);
+        setParameters(workFunction, kT_, effMass, bandDepth);
+    }
+
+    /**
      * @brief Updates the barrier parameters and interpolator grid.
      */
     void updateBarrier();
