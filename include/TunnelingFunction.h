@@ -16,6 +16,10 @@ class TunnelingFunction {
 private:
     double energy = 0.; /**< Energy level for the tunneling function (eV). */
 
+protected:
+    /** @brief A pointer to a random number generator to use for testing purposes */
+    mt19937* generator = NULL;
+
 public:
     /**
      * @brief Default constructor for TunnelingFunction.
@@ -98,6 +102,14 @@ public:
      * @return The energy level (eV).
      */
     double getEnergy() const { return energy; }
+
+    /**
+     * @brief Sets the random number generator for the barrier (used to create random barrier for testing).
+     * @param generator_ A pointer to the random number generator.
+     */
+    void setGenerator(mt19937* generator_){
+        generator = generator_;
+    }
 };
 
 /**
@@ -109,6 +121,8 @@ private:
     double radius = 1.e3; /**< Local radius of curvature of the emitter at the point of interest (nm). */
     double field = 5.; /**< Local electric field at the emission point (V/nm) */
     double gamma = 10.; /**< Gamma parameter controlling the far-away shape of the barrier */
+
+
 
     /**
      * @brief Calculates the image potential at a point z.
@@ -175,10 +189,10 @@ public:
      */
 
     void setRandomParameters(){
-        field = Utilities::getUniformRandomDouble(1.e-5, 50.);
-        double curvature = Utilities::getUniformRandomDouble(1.e-5, 10.);
+        field = Utilities::getUniformRandomDouble(1.e-5, 50., *generator);
+        double curvature = Utilities::getUniformRandomDouble(1.e-5, 10., *generator);
         radius = 1. / curvature;
-        gamma = Utilities::getUniformRandomDouble(1., 20.);
+        gamma = Utilities::getUniformRandomDouble(1., 20., *generator);
     }
 
     /**
@@ -244,6 +258,7 @@ public:
         double c = - maxPotentialDepth * radius * (gamma - 1.);
         return 0.5 * (-b + sqrt(b*b - 4*field*c)) / field;
     }
+
 };
 
 #endif /* TUNNELINGFUNCTION_H_ */

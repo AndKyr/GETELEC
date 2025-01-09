@@ -86,11 +86,9 @@ struct Utilities {
      * 
      * @details This function uses the Mersenne Twister engine for random number generation.
      */
-    static double getUniformRandomDouble(double a, double b) {
-        std::random_device rd;  // Seed source
-        std::mt19937 gen(rd()); // Random number generator
+    static double getUniformRandomDouble(double a, double b, mt19937& generator) {
         std::uniform_real_distribution<> dis(a, b); // Distribution in range [a, b]
-        return dis(gen);
+        return dis(generator);
     }
 };
 

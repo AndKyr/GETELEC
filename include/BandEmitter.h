@@ -45,12 +45,16 @@ private:
     /** @brief An interpolator for efficient evaluation of transmission coefficients. */
     TransmissionInterpolator interpolator;
 
+    /** @brief A pointer to a random number generator to use for testing purposes */
+    mt19937* generator = NULL;
+
     /**
      * @brief Calculates the integrand based on electron energy and transmission coefficients.
      * @param energy The energy of the electron.
      * @return The calculated integrand value.
      */
     double calculateIntegrand(double energy) {
+        //TODO: be careful with the effective mass. abarX might get below the bandDepth causing problems. The interpolation range must be fixed.
         double result = interpolator.evaluate(energy);
         if (effectiveMass != 1.) {
             double aBarX = -bandDepth + (1. - effectiveMass) * (energy + bandDepth);
@@ -95,6 +99,8 @@ private:
 
     /** @brief Defines the Jacobian matrix for the differential system (optional, currently unused). */
     static int differentialSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params);
+
+
 
 public:
     /**
@@ -149,12 +155,11 @@ public:
      * @brief Sets parameters to (meaningful) random values
      * @note This is a convenience function for testing purposes.
      */
-
     void setRandomParameters(){
-        double bandDepth = Utilities::getUniformRandomDouble(0., 10.);
-        double workFunction = Utilities::getUniformRandomDouble(0., 6.);
-        double effMass = Utilities::getUniformRandomDouble(0.8, 1.);
-        double kT_ = Utilities::getUniformRandomDouble(0., 2.);
+        double bandDepth = Utilities::getUniformRandomDouble(0., 10., *generator);
+        double workFunction = Utilities::getUniformRandomDouble(0., 6., *generator);
+        double effMass = Utilities::getUniformRandomDouble(0.8, 1., *generator);
+        double kT_ = Utilities::getUniformRandomDouble(0., 2., *generator);
         setParameters(workFunction, kT_, effMass, bandDepth);
     }
 
@@ -211,6 +216,14 @@ public:
      */
     double getNottinghamHeat() {
         return solutionVector[2] * CONSTANTS.SommerfeldConstant;
+    }
+
+    /**
+     * @brief Sets the random number generator for the band emitter.
+     * @param generator_ A pointer to the random number generator.
+     */
+    void setGenerator(mt19937* generator_){
+        generator = generator_;
     }
 };
 

@@ -22,7 +22,9 @@ TEST(TransmissionInterpolatorTest, evaluationTest) {
     ModifiedSNBarrier barrier;
     TransmissionSolver solver(&barrier);
     solver.setXlimits(12.);
-    double testEnergy = Utilities::getUniformRandomDouble(-7., 0.);
+    mt19937 generator(1987);
+
+    double testEnergy = Utilities::getUniformRandomDouble(-7., 0., generator);
     double calculatedValue = solver.calculateTransmissionCoefficientForEnergy(-4.5 + testEnergy);
 
     TransmissionInterpolator interpolator(solver);
@@ -48,6 +50,9 @@ TEST(BandEmitterTest, CurrentDensityMethodComparison){
     ModifiedSNBarrier barrier;
     TransmissionSolver solver(&barrier);
     BandEmitter emitter(solver);
+    mt19937 generator(1987);
+    emitter.setGenerator(&generator);
+    barrier.setGenerator(&generator);
 
     for (int i = 0; i < 100; i++){
         barrier.setRandomParameters();
@@ -62,5 +67,7 @@ TEST(BandEmitterTest, CurrentDensityMethodComparison){
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
+    ::testing::GTEST_FLAG(catch_exceptions) = false;
+
     return RUN_ALL_TESTS();
 }
