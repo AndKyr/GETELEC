@@ -29,7 +29,7 @@ double BandEmitter::normalEnergyDistribution(double energy, void* params) {
 }
 
 void BandEmitter::updateBarrier() {
-    transmissionSolver.setXlimits(workFunction + bandDepth + 1.);
+    transmissionSolver.setXlimits(workFunction + bandDepth + 2.);
     interpolator.initialize(-bandDepth, 10 * kT + workFunction, 8);
     interpolator.refineToTolerance();
 }
