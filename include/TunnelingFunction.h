@@ -256,7 +256,8 @@ public:
     double findRightXLimit(double maxPotentialDepth){
         double b = field * radius * (gamma - 1.) - gamma * maxPotentialDepth;
         double c = - maxPotentialDepth * radius * (gamma - 1.);
-        return 0.5 * (-b + sqrt(b*b - 4*field*c)) / field;
+        double result = 0.5 * (-b + sqrt(b*b - 4*field*c)) / field;
+        return max(result, 0.5);
     }
 
 };
