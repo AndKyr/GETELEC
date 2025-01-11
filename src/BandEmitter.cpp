@@ -29,32 +29,43 @@ double BandEmitter::normalEnergyDistribution(double energy, void* params) {
 }
 
 void BandEmitter::updateBarrier() {
-    transmissionSolver.setXlimits(workFunction + bandDepth + 1.);
-    interpolator.initialize(-bandDepth, 10 * kT + workFunction, 8);
+    double minNormalEnergy = xInitial;
+    if (effectiveMass > 1.)
+        minNormalEnergy += (1. - effectiveMass) * (xFinal - xInitial);
+    
+    // Set the limits for the transmission solver. The argument counts the barrier depth from Evacuum.
+    transmissionSolver.setXlimits(workFunction - minNormalEnergy + 2.); 
+    
+    // Initialize the interpolator with the new limits. Slightly extends th interpolator limits to avoid edge effects.
+    interpolator.initialize(minNormalEnergy - 0.1, xFinal + 0.1, 8);
     interpolator.refineToTolerance();
 }
 
-    
-void BandEmitter::setParameters(double workFunction_, double kT_, double effectiveMass_, double bandDepth_){
-    if (workFunction != workFunction_ || bandDepth_ != bandDepth) {
-        workFunction = workFunction_;
-        bandDepth = bandDepth_;
-        transmissionSolver.setXlimits(workFunction + bandDepth + 2.);
+double BandEmitter::calculateIntegrand(double energy) {
+    //TODO: be careful with the effective mass. abarX might get below the bandDepth causing problems. The interpolation range must be fixed.
+    double result = interpolator.evaluate(energy);
+    if (effectiveMass != 1.) {
+        double aBarX = -bandDepth + (1. - effectiveMass) * (energy + bandDepth);
+        result -= (1. - effectiveMass) * interpolator.evaluate(aBarX);
     }
-    
-    xInitial = -bandDepth;
+    return result;
+}
 
+void BandEmitter::setParameters(double workFunction_, double kT_, double effectiveMass_, double bandDepth_){
+    //set the new parameters
+    workFunction = workFunction_;
+    bandDepth = bandDepth_;
     effectiveMass = effectiveMass_;
     kT = kT_;
-    double xFinalOld = xFinal;
-    xFinal = workFunction + 10. * kT;
     interpolator.setParameters(kT, workFunction);
 
-    if (xFinal > xFinalOld) {
-        updateBarrier();
-    }
+    //set ODE integration limits and affected parameters
+    xInitial = -bandDepth;
+    xFinal = workFunction + 10. * kT;
     maxStepSize = (xFinal - xInitial) / minAllowedSteps;
     initialStep = (xFinal - xInitial) / stepsExpectedForInitialStep;
+
+    updateBarrier();
     setInitialValues({0., 0., 0.});
 }
 

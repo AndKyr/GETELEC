@@ -53,15 +53,7 @@ private:
      * @param energy The energy of the electron.
      * @return The calculated integrand value.
      */
-    double calculateIntegrand(double energy) {
-        //TODO: be careful with the effective mass. abarX might get below the bandDepth causing problems. The interpolation range must be fixed.
-        double result = interpolator.evaluate(energy);
-        if (effectiveMass != 1.) {
-            double aBarX = -bandDepth + (1. - effectiveMass) * (energy + bandDepth);
-            result -= (1. - effectiveMass) * interpolator.evaluate(aBarX);
-        }
-        return result;
-    }
+    double calculateIntegrand(double energy);
 
     /**
      * @brief Defines the system of differential equations to solve.

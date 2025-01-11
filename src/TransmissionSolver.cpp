@@ -1,5 +1,6 @@
 #include "TransmissionSolver.h"
-
+#include <cassert>
+#include <sstream>
 
 
 int TransmissionSolver::tunnelingDifferentialSystem(double x, const double y[], double f[], void *params){
@@ -47,8 +48,16 @@ void TransmissionSolver::updateKappaAtLimits(){
 double TransmissionSolver::calculateTransmissionCoefficientForEnergy(double energy){
     setEnergy(energy);
     if (xFinal > 10.) 
-        return 0.;
+        return 1.e-50;
     solveNoSave();
     numberOfCalls++;
-    return transmissionCoefficient();
+    double out = transmissionCoefficient();
+    
+    // Assert with inline error message construction
+    assert(isfinite(out) && out >= 0. && ([](double val) {
+        stringstream ss;
+        ss << "transmission coefficient appears to not be finite. Current value: " << val;
+        return ss.str().c_str();
+    }(out)));
+    return max(out, 1.e-50);
 }
