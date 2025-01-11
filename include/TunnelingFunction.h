@@ -189,6 +189,8 @@ public:
      */
 
     void setRandomParameters(){
+        if (!generator)
+            throw runtime_error("Random number generator is empty");
         field = Utilities::getUniformRandomDouble(1.e-5, 50., *generator);
         double curvature = Utilities::getUniformRandomDouble(1.e-5, 10., *generator);
         radius = 1. / curvature;
