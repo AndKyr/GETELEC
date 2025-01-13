@@ -54,7 +54,7 @@ TEST(BandEmitterTest, CurrentDensityMethodComparison){
     emitter.setGenerator(&generator);
     barrier.setGenerator(&generator);
 
-    for (int i = 0; i < 100; i++){
+    for (int i = 0; i < 2048; i++){
         barrier.setRandomParameters();
         emitter.setRandomParameters();
         emitter.updateBarrier();
