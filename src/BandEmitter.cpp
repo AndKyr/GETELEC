@@ -35,10 +35,22 @@ void BandEmitter::updateBarrier() {
     
     // Set the limits for the transmission solver. The argument counts the barrier depth from Evacuum.
     transmissionSolver.setXlimits(workFunction - minNormalEnergy + 2.); 
+
+    if (transmissionSolver.getXFinal() > 10.) 
+        transmissionSolver.setRecalculateXlimitsAtEachEnergy(true);
+    else
+        transmissionSolver.setRecalculateXlimitsAtEachEnergy(false);
     
     // Initialize the interpolator with the new limits. Slightly extends th interpolator limits to avoid edge effects.
-    interpolator.initialize(minNormalEnergy - 0.1, xFinal + 0.1, 8);
-    interpolator.refineToTolerance();
+    interpolator.initialize(minNormalEnergy - 0.001, xFinal + 0.001, 8);
+
+    const int maxAllowedRefiningSteps = 12;
+    int refiningSteps = interpolator.refineToTolerance(maxAllowedRefiningSteps);
+    if (refiningSteps >= maxAllowedRefiningSteps){
+        cout << "GETELEC WARNING: the interpolator reached maxRefiningSteps = " << maxAllowedRefiningSteps << " without satisfying the tolerance." << endl;
+        writePlottingData();
+        interpolator.writeSplineNodes();
+    }
 }
 
 double BandEmitter::calculateIntegrand(double energy) {

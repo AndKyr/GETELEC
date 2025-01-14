@@ -47,8 +47,15 @@ void TransmissionSolver::updateKappaAtLimits(){
 
 double TransmissionSolver::calculateTransmissionCoefficientForEnergy(double energy){
     setEnergy(energy);
-    if (xFinal > 10.) 
+    if (recalculateXlimitsAtEachEnergy){
+        setXlimits(-energy + 1., -energy);
+        xInitial += 1.;
+    }
+
+    //the tunneling region is really big, there is no point to calculate
+    if (xInitial > 11.)
         return 1.e-50;
+
     solveNoSave();
     numberOfCalls++;
     double out = transmissionCoefficient();

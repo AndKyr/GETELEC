@@ -129,7 +129,7 @@ private:
      * @param z coordinate - distance from electrical surface (nm)
      */
     double imagePotential(double z){
-        return CONSTANTS.imageChargeConstant * ( 1. / z - .5 / radius);
+        return CONSTANTS.imageChargeConstant /  (z + .5 * z * z / radius);
     }
 
     /**
@@ -137,7 +137,8 @@ private:
      * @param z coordinate - distance from electrical surface (nm)
      */
     double imagePotentialDerivative(double z){
-        return -CONSTANTS.imageChargeConstant * (1./(z * z));
+        double denominator = (z + .5 * z * z / radius);
+        return -CONSTANTS.imageChargeConstant * (1. + z / radius) / (denominator * denominator);
     }
 
     /**
@@ -220,6 +221,24 @@ public:
     void setGamma(double g){
         gamma = g;
     }
+
+    /**
+     * @brief Getter for the field.
+     * @return Field (GV/m).
+     */
+    double getField() const { return field; }
+
+    /**
+     * @brief Getter for the radius.
+     * @return Radius (nm).
+     */
+    double getRadius() const { return radius; }
+
+    /**
+     * @brief Getter for the gamma parameter.
+     * @return Gamma parameter.
+     */
+    double getGamma() const { return gamma; }
 
     /**
      * @brief Computes the potential at a given position.

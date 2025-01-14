@@ -21,7 +21,8 @@ private:
     double kappaInitial; /**< Initial value of the wavevector (kappa) for the tunneling region. */
     double kappaFinal; /**< Final value of the wavevector (kappa) for the tunneling region. */
     int numberOfCalls = 0; /**< Counter for the number of times the transmission coefficient is calculated. */
-
+    bool recalculateXlimitsAtEachEnergy = false; /**< Flag to recalculate the integration limits for each energy level. */
+    
     /**
      * @brief Defines the system of differential equations for tunneling.
      * @param x Independent variable (position or distance).
@@ -75,10 +76,23 @@ public:
     }
 
 
-
+    /**
+     * @brief Sets the integration limits for the tunneling region.
+     * @param maxPotentialDepth Maximum potential depth for defining integration limits.
+     */
     void setXlimits(double maxPotentialDepth){
         xInitial = tunnelingFunction->findRightXLimit(maxPotentialDepth);
         xFinal = tunnelingFunction->findLeftXLimit(maxPotentialDepth);
+    }
+
+    /**
+     * @brief Sets the integration limits for the tunneling region to different values left and right.
+     * @param leftPotentialDepth Maximum potential depth for defining the left integration limit.
+     * @param rightPotentialDepth Maximum potential depth for defining the right integration limit.
+     */
+    void setXlimits(double leftPotentialDepth, double rightPotentialDepth){
+        xInitial = tunnelingFunction->findRightXLimit(rightPotentialDepth);
+        xFinal = tunnelingFunction->findLeftXLimit(leftPotentialDepth);
     }
 
     /**
@@ -115,6 +129,18 @@ public:
      * @return The number of calls.
      */
     int getNumberOfCalls() { return numberOfCalls; }
+
+    /**
+     * @brief Sets the flag to recalculate the integration limits for each energy level.
+     * @param flag Flag value.
+     */
+    void setRecalculateXlimitsAtEachEnergy(bool flag) { recalculateXlimitsAtEachEnergy = flag; }
+
+    /**
+     * @brief Retrieves the flag for recalculating the integration limits.
+     * @return The flag value.
+     */
+    bool getRecalculateXlimitsAtEachEnergy() { return recalculateXlimitsAtEachEnergy; }
 
     /**
      * @brief Prints the integration limits for debugging purposes.

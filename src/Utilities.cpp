@@ -89,12 +89,14 @@ int FunctionInterpolator::refineSampling(){
     return numberOfAddedNodes;
 }
 
-void FunctionInterpolator::refineToTolerance(int maxRefiningSteps){
-    for (int i = 0; i < maxRefiningSteps; i++)
+int FunctionInterpolator::refineToTolerance(int maxRefiningSteps){
+    int numberOfSteps;
+    for (numberOfSteps = 0; numberOfSteps < maxRefiningSteps; numberOfSteps++)
         if(refineSampling())
             updateSpline();
         else
-            return;
+            break;
+    return numberOfSteps;
 }
 
 void FunctionInterpolator::writeSplineNodes(string filename){

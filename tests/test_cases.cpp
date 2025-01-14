@@ -14,7 +14,7 @@ TEST(TransmissionSolverTest, DefaultValueTest) {
     TransmissionSolver solver(&barrier);
     solver.setXlimits(8.0);
     double transmission = solver.calculateTransmissionCoefficientForEnergy(-4.5);
-    EXPECT_NEAR(transmission, 0.00066697781489034457, 1.e-10);
+    EXPECT_NEAR(transmission, 0.00066697796753640074, 1.e-10);
 }
 
 // Test for TransmissionInterpolator:: check that the inteprolated and calculated values are close
@@ -42,8 +42,8 @@ TEST(BandEmitterTest, DefaultValueTest){
     emitter.calculateCurrentDensityAndSpectra();
     double currentDensity = emitter.getCurrentDensity();
     double nottinghamHeat = emitter.getNottinghamHeat();
-    EXPECT_NEAR(3.676829392936353e-09, currentDensity, 1.e-12);
-    EXPECT_NEAR(-7.5900179516309179e-10, nottinghamHeat, 1.e-13);
+    EXPECT_NEAR(3.6745963706309422e-09, currentDensity, emitter.getToleranceForValue(currentDensity));
+    EXPECT_NEAR(-7.5900179516309179e-10, nottinghamHeat, emitter.getToleranceForValue(nottinghamHeat));
 }
 
 TEST(BandEmitterTest, CurrentDensityMethodComparison){

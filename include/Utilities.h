@@ -196,8 +196,9 @@ public:
     /**
      * @brief Refines the sampling list to meet the specified tolerance.
      * @param maxRefiningSteps The maximum number of refining steps allowed.
+     * @return The number of refining steps actually taken
      */
-    void refineToTolerance(int maxRefiningSteps = 10);
+    int refineToTolerance(int maxRefiningSteps = 10);
 
     /**
      * @brief Writes the spline nodes to a file.

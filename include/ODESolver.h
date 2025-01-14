@@ -161,6 +161,18 @@ public:
     double getToleranceForValue(double value){
         return value * relativeTolerance + absoluteTolerance;
     }
+
+    /**
+     * @brief Getter for xFinal
+     * @return The final value of the final independent variable.
+     */
+    double getXFinal() const { return xFinal; }
+
+    /**
+     * @brief Getter for xInitial
+     * @return The initial value of the independent variable.
+     */
+    double getXInitial() const { return xInitial; }
 };
 
 #endif /* ODESOLVER_H_ */
