@@ -44,7 +44,7 @@ void BandEmitter::updateBarrier() {
     // Initialize the interpolator with the new limits. Slightly extends th interpolator limits to avoid edge effects.
     interpolator.initialize(minNormalEnergy - 0.001, xFinal + 0.001, 8);
 
-    const int maxAllowedRefiningSteps = 12;
+    const int maxAllowedRefiningSteps = 10;
     int refiningSteps = interpolator.refineToTolerance(maxAllowedRefiningSteps);
     if (refiningSteps >= maxAllowedRefiningSteps) {
         cout << "GETELEC WARNING: the interpolator reached maxRefiningSteps = " << maxAllowedRefiningSteps << " without satisfying the tolerance. No Spline Nodes = " << interpolator.size() << endl;

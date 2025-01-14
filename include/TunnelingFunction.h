@@ -278,7 +278,7 @@ public:
         double b = field * radius * (gamma - 1.) - gamma * maxPotentialDepth;
         double c = - maxPotentialDepth * radius * (gamma - 1.);
         double result = 0.5 * (-b + sqrt(b*b - 4*field*c)) / field;
-        return max(result, 0.5);
+        return max(result, 1.);
     }
 
 };
