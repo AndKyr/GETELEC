@@ -215,6 +215,12 @@ public:
      * @brief Getter for the relative tolerance.
      */
     double getRelativeTolerance() const { return relativeTolerance; }
+
+    /**
+     * @brief Gets the size of the spline sampling list.
+     * @return The number of elements in the sampling list.
+     */
+    size_t size() const { return samplingList.size(); }
 };
 
 #endif // UTILITIES_H_

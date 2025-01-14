@@ -46,8 +46,8 @@ void BandEmitter::updateBarrier() {
 
     const int maxAllowedRefiningSteps = 12;
     int refiningSteps = interpolator.refineToTolerance(maxAllowedRefiningSteps);
-    if (refiningSteps >= maxAllowedRefiningSteps){
-        cout << "GETELEC WARNING: the interpolator reached maxRefiningSteps = " << maxAllowedRefiningSteps << " without satisfying the tolerance." << endl;
+    if (refiningSteps >= maxAllowedRefiningSteps) {
+        cout << "GETELEC WARNING: the interpolator reached maxRefiningSteps = " << maxAllowedRefiningSteps << " without satisfying the tolerance. No Spline Nodes = " << interpolator.size() << endl;
         writePlottingData();
         interpolator.writeSplineNodes();
     }
