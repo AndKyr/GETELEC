@@ -5,13 +5,14 @@
 #include <gsl/gsl_integration.h>
 #include "TransmissionSolver.h"
 #include "TransmissionInterpolator.h"
+#include "Config.h"
 #include <vector>
 #include <string>
 #include <fstream>
 using namespace std;
 
 /**
- * TODO: all documentation and comments are chatgpt generated
+ * TODO: all documentation and comments are chatgpt generated. Please review them.
  */
 
 /**
@@ -122,15 +123,13 @@ public:
                 double kT_ = .025,
                 double effMass = 1.,
                 double bandDepth_ = 7.,
-                double rtol = 1.e-4,
-                double atol = 1.e-12,
-                int maxSteps = 4096,
-                int minSteps = 16,
-                int stepExpectedForInitialStep = 256)
-        : ODESolver(vector<double>(3, 0.0), differentialSystem, 3, {0., 1.}, rtol, atol, 
-                    gsl_odeiv2_step_rkck, maxSteps, minSteps, stepExpectedForInitialStep, NULL, this), 
+                Config::BandEmitterParams config = Config::BandEmitterParams()
+                )
+        : ODESolver(vector<double>(3, 0.0), differentialSystem, 3, {0., 1.}, 
+            config.relativeTolerance, config.absoluteTolerance, gsl_odeiv2_step_rkck, 
+            config.maxSteps, config.minSteps, config.stepExpectedForInitialStep, NULL, this), 
           transmissionSolver(solver), 
-          interpolator(solver, workFun, kT_, atol, rtol) {
+          interpolator(solver, workFun, kT_, config.absoluteTolerance, config.relativeTolerance) {
         setParameters(workFun, kT_, effMass, bandDepth_);
         updateBarrier();
     }

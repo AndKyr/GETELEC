@@ -4,6 +4,7 @@
 #include "ODESolver.h"
 #include "TunnelingFunction.h"
 #include "Utilities.h"
+#include "Config.h"
 #include <cassert>
 
 using namespace std;
@@ -44,6 +45,36 @@ private:
      */
     static int tunnelingSystemJacobian(double x, const double y[], double* dfdy, double dfdt[], void* params);
 
+    static const gsl_odeiv2_step_type* getStepTypeFromString(const string& stepTypeName){
+        if (stepTypeName == "rk2")
+            return gsl_odeiv2_step_rk2;
+        else if (stepTypeName == "rkf45")
+            return gsl_odeiv2_step_rk4;
+        else if (stepTypeName == "rkf45")
+            return gsl_odeiv2_step_rkf45;
+        else if (stepTypeName == "rkck")
+            return gsl_odeiv2_step_rkck;
+        else if (stepTypeName == "rk8pd")
+            return gsl_odeiv2_step_rk8pd;
+        else if (stepTypeName == "rk2imp")
+            return gsl_odeiv2_step_rk2imp;
+        else if (stepTypeName == "rk4imp")
+            return gsl_odeiv2_step_rk4imp;
+        else if (stepTypeName == "bsimp")
+            return gsl_odeiv2_step_bsimp;
+        else if (stepTypeName == "rk1imp")
+            return gsl_odeiv2_step_rk1imp;
+        else if (stepTypeName == "msadams")
+            return gsl_odeiv2_step_msadams;
+        else if (stepTypeName == "msbdf")
+            return gsl_odeiv2_step_msbdf;   
+        else {
+            cout << "WARNING : stpeTypeName " << stepTypeName << "not valid. Reverting to default rkck" << endl;
+            return gsl_odeiv2_step_rkck;
+        }
+    }
+ 
+
 public:
     /**
      * @brief Constructs a TransmissionSolver object.
@@ -58,18 +89,13 @@ public:
      */
     TransmissionSolver(
         TunnelingFunction* tunnelFunctionPtr,
-        double relativeTolerance = 1.e-5,
-        double absoluteTolerance = 1.e-5,
-        const gsl_odeiv2_step_type* stepType = gsl_odeiv2_step_rk8pd,
-        int maxSteps = 4096,
-        int minSteps = 64,
-        int stepExpectedForInitialStep = 64,
-            double maxPotentialDepth = 10.
-        )   : ODESolver(vector<double>(3, 0.0), tunnelingDifferentialSystem, 3, 
-                        {2.00400712, 0.03599847}, relativeTolerance, absoluteTolerance, stepType, 
-                        maxSteps, minSteps,stepExpectedForInitialStep, 
-                        tunnelingSystemJacobian, tunnelFunctionPtr),
-                        tunnelingFunction(tunnelFunctionPtr)
+        double maxPotentialDepth = 10.,
+        Config::TransmissionSolverParams config = Config::TransmissionSolverParams()
+        ) : ODESolver(vector<double>(3, 0.0), tunnelingDifferentialSystem, 3, 
+                {2.00400712, 0.03599847}, config.relativeTolerance, config.absoluteTolerance, 
+                getStepTypeFromString(config.stepType), config.maxSteps, config.minSteps, 
+                config.stepExpectedForInitialStep, tunnelingSystemJacobian, tunnelFunctionPtr), 
+                tunnelingFunction(tunnelFunctionPtr)
     {
         setXlimits(maxPotentialDepth);
         updateKappaAtLimits();
