@@ -52,6 +52,11 @@
                     "description": "Set Disassembly Flavor to Intel",
                     "text": "-gdb-set disassembly-flavor intel",
                     "ignoreFailures": true
+                },
+                {
+                    "description": "Set breakpoint at gtest failure",
+                    "text": "--gtest_break_on_failure",
+                    "ignoreFailures": true
                 }
                 
             ],

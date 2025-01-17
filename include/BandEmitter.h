@@ -153,7 +153,7 @@ public:
     void setRandomParameters(){
         double bandDepth = Utilities::getUniformRandomDouble(0., 10., *generator);
         double workFunction = Utilities::getUniformRandomDouble(0., 6., *generator);
-        double effMass = Utilities::getUniformRandomDouble(0.8, 1., *generator);
+        double effMass = Utilities::getUniformRandomDouble(0.8, 2., *generator);
         double kT_ = Utilities::getUniformRandomDouble(0., 2., *generator);
         setParameters(workFunction, kT_, effMass, bandDepth);
     }
@@ -177,7 +177,7 @@ public:
      * 
      * @note This method runs the same as calculateCurrentDensityAndSpectra but a bit faster because it does not save the spectra.
      */
-    int calculateCurrentDensityAndNottingham(double convergenceTolerance);
+    int calculateCurrentDensityAndNottingham(double convergenceTolerance = 1.e-5);
 
     /**
      * @brief Calculates the current density using numerical integration.
