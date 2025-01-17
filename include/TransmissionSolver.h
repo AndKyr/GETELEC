@@ -18,7 +18,7 @@ using namespace std;
  */
 class TransmissionSolver : public ODESolver {
 private:
-    TunnelingFunction* tunnelingFunction; /**< Pointer to the tunneling function defining the potential barrier. */
+    TunnelingFunction* barrier; /**< Pointer to the tunneling function defining the potential barrier. */
     double kappaInitial; /**< Initial value of the wavevector (kappa) for the tunneling region. */
     double kappaFinal; /**< Final value of the wavevector (kappa) for the tunneling region. */
     int numberOfCalls = 0; /**< Counter for the number of times the transmission coefficient is calculated. */
@@ -95,7 +95,7 @@ public:
                 {2.00400712, 0.03599847}, config.relativeTolerance, config.absoluteTolerance, 
                 getStepTypeFromString(config.stepType), config.maxSteps, config.minSteps, 
                 config.stepExpectedForInitialStep, tunnelingSystemJacobian, tunnelFunctionPtr), 
-                tunnelingFunction(tunnelFunctionPtr)
+                barrier(tunnelFunctionPtr)
     {
         setXlimits(maxPotentialDepth);
         updateKappaAtLimits();
@@ -107,8 +107,8 @@ public:
      * @param maxPotentialDepth Maximum potential depth for defining integration limits.
      */
     void setXlimits(double maxPotentialDepth){
-        xInitial = tunnelingFunction->findRightXLimit(maxPotentialDepth);
-        xFinal = tunnelingFunction->findLeftXLimit(maxPotentialDepth);
+        xInitial = barrier->findRightXLimit(maxPotentialDepth);
+        xFinal = barrier->findLeftXLimit(maxPotentialDepth);
     }
 
     /**
@@ -117,8 +117,8 @@ public:
      * @param rightPotentialDepth Maximum potential depth for defining the right integration limit.
      */
     void setXlimits(double leftPotentialDepth, double rightPotentialDepth){
-        xInitial = tunnelingFunction->findRightXLimit(rightPotentialDepth);
-        xFinal = tunnelingFunction->findLeftXLimit(leftPotentialDepth);
+        xInitial = barrier->findRightXLimit(rightPotentialDepth);
+        xFinal = barrier->findLeftXLimit(leftPotentialDepth);
     }
 
     /**
@@ -131,8 +131,14 @@ public:
      * @param E Energy level (eV).
      */
     void setEnergy(double E){
-        tunnelingFunction->setEnergy(E);
+        barrier->setEnergy(E);
         updateKappaAtLimits();
+    }
+
+    void setBarrierParameters(double field, double radius, double gamma){
+        barrier->setField(field);
+        barrier->setRadius(radius);
+        barrier->setGamma(gamma);
     }
 
     void resetNumberOfCalls(){numberOfCalls = 0;}

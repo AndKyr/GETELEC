@@ -34,8 +34,8 @@ double TransmissionSolver::transmissionCoefficient() const{
 }
 
 void TransmissionSolver::updateKappaAtLimits(){
-    double kappaSquaredInitial = tunnelingFunction->kappaSquared(xInitial);
-    double kappaSquaredFinal = tunnelingFunction->kappaSquared(xFinal);
+    double kappaSquaredInitial = barrier->kappaSquared(xInitial);
+    double kappaSquaredFinal = barrier->kappaSquared(xFinal);
 
     if (kappaSquaredInitial <= 0. || kappaSquaredFinal <= 0.) 
         throw std::runtime_error("The tunneling energy is lower than the edge potential values. The integration interval must extend beyond the classically forbidden region.");

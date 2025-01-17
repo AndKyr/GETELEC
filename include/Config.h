@@ -11,7 +11,10 @@ using namespace std;
 class Config {
 public:
 
-    /** @brief initializes configuration parameters */
+    /** 
+     * @brief initializes configuration parameters 
+     * @param fileName path to the configuration file
+    */
     Config(string fileName = "GetelecConfig.txt"){
         transmissionSolverParams = TransmissionSolverParams();
         bandEmitterParams = BandEmitterParams();

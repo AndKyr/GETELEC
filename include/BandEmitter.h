@@ -105,6 +105,10 @@ public:
      */
     void setParameters(double workFunction_ = 4.5, double kT_ = 0.025, double effectiveMass_ = 1., double bandDepth_ = 7.);
 
+    void setBarrierParameters(double field, double radius, double gamma){
+        transmissionSolver.set;
+    }
+
     /**
      * @brief Constructs a BandEmitter object.
      * @param solver A reference to the transmission solver.
@@ -215,6 +219,15 @@ public:
      */
     void setGenerator(mt19937* generator_){
         generator = generator_;
+    }
+
+    /**
+     * @brief Evaluates the transmission coefficient at a given energy.
+     * @param energy The (perpendicular to the surface component) energy of the electron.
+     * @return The transmission coefficient.
+     */
+    double evaluateTransmissionCoefficient(double energy){
+        return interpolator.evaluate(energy);
     }
 };
 
