@@ -78,12 +78,24 @@ public:
             threadLocalEmitter.local().calculateCurrentDensityAndSpectra();
         else
             threadLocalEmitter.local().calculateCurrentDensityAndNottingham(); 
+        
+        currentDensityVector[i] = threadLocalEmitter.local().getCurrentDensity();
+        nottinghamHeatVector[i] = threadLocalEmitter.local().getNottinghamHeat();
+        if (calculateSpectra)
+            spectra.push_back(threadLocalEmitter.local().getSpectra());
 
     }
 
-    void run(){
-        tbb::parallel_for(size_t(0), size_t(getMaxIterations()), [this](size_t i) { runIteration(i);});
+    void run(bool calculateSpectra = false){
+        currentDensityVector.resize(getMaxIterations());
+        nottinghamHeatVector.resize(getMaxIterations());
+        spectra.clear();
+        tbb::parallel_for(size_t(0), size_t(getMaxIterations()), [this, calculateSpectra](size_t i) { runIteration(i, calculateSpectra);});
     }
+
+    double getCurrentDensity(unsigned i = 0) const { return currentDensityVector[i]; }
+    double getNottinghamHeat(unsigned i = 0) const { return nottinghamHeatVector[i]; }
+    pair<const vector<double>&, const vector<double>&> getSpectra(unsigned i = 0) const { return spectra[i]; }
 private:
     double field = 5.; //< The electric field in V/nm.
     vector<double> fieldsVector; //< The electric field in V/nm, multiple values to iterate over.
@@ -105,6 +117,14 @@ private:
 
     double effectiveMass = 1.; //< Effective mass of the electron.
     vector<double> effectiveMassVector; //< Effective mass of the electron, multiple values to iterate over.
+
+    double currentDensity = 0.; //< The current density (output) in A/nm^2.
+    tbb::concurrent_vector<double> currentDensityVector; //< The current density (output) in A/nm^2, multiple values to iterate over.
+
+    double nottinghamHeat = 0.; //< The Nottingham heat (output) in W/nm^2.
+    tbb::concurrent_vector<double> nottinghamHeatVector; //< The Nottingham heat (output) in W/nm^2, multiple values to iterate over.
+
+    tbb::concurrent_vector<pair<const vector<double>&, const vector<double>&>> spectra; //< The spectra (output) in A/nm^2/eV, multiple values to iterate over.
 
     tbb::enumerable_thread_specific<ModifiedSNBarrier> threadLocalBarrier; //< Thread-local instances of ModifiedSNBarrier
     tbb::enumerable_thread_specific<TransmissionSolver> threadLocalSolver; //< Thread-local instances of TransmissionSolver
