@@ -105,10 +105,6 @@ public:
      */
     void setParameters(double workFunction_ = 4.5, double kT_ = 0.025, double effectiveMass_ = 1., double bandDepth_ = 7.);
 
-    void setBarrierParameters(double field, double radius, double gamma){
-        transmissionSolver.set;
-    }
-
     /**
      * @brief Constructs a BandEmitter object.
      * @param solver A reference to the transmission solver.

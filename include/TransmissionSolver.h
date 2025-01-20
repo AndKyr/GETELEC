@@ -135,12 +135,6 @@ public:
         updateKappaAtLimits();
     }
 
-    void setBarrierParameters(double field, double radius, double gamma){
-        barrier->setField(field);
-        barrier->setRadius(radius);
-        barrier->setGamma(gamma);
-    }
-
     void resetNumberOfCalls(){numberOfCalls = 0;}
 
     /**

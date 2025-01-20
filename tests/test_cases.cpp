@@ -5,6 +5,7 @@
 #include "TransmissionInterpolator.h"
 #include "TunnelingFunction.h"
 #include "BandEmitter.h"
+#include "Getelec.h"
 
 #include <random>
 #include <iostream>
@@ -63,6 +64,14 @@ TEST(BandEmitterTest, CurrentDensityMethodComparison){
         double currentDensity2 = emitter.calcualteCurrentDensity();
         EXPECT_NEAR(currentDensity, currentDensity2, 100*emitter.getToleranceForValue(currentDensity));
     }
+}
+
+TEST(GetelecObjectTest, RunIterationTest){
+    Getelec getelec;
+    auto generator = mt19937(1987);
+    auto fields = Utilities::linspace(2., 10., 64);
+    getelec.setField(fields);
+    getelec.run();
 }
 
 int main(int argc, char **argv) {

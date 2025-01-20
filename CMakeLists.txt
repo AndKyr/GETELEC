@@ -21,6 +21,10 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 # Find GSL library
 find_package(GSL REQUIRED)
 
+# Find TBB library
+find_package(TBB REQUIRED)
+
+
 # Add the source files
 file(GLOB_RECURSE SOURCES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 
@@ -28,7 +32,7 @@ file(GLOB_RECURSE SOURCES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 add_library(getelec_lib SHARED ${SOURCES})
 
 # Link the GSL and math library
-target_link_libraries(getelec_lib GSL::gsl GSL::gslcblas m)
+target_link_libraries(getelec_lib TBB::tbb GSL::gsl GSL::gslcblas m)
 
 # Set the library's output name to "getelec"
 set_target_properties(getelec_lib PROPERTIES OUTPUT_NAME getelec)
