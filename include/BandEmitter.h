@@ -38,7 +38,11 @@ private:
     vector<double> savedEnergies;
 
     /** @brief Stores logarithmic transmission coefficients for later analysis. */
-    vector<double> savedLogD;
+    vector<double> savedSpectra;
+
+    gsl_spline* spectraSpline = NULL; /**< Spline for efficient evaluation of the spectra. */
+    gsl_interp_accel* spectraSplineAccelerator = NULL; /**< GSL interpolation accelerator for improved performance. */
+
 
     /** @brief A reference to the transmission solver used for calculating coefficients. */
     TransmissionSolver& transmissionSolver;
@@ -93,8 +97,10 @@ private:
     /** @brief Defines the Jacobian matrix for the differential system (optional, currently unused). */
     static int differentialSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params);
 
-
-
+    /**
+     * @brief Updates (allocates if necessary) the spline for the energy spectra.
+     */
+    int updateSpectraSpline();
 public:
     /**
      * @brief Sets the parameters for the band emitter simulation.
@@ -140,6 +146,10 @@ public:
     ~BandEmitter() {
         if (integrationWorkspace)
             gsl_integration_workspace_free(integrationWorkspace);
+        if (spectraSpline)
+            gsl_spline_free(spectraSpline);
+        if (spectraSplineAccelerator)
+            gsl_interp_accel_free(spectraSplineAccelerator);
     }
 
     /**
@@ -164,7 +174,7 @@ public:
      * @param convergenceTolerance The tolerance for convergence.
      * @return Status of the calculation (e.g., GSL_SUCCESS).
      */
-    int calculateCurrentDensityAndSpectra(double convergenceTolerance = 1.e-5);
+    int calculateCurrentDensityAndSpectra(double convergenceTolerance = 1.e-5, bool makeSpectralSpline = false);
 
     /**
      * @brief Solves the ODE system to calculate current density and Nottingham heat.
@@ -180,12 +190,6 @@ public:
      * @return The calculated current density.
      */
     double calcualteCurrentDensity();
-
-    /**
-     * @brief Writes the saved logarithmic transmission data to a file.
-     * @param filename The name of the output file.
-     */
-    void writeSavedLogD(string filename = "energyTransmission.dat");
 
     /**
      * @brief Writes data for plotting the band emitter's behavior.
@@ -207,6 +211,36 @@ public:
      */
     double getNottinghamHeat() {
         return solutionVector[2] * CONSTANTS.SommerfeldConstant;
+    }
+
+    /**
+     * @brief Gets the calculated spectra from the solution vector.
+     * @return The energy spectra.
+     */
+    pair<const vector<double>&, const vector<double>&> getSpectra() const{
+        return {xSaved, savedSpectra};
+    }   
+
+    /**
+     * @brief Evaluates the speactra at a given energy.
+     * @param energy The energy at which to evaluate the spectra.
+     * @return The evaluated spectra.
+     */
+    double spectraForEnergy(double energy) const{
+        return gsl_spline_eval(spectraSpline, energy, spectraSplineAccelerator);
+    }
+
+    /**
+     * @brief gets the spectra for many energy values
+     * @param energies The energies at which to evaluate the spectra.
+     * @return The evaluated spectra.
+     */
+    vector<double> getSpectraForEnergies(vector<double> energies){
+        std::vector<double> result(energies.size());
+        for (size_t i = 0; i < energies.size(); ++i) {
+            result[i] = spectraForEnergy(energies[i]);
+        }
+        return result;
     }
 
     /**

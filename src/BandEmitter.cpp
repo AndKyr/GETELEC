@@ -81,24 +81,39 @@ void BandEmitter::setParameters(double workFunction_, double kT_, double effecti
     setInitialValues({0., 0., 0.});
 }
 
-int BandEmitter::calculateCurrentDensityAndSpectra(double convergenceTolerance) {
+int BandEmitter::calculateCurrentDensityAndSpectra(double convergenceTolerance, bool makeSpectralSpline) {
     double x = xInitial;
     double dx = initialStep;
     int status;
     reinitialize();
-    vector<double> previousSolution;
+    savedSpectra.clear();
+    double previousCurrentDensity;
 
     for (size_t i = 0; i < maxAllowedSteps; i++) { // Loop over blocks
-        previousSolution = solutionVector;
-        savedSolution.push_back(solutionVector);
+        previousCurrentDensity = solutionVector[1];
+        savedSpectra.push_back(solutionVector[0]);
         xSaved.push_back(x);
         dx = GSL_SIGN(dx) * min(abs(maxStepSize), abs(dx));
         status = gsl_odeiv2_evolve_apply(evolver, controller, step, &sys, &x, xFinal, &dx, solutionVector.data());
-        bool hasConverged = abs(previousSolution[1] - solutionVector[1]) / previousSolution[1] < convergenceTolerance;
+        bool hasConverged = abs(previousCurrentDensity - solutionVector[1]) / previousCurrentDensity < convergenceTolerance;
         if (x >= xFinal || status != GSL_SUCCESS || hasConverged)    
             return status;         
     }
+
+    if (makeSpectralSpline) updateSpectraSpline();
     return GSL_CONTINUE; 
+}
+
+int BandEmitter::updateSpectraSpline(){
+    if (spectraSpline)
+        gsl_spline_free(spectraSpline);
+    if (spectraSplineAccelerator)
+        gsl_interp_accel_free(spectraSplineAccelerator);
+
+    spectraSplineAccelerator = gsl_interp_accel_alloc();
+    spectraSpline = gsl_spline_alloc(gsl_interp_cspline, savedSpectra.size());
+
+    return gsl_spline_init(spectraSpline, xSaved.data(), savedSpectra.data(), xSaved.size());
 }
 
 int BandEmitter::calculateCurrentDensityAndNottingham(double convergenceTolerance) {
@@ -106,13 +121,13 @@ int BandEmitter::calculateCurrentDensityAndNottingham(double convergenceToleranc
     double dx = initialStep;
     int status;
     reinitialize();
-    vector<double> previousSolution;
+    double previousCurrentDensity;
 
     for (size_t i = 0; i < maxAllowedSteps; i++) { // Loop over blocks
-        previousSolution = solutionVector;
+        previousCurrentDensity = solutionVector[1];
         dx = GSL_SIGN(dx) * min(abs(maxStepSize), abs(dx));
         status = gsl_odeiv2_evolve_apply(evolver, controller, step, &sys, &x, xFinal, &dx, solutionVector.data());
-        bool hasConverged = abs(previousSolution[1] - solutionVector[1]) / previousSolution[1] < convergenceTolerance;
+        bool hasConverged = abs(previousCurrentDensity - solutionVector[1]) / previousCurrentDensity < convergenceTolerance;
         if (x >= xFinal || status != GSL_SUCCESS || hasConverged)    
             return status;         
     }
@@ -129,21 +144,16 @@ double BandEmitter::calcualteCurrentDensity() {
     return result * CONSTANTS.SommerfeldConstant * kT;
 }
 
-void BandEmitter::writeSavedLogD(string filename) {
-    ofstream outFile(filename, ios::out);        
-    for (size_t i = 0; i < savedEnergies.size(); i++)
-        outFile << savedEnergies[i] << " " << savedLogD[i] << endl;
-}
 
 void BandEmitter::writePlottingData(string filename) {
     ofstream outFile(filename, ios::out);        
-    outFile << " E D_calc D_interp error NED lFD(E) tolerance" << endl;
+    outFile << " E D_calc D_interp error NED TED lFD(E) tolerance" << endl;
     for (double x = xInitial; x < xFinal; x += 0.001) {
         double D = transmissionSolver.calculateTransmissionCoefficientForEnergy(x - workFunction);
         double lFD = Utilities::logFermiDiracFunction(x, kT);
         double err = interpolator.calculateError(x, log(D));
         double tol = interpolator.calculateTolerance(x, log(D));
-        outFile << x << " " << D << " " << interpolator.evaluate(x) << " " << err << " " << lFD * D << " " << lFD << " " << tol << endl;
+        outFile << x << " " << D << " " << interpolator.evaluate(x) << " " << err << " " << lFD * D << " " << spectraForEnergy(x) << " " << lFD << " " << tol << endl;
     }
     interpolator.writeSplineNodes();
 }
