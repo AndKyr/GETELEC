@@ -151,30 +151,46 @@ public:
     /**
      * @brief Calculate the transmission coefficient for a specific energy
      * @param energy The energy level (eV)
+     * @param paramsIndex The index of the parameter vector space to use (optional)
      * @return The transmission coefficient
-     * @note This method is relevant for a single calculation of the transmission coefficient. Don't use it for multiple calculations on the same barrier as it is slow. Use calculateTransmissionCoefficientForEnergies instead
+     * @note This method is relevant for a single or a few calculations of the transmission coefficient. Don't use it for multiple calculations on the same barrier as it resets the barrier which might be slow. Use calculateTransmissionCoefficientForEnergies instead
      */
-    // double calculateTransmissionCoefficientForEnergy(double energy){
-    //     threadLocalBarrier.local().setEnergy(energy);
-    //     threadLocalEmitter.local().setTransmissionSolver();
-    //     return threadLocalSolver.local().calculateTransmissionCoefficientForEnergy(energy);
-    // }
+    double calculateTransmissionCoefficientForEnergy(double energy, size_t paramsIndex = numeric_limits<size_t>::max()){
+        setParamsForIteration(paramsIndex);   
+        auto& params = threadLocalParams.local();
+        auto& barrier = threadLocalBarrier.local();
+        auto& emitter = threadLocalEmitter.local();
+
+        barrier.setBarrierParameters(params.field, params.radius, params.gamma);
+        emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, false); 
+        emitter.setTransmissionSolver();
+        return emitter.calculateTransmissionCoefficientForEnergy(energy);
+    }
 
     /**
      * @brief Calculate the transmission coefficient for multiple energies
      * @param energies The energy levels (eV)
      * @return The transmission coefficients
+     * @note This method is relevant for multiple calculations of the transmission coefficient. It is faster than calculateTransmissionCoefficientForEnergy for multiple calculations on the same barrier. However, if you are iterating over many many energies, it might be better to use calculateTransmissionCoefficientForManyEnergies, which prepares the interpolator and then just interpolates.
      */
-    // vector<double> calculateTransmissionCoefficientForEnergies(const vector<double>& energies, size_t paramsIndex = numeric_limits<size_t>::max()){
-    //     tbb::concurrent_vector<double> transmissionCoefficients(energies.size());
+    vector<double> calculateTransmissionCoefficientForEnergies(const vector<double>& energies, size_t paramsIndex = numeric_limits<size_t>::max()){
+
+        setParamsForIteration(paramsIndex);   
+        auto& params = threadLocalParams.local();
+        auto& barrier = threadLocalBarrier.local();
+        auto& emitter = threadLocalEmitter.local();
+
+        barrier.setBarrierParameters(params.field, params.radius, params.gamma);
+        emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, false); 
+        emitter.setTransmissionSolver();
+
+        tbb::concurrent_vector<double> transmissionCoefficients(energies.size());
         
-    //     threadLocalBarrier.local().setEnergy(energy);
-    //     threadLocalEmitter.local().setTransmissionSolver();
-    //     tbb::parallel_for(size_t(0), energies.size(), [&transmissionCoefficients, &energies, this](size_t i) { 
-    //         transmissionCoefficients[i] = calculateTransmissionCoefficientForEnergy(energies[i]);
-    //     });
-    //     return transmissionCoefficients;
-    // }
+        tbb::parallel_for(size_t(0), energies.size(), [&transmissionCoefficients, &energies, &emitter, this](size_t i) { 
+            transmissionCoefficients[i] = emitter.calculateTransmissionCoefficientForEnergy(energies[i]);
+        });
+        return vector<double>(transmissionCoefficients.begin(), transmissionCoefficients.end());
+    }
 
     /**
      * @brief Get the current density at the i-th element of the array of inputs
