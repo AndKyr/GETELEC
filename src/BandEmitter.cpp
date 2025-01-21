@@ -69,7 +69,7 @@ double BandEmitter::calculateIntegrand(double energy) {
     return result;
 }
 
-void BandEmitter::setParameters(double workFunction_, double kT_, double effectiveMass_, double bandDepth_){
+void BandEmitter::setParameters(double workFunction_, double kT_, double effectiveMass_, double bandDepth_, bool doUpdateSolverAndInterpolator_) {
     //set the new parameters
     workFunction = workFunction_;
     bandDepth = bandDepth_;
@@ -83,7 +83,7 @@ void BandEmitter::setParameters(double workFunction_, double kT_, double effecti
     maxStepSize = (xFinal - xInitial) / minAllowedSteps;
     initialStep = (xFinal - xInitial) / stepsExpectedForInitialStep;
 
-    updateSolverAndInterpolator();
+    if (doUpdateSolverAndInterpolator_) updateSolverAndInterpolator();
     setInitialValues({0., 0., 0.});
 }
 

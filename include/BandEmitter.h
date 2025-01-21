@@ -111,7 +111,7 @@ public:
      * @param effectiveMass_ The effective mass of the electron.
      * @param bandDepth_ The depth of the electronic band in eV.
      */
-    void setParameters(double workFunction_ = 4.5, double kT_ = 0.025, double effectiveMass_ = 1., double bandDepth_ = 7.);
+    void setParameters(double workFunction_ = 4.5, double kT_ = 0.025, double effectiveMass_ = 1., double bandDepth_ = 7., bool doUpdateSolverAndInterpolator_ = true);
 
     /**
      * @brief Constructs a BandEmitter object.
@@ -261,12 +261,23 @@ public:
     }
 
     /**
-     * @brief Evaluates the transmission coefficient at a given energy.
+     * @brief Evaluates the transmission coefficient at a given energy by using the interpolator.
      * @param energy The (perpendicular to the surface component) energy of the electron.
      * @return The transmission coefficient.
+     * @note Make sure that the interpolator is properly set before calling this method.
      */
-    double evaluateTransmissionCoefficient(double energy){
+    double interpolateTransmissionCoefficientForEnergy(double energy){
         return interpolator.evaluate(energy);
+    }
+
+    /**
+     * @brief Evaluates the transmission coefficient at a given energy by using the solver directly.
+     * @param energy The (perpendicular to the surface component) energy of the electron.
+     * @return The transmission coefficient.
+     * @note It is not necessary to set the interpolator before, but it might be slow for multiple calls.
+     */
+    double calculateTransmissionCoefficientForEnergy(double energy){
+        return transmissionSolver.calculateTransmissionCoefficientForEnergy(-workFunction + energy);
     }
 };
 
