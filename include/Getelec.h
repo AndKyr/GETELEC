@@ -333,4 +333,42 @@ private:
 
 };
 
+extern "C" {
+
+    // Wrapper to create a new Getelec object
+    Getelec* Getelec_new() {
+        return new Getelec();
+    }
+
+    // Wrapper to delete a Getelec object
+    void Getelec_delete(Getelec* obj) {
+        delete obj;
+    }
+
+    // Wrapper to set field values
+    void Getelec_setField(Getelec* obj, const double* fields, size_t size) {
+        std::vector<double> fieldVector(fields, fields + size);
+        obj->setField(&fieldVector);
+    }
+
+    // Wrapper to set radius values
+    void Getelec_setRadius(Getelec* obj, const double* radii, size_t size) {
+        std::vector<double> radiusVector(radii, radii + size);
+        obj->setRadius(&radiusVector);
+    }
+
+    // Wrapper to run the calculation
+    void Getelec_run(Getelec* obj, bool calculateSpectra) {
+        obj->run(calculateSpectra);
+    }
+
+    // Wrapper to get current densities
+    const double* Getelec_getCurrentDensities(Getelec* obj, size_t* size) {
+        static std::vector<double> currentDensities = obj->getCurrentDensities();
+        *size = currentDensities.size();
+        return currentDensities.data();
+    }
+
+} // extern "C"
+
 #endif // GETELEC_H
