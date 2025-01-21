@@ -1,0 +1,110 @@
+#include "Getelec.h"
+
+void Getelec::runIteration(size_t i, bool calculateSpectra) {
+    setParamsForIteration(i);
+    
+    auto& params = threadLocalParams.local();
+    auto& barrier = threadLocalBarrier.local();
+    auto& emitter = threadLocalEmitter.local();
+
+    barrier.setBarrierParameters(params.field, params.radius, params.gamma);
+    emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth); 
+
+    if (calculateSpectra)
+        emitter.calculateCurrentDensityAndSpectra();
+    else
+        emitter.calculateCurrentDensityAndNottingham(); 
+    
+    currentDensityVector[i] = emitter.getCurrentDensity();
+    nottinghamHeatVector[i] = emitter.getNottinghamHeat();
+    if (calculateSpectra)
+        spectra.push_back(emitter.getSpectra());
+}
+
+void Getelec::run(bool calculateSpectra) {
+    currentDensityVector.resize(getMaxIterations());
+    nottinghamHeatVector.resize(getMaxIterations());
+    spectra.clear();
+    tbb::parallel_for(size_t(0), size_t(getMaxIterations()), [this, calculateSpectra](size_t i) { runIteration(i, calculateSpectra); });
+}
+
+double Getelec::calculateTransmissionCoefficientForEnergy(double energy, size_t paramsIndex) {
+    setParamsForIteration(paramsIndex);   
+    auto& params = threadLocalParams.local();
+    auto& barrier = threadLocalBarrier.local();
+    auto& emitter = threadLocalEmitter.local();
+
+    barrier.setBarrierParameters(params.field, params.radius, params.gamma);
+    emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, false); 
+    emitter.setTransmissionSolver();
+    return emitter.calculateTransmissionCoefficientForEnergy(energy);
+}
+
+std::vector<double> Getelec::calculateTransmissionCoefficientForEnergies(const std::vector<double>& energies, size_t paramsIndex) {
+    setParamsForIteration(paramsIndex);   
+    auto& params = threadLocalParams.local();
+    auto& barrier = threadLocalBarrier.local();
+    auto& emitter = threadLocalEmitter.local();
+
+    barrier.setBarrierParameters(params.field, params.radius, params.gamma);
+    emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, false); 
+    emitter.setTransmissionSolver();
+
+    tbb::concurrent_vector<double> transmissionCoefficients(energies.size());
+    
+    tbb::parallel_for(size_t(0), energies.size(), [&transmissionCoefficients, &energies, &emitter, this](size_t i) { 
+        transmissionCoefficients[i] = emitter.calculateTransmissionCoefficientForEnergy(energies[i]);
+    });
+    return std::vector<double>(transmissionCoefficients.begin(), transmissionCoefficients.end());
+}
+
+std::vector<double> Getelec::calculateTransmissionCoefficientForManyEnergies(const std::vector<double>& energies, size_t paramsIndex) {
+    setParamsForIteration(paramsIndex);   
+    auto& params = threadLocalParams.local();
+    auto& barrier = threadLocalBarrier.local();
+    auto& emitter = threadLocalEmitter.local();
+
+    barrier.setBarrierParameters(params.field, params.radius, params.gamma);
+    emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, true); 
+
+    tbb::concurrent_vector<double> transmissionCoefficients(energies.size());
+    
+    tbb::parallel_for(size_t(0), energies.size(), [&transmissionCoefficients, &energies, &emitter, this](size_t i) { 
+        transmissionCoefficients[i] = emitter.interpolateTransmissionCoefficientForEnergy(energies[i]);
+    });
+    return std::vector<double>(transmissionCoefficients.begin(), transmissionCoefficients.end());
+}
+
+int Getelec::getMaxIterations() {
+    const std::vector<const std::vector<double>*> allInputVectors = {fieldsVector, radiiVector, gammasVector, kTVector, workFunctionVector, bandDepthVector, effectiveMassVector};
+    int maxSize = 0;
+    for (auto inputVector : allInputVectors)
+        if (inputVector && inputVector->size() > maxSize)
+            maxSize = inputVector->size();
+    return maxSize;
+}
+
+void Getelec::setParamsForIteration(size_t i) {
+    ParamsForIteration& params = threadLocalParams.local();
+    
+    if (workFunctionVector && i < workFunctionVector->size())
+        params.workFunction = (*workFunctionVector)[i];
+
+    if (kTVector && i < kTVector->size())
+        params.kT = (*kTVector)[i];
+
+    if (effectiveMassVector && i < effectiveMassVector->size())
+        params.effectiveMass = (*effectiveMassVector)[i];
+    
+    if (bandDepthVector && i < bandDepthVector->size())
+        params.bandDepth = (*bandDepthVector)[i];
+
+    if (fieldsVector && i < fieldsVector->size())
+        params.field = (*fieldsVector)[i];
+    
+    if (radiiVector && i < radiiVector->size())
+        params.radius = (*radiiVector)[i];
+    
+    if (gammasVector && i < gammasVector->size())
+        params.gamma = (*gammasVector)[i];
+}

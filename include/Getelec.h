@@ -115,38 +115,40 @@ public:
      * @param i The index of the element to calculate
      * @param calculateSpectra If true, calculate the spectra
      */
-    void runIteration(size_t i = 0, bool calculateSpectra = false) {
-        setParamsForIteration(i);
+    void runIteration(size_t i = 0, bool calculateSpectra = false);
+    //  {
+    //     setParamsForIteration(i);
         
-        auto& params = threadLocalParams.local();
-        auto& barrier = threadLocalBarrier.local();
-        auto& emitter = threadLocalEmitter.local();
+    //     auto& params = threadLocalParams.local();
+    //     auto& barrier = threadLocalBarrier.local();
+    //     auto& emitter = threadLocalEmitter.local();
 
-        barrier.setBarrierParameters(params.field, params.radius, params.gamma);
-        emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth); 
+    //     barrier.setBarrierParameters(params.field, params.radius, params.gamma);
+    //     emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth); 
 
-        if (calculateSpectra)
-            emitter.calculateCurrentDensityAndSpectra();
-        else
-            emitter.calculateCurrentDensityAndNottingham(); 
+    //     if (calculateSpectra)
+    //         emitter.calculateCurrentDensityAndSpectra();
+    //     else
+    //         emitter.calculateCurrentDensityAndNottingham(); 
         
-        currentDensityVector[i] = emitter.getCurrentDensity();
-        nottinghamHeatVector[i] = emitter.getNottinghamHeat();
-        if (calculateSpectra)
-            spectra.push_back(emitter.getSpectra());
+    //     currentDensityVector[i] = emitter.getCurrentDensity();
+    //     nottinghamHeatVector[i] = emitter.getNottinghamHeat();
+    //     if (calculateSpectra)
+    //         spectra.push_back(emitter.getSpectra());
 
-    }
+    // }
 
     /**
      * @brief Run the calculation
      * @param calculateSpectra If true, calculate the spectra
      */
-    void run(bool calculateSpectra = false){
-        currentDensityVector.resize(getMaxIterations());
-        nottinghamHeatVector.resize(getMaxIterations());
-        spectra.clear();
-        tbb::parallel_for(size_t(0), size_t(getMaxIterations()), [this, calculateSpectra](size_t i) { runIteration(i, calculateSpectra);});
-    }
+    void run(bool calculateSpectra = false);
+    // {
+    //     currentDensityVector.resize(getMaxIterations());
+    //     nottinghamHeatVector.resize(getMaxIterations());
+    //     spectra.clear();
+    //     tbb::parallel_for(size_t(0), size_t(getMaxIterations()), [this, calculateSpectra](size_t i) { runIteration(i, calculateSpectra);});
+    // }
 
     /**
      * @brief Calculate the transmission coefficient for a specific energy
@@ -155,17 +157,18 @@ public:
      * @return The transmission coefficient
      * @note This method is relevant for a single or a few calculations of the transmission coefficient. Don't use it for multiple calculations on the same barrier as it resets the barrier which might be slow. Use calculateTransmissionCoefficientForEnergies instead
      */
-    double calculateTransmissionCoefficientForEnergy(double energy, size_t paramsIndex = numeric_limits<size_t>::max()){
-        setParamsForIteration(paramsIndex);   
-        auto& params = threadLocalParams.local();
-        auto& barrier = threadLocalBarrier.local();
-        auto& emitter = threadLocalEmitter.local();
+    double calculateTransmissionCoefficientForEnergy(double energy, size_t paramsIndex = numeric_limits<size_t>::max());
+    // {
+    //     setParamsForIteration(paramsIndex);   
+    //     auto& params = threadLocalParams.local();
+    //     auto& barrier = threadLocalBarrier.local();
+    //     auto& emitter = threadLocalEmitter.local();
 
-        barrier.setBarrierParameters(params.field, params.radius, params.gamma);
-        emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, false); 
-        emitter.setTransmissionSolver();
-        return emitter.calculateTransmissionCoefficientForEnergy(energy);
-    }
+    //     barrier.setBarrierParameters(params.field, params.radius, params.gamma);
+    //     emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, false); 
+    //     emitter.setTransmissionSolver();
+    //     return emitter.calculateTransmissionCoefficientForEnergy(energy);
+    // }
 
     /**
      * @brief Calculate the transmission coefficient for multiple energies
@@ -173,24 +176,25 @@ public:
      * @return The transmission coefficients
      * @note This method is relevant for multiple calculations of the transmission coefficient. It is faster than calculateTransmissionCoefficientForEnergy for multiple calculations on the same barrier. However, if you are iterating over many many energies, it might be better to use calculateTransmissionCoefficientForManyEnergies, which prepares the interpolator and then just interpolates.
      */
-    vector<double> calculateTransmissionCoefficientForEnergies(const vector<double>& energies, size_t paramsIndex = numeric_limits<size_t>::max()){
+    vector<double> calculateTransmissionCoefficientForEnergies(const vector<double>& energies, size_t paramsIndex = numeric_limits<size_t>::max());
+    // {
 
-        setParamsForIteration(paramsIndex);   
-        auto& params = threadLocalParams.local();
-        auto& barrier = threadLocalBarrier.local();
-        auto& emitter = threadLocalEmitter.local();
+    //     setParamsForIteration(paramsIndex);   
+    //     auto& params = threadLocalParams.local();
+    //     auto& barrier = threadLocalBarrier.local();
+    //     auto& emitter = threadLocalEmitter.local();
 
-        barrier.setBarrierParameters(params.field, params.radius, params.gamma);
-        emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, false); 
-        emitter.setTransmissionSolver();
+    //     barrier.setBarrierParameters(params.field, params.radius, params.gamma);
+    //     emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, false); 
+    //     emitter.setTransmissionSolver();
 
-        tbb::concurrent_vector<double> transmissionCoefficients(energies.size());
+    //     tbb::concurrent_vector<double> transmissionCoefficients(energies.size());
         
-        tbb::parallel_for(size_t(0), energies.size(), [&transmissionCoefficients, &energies, &emitter, this](size_t i) { 
-            transmissionCoefficients[i] = emitter.calculateTransmissionCoefficientForEnergy(energies[i]);
-        });
-        return vector<double>(transmissionCoefficients.begin(), transmissionCoefficients.end());
-    }
+    //     tbb::parallel_for(size_t(0), energies.size(), [&transmissionCoefficients, &energies, &emitter, this](size_t i) { 
+    //         transmissionCoefficients[i] = emitter.calculateTransmissionCoefficientForEnergy(energies[i]);
+    //     });
+    //     return vector<double>(transmissionCoefficients.begin(), transmissionCoefficients.end());
+    // }
 
         /**
      * @brief Calculate the transmission coefficient for multiple energies
@@ -198,23 +202,24 @@ public:
      * @return The transmission coefficients
      * @note This method is relevant for multiple calculations of the transmission coefficient. It is faster than calculateTransmissionCoefficientForEnergy for multiple calculations on the same barrier. However, if you are iterating over many many energies, it might be better to use calculateTransmissionCoefficientForManyEnergies, which prepares the interpolator and then just interpolates.
      */
-    vector<double> calculateTransmissionCoefficientForManyEnergies(const vector<double>& energies, size_t paramsIndex = numeric_limits<size_t>::max()){
+    vector<double> calculateTransmissionCoefficientForManyEnergies(const vector<double>& energies, size_t paramsIndex = numeric_limits<size_t>::max());
+    // {
 
-        setParamsForIteration(paramsIndex);   
-        auto& params = threadLocalParams.local();
-        auto& barrier = threadLocalBarrier.local();
-        auto& emitter = threadLocalEmitter.local();
+    //     setParamsForIteration(paramsIndex);   
+    //     auto& params = threadLocalParams.local();
+    //     auto& barrier = threadLocalBarrier.local();
+    //     auto& emitter = threadLocalEmitter.local();
 
-        barrier.setBarrierParameters(params.field, params.radius, params.gamma);
-        emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, true); 
+    //     barrier.setBarrierParameters(params.field, params.radius, params.gamma);
+    //     emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, true); 
 
-        tbb::concurrent_vector<double> transmissionCoefficients(energies.size());
+    //     tbb::concurrent_vector<double> transmissionCoefficients(energies.size());
         
-        tbb::parallel_for(size_t(0), energies.size(), [&transmissionCoefficients, &energies, &emitter, this](size_t i) { 
-            transmissionCoefficients[i] = emitter.interpolateTransmissionCoefficientForEnergy(energies[i]);
-        });
-        return vector<double>(transmissionCoefficients.begin(), transmissionCoefficients.end());
-    }
+    //     tbb::parallel_for(size_t(0), energies.size(), [&transmissionCoefficients, &energies, &emitter, this](size_t i) { 
+    //         transmissionCoefficients[i] = emitter.interpolateTransmissionCoefficientForEnergy(energies[i]);
+    //     });
+    //     return vector<double>(transmissionCoefficients.begin(), transmissionCoefficients.end());
+    // }
 
     /**
      * @brief Get the current density at the i-th element of the array of inputs
@@ -259,6 +264,16 @@ public:
     vector<double> getNottinghamHeats() const { return vector<double>(nottinghamHeatVector.begin(), nottinghamHeatVector.end()); }
 
 private:
+    struct ParamsForIteration{
+        double workFunction = 4.5; ///< Work function in eV.
+        double kT = .025; ///< Temperature in eV.
+        double effectiveMass = 1.; ///< Effective mass of the electron.
+        double bandDepth = 10.; ///< The depth of the electronic band in eV.
+        double field = 5.; ///< The electric field in V/nm.
+        double radius = 1.e5; ///< The radius of the emitter in nm.
+        double gamma = 10.; ///< The gamma parameter of the general barrier model.
+    };
+
     const vector<double>* fieldsVector = NULL; ///< The electric field in V/nm, multiple values to iterate over.
     const vector<double>* radiiVector = NULL; ///< The radius of the emitter in nm, multiple values to iterate over.
     const vector<double>* gammasVector = NULL; ///< Gamma parameter of the general barrier model, multiple values to iterate over.
@@ -278,58 +293,42 @@ private:
     tbb::enumerable_thread_specific<ModifiedSNBarrier> threadLocalBarrier; ///< Thread-local instances of ModifiedSNBarrier
     tbb::enumerable_thread_specific<TransmissionSolver> threadLocalSolver; ///< Thread-local instances of TransmissionSolver
     tbb::enumerable_thread_specific<BandEmitter> threadLocalEmitter; ///< Thread-local instances of BandEmitter
+    tbb::enumerable_thread_specific<ParamsForIteration> threadLocalParams;
 
 
     /**
      * @brief Get the maximum number of iterations
      * @return The maximum number of iterations
      */
-    int getMaxIterations(){
-        const vector<const vector<double>*> allInputVectors = {fieldsVector, radiiVector, gammasVector, kTVector, workFunctionVector, bandDepthVector, effectiveMassVector};
-        int maxSize = 0;
-        for (auto inputVector : allInputVectors)
-            if (inputVector && inputVector->size() > maxSize)
-                maxSize = inputVector->size();
-        return maxSize;
-    }
+    int getMaxIterations();
 
-    struct ParamsForIteration{
-        double workFunction = 4.5; ///< Work function in eV.
-        double kT = .025; ///< Temperature in eV.
-        double effectiveMass = 1.; ///< Effective mass of the electron.
-        double bandDepth = 10.; ///< The depth of the electronic band in eV.
-        double field = 5.; ///< The electric field in V/nm.
-        double radius = 1.e5; ///< The radius of the emitter in nm.
-        double gamma = 10.; ///< The gamma parameter of the general barrier model.
-    };
 
-    tbb::enumerable_thread_specific<ParamsForIteration> threadLocalParams;
-
-    void setParamsForIteration(size_t i = numeric_limits<size_t>::max()){
-        ParamsForIteration& params = threadLocalParams.local();
+    void setParamsForIteration(size_t i = numeric_limits<size_t>::max());
+    // {
+    //     ParamsForIteration& params = threadLocalParams.local();
         
-        if (workFunctionVector && i < workFunctionVector->size())
-            params.workFunction = (*workFunctionVector)[i];
+    //     if (workFunctionVector && i < workFunctionVector->size())
+    //         params.workFunction = (*workFunctionVector)[i];
 
-        if (kTVector && i < kTVector->size())
-            params.kT = (*kTVector)[i];
+    //     if (kTVector && i < kTVector->size())
+    //         params.kT = (*kTVector)[i];
 
-        if (effectiveMassVector && i < effectiveMassVector->size())
-            params.effectiveMass = (*effectiveMassVector)[i];
+    //     if (effectiveMassVector && i < effectiveMassVector->size())
+    //         params.effectiveMass = (*effectiveMassVector)[i];
         
-        if (bandDepthVector && i < bandDepthVector->size())
-            params.bandDepth = (*bandDepthVector)[i];
+    //     if (bandDepthVector && i < bandDepthVector->size())
+    //         params.bandDepth = (*bandDepthVector)[i];
 
-        if (fieldsVector && i < fieldsVector->size())
-            params.field = (*fieldsVector)[i];
+    //     if (fieldsVector && i < fieldsVector->size())
+    //         params.field = (*fieldsVector)[i];
         
-        if (radiiVector && i < radiiVector->size())
-            params.radius = (*radiiVector)[i];
+    //     if (radiiVector && i < radiiVector->size())
+    //         params.radius = (*radiiVector)[i];
         
-        if (gammasVector && i < gammasVector->size())
-            params.gamma = (*gammasVector)[i];
+    //     if (gammasVector && i < gammasVector->size())
+    //         params.gamma = (*gammasVector)[i];
         
-    }
+    // }
 
 
 };
