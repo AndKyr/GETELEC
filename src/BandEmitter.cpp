@@ -28,7 +28,7 @@ double BandEmitter::normalEnergyDistribution(double energy, void* params) {
     return result * Utilities::logFermiDiracFunction(energy, emitter->kT);
 }
 
-void BandEmitter::updateBarrier() {
+double BandEmitter::setTransmissionSolver(){
     double minNormalEnergy = xInitial;
     if (effectiveMass > 1.)
         minNormalEnergy += (1. - effectiveMass) * (xFinal - xInitial);
@@ -41,10 +41,16 @@ void BandEmitter::updateBarrier() {
     else
         transmissionSolver.setRecalculateXlimitsAtEachEnergy(false);
     
+    return minNormalEnergy;
+}
+
+void BandEmitter::updateBarrier() {
+    double minNormalEnergy = setTransmissionSolver();
+    
     // Initialize the interpolator with the new limits. Slightly extends th interpolator limits to avoid edge effects.
     interpolator.initialize(minNormalEnergy - 0.001, xFinal + 0.001, 8);
 
-    const int maxAllowedRefiningSteps = 10;
+    const int maxAllowedRefiningSteps = configParams.maxAllowedRefiningSteps;
     int refiningSteps = interpolator.refineToTolerance(maxAllowedRefiningSteps);
     if (refiningSteps >= maxAllowedRefiningSteps) {
         cout << "GETELEC WARNING: the interpolator reached maxRefiningSteps = " << maxAllowedRefiningSteps << " without satisfying the tolerance. No Spline Nodes = " << interpolator.size() << endl;

@@ -41,6 +41,7 @@ void Config::read_all(const string& fname) {
     read_command("bandEmitterMaxSteps", bandEmitterParams.maxSteps);
     read_command("bandEmitterMinSteps", bandEmitterParams.minSteps);
     read_command("bandEmitterStepExpectedForInitialStep", bandEmitterParams.stepExpectedForInitialStep);
+    read_command("bandEmitterMaxAllowedRefiningSteps", bandEmitterParams.maxAllowedRefiningSteps);
 
 }
 
