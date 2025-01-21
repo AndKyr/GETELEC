@@ -53,6 +53,8 @@ private:
     /** @brief A pointer to a random number generator to use for testing purposes */
     mt19937* generator = NULL;
 
+    Config::BandEmitterParams configParams; /**< Configuration parameters for the BandEmitter class. */
+
     /**
      * @brief Calculates the integrand based on electron energy and transmission coefficients.
      * @param energy The energy of the electron.
@@ -129,13 +131,14 @@ public:
                 double kT_ = .025,
                 double effMass = 1.,
                 double bandDepth_ = 7.,
-                Config::BandEmitterParams config = Config::BandEmitterParams()
+                Config::BandEmitterParams config = Config().bandEmitterParams
                 )
         : ODESolver(vector<double>(3, 0.0), differentialSystem, 3, {0., 1.}, 
             config.relativeTolerance, config.absoluteTolerance, gsl_odeiv2_step_rkck, 
             config.maxSteps, config.minSteps, config.stepExpectedForInitialStep, NULL, this), 
           transmissionSolver(solver), 
-          interpolator(solver, workFun, kT_, config.absoluteTolerance, config.relativeTolerance) {
+          interpolator(solver, workFun, kT_, config.absoluteTolerance, config.relativeTolerance),
+          configParams(config) {
         setParameters(workFun, kT_, effMass, bandDepth_);
         updateBarrier();
     }
@@ -163,6 +166,12 @@ public:
         double kT_ = Utilities::getUniformRandomDouble(0., 2., *generator);
         setParameters(workFunction, kT_, effMass, bandDepth);
     }
+
+    /**
+     * @brief Reinitializes the transmission solver with the proper parameters for a new calculation.
+     * @return (optional) The value of the minimum energy that is relevant for the solver (in eV, based on the band depth and effective mass)
+     */
+    double setTransmissionSolver();
 
     /**
      * @brief Updates the barrier parameters and interpolator grid.

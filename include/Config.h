@@ -102,6 +102,7 @@ public:
         int maxSteps = 4096;
         int minSteps = 16;
         int stepExpectedForInitialStep = 256;
+        int maxAllowedRefiningSteps = 10;
     } bandEmitterParams;
 
 private:
@@ -111,16 +112,16 @@ private:
     const string comment_symbols = "!#%";
     const string data_symbols = "+-/*_.0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ()";
 
-    /** Check for the obsolete commands from the buffered commands */
+    /** @brief  Check for the obsolete commands from the buffered commands */
     void check_obsolete(const string& file_name);
 
-    /** Check for the obsolete commands that are similar to valid ones */
+    /** @brief Check for the obsolete commands that are similar to valid ones */
     void check_changed(const string& command, const string& substitute);
 
-    /** Read the commands and their arguments from the file and store them into the buffer */
+    /** @brief Read the commands and their arguments from the file and store them into the buffer */
     void parse_file(const string& file_name);
 
-    /** Remove the noise from the beginning of the string */
+    /** @brief Remove the noise from the beginning of the string */
     void trim(string& str);
 };
 
