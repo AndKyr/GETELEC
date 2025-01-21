@@ -192,6 +192,30 @@ public:
         return vector<double>(transmissionCoefficients.begin(), transmissionCoefficients.end());
     }
 
+        /**
+     * @brief Calculate the transmission coefficient for multiple energies
+     * @param energies The energy levels (eV)
+     * @return The transmission coefficients
+     * @note This method is relevant for multiple calculations of the transmission coefficient. It is faster than calculateTransmissionCoefficientForEnergy for multiple calculations on the same barrier. However, if you are iterating over many many energies, it might be better to use calculateTransmissionCoefficientForManyEnergies, which prepares the interpolator and then just interpolates.
+     */
+    vector<double> calculateTransmissionCoefficientForManyEnergies(const vector<double>& energies, size_t paramsIndex = numeric_limits<size_t>::max()){
+
+        setParamsForIteration(paramsIndex);   
+        auto& params = threadLocalParams.local();
+        auto& barrier = threadLocalBarrier.local();
+        auto& emitter = threadLocalEmitter.local();
+
+        barrier.setBarrierParameters(params.field, params.radius, params.gamma);
+        emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, true); 
+
+        tbb::concurrent_vector<double> transmissionCoefficients(energies.size());
+        
+        tbb::parallel_for(size_t(0), energies.size(), [&transmissionCoefficients, &energies, &emitter, this](size_t i) { 
+            transmissionCoefficients[i] = emitter.interpolateTransmissionCoefficientForEnergy(energies[i]);
+        });
+        return vector<double>(transmissionCoefficients.begin(), transmissionCoefficients.end());
+    }
+
     /**
      * @brief Get the current density at the i-th element of the array of inputs
      * @param i The index of the element to get
