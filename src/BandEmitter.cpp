@@ -44,7 +44,7 @@ double BandEmitter::setTransmissionSolver(){
     return minNormalEnergy;
 }
 
-void BandEmitter::updateBarrier() {
+void BandEmitter::updateSolverAndInterpolator() {
     double minNormalEnergy = setTransmissionSolver();
     
     // Initialize the interpolator with the new limits. Slightly extends th interpolator limits to avoid edge effects.
@@ -83,7 +83,7 @@ void BandEmitter::setParameters(double workFunction_, double kT_, double effecti
     maxStepSize = (xFinal - xInitial) / minAllowedSteps;
     initialStep = (xFinal - xInitial) / stepsExpectedForInitialStep;
 
-    updateBarrier();
+    updateSolverAndInterpolator();
     setInitialValues({0., 0., 0.});
 }
 

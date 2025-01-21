@@ -140,7 +140,7 @@ public:
           interpolator(solver, workFun, kT_, config.absoluteTolerance, config.relativeTolerance),
           configParams(config) {
         setParameters(workFun, kT_, effMass, bandDepth_);
-        updateBarrier();
+        updateSolverAndInterpolator();
     }
 
     /**
@@ -176,7 +176,7 @@ public:
     /**
      * @brief Updates the barrier parameters and interpolator grid.
      */
-    void updateBarrier();
+    void updateSolverAndInterpolator();
 
     /**
      * @brief Solves the ODE system to calculate current density, Nottingham heat and energy spectra.

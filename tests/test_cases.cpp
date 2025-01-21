@@ -58,7 +58,7 @@ TEST(BandEmitterTest, CurrentDensityMethodComparison){
     for (int i = 0; i < 2048; i++){
         barrier.setRandomParameters();
         emitter.setRandomParameters();
-        emitter.updateBarrier();
+        emitter.updateSolverAndInterpolator();
         emitter.calculateCurrentDensityAndNottingham();
         double currentDensity = emitter.getCurrentDensity();
         double currentDensity2 = emitter.calcualteCurrentDensity();
