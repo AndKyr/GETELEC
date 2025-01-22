@@ -76,7 +76,7 @@ std::vector<double> Getelec::calculateTransmissionCoefficientForManyEnergies(con
 }
 
 int Getelec::getMaxIterations() {
-    const std::vector<const std::vector<double>*> allInputVectors = {fieldsVector, radiiVector, gammasVector, kTVector, workFunctionVector, bandDepthVector, effectiveMassVector};
+    const std::vector<const std::vector<double>*> allInputVectors = {&fieldsVector, &radiiVector, &gammasVector, &kTVector, &workFunctionVector, &bandDepthVector, &effectiveMassVector};
     int maxSize = 0;
     for (auto inputVector : allInputVectors)
         if (inputVector && inputVector->size() > maxSize)
@@ -87,24 +87,24 @@ int Getelec::getMaxIterations() {
 void Getelec::setParamsForIteration(size_t i) {
     ParamsForIteration& params = threadLocalParams.local();
     
-    if (workFunctionVector && i < workFunctionVector->size())
-        params.workFunction = (*workFunctionVector)[i];
+    if (i < workFunctionVector.size())
+        params.workFunction = workFunctionVector[i];
 
-    if (kTVector && i < kTVector->size())
-        params.kT = (*kTVector)[i];
+    if (i < kTVector.size())
+        params.kT = kTVector[i];
 
-    if (effectiveMassVector && i < effectiveMassVector->size())
-        params.effectiveMass = (*effectiveMassVector)[i];
+    if (i < effectiveMassVector.size())
+        params.effectiveMass = effectiveMassVector[i];
     
-    if (bandDepthVector && i < bandDepthVector->size())
-        params.bandDepth = (*bandDepthVector)[i];
+    if (i < bandDepthVector.size())
+        params.bandDepth = bandDepthVector[i];
 
-    if (fieldsVector && i < fieldsVector->size())
-        params.field = (*fieldsVector)[i];
+    if (i < fieldsVector.size())
+        params.field = fieldsVector[i];
     
-    if (radiiVector && i < radiiVector->size())
-        params.radius = (*radiiVector)[i];
+    if (i < radiiVector.size())
+        params.radius = radiiVector[i];
     
-    if (gammasVector && i < gammasVector->size())
-        params.gamma = (*gammasVector)[i];
+    if (i < gammasVector.size())
+        params.gamma = gammasVector[i];
 }

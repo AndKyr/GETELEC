@@ -50,6 +50,6 @@ class GetelecInterface:
 # Assuming the shared library is compiled as "getelec.so"
 getelec = GetelecInterface("build/libgetelec.so")
 getelec.set_field([5.0, 6.0, 7.0])
-getelec.set_radius([1000.0, 2000.0])
+# getelec.set_radius([1000.0, 2000.0])
 getelec.run()
 print(getelec.get_current_densities())

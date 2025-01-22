@@ -69,7 +69,7 @@ TEST(BandEmitterTest, CurrentDensityMethodComparison){
 TEST(GetelecObjectTest, RunParalleltest){
     Getelec getelec;
     auto fields = Utilities::linspace(2., 10., 64);
-    getelec.setField(&fields);
+    getelec.setField(fields);
     EXPECT_NO_THROW(getelec.run());
     for (size_t i = 0; i < fields.size(); i++){
         cout << "Field: " << fields[i] << " Current Density: " << getelec.getCurrentDensity(i) << " Nottingham Heat: " << getelec.getNottinghamHeat(i) << endl;

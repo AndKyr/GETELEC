@@ -30,8 +30,9 @@ public:
      * @brief Set the field parameters of the calculation at multiple values
      * @param fieldsVector_ The electric field in V/nm, multiple values to iterate over.
      */
-    void setField(std::vector<double>* fieldsVector_) { fieldsVector = fieldsVector_; }
+    void setField(std::vector<double>& fieldsVector_) { fieldsVector = vector<double>(fieldsVector_.begin(), fieldsVector_.end()); }
 
+    void setField(const double* fieldsArray_, size_t size) { fieldsVector = std::vector<double>(fieldsArray_, fieldsArray_ + size); }
 
     /**
      * @brief Set the radius of the emitter at a single value
@@ -43,8 +44,9 @@ public:
      * @brief Set the radius of the emitter at multiple values
      * @param radiiVector_ The radius of the emitter in nm, multiple values to iterate over.
      */
-    void setRadius(std::vector<double>* radiiVector_) { radiiVector = radiiVector_; }
+    void setRadius(std::vector<double>& radiiVector_) { radiiVector = vector<double>(radiiVector_.begin(), radiiVector_.end()); }
 
+    void setRadius(const double* radiiArray_, size_t size) { radiiVector = std::vector<double>(radiiArray_, radiiArray_ + size); }
 
     /**
      * @brief Set the gamma parameter of the general barrier model at a single value
@@ -56,8 +58,9 @@ public:
      * @brief Set the gamma parameter of the general barrier model at multiple values
      * @param gammasVector_ The gamma parameter of the general barrier model, multiple values to iterate over.
      */
-    void setGamma(std::vector<double>* gammasVector_) { gammasVector = gammasVector_; }
+    void setGamma(std::vector<double>& gammasVector_) { gammasVector = vector<double>(gammasVector_.begin(), gammasVector_.end()); }
 
+    void setGamma(const double* gammasArray_, size_t size) { gammasVector = std::vector<double>(gammasArray_, gammasArray_ + size); }
 
     /**
      * @brief Set the temperature at a single value
@@ -69,7 +72,9 @@ public:
      * @brief Set the temperature at multiple values
      * @param kTVector_ Temperature in eV, multiple values to iterate over.
      */
-    void setkT(std::vector<double>* kTVector_) { kTVector = kTVector_; }
+    void setkT(std::vector<double>& kTVector_) { kTVector = vector<double>(kTVector_.begin(), kTVector_.end()); }
+
+    void setkT(const double* kTArray_, size_t size) { kTVector = std::vector<double>(kTArray_, kTArray_ + size); }
 
 
     /**
@@ -82,7 +87,9 @@ public:
      * @brief Set the work function at multiple values
      * @param workFunctionVector_ Work function in eV, multiple values to iterate over.
      */
-    void setWorkFunction(std::vector<double>* workFunctionVector_) { workFunctionVector = workFunctionVector_; }
+    void setWorkFunction(std::vector<double>& workFunctionVector_) { workFunctionVector = vector<double>(workFunctionVector_.begin(), workFunctionVector_.end()); }
+
+    void setWorkFunction(const double* workFunctionArray_, size_t size) { workFunctionVector = std::vector<double>(workFunctionArray_, workFunctionArray_ + size); }
 
 
     /**
@@ -95,7 +102,9 @@ public:
      * @brief Set the band depth at multiple values
      * @param bandDepthVector_ Depth of the electronic band in eV, multiple values to iterate over.
      */
-    void setBandDepth(std::vector<double>* bandDepthVector_) { bandDepthVector = bandDepthVector_; } 
+    void setBandDepth(std::vector<double>& bandDepthVector_) { bandDepthVector = vector<double>(bandDepthVector_.begin(), bandDepthVector_.end()); } 
+
+    void setBandDepth(const double* bandDepthArray_, size_t size) { bandDepthVector = std::vector<double>(bandDepthArray_, bandDepthArray_ + size); }
 
 
     /**
@@ -108,7 +117,9 @@ public:
      * @brief Set the effective mass at multiple values
      * @param effectiveMassVector_ Effective mass of the electron, multiple values to iterate over.
      */
-    void setEffectiveMass(vector<double>* effectiveMassVector_) { effectiveMassVector = effectiveMassVector_; }   
+    void setEffectiveMass(const vector<double>& effectiveMassVector_) { effectiveMassVector = vector<double>(effectiveMassVector_.begin(), effectiveMassVector_.end()); }   
+
+    void setEffectiveMass(const double* effectiveMassArray_, size_t size) { effectiveMassVector = std::vector<double>(effectiveMassArray_, effectiveMassArray_ + size); }
 
     /**
      * @brief Calculate for the i-th element of the array of inputs
@@ -205,13 +216,13 @@ private:
         double gamma = 10.; ///< The gamma parameter of the general barrier model.
     };
 
-    const vector<double>* fieldsVector = NULL; ///< The electric field in V/nm, multiple values to iterate over.
-    const vector<double>* radiiVector = NULL; ///< The radius of the emitter in nm, multiple values to iterate over.
-    const vector<double>* gammasVector = NULL; ///< Gamma parameter of the general barrier model, multiple values to iterate over.
-    const vector<double>* kTVector = NULL; ///< Temperature in eV, multiple values to iterate over.
-    const vector<double>* workFunctionVector = NULL; //< Work function in eV, multiple values to iterate over.
-    const vector<double>* bandDepthVector = NULL; //< Depth of the electronic band in eV, multiple values to iterate over.
-    const vector<double>* effectiveMassVector = NULL; ///< Effective mass of the electron, multiple values to iterate over.
+    vector<double> fieldsVector; ///< The electric field in V/nm, multiple values to iterate over.
+    vector<double> radiiVector; ///< The radius of the emitter in nm, multiple values to iterate over.
+    vector<double> gammasVector; ///< Gamma parameter of the general barrier model, multiple values to iterate over.
+    vector<double> kTVector; ///< Temperature in eV, multiple values to iterate over.
+    vector<double> workFunctionVector; //< Work function in eV, multiple values to iterate over.
+    vector<double> bandDepthVector; //< Depth of the electronic band in eV, multiple values to iterate over.
+    vector<double> effectiveMassVector; ///< Effective mass of the electron, multiple values to iterate over.
 
     double currentDensity = 0.; //< The current density (output) in A/nm^2.
     tbb::concurrent_vector<double> currentDensityVector; ///< The current density (output) in A/nm^2, multiple values to iterate over.
@@ -253,14 +264,32 @@ extern "C" {
 
     // Wrapper to set field values
     void Getelec_setField(Getelec* obj, const double* fields, size_t size) {
-        std::vector<double> fieldVector(fields, fields + size);
-        obj->setField(&fieldVector);
+        obj->setField(fields, size);
     }
 
     // Wrapper to set radius values
     void Getelec_setRadius(Getelec* obj, const double* radii, size_t size) {
-        std::vector<double> radiusVector(radii, radii + size);
-        obj->setRadius(&radiusVector);
+        obj->setRadius(radii, size);
+    }
+
+    void Getelec_setGamma(Getelec* obj, const double* gammas, size_t size) {
+        obj->setGamma(gammas, size);
+    }
+
+    void Getelec_setkT(Getelec* obj, const double* kT, size_t size) {
+        obj->setkT(kT, size);
+    }
+
+    void Getelec_setWorkFunction(Getelec* obj, const double* workFunction, size_t size) {
+        obj->setWorkFunction(workFunction, size);
+    }
+
+    void Getelec_setBandDepth(Getelec* obj, const double* bandDepth, size_t size) {
+        obj->setBandDepth(bandDepth, size);
+    }
+
+    void Getelec_setEffectiveMass(Getelec* obj, const double* effectiveMass, size_t size) {
+        obj->setEffectiveMass(effectiveMass, size);
     }
 
     // Wrapper to run the calculation
@@ -270,7 +299,7 @@ extern "C" {
 
     // Wrapper to get current densities
     const double* Getelec_getCurrentDensities(Getelec* obj, size_t* size) {
-        static std::vector<double> currentDensities = obj->getCurrentDensities();
+        std::vector<double> currentDensities = obj->getCurrentDensities();
         *size = currentDensities.size();
         return currentDensities.data();
     }
