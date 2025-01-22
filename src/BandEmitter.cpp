@@ -50,10 +50,9 @@ void BandEmitter::updateSolverAndInterpolator() {
     // Initialize the interpolator with the new limits. Slightly extends th interpolator limits to avoid edge effects.
     interpolator.initialize(minNormalEnergy - 0.001, xFinal + 0.001, 8);
 
-    const int maxAllowedRefiningSteps = configParams.maxAllowedRefiningSteps;
-    int refiningSteps = interpolator.refineToTolerance(maxAllowedRefiningSteps);
-    if (refiningSteps >= maxAllowedRefiningSteps) {
-        cout << "GETELEC WARNING: the interpolator reached maxRefiningSteps = " << maxAllowedRefiningSteps << " without satisfying the tolerance. No Spline Nodes = " << interpolator.size() << endl;
+    int refiningSteps = interpolator.refineToTolerance(configParams.maxAllowedRefiningSteps);
+    if (refiningSteps >= configParams.maxAllowedRefiningSteps) {
+        cout << "GETELEC WARNING: the interpolator reached maxRefiningSteps = " << configParams.maxAllowedRefiningSteps << " without satisfying the tolerance. No Spline Nodes = " << interpolator.size() << endl;
         writePlottingData();
         interpolator.writeSplineNodes();
     }
