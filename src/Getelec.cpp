@@ -18,14 +18,17 @@ void Getelec::runIteration(size_t i, bool calculateSpectra) {
     currentDensityVector[i] = emitter.getCurrentDensity();
     nottinghamHeatVector[i] = emitter.getNottinghamHeat();
     if (calculateSpectra)
-        spectra.push_back(emitter.getSpectra());
+        spectra.assign(i, emitter.getSpectra());
 }
 
-void Getelec::run(bool calculateSpectra) {
-    currentDensityVector.resize(getMaxIterations());
-    nottinghamHeatVector.resize(getMaxIterations());
-    spectra.clear();
-    tbb::parallel_for(size_t(0), size_t(getMaxIterations()), [this, calculateSpectra](size_t i) { runIteration(i, calculateSpectra); });
+size_t Getelec::run(bool calculateSpectra) {
+    size_t maxIterations = getMaxIterations();
+    currentDensityVector.resize(maxIterations);
+    nottinghamHeatVector.resize(maxIterations);
+    if (calculateSpectra)
+        spectra.resize(maxIterations);
+    tbb::parallel_for(size_t(0), maxIterations, [this, calculateSpectra](size_t i) { runIteration(i, calculateSpectra); });
+    return maxIterations;
 }
 
 double Getelec::calculateTransmissionCoefficientForEnergy(double energy, size_t paramsIndex) {
@@ -75,7 +78,7 @@ std::vector<double> Getelec::calculateTransmissionCoefficientForManyEnergies(con
     return std::vector<double>(transmissionCoefficients.begin(), transmissionCoefficients.end());
 }
 
-int Getelec::getMaxIterations() {
+size_t Getelec::getMaxIterations() {
     const std::vector<const std::vector<double>*> allInputVectors = {&fieldsVector, &radiiVector, &gammasVector, &kTVector, &workFunctionVector, &bandDepthVector, &effectiveMassVector};
     int maxSize = 0;
     for (auto inputVector : allInputVectors)

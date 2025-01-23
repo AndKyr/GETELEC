@@ -104,6 +104,11 @@ public:
      */
     void setBandDepth(std::vector<double>& bandDepthVector_) { bandDepthVector = vector<double>(bandDepthVector_.begin(), bandDepthVector_.end()); } 
 
+    /**
+     * @brief Set the band depth at multiple values with a pointer and size input (C-style)
+     * @param bandDepthArray_ Depth of the electronic band in eV, multiple values to iterate over.
+     * @param size The size of the array
+     */
     void setBandDepth(const double* bandDepthArray_, size_t size) { bandDepthVector = std::vector<double>(bandDepthArray_, bandDepthArray_ + size); }
 
 
@@ -119,6 +124,11 @@ public:
      */
     void setEffectiveMass(const vector<double>& effectiveMassVector_) { effectiveMassVector = vector<double>(effectiveMassVector_.begin(), effectiveMassVector_.end()); }   
 
+    /**
+     * @brief Set the effective mass at multiple values with a pointer and size input (C-style)
+     * @param effectiveMassArray_ Effective mass of the electron, multiple values to iterate over.
+     * @param size The size of the array
+     */
     void setEffectiveMass(const double* effectiveMassArray_, size_t size) { effectiveMassVector = std::vector<double>(effectiveMassArray_, effectiveMassArray_ + size); }
 
     /**
@@ -132,8 +142,9 @@ public:
     /**
      * @brief Run the calculation
      * @param calculateSpectra If true, calculate the spectra
+     * @return The number of iterations
      */
-    void run(bool calculateSpectra = false);
+    size_t run(bool calculateSpectra = false);
 
 
     /**
@@ -199,13 +210,59 @@ public:
     vector<double> getCurrentDensities() const { return vector<double>(currentDensityVector.begin(), currentDensityVector.end()); }
     
     /**
+     * @brief Get all the resulting current densities as a vector (used for C and python interface)
+     * @param size The size of the vector to be output
+     * @return Pointer to the first element of the vector
+     */
+    const double* getCurrentDensities(size_t* size) const { 
+        *size = currentDensityVector.size();
+        return currentDensityVector.data(); 
+    }
+
+    /**
      * @brief Get all the resulting Nottingham heats as a vector
      * @return The vector
      * @note This is a copy of the internal vector, so it is safe to modify it.
      */
     vector<double> getNottinghamHeats() const { return vector<double>(nottinghamHeatVector.begin(), nottinghamHeatVector.end()); }
 
+    /**
+     * @brief Get all the resulting Nottingham heats as a vector (used for C and python interface)
+     * @param size The size of the vector to be output
+     * @return Pointer to the first element of the vector
+     */
+    const double* getNottinghamHeats(size_t* size) const { 
+        *size = nottinghamHeatVector.size();
+        return nottinghamHeatVector.data(); 
+    }
+
+    /**
+     * @brief Get the spectra abssicae (energies in eV) of the i-th iteration in parameter space
+     * @param i The index of the iteration
+     * @param length The length of the spectra array to be output
+     * @return Pointer to the first element of the spectra array
+     */
+    const double* getSpectraEnergies(size_t i, size_t* length) const { 
+        *length = spectra[i].first.size();
+        return spectra[i].first.data(); 
+    }
+
+    /**
+     * @brief Get the spectra ordinates (values in A/nm^2/eV) of the i-th iteration in parameter space
+     * @param i The index of the iteration
+     * @param length The length of the spectra array to be output
+     * @return Pointer to the first element of the spectra array
+     */
+    const double* getSpectraValues(size_t i, size_t* length) const { 
+        *length = spectra[i].second.size();
+        return spectra[i].second.data(); 
+    }
+
 private:
+
+    /**
+     * @brief The parameters for the calculation used in a certain iteration
+     */
     struct ParamsForIteration{
         double workFunction = 4.5; ///< Work function in eV.
         double kT = .025; ///< Temperature in eV.
@@ -225,26 +282,29 @@ private:
     vector<double> effectiveMassVector; ///< Effective mass of the electron, multiple values to iterate over.
 
     double currentDensity = 0.; //< The current density (output) in A/nm^2.
-    tbb::concurrent_vector<double> currentDensityVector; ///< The current density (output) in A/nm^2, multiple values to iterate over.
+    vector<double> currentDensityVector; ///< The current density (output) in A/nm^2, multiple values to iterate over.
 
     double nottinghamHeat = 0.; //< The Nottingham heat (output) in W/nm^2.
-    tbb::concurrent_vector<double> nottinghamHeatVector; ///< The Nottingham heat (output) in W/nm^2, multiple values to iterate over.
+    vector<double> nottinghamHeatVector; ///< The Nottingham heat (output) in W/nm^2, multiple values to iterate over.
 
-    tbb::concurrent_vector<pair<const vector<double>&, const vector<double>&>> spectra; /**< The spectra (output) in A/nm^2/eV, multiple values to iterate over. */
+    vector<pair<const vector<double>&, const vector<double>&>> spectra; /**< The spectra (output) in A/nm^2/eV, multiple values to iterate over. */
 
     tbb::enumerable_thread_specific<ModifiedSNBarrier> threadLocalBarrier; ///< Thread-local instances of ModifiedSNBarrier
     tbb::enumerable_thread_specific<TransmissionSolver> threadLocalSolver; ///< Thread-local instances of TransmissionSolver
     tbb::enumerable_thread_specific<BandEmitter> threadLocalEmitter; ///< Thread-local instances of BandEmitter
-    tbb::enumerable_thread_specific<ParamsForIteration> threadLocalParams;
+    tbb::enumerable_thread_specific<ParamsForIteration> threadLocalParams; ///< Thread-local instances of ParamsForIteration
 
 
     /**
      * @brief Get the maximum number of iterations
      * @return The maximum number of iterations
      */
-    int getMaxIterations();
+    size_t getMaxIterations();
 
-
+    /**
+     * @brief Set the parameters for a specific iteration
+     * @param i The index of the iteration
+     */
     void setParamsForIteration(size_t i = numeric_limits<size_t>::max());
 
 
@@ -293,15 +353,28 @@ extern "C" {
     }
 
     // Wrapper to run the calculation
-    void Getelec_run(Getelec* obj, bool calculateSpectra) {
-        obj->run(calculateSpectra);
+    size_t Getelec_run(Getelec* obj, bool calculateSpectra) {
+        return obj->run(calculateSpectra);
     }
 
     // Wrapper to get current densities
     const double* Getelec_getCurrentDensities(Getelec* obj, size_t* size) {
-        std::vector<double> currentDensities = obj->getCurrentDensities();
-        *size = currentDensities.size();
-        return currentDensities.data();
+        return obj->getCurrentDensities(size);
+    }
+
+    // Wrapper to get Nottingham heats
+    const double* Getelec_getNottinghamHeats(Getelec* obj, size_t* size) {
+        return obj->getNottinghamHeats(size);
+    }
+
+    // Wrapper to get spectra energies
+    const double* Getelec_getSpectraEnergies(Getelec* obj, size_t i, size_t* length) {
+        return obj->getSpectraEnergies(i, length);
+    }
+
+    // Wrapper to get spectra values
+    const double* Getelec_getSpectraValues(Getelec* obj, size_t i, size_t* length) {
+        return obj->getSpectraValues(i, length);
     }
 
 } // extern "C"
