@@ -225,6 +225,7 @@ public:
     /**
      * @brief Gets the calculated spectra from the solution vector.
      * @return The energy spectra.
+     * @note This functions uses move semantics to avoid copying the data. This means that the data inside the emitter class is no longer available in the object after calling this function.
      */
     pair<vector<double>, vector<double>> getSpectra(){
         return make_pair(move(xSaved), move(savedSpectra));
