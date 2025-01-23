@@ -18,7 +18,7 @@ void Getelec::runIteration(size_t i, bool calculateSpectra) {
     currentDensityVector[i] = emitter.getCurrentDensity();
     nottinghamHeatVector[i] = emitter.getNottinghamHeat();
     if (calculateSpectra)
-        spectra.assign(i, emitter.getSpectra());
+        spectra[i] = emitter.getSpectra();
 }
 
 size_t Getelec::run(bool calculateSpectra) {

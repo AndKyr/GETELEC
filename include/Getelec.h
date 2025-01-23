@@ -193,14 +193,16 @@ public:
      * @param i The index of the element to get
      * @return The spectra in A/nm^2/eV
      */
-    pair<const vector<double>&, const vector<double>&> getSpectra(unsigned i = 0) const { return spectra[i]; }
+    const pair<vector<double>, vector<double>>& getSpectra(unsigned i = 0) const { return spectra[i]; }
     
     /**
      * @brief Get all the spectra
      * @param i The index of the element to get
      * @return The spectra in A/nm^2/eV
      */
-    vector<pair<const vector<double>&, const vector<double>&>> getAllSpectra(unsigned i) const { return vector<pair<const vector<double>&, const vector<double>&>>(spectra.begin(), spectra.end()); }
+    vector<pair<vector<double>, vector<double>>> getAllSpectra() const { 
+        return vector<pair<vector<double>, vector<double>>>(spectra.begin(), spectra.end()); 
+    }
     
     /**
      * @brief Get all the resulting current densities as a vector
@@ -242,7 +244,7 @@ public:
      * @param length The length of the spectra array to be output
      * @return Pointer to the first element of the spectra array
      */
-    const double* getSpectraEnergies(size_t i, size_t* length) const { 
+    const double* getSpectraEnergies(size_t i, size_t* length) const {
         *length = spectra[i].first.size();
         return spectra[i].first.data(); 
     }
@@ -287,7 +289,7 @@ private:
     double nottinghamHeat = 0.; //< The Nottingham heat (output) in W/nm^2.
     vector<double> nottinghamHeatVector; ///< The Nottingham heat (output) in W/nm^2, multiple values to iterate over.
 
-    vector<pair<const vector<double>&, const vector<double>&>> spectra; /**< The spectra (output) in A/nm^2/eV, multiple values to iterate over. */
+    vector<pair<vector<double>, vector<double>>> spectra; /**< The spectra (output) in A/nm^2/eV, multiple values to iterate over. */
 
     tbb::enumerable_thread_specific<ModifiedSNBarrier> threadLocalBarrier; ///< Thread-local instances of ModifiedSNBarrier
     tbb::enumerable_thread_specific<TransmissionSolver> threadLocalSolver; ///< Thread-local instances of TransmissionSolver
@@ -376,7 +378,21 @@ extern "C" {
     const double* Getelec_getSpectraValues(Getelec* obj, size_t i, size_t* length) {
         return obj->getSpectraValues(i, length);
     }
+    
+    // Wrapper to calculate transmission coefficient for a single energy
+    double Getelec_calculateTransmissionCoefficientForEnergy(Getelec* obj, double energy, size_t paramsIndex) {
+        return obj->calculateTransmissionCoefficientForEnergy(energy, paramsIndex);
+    }
 
+    // Wrapper to calculate transmission coefficient for multiple energies
+    const double* Getelec_calculateTransmissionCoefficientForEnergies(Getelec* obj, const double* energies, size_t size, size_t paramsIndex) {
+        return obj->calculateTransmissionCoefficientForEnergies(vector<double>(energies, energies + size), paramsIndex).data();
+    }
+
+    // Wrapper to calculate transmission coefficient for many energies
+    const double* Getelec_calculateTransmissionCoefficientForManyEnergies(Getelec* obj, const double* energies, size_t size, size_t paramsIndex) {
+        return obj->calculateTransmissionCoefficientForManyEnergies(vector<double>(energies, energies + size), paramsIndex).data();
+    }
 } // extern "C"
 
 #endif // GETELEC_H

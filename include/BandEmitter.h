@@ -226,8 +226,8 @@ public:
      * @brief Gets the calculated spectra from the solution vector.
      * @return The energy spectra.
      */
-    pair<const vector<double>&, const vector<double>&> getSpectra() const{
-        return {xSaved, savedSpectra};
+    pair<vector<double>, vector<double>> getSpectra(){
+        return make_pair(move(xSaved), move(savedSpectra));
     }   
 
     /**
