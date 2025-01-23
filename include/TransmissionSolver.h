@@ -89,8 +89,8 @@ public:
      */
     TransmissionSolver(
         TunnelingFunction* tunnelFunctionPtr,
-        double maxPotentialDepth = 10.,
-        Config::TransmissionSolverParams config = Config().transmissionSolverParams
+        Config::TransmissionSolverParams config = Config().transmissionSolverParams,
+        double maxPotentialDepth = 10.
         ) : ODESolver(vector<double>(3, 0.0), tunnelingDifferentialSystem, 3, 
                 {2.00400712, 0.03599847}, config.relativeTolerance, config.absoluteTolerance, 
                 getStepTypeFromString(config.stepType), config.maxSteps, config.minSteps, 

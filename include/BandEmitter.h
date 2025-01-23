@@ -127,11 +127,11 @@ public:
      * @param stepExpectedForInitialStep Initial step expectation for ODE solving.
      */
     BandEmitter(TransmissionSolver& solver,
+                Config::BandEmitterParams config = Config().bandEmitterParams,
                 double workFun = 4.5,
                 double kT_ = .025,
                 double effMass = 1.,
-                double bandDepth_ = 7.,
-                Config::BandEmitterParams config = Config().bandEmitterParams
+                double bandDepth_ = 7.
                 )
         : ODESolver(vector<double>(3, 0.0), differentialSystem, 3, {0., 1.}, 
             config.relativeTolerance, config.absoluteTolerance, gsl_odeiv2_step_rkck, 

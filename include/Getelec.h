@@ -6,16 +6,18 @@
 #include <tbb/parallel_for.h>
 #include "BandEmitter.h"
 #include "TunnelingFunction.h"
-#include <vector>
+#include "Config.h"
 
 class Getelec {
 public:
     /**
      * @brief Construct a new Getelec object
      */
-    Getelec() : threadLocalBarrier(), 
-                threadLocalSolver([this] {return TransmissionSolver(&threadLocalBarrier.local());}),
-                threadLocalEmitter([this] {return BandEmitter(threadLocalSolver.local());})
+    Getelec(string configFileName = "GetelecConfig.txt") :
+                config(Config(configFileName)),
+                threadLocalBarrier(), 
+                threadLocalSolver([this] {return TransmissionSolver(&threadLocalBarrier.local(), config.transmissionSolverParams);}),
+                threadLocalEmitter([this] {return BandEmitter(threadLocalSolver.local(), config.bandEmitterParams);})
     {}
 
     ~Getelec(){}
@@ -262,6 +264,7 @@ public:
 
 private:
 
+    Config config; ///< Configuration object for the calculation
     /**
      * @brief The parameters for the calculation used in a certain iteration
      */
