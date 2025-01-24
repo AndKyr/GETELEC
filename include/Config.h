@@ -3,6 +3,8 @@
 
 #include <string>
 #include <vector>
+#include <map>
+#include <variant>
 
 
 using namespace std;
@@ -26,6 +28,8 @@ public:
      * @param file_name path to the configuration file
     */
     void read_all(const string& file_name);
+
+    void print_all_params();
 
     /** 
      * @brief Read configuration parameter of type string
@@ -71,6 +75,12 @@ public:
     */
     int read_command(string paramName, double& arg, double& arg2);
 
+    // Function to handle a std::variant
+    int read_command(string paramName, variant<string*, vector<string>*, bool*, int*, unsigned*, double*, vector<double>*>& var) {
+        return std::visit([this, paramName](auto& arg)-> int {
+            return read_command(paramName, *arg); // Calls the correct overload
+        }, var);
+    }
 
     /** 
      * @brief Read a configuration parameter that is a series of strings
@@ -93,6 +103,16 @@ public:
         int maxSteps = 4096;
         int minSteps = 64;
         int stepExpectedForInitialStep = 64;
+
+        /** @brief Map of keywords to param references releated to the TransmissionSolver Class and their keywords. */
+        map<string, variant<string*, vector<string>*, bool*, int*, unsigned*, double*, vector<double>*>> keyMap = {
+            {"relativeTolerance", &relativeTolerance},
+            {"absoluteTolerance", &absoluteTolerance},
+            {"stepType", &stepType},
+            {"maxSteps", &maxSteps},
+            {"minSteps", &minSteps},
+            {"stepExpectedForInitialStep", &stepExpectedForInitialStep}
+        };
     } transmissionSolverParams;
 
     /** @brief Parameters releated to the BandEmitter Class */
@@ -103,6 +123,17 @@ public:
         int minSteps = 16;
         int stepExpectedForInitialStep = 256;
         int maxAllowedRefiningSteps = 10;
+        
+        /** @brief Map of parameters releated to the BandEmitter Class and their keywords. */
+        map<string, variant<string*, vector<string>*, bool*, int*, unsigned*, double*, vector<double>*>> keyMap = 
+        {
+            {"relativeTolerance", &relativeTolerance},
+            {"absoluteTolerance", &absoluteTolerance},
+            {"maxSteps", &maxSteps},
+            {"minSteps", &minSteps},
+            {"stepExpectedForInitialStep", &stepExpectedForInitialStep},
+            {"maxAllowedRefiningSteps", &maxAllowedRefiningSteps}
+        };
     } bandEmitterParams;
 
 private:

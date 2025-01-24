@@ -28,21 +28,41 @@ void Config::read_all(const string& fname) {
     // Store the commands and their arguments
     parse_file(fname);
 
+    for (auto& [key, value] : transmissionSolverParams.keyMap) {
+        read_command("transmissionSolver." + key, value);
+    }
+
     // Modify the parameters that are specified in input script
-    read_command("transmissionSolverRelativeTolerance", transmissionSolverParams.relativeTolerance);
-    read_command("transmissionSolverAbsoluteTolerance", transmissionSolverParams.absoluteTolerance);
-    read_command("transmissionSolverStepType", transmissionSolverParams.stepType);
-    read_command("transmissionSolverMaxSteps", transmissionSolverParams.maxSteps);
-    read_command("transmissionSolverMinSteps", transmissionSolverParams.minSteps);
-    read_command("transmissionSolverStepExpectedForInitialStep", transmissionSolverParams.stepExpectedForInitialStep);
+    for (auto& [key, value] : bandEmitterParams.keyMap) {
+        read_command("bandEmitter." + key, value);
+    }
 
-    read_command("bandEmitterRelativeTolerance", bandEmitterParams.relativeTolerance);
-    read_command("bandEmitterAbsoluteTolerance", bandEmitterParams.absoluteTolerance);
-    read_command("bandEmitterMaxSteps", bandEmitterParams.maxSteps);
-    read_command("bandEmitterMinSteps", bandEmitterParams.minSteps);
-    read_command("bandEmitterStepExpectedForInitialStep", bandEmitterParams.stepExpectedForInitialStep);
-    read_command("bandEmitterMaxAllowedRefiningSteps", bandEmitterParams.maxAllowedRefiningSteps);
+}
 
+void Config::print_all_params(){
+    for (auto [key, value] : transmissionSolverParams.keyMap) {
+        std::visit([key](auto* arg) {
+            cout << "transmissionSolver." <<  key << " = ";
+            using T = remove_cvref_t<decltype(*arg)>; // Remove const, volatile, and reference qualifiers
+            if constexpr (is_same_v<T, vector<double>>)
+                for (const auto& val : *arg) cout << val << " ";
+            else if constexpr (is_same_v<T, vector<string>>)
+                for (const auto& val : *arg) cout << val << " ";
+            cout << endl;
+        }, value);    
+    }
+
+    for (auto [key, value] : bandEmitterParams.keyMap) {
+        std::visit([key](auto* arg) {
+            cout << "transmissionSolver." <<  key << " = ";
+            using T = remove_cvref_t<decltype(*arg)>; // Remove const, volatile, and reference qualifiers
+            if constexpr (is_same_v<T, vector<double>>)
+                for (const auto& val : *arg) cout << val << " ";
+            else if constexpr (is_same_v<T, vector<string>>)
+                for (const auto& val : *arg) cout << val << " ";
+            cout << endl;
+        }, value);    
+    }
 }
 
 void Config::parse_file(const string& file_name) {
