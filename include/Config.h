@@ -77,7 +77,7 @@ public:
 
     // Function to handle a std::variant
     int read_command(string paramName, variant<string*, vector<string>*, bool*, int*, unsigned*, double*, vector<double>*>& var) {
-        return std::visit([this, paramName](auto& arg)-> int {
+        return std::visit([this, paramName](auto* arg)-> int {
             return read_command(paramName, *arg); // Calls the correct overload
         }, var);
     }
@@ -105,14 +105,17 @@ public:
         int stepExpectedForInitialStep = 64;
 
         /** @brief Map of keywords to param references releated to the TransmissionSolver Class and their keywords. */
-        map<string, variant<string*, vector<string>*, bool*, int*, unsigned*, double*, vector<double>*>> keyMap = {
-            {"relativeTolerance", &relativeTolerance},
-            {"absoluteTolerance", &absoluteTolerance},
-            {"stepType", &stepType},
-            {"maxSteps", &maxSteps},
-            {"minSteps", &minSteps},
-            {"stepExpectedForInitialStep", &stepExpectedForInitialStep}
-        };
+        map<string, variant<string*, vector<string>*, bool*, int*, unsigned*, double*, vector<double>*>> keyMap;
+        TransmissionSolverParams(){
+            keyMap = {
+                {"relativeTolerance", &relativeTolerance},
+                {"absoluteTolerance", &absoluteTolerance},
+                {"stepType", &stepType},
+                {"maxSteps", &maxSteps},
+                {"minSteps", &minSteps},
+                {"stepExpectedForInitialStep", &stepExpectedForInitialStep}
+            };
+        }
     } transmissionSolverParams;
 
     /** @brief Parameters releated to the BandEmitter Class */
@@ -125,15 +128,18 @@ public:
         int maxAllowedRefiningSteps = 10;
         
         /** @brief Map of parameters releated to the BandEmitter Class and their keywords. */
-        map<string, variant<string*, vector<string>*, bool*, int*, unsigned*, double*, vector<double>*>> keyMap = 
-        {
-            {"relativeTolerance", &relativeTolerance},
-            {"absoluteTolerance", &absoluteTolerance},
-            {"maxSteps", &maxSteps},
-            {"minSteps", &minSteps},
-            {"stepExpectedForInitialStep", &stepExpectedForInitialStep},
-            {"maxAllowedRefiningSteps", &maxAllowedRefiningSteps}
-        };
+        map<string, variant<string*, vector<string>*, bool*, int*, unsigned*, double*, vector<double>*>> keyMap;
+        BandEmitterParams(){
+            keyMap = 
+            {
+                {"relativeTolerance", &relativeTolerance},
+                {"absoluteTolerance", &absoluteTolerance},
+                {"maxSteps", &maxSteps},
+                {"minSteps", &minSteps},
+                {"stepExpectedForInitialStep", &stepExpectedForInitialStep},
+                {"maxAllowedRefiningSteps", &maxAllowedRefiningSteps}
+            };
+        }
     } bandEmitterParams;
 
 private:

@@ -66,6 +66,17 @@ TEST(BandEmitterTest, CurrentDensityMethodComparison){
     }
 }
 
+TEST(ConfigTest, ConfigFileReadTest){
+    std::ofstream tempFile("tempConfig.txt");
+    tempFile << "transmissionSolver.maxSteps = 12586453" << std::endl;
+    tempFile.close();
+    Config config("tempConfig.txt");
+    EXPECT_EQ(config.transmissionSolverParams.maxSteps, 12586453);
+    std::remove("tempConfig.txt");
+
+}
+
+
 TEST(GetelecObjectTest, RunParalleltest){
     Getelec getelec;
     auto fields = Utilities::linspace(2., 10., 64);
