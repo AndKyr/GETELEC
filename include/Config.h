@@ -19,7 +19,10 @@ public:
     */
     Config(string fileName = "GetelecConfig.txt"){
         transmissionSolverParams = TransmissionSolverParams();
+        transmissionSolverParams.initializeKeyMap();
+
         bandEmitterParams = BandEmitterParams();
+        bandEmitterParams.initializeKeyMap();
         read_all(fileName);
     }
 
@@ -106,15 +109,16 @@ public:
 
         /** @brief Map of keywords to param references releated to the TransmissionSolver Class and their keywords. */
         map<string, variant<string*, vector<string>*, bool*, int*, unsigned*, double*, vector<double>*>> keyMap;
-        TransmissionSolverParams(){
-            keyMap = {
-                {"relativeTolerance", &relativeTolerance},
-                {"absoluteTolerance", &absoluteTolerance},
-                {"stepType", &stepType},
-                {"maxSteps", &maxSteps},
-                {"minSteps", &minSteps},
-                {"stepExpectedForInitialStep", &stepExpectedForInitialStep}
-            };
+        void initializeKeyMap(){ 
+            if (keyMap.size() == 0)
+                keyMap = {
+                    {"relativeTolerance", &relativeTolerance},
+                    {"absoluteTolerance", &absoluteTolerance},
+                    {"stepType", &stepType},
+                    {"maxSteps", &maxSteps},
+                    {"minSteps", &minSteps},
+                    {"stepExpectedForInitialStep", &stepExpectedForInitialStep}
+                };
         }
     } transmissionSolverParams;
 
@@ -129,16 +133,16 @@ public:
         
         /** @brief Map of parameters releated to the BandEmitter Class and their keywords. */
         map<string, variant<string*, vector<string>*, bool*, int*, unsigned*, double*, vector<double>*>> keyMap;
-        BandEmitterParams(){
-            keyMap = 
-            {
-                {"relativeTolerance", &relativeTolerance},
-                {"absoluteTolerance", &absoluteTolerance},
-                {"maxSteps", &maxSteps},
-                {"minSteps", &minSteps},
-                {"stepExpectedForInitialStep", &stepExpectedForInitialStep},
-                {"maxAllowedRefiningSteps", &maxAllowedRefiningSteps}
-            };
+        void initializeKeyMap(){
+            if (keyMap.size() == 0)
+                keyMap = {
+                    {"relativeTolerance", &relativeTolerance},
+                    {"absoluteTolerance", &absoluteTolerance},
+                    {"maxSteps", &maxSteps},
+                    {"minSteps", &minSteps},
+                    {"stepExpectedForInitialStep", &stepExpectedForInitialStep},
+                    {"maxAllowedRefiningSteps", &maxAllowedRefiningSteps}
+                };
         }
     } bandEmitterParams;
 
