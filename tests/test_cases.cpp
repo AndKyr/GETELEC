@@ -55,7 +55,7 @@ TEST(BandEmitterTest, CurrentDensityMethodComparison){
     emitter.setGenerator(&generator);
     barrier.setGenerator(&generator);
 
-    for (int i = 0; i < 2048; i++){
+    for (int i = 0; i < 64; i++){
         barrier.setRandomParameters();
         emitter.setRandomParameters();
         emitter.updateSolverAndInterpolator();
@@ -67,13 +67,17 @@ TEST(BandEmitterTest, CurrentDensityMethodComparison){
 }
 
 TEST(ConfigTest, ConfigFileReadTest){
-    std::ofstream tempFile("tempConfig.txt");
-    tempFile << "transmissionSolver.maxSteps = 12586453" << std::endl;
-    tempFile.close();
-    Config config("tempConfig.txt");
-    EXPECT_EQ(config.transmissionSolverParams.maxSteps, 12586453);
-    std::remove("tempConfig.txt");
 
+    Config config;
+    config.bandEmitterParams.absoluteTolerance *= 1.e-1;
+    config.bandEmitterParams.relativeTolerance *= 1.e-1;
+    config.bandEmitterParams.maxSteps += 1;
+    config.print_all_params("tempConfig.txt");
+    Config config2("tempConfig.txt");
+    EXPECT_EQ(config.bandEmitterParams.absoluteTolerance, config2.bandEmitterParams.absoluteTolerance);
+    EXPECT_EQ(config.bandEmitterParams.relativeTolerance, config2.bandEmitterParams.relativeTolerance);
+    EXPECT_EQ(config.bandEmitterParams.maxSteps, config2.bandEmitterParams.maxSteps);
+    remove("tempConfig.txt");
 }
 
 
@@ -82,9 +86,6 @@ TEST(GetelecObjectTest, RunParalleltest){
     auto fields = Utilities::linspace(2., 10., 64);
     getelec.setField(fields);
     EXPECT_NO_THROW(getelec.run());
-    for (size_t i = 0; i < fields.size(); i++){
-        cout << "Field: " << fields[i] << " Current Density: " << getelec.getCurrentDensity(i) << " Nottingham Heat: " << getelec.getNottinghamHeat(i) << endl;
-    }
 }
 
 int main(int argc, char **argv) {

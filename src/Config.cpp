@@ -39,30 +39,18 @@ void Config::read_all(const string& fname) {
 
 }
 
-void Config::print_all_params(){
-    for (auto [key, value] : transmissionSolverParams.keyMap) {
-        std::visit([key](auto* arg) {
-            cout << "transmissionSolver." <<  key << " = ";
-            using T = remove_cvref_t<decltype(*arg)>; // Remove const, volatile, and reference qualifiers
-            if constexpr (is_same_v<T, vector<double>>)
-                for (const auto& val : *arg) cout << val << " ";
-            else if constexpr (is_same_v<T, vector<string>>)
-                for (const auto& val : *arg) cout << val << " ";
-            cout << endl;
-        }, value);    
+void Config::print_all_params(const string& file_name) {
+    ofstream file(file_name);
+
+    if (!file.is_open()) {
+        cerr << "File " << file_name << " not found." << endl;
+        return;
     }
 
-    for (auto [key, value] : bandEmitterParams.keyMap) {
-        std::visit([key](auto* arg) {
-            cout << "transmissionSolver." <<  key << " = ";
-            using T = remove_cvref_t<decltype(*arg)>; // Remove const, volatile, and reference qualifiers
-            if constexpr (is_same_v<T, vector<double>>)
-                for (const auto& val : *arg) cout << val << " ";
-            else if constexpr (is_same_v<T, vector<string>>)
-                for (const auto& val : *arg) cout << val << " ";
-            cout << endl;
-        }, value);    
-    }
+    file << transmissionSolverParams.printParams();
+    file << bandEmitterParams.printParams();
+
+    file.close();
 }
 
 void Config::parse_file(const string& file_name) {

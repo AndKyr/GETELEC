@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include <variant>
+#include <sstream>
 
 
 using namespace std;
@@ -32,7 +33,10 @@ public:
     */
     void read_all(const string& file_name);
 
-    void print_all_params();
+    /** @brief Print all the configuration parameters on a file with name
+     * @param file_name path to the file where the configuration parameters are printed. If not provided, the parameters are printed on the console.
+     */
+    void print_all_params(const string& file_name = "printedGetelecParams.txt");
 
     /** 
      * @brief Read configuration parameter of type string
@@ -98,8 +102,32 @@ public:
     /** @brief Print the stored commands and parameters */
     void print_data();
 
+    struct ParamGroup {
+        map<string, variant<string*, vector<string>*, bool*, int*, unsigned*, double*, vector<double>*>> keyMap;
+        string name;
+
+        string printParams(){
+            ostringstream oss;
+            for (auto [key, value] : keyMap) {
+                visit([this, &key, &oss](auto* arg) {
+                    oss << name << "." <<  key << " = ";
+                    using T = remove_cvref_t<decltype(*arg)>; // Remove const, volatile, and reference qualifiers
+                    if constexpr (is_same_v<T, vector<double>>)
+                        for (const auto& val : *arg) oss << val << " ";
+                    else if constexpr (is_same_v<T, vector<string>>)
+                        for (const auto& val : *arg) oss << val << " ";
+                    else
+                        oss << *arg;
+                    oss << endl;
+                }, value);    
+            }
+            oss << endl;
+            return oss.str();
+        }
+    };
+
     /** @brief Struct that contains all the configuration parameters related to the TransmissionSolver class */
-    struct TransmissionSolverParams {
+    struct TransmissionSolverParams  : public ParamGroup {
         double relativeTolerance = 1.e-5;
         double absoluteTolerance = 1.e-5;
         string stepType = "rk8pd";
@@ -108,8 +136,8 @@ public:
         int stepExpectedForInitialStep = 64;
 
         /** @brief Map of keywords to param references releated to the TransmissionSolver Class and their keywords. */
-        map<string, variant<string*, vector<string>*, bool*, int*, unsigned*, double*, vector<double>*>> keyMap;
         void initializeKeyMap(){ 
+            name = "transmissionSolver";
             if (keyMap.size() == 0)
                 keyMap = {
                     {"relativeTolerance", &relativeTolerance},
@@ -123,7 +151,7 @@ public:
     } transmissionSolverParams;
 
     /** @brief Parameters releated to the BandEmitter Class */
-    struct BandEmitterParams {
+    struct BandEmitterParams : public ParamGroup {
         double relativeTolerance = 1.e-4;
         double absoluteTolerance = 1.e-12;
         int maxSteps = 4096;
@@ -131,9 +159,8 @@ public:
         int stepExpectedForInitialStep = 256;
         int maxAllowedRefiningSteps = 10;
         
-        /** @brief Map of parameters releated to the BandEmitter Class and their keywords. */
-        map<string, variant<string*, vector<string>*, bool*, int*, unsigned*, double*, vector<double>*>> keyMap;
         void initializeKeyMap(){
+            name = "bandEmitter";
             if (keyMap.size() == 0)
                 keyMap = {
                     {"relativeTolerance", &relativeTolerance},
