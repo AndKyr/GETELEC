@@ -147,6 +147,12 @@ public:
      */
     int solveNoSave();
 
+    vector<double> getSolutionDerivative(double x) const {
+        vector<double> solutionDerivative(systemDimension);
+        differentialSystem(x, solutionVector.data(), solutionDerivative.data(), (void*) this);
+        return solutionDerivative; 
+    }
+
     /**
      * @brief Writes the saved solution to a file.
      * @param filename Name of the output file.

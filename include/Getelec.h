@@ -195,15 +195,15 @@ public:
      * @param i The index of the element to get
      * @return The spectra in A/nm^2/eV
      */
-    const pair<vector<double>, vector<double>>& getSpectra(unsigned i = 0) const { return spectra[i]; }
+    const tuple<vector<double>, vector<double>, vector<double>>& getSpectra(unsigned i = 0) const { return spectra[i]; }
     
     /**
      * @brief Get all the spectra
      * @param i The index of the element to get
      * @return The spectra in A/nm^2/eV
      */
-    vector<pair<vector<double>, vector<double>>> getAllSpectra() const { 
-        return vector<pair<vector<double>, vector<double>>>(spectra.begin(), spectra.end()); 
+    vector<tuple<vector<double>, vector<double>, vector<double>>> getAllSpectra() const { 
+        return spectra; 
     }
     
     /**
@@ -247,19 +247,32 @@ public:
      * @return Pointer to the first element of the spectra array
      */
     const double* getSpectraEnergies(size_t i, size_t* length) const {
-        *length = spectra[i].first.size();
-        return spectra[i].first.data(); 
+        auto& spectra_i = get<0>(spectra[i]);
+        *length = spectra_i.size();
+        return spectra_i.data(); 
     }
 
     /**
-     * @brief Get the spectra ordinates (values in A/nm^2/eV) of the i-th iteration in parameter space
+     * @brief Get the spectra values (ordinates) (values in A/nm^2/eV) of the i-th iteration in parameter space
      * @param i The index of the iteration
      * @param length The length of the spectra array to be output
      * @return Pointer to the first element of the spectra array
      */
     const double* getSpectraValues(size_t i, size_t* length) const { 
-        *length = spectra[i].second.size();
-        return spectra[i].second.data(); 
+        *length = get<1>(spectra[i]).size();
+        return get<1>(spectra[i]).data(); 
+    }
+
+    /**
+     * @brief Get the spectra derivatives (values in A/nm^2/eV^2) of the i-th iteration in parameter space
+     * @param i The index of the iteration
+     * @param length The length of the spectra array to be output
+     * @return Pointer to the first element of the spectra array
+     */
+    const double* getSpectraDerivatives(size_t i, size_t* length) const {
+        auto& spectra_i = get<2>(spectra[i]);
+        *length = spectra_i.size();
+        return spectra_i.data(); 
     }
 
 private:
@@ -292,7 +305,7 @@ private:
     double nottinghamHeat = 0.; //< The Nottingham heat (output) in W/nm^2.
     vector<double> nottinghamHeatVector; ///< The Nottingham heat (output) in W/nm^2, multiple values to iterate over.
 
-    vector<pair<vector<double>, vector<double>>> spectra; /**< The spectra (output) in A/nm^2/eV, multiple values to iterate over. */
+    vector<tuple<vector<double>, vector<double>, vector<double>>> spectra; /**< The spectra (output) in A/nm^2/eV, multiple values to iterate over. */
 
     tbb::enumerable_thread_specific<ModifiedSNBarrier> threadLocalBarrier; ///< Thread-local instances of ModifiedSNBarrier
     tbb::enumerable_thread_specific<TransmissionSolver> threadLocalSolver; ///< Thread-local instances of TransmissionSolver
@@ -380,6 +393,11 @@ extern "C" {
     // Wrapper to get spectra values
     const double* Getelec_getSpectraValues(Getelec* obj, size_t i, size_t* length) {
         return obj->getSpectraValues(i, length);
+    }
+
+    // Wrapper to get spectra derivatives
+    const double* Getelec_getSpectraDerivatives(Getelec* obj, size_t i, size_t* length) {
+        return obj->getSpectraDerivatives(i, length);
     }
     
     // Wrapper to calculate transmission coefficient for a single energy

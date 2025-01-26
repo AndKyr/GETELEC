@@ -1,5 +1,6 @@
 import ctypes
 import numpy as np
+import scipy.interpolate as spi
 
 class GetelecInterface:
     def __init__(self, library_path):
@@ -48,6 +49,9 @@ class GetelecInterface:
 
         self.lib.Getelec_getSpectraValues.restype = ctypes.POINTER(ctypes.c_double)
         self.lib.Getelec_getSpectraValues.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_size_t)]
+
+        self.lib.Getelec_getSpectraDerivatives.restype = ctypes.POINTER(ctypes.c_double)
+        self.lib.Getelec_getSpectraDerivatives.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_size_t)]
 
         self.lib.Getelec_calculateTransmissionCoefficientForEnergy.restype = ctypes.c_double
         self.lib.Getelec_calculateTransmissionCoefficientForEnergy.argtypes = [ctypes.c_void_p, ctypes.c_double, ctypes.c_size_t]
@@ -117,7 +121,7 @@ class GetelecInterface:
         return np.ctypeslib.as_array(densities_ptr, shape=(size.value,)) 
     
     def get_spectra(self):
-        spectra = []
+        self.spectra = []
         for i in range(self.numberOfIterations):
             size = ctypes.c_size_t()
 
@@ -126,8 +130,15 @@ class GetelecInterface:
 
             values_ptr = self.lib.Getelec_getSpectraValues(self.obj, ctypes.c_size_t(i) , ctypes.byref(size))
             values = np.ctypeslib.as_array(values_ptr, shape=(size.value,))
-            spectra.append((energies, values))
-        return spectra
+
+            derivatives_ptr = self.lib.Getelec_getSpectraDerivatives(self.obj, ctypes.c_size_t(i) , ctypes.byref(size))
+            derivatives = np.ctypeslib.as_array(derivatives_ptr, shape=(size.value,))
+
+            validIndices = np.where(np.isfinite(energies) & np.isfinite(values) & np.isfinite(derivatives) & (values > max(values) * 1e-5))
+
+            self.spectra.append(spi.CubicHermiteSpline(energies[validIndices], values[validIndices], derivatives[validIndices]))
+        return self.spectra
+        
     
     def setRandomInputs(self, numberOfInputs):
         fields = np.random.uniform(1., 12., numberOfInputs)
@@ -166,7 +177,8 @@ print(getelec.get_current_densities())
 spectra = getelec.get_spectra()
 
 import matplotlib.pyplot as plt
-for energies, values in spectra:
-    plt.plot(energies, values)
+for spline in spectra:
+    xPlot = np.linspace(min(spline.x), max(spline.x), 256)
+    plt.semilogy(xPlot, spline(xPlot))
 
 plt.show()

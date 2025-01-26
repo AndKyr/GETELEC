@@ -34,11 +34,14 @@ private:
     /** @brief Depth of the electronic band from the Fermi level in eV. */
     double bandDepth = 10.;
 
-    /** @brief Stores energy values for later analysis. */
+    /** @brief Stores energy values for spectra (abssicae) in eV. */
     vector<double> savedEnergies;
 
-    /** @brief Stores logarithmic transmission coefficients for later analysis. */
+    /** @brief Stores calculated spectral values in A/nm^2 / eV */
     vector<double> savedSpectra;
+
+    /** @brief Stores calculated spectral value derivatives in A/nm^2 / eV / eV */
+    vector<double> savedSpectraDerivative;
 
     gsl_spline* spectraSpline = NULL; /**< Spline for efficient evaluation of the spectra. */
     gsl_interp_accel* spectraSplineAccelerator = NULL; /**< GSL interpolation accelerator for improved performance. */
@@ -227,8 +230,8 @@ public:
      * @return The energy spectra.
      * @note This functions uses move semantics to avoid copying the data. This means that the data inside the emitter class is no longer available in the object after calling this function.
      */
-    pair<vector<double>, vector<double>> getSpectra(){
-        return make_pair(move(xSaved), move(savedSpectra));
+    tuple<vector<double>, vector<double>, vector<double>> getSpectra(){
+        return {move(xSaved), move(savedSpectra), move(savedSpectraDerivative)};
     }   
 
     /**
