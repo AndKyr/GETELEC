@@ -3,6 +3,9 @@
 
 #include <cmath>
 #include "Utilities.h"
+#include <gsl/gsl_poly.h>
+#include <gsl/gsl_sf_erf.h>
+#include "Config.h"
 
 /**
  * @class TunnelingFunction
@@ -117,7 +120,7 @@ public:
  * @brief A derived class representing the modified Schottky-Nordheim tunneling barrier. (see 10.1016/j.commatsci.2016.11.010 for details)
  */
 class ModifiedSNBarrier : public TunnelingFunction {
-private:
+protected:
     double radius = 1.e3; /**< Local radius of curvature of the emitter at the point of interest (nm). */
     double field = 5.; /**< Local electric field at the emission point (V/nm) */
     double gamma = 10.; /**< Gamma parameter controlling the far-away shape of the barrier */
@@ -128,7 +131,7 @@ private:
      * @brief Calculates the image potential at a point z.
      * @param z coordinate - distance from electrical surface (nm)
      */
-    double imagePotential(double z){
+    virtual double XCPotential(double z){
         return CONSTANTS.imageChargeConstant /  (z + .5 * z * z / radius);
     }
 
@@ -136,7 +139,7 @@ private:
      * @brief Calculates the derivative of the image potential at a point z.
      * @param z coordinate - distance from electrical surface (nm)
      */
-    double imagePotentialDerivative(double z){
+    virtual double XCPotentialDerivative(double z){
         double denominator = (z + .5 * z * z / radius);
         return -CONSTANTS.imageChargeConstant * (1. + z / radius) / (denominator * denominator);
     }
@@ -146,6 +149,7 @@ private:
      * @param z coordinate - distance from electrical surface (nm)
      */
     double electrostaticPotential(double z){
+        if (z < 0.) return 0.;
         return field * (radius * (gamma - 1.) * z + z*z) / (gamma * z + radius * (gamma - 1.));
     }
 
@@ -154,6 +158,7 @@ private:
      * @param z coordinate - distance from electrical surface (nm)
      */
     double electrostaticPotentialDerivative(double z){
+        if (z < 0.) return 0.;
         return field * ((gamma-1)*(gamma-1) * radius*radius + 2*(gamma-1)*radius*z + gamma*z*z) / 
         (((gamma - 1)*radius + gamma*z) * ((gamma - 1)*radius + gamma*z));
     }
@@ -246,7 +251,7 @@ public:
      * @return Potential value at the specified position.
      */
     double potentialFunction(double z){
-        return -imagePotential(z) - electrostaticPotential(z);
+        return -this->XCPotential(z) - electrostaticPotential(z);
     }
 
     /**
@@ -255,7 +260,7 @@ public:
      * @return Derivative of the potential at the specified position.
      */
     double potentialFunctionDerivative(double z){
-        return -imagePotentialDerivative(z) - electrostaticPotentialDerivative(z);
+        return -this->XCPotentialDerivative(z) - electrostaticPotentialDerivative(z);
     }
 
     /**
@@ -264,7 +269,7 @@ public:
      * 
      * @return x position where the potential depth is @param maxPotentialDepth.
      */
-    double findLeftXLimit(double maxPotentialDepth){
+    virtual double findLeftXLimit(double maxPotentialDepth){
         return 1. / (maxPotentialDepth / CONSTANTS.imageChargeConstant + 0.5 / radius);
     }
 
@@ -280,6 +285,73 @@ public:
         double result = 0.5 * (-b + sqrt(b*b - 4*field*c)) / field;
         return max(result, 1.);
     }
+
+};
+
+class ModifiedSNBarrierWithGenXC : public ModifiedSNBarrier {
+
+public:
+    ModifiedSNBarrierWithGenXC(Config::XCFunctionParams xcParams) : xcFunctionParams(xcParams) {}
+
+    /**
+     * @brief Calculates the image potential at a point z.
+     * @param z coordinate - distance from electrical surface (nm)
+     */
+    double XCPotential(double z) override{
+        double imagePotential = 0.;
+        if (z > 0.) imagePotential = ModifiedSNBarrier::XCPotential(z);
+
+        double dftXCPotential = 0.;
+        if (z < xcFunctionParams.polynomialRange[0])
+            dftXCPotential = xcFunctionParams.extensionPrefactor / (z - xcFunctionParams.extensionStartPoint);
+        else if (z < xcFunctionParams.polynomialRange[1])
+            dftXCPotential = gsl_poly_eval(xcFunctionParams.dftXcPolynomial.data(), xcFunctionParams.dftXcPolynomial.size(), z);
+
+        double transitionFunction = .5 * gsl_sf_erfc((z - xcFunctionParams.transitionPoint) / xcFunctionParams.transisionWidth);
+        return transitionFunction * dftXCPotential + (1. - transitionFunction) * imagePotential;
+    }
+
+    /**
+     * @brief Calculates the derivative of the image potential at a point z.
+     * @param z coordinate - distance from electrical surface (nm)
+     */
+    double XCPotentialDerivative(double z) override{
+        double imagePotential = 0., imagePotentialDerivative = 0.;
+        if (z > 0.) {
+            imagePotential = ModifiedSNBarrier::XCPotential(z);
+            imagePotentialDerivative = ModifiedSNBarrier::XCPotentialDerivative(z);
+        }
+
+        double dftXCPotentialAndDerivative[2];
+        if (z < xcFunctionParams.polynomialRange[0]){
+            dftXCPotentialAndDerivative[0] = xcFunctionParams.extensionPrefactor / (z - xcFunctionParams.extensionStartPoint);
+            dftXCPotentialAndDerivative[1] = - xcFunctionParams.extensionPrefactor / ((z - xcFunctionParams.extensionStartPoint) * (z - xcFunctionParams.extensionStartPoint));
+        } else if (z < xcFunctionParams.polynomialRange[1]){
+            gsl_poly_eval_derivs(xcFunctionParams.dftXcPolynomial.data(), xcFunctionParams.dftXcPolynomial.size(), z, dftXCPotentialAndDerivative, 2);
+        }
+
+        double transitionFunction = .5 * gsl_sf_erfc((z - xcFunctionParams.transitionPoint) / xcFunctionParams.transisionWidth);
+        double transitionFunctionDerivative = - exp(- (z - xcFunctionParams.transitionPoint) * (z - xcFunctionParams.transitionPoint) / (xcFunctionParams.transisionWidth * xcFunctionParams.transisionWidth)) / (sqrt(M_PI) * xcFunctionParams.transisionWidth);
+        return transitionFunction * dftXCPotentialAndDerivative[1] + dftXCPotentialAndDerivative[0] * transitionFunctionDerivative + 
+                (1. - transitionFunction) * imagePotentialDerivative - imagePotential * transitionFunctionDerivative;
+    }
+
+    /**
+     * @brief Finds the left limit of numerical integration for calculating the barrier. 
+     * Estimates the left position where the left of the barrier has a  potential depth of @param maxPotentialDepth.
+     * 
+     * @return x position where the potential depth is @param maxPotentialDepth.
+     */
+    double findLeftXLimit(double maxPotentialDepth) override{
+        //TODO: Implement this function
+        return 0.;
+    }
+
+
+private:
+    Config::XCFunctionParams xcFunctionParams;
+
+
 
 };
 
