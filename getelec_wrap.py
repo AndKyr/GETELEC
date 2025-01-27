@@ -165,11 +165,9 @@ class GetelecInterface:
 # Example usage:
 # Assuming the shared library is compiled as "getelec.so"
 getelec = GetelecInterface("build/libgetelec.so")
-getelec.setRandomInputs(5)
+getelec.set_radius([5., 6., 7. , 8., 9.])
+# getelec.setRandomInputs(5)
 # getelec.set_radius(5.)
-
-for i in range(5):
-    print(getelec.calculate_transmission_coefficient_for_energy(0.1, i))
 
 getelec.run(calculate_spectra=True)
 print(getelec.get_current_densities())
@@ -178,7 +176,9 @@ spectra = getelec.get_spectra()
 
 import matplotlib.pyplot as plt
 for spline in spectra:
-    xPlot = np.linspace(min(spline.x), max(spline.x), 256)
-    plt.semilogy(xPlot, spline(xPlot))
+    xPlot = np.linspace(min(spline.x), max(spline.x), 512)
+    yPlot = spline(xPlot)
+    plt.plot(xPlot, yPlot)
+    print(np.trapezoid(yPlot, xPlot))
 
 plt.show()
