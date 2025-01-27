@@ -97,8 +97,8 @@ int BandEmitter::calculateCurrentDensityAndSpectra(double convergenceTolerance, 
 
     for (size_t i = 0; i < maxAllowedSteps; i++) { // Loop over blocks
         previousCurrentDensity = solutionVector[1];
-        savedSpectra.push_back(solutionVector[0]);
-        savedSpectraDerivative.push_back(getSolutionDerivative(x)[0]);
+        savedSpectra.push_back(solutionVector[0] * CONSTANTS.SommerfeldConstant);
+        savedSpectraDerivative.push_back(getSolutionDerivative(x)[0] * CONSTANTS.SommerfeldConstant);
         xSaved.push_back(x);
         dx = GSL_SIGN(dx) * min(abs(maxStepSize), abs(dx));
         status = gsl_odeiv2_evolve_apply(evolver, controller, step, &sys, &x, xFinal, &dx, solutionVector.data());
