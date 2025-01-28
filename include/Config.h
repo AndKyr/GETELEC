@@ -179,12 +179,8 @@ public:
 
         /** @brief Parameters releated to the BandEmitter Class */
     struct XCFunctionParams : public ParamGroup {
-        vector<double> dftXcPolynomial = {5.09046863e+00, -5.44418345e+01,  3.09493671e+02, -2.26931851e+02,
-                                            3.27842550e+03, -1.84783460e+05,  1.47025469e+06,  1.85182610e+06,
-                                            -8.71634348e+07,  4.47893254e+08,  3.80876756e+07, -9.66847821e+09,
-                                            4.57562007e+10, -1.03449323e+11,  1.20070282e+11, -5.75184239e+10
-                                        }; /**< Coefficients of the polynomial describing the DFT XC function  */
-        vector<double> polynomialRange = {-0.13656164,  0.39}; /**< Range of validity of the polynomial  */
+        vector<double> dftXcPolynomial = {5.090468630345640e+00, -5.444183453319768e+01, 3.094936706449328e+02, -2.269318513321200e+02, 3.278425496065674e+03, -1.847834599204311e+05, 1.470254693085155e+06,  1.851826095135927e+06, -8.716343484652430e+07,  4.478932537960991e+08, 3.808767564452839e+07, -9.668478210868515e+09, 4.575620066264593e+10, -1.034493233247187e+11, 1.200702820177568e+11, -5.751842394314753e+10}; /**< Coefficients of the polynomial describing the DFT XC function  */
+        vector<double> polynomialRange = {-0.136561638911387,  0.39}; /**< Range of validity of the polynomial  */
         double extensionPrefactor = 2.73378181454067;
         double extensionStartPoint = -0.24846083021481852;
         double transitionPoint = 0.19;

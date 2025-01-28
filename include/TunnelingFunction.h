@@ -305,6 +305,7 @@ public:
         }
         double imagePotential = 0.;
         if (z > 0.) imagePotential = ModifiedSNBarrier::XCPotential(z);
+        if (imagePotential > 20.) imagePotential = 20.;
 
         double dftXCPotential = 0.;
         if (z < xcFunctionParams.polynomialRange[0])

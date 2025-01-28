@@ -90,14 +90,17 @@ TEST(GetelecObjectTest, RunParalleltest){
 
 TEST(GeneralXCFunctionTest, ValueTest){
     ModifiedSNBarrierWithGenXC barrier;
+    barrier.setRadius(1.e3);
     auto xValues = Utilities::linspace(-0.1484608302148185, 1., 8);
-    vector<double> expectedBarrierValues = {-27.33781192,  -4.5005316 ,  -2.55523575,  -2.75538553, -3.24646103,  -3.8927124 ,  -4.60664547,  -5.35481669};
+    vector<double> expectedBarrierValues = {-27.33779495 ,  -4.500531602652986,  -2.555235757718333,
+        -2.755385558646906,  -3.246461076744525,  -3.892712462231659,
+        -4.606645547865526,  -5.354816780773875};
     vector<double> barrierValues;
     for (auto x : xValues){
         barrierValues.push_back(barrier.potentialFunction(x));
     }
     for (size_t i = 0; i < xValues.size(); i++){
-        EXPECT_NEAR(barrierValues[i], expectedBarrierValues[i], 1.e-3);
+        EXPECT_NEAR(barrierValues[i], expectedBarrierValues[i], 1.e-5);
     }
 }
 

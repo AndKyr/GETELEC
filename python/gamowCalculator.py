@@ -271,7 +271,7 @@ class GamowCalculator:
             self.minLength = 1.e-2
 
     def imagePotential(self, z:np.ndarray):
-        return  Globals.imageChargeConstant * ( 1. / z - .5 / self.radius) 
+        return  Globals.imageChargeConstant / (z + .5 * z * z/ self.radius)
 
     def electrostaticPotential(self, z:np.ndarray):
         out = self.field * (self.radius * (self.gamma - 1.) * z + z**2) / (self.gamma * z + self.radius * (self.gamma - 1.))
@@ -289,7 +289,7 @@ class GamowCalculator:
         if (self.XCdata is None):
             outPut = imagePotential
         else:
-            imagePotential[z <= 0] = 20.
+            imagePotential[z <= 0] = 0.
             imagePotential[imagePotential > 20.] = 20.
             potentialPBE = np.polyval(self.XCdata["polynomial"], z)
             potentialPBE[z > self.XCdata["polynomialRange"][1]] = 0.
@@ -418,7 +418,10 @@ class GamowCalculator:
 if __name__ == "__main__":
 
     calculator = GamowCalculator(XCdataFile="../tabulated/XCdata_W110.npy", minimumPotential=10.)
-    print(calculator.barrierFunction(np.linspace(-0.1484608302148185, 1., 8), 0.))
+    np.printoptions(precision=15)
+    x = np.linspace(-0.1484608302148185, 1., 8)
+    potentials = calculator.barrierFunction(x, 0.)
+    print(potentials)
     # calculator.solver.calculateTransmissionForEnergy(-5.)
     # calculator = GamowCalculator(solverType="IVP")
     # print(calculator.calculateGamow(barrierDepth=4.))
