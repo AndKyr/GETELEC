@@ -104,6 +104,19 @@ TEST(GeneralXCFunctionTest, ValueTest){
     }
 }
 
+TEST(GeneralXCFunctionTest, DerivativeTest){
+    ModifiedSNBarrierWithGenXC barrier;
+    
+    auto xValues = Utilities::linspace(-0.1484608302148185, 1., 64);
+    double dx = 1.e-5;
+    for (auto&x : xValues){
+        double derivative = barrier.potentialFunctionDerivative(x);
+        double derivativeApprox = (barrier.potentialFunction(x + dx) - barrier.potentialFunction(x - dx)) / (2*dx);
+        EXPECT_NEAR(derivative, derivativeApprox, 1.e-5);
+    }
+
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     ::testing::GTEST_FLAG(catch_exceptions) = false;

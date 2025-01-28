@@ -333,6 +333,11 @@ public:
             imagePotentialDerivative = ModifiedSNBarrier::XCPotentialDerivative(z);
         }
 
+        if (imagePotential > 20.){
+            imagePotential = 20.;
+            imagePotentialDerivative = 0.;
+        }
+
         double dftXCPotentialAndDerivative[2];
         if (z < xcFunctionParams.polynomialRange[0]){
             dftXCPotentialAndDerivative[0] = xcFunctionParams.extensionPrefactor / (z - xcFunctionParams.extensionStartPoint);
