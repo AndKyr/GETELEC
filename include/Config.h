@@ -24,6 +24,10 @@ public:
 
         bandEmitterParams = BandEmitterParams();
         bandEmitterParams.initializeKeyMap();
+
+        xcFunctionParams = XCFunctionParams();
+        xcFunctionParams.initializeKeyMap();
+
         read_all(fileName);
     }
 
@@ -175,10 +179,11 @@ public:
 
         /** @brief Parameters releated to the BandEmitter Class */
     struct XCFunctionParams : public ParamGroup {
-        vector<double> dftXcPolynomial = {-5.75184239e+10,  1.20070282e+11, -1.03449323e+11,  4.57562007e+10,
-                                            -9.66847821e+09,  3.80876756e+07,  4.47893254e+08, -8.71634348e+07,
-                                            1.85182610e+06,  1.47025469e+06, -1.84783460e+05,  3.27842550e+03,
-                                            -2.26931851e+02,  3.09493671e+02, -5.44418345e+01,  5.09046863e+00}; /**< Coefficients of the polynomial describing the DFT XC function  */
+        vector<double> dftXcPolynomial = {5.09046863e+00, -5.44418345e+01,  3.09493671e+02, -2.26931851e+02,
+                                            3.27842550e+03, -1.84783460e+05,  1.47025469e+06,  1.85182610e+06,
+                                            -8.71634348e+07,  4.47893254e+08,  3.80876756e+07, -9.66847821e+09,
+                                            4.57562007e+10, -1.03449323e+11,  1.20070282e+11, -5.75184239e+10
+                                        }; /**< Coefficients of the polynomial describing the DFT XC function  */
         vector<double> polynomialRange = {-0.13656164,  0.39}; /**< Range of validity of the polynomial  */
         double extensionPrefactor = 2.73378181454067;
         double extensionStartPoint = -0.24846083021481852;

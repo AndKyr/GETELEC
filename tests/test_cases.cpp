@@ -88,6 +88,19 @@ TEST(GetelecObjectTest, RunParalleltest){
     EXPECT_NO_THROW(getelec.run());
 }
 
+TEST(GeneralXCFunctionTest, ValueTest){
+    ModifiedSNBarrierWithGenXC barrier;
+    auto xValues = Utilities::linspace(-0.1484608302148185, 1., 8);
+    vector<double> expectedBarrierValues = {-26.59539755,  -4.5005316 ,  -2.55523575,  -2.75538553, -3.24646103,  -3.8927124 , -4.60664547,  -5.35481669};
+    vector<double> barrierValues;
+    for (auto x : xValues){
+        barrierValues.push_back(barrier.potentialFunction(x));
+    }
+    for (size_t i = 0; i < xValues.size(); i++){
+        EXPECT_NEAR(barrierValues[i], expectedBarrierValues[i], 1.e-3);
+    }
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     ::testing::GTEST_FLAG(catch_exceptions) = false;

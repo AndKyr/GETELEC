@@ -291,13 +291,18 @@ public:
 class ModifiedSNBarrierWithGenXC : public ModifiedSNBarrier {
 
 public:
-    ModifiedSNBarrierWithGenXC(Config::XCFunctionParams xcParams) : xcFunctionParams(xcParams) {}
+    ModifiedSNBarrierWithGenXC(Config::XCFunctionParams xcParams = Config().xcFunctionParams) : xcFunctionParams(xcParams) {}
 
     /**
      * @brief Calculates the image potential at a point z.
      * @param z coordinate - distance from electrical surface (nm)
      */
     double XCPotential(double z) override{
+
+        if (z <= xcFunctionParams.extensionStartPoint){
+            cerr << "Serious warning: z is out of range of validity of XC function. Returning 0." << endl;
+            return 0.;
+        }
         double imagePotential = 0.;
         if (z > 0.) imagePotential = ModifiedSNBarrier::XCPotential(z);
 
@@ -316,6 +321,11 @@ public:
      * @param z coordinate - distance from electrical surface (nm)
      */
     double XCPotentialDerivative(double z) override{
+        if (z <= xcFunctionParams.extensionStartPoint){
+            cerr << "Serious warning: z is out of range of validity of XC function. Returning 0." << endl;
+            return 0.;
+        }
+
         double imagePotential = 0., imagePotentialDerivative = 0.;
         if (z > 0.) {
             imagePotential = ModifiedSNBarrier::XCPotential(z);
@@ -343,15 +353,16 @@ public:
      * @return x position where the potential depth is @param maxPotentialDepth.
      */
     double findLeftXLimit(double maxPotentialDepth) override{
-        //TODO: Implement this function
-        return 0.;
+        double potentialAtXmin = XCPotential(xcFunctionParams.polynomialRange[0]);
+        if (potentialAtXmin > maxPotentialDepth) 
+            return xcFunctionParams.polynomialRange[0];
+        else
+            return xcFunctionParams.extensionStartPoint + xcFunctionParams.extensionPrefactor / maxPotentialDepth;
     }
 
 
 private:
     Config::XCFunctionParams xcFunctionParams;
-
-
 
 };
 
