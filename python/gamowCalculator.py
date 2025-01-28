@@ -1,7 +1,6 @@
 import numpy as np
 import scipy.sparse as sp
 import matplotlib.pyplot as plt
-import os
 from getelec import Globals
 import scipy.optimize as opt
 import scipy.integrate as ig
@@ -9,8 +8,6 @@ import scipy.special
 import scipy.linalg as linalg
 import scipy.interpolate as interp
 from collections.abc import Callable
-
-import scipy.interpolate as ip
 
 font = 15
 import matplotlib as mb
@@ -277,7 +274,9 @@ class GamowCalculator:
         return  Globals.imageChargeConstant * ( 1. / z - .5 / self.radius) 
 
     def electrostaticPotential(self, z:np.ndarray):
-        return self.field * (self.radius * (self.gamma - 1.) * z + z**2) / (self.gamma * z + self.radius * (self.gamma - 1.))
+        out = self.field * (self.radius * (self.gamma - 1.) * z + z**2) / (self.gamma * z + self.radius * (self.gamma - 1.))
+        out[z < 0] = 0.
+        return out
     
     def XCpotential(self, z:np.ndarray):
 
@@ -416,164 +415,166 @@ class GamowCalculator:
 
 
 
+if __name__ == "__main__":
 
-calculator = GamowCalculator(solverType="IVP", XCdataFile="", minimumPotential=10.)
-calculator.solver.calculateTransmissionForEnergy(-5.)
-calculator = GamowCalculator(solverType="IVP")
-print(calculator.calculateGamow(barrierDepth=4.))
-calculator.solver.plotWaveFunction("waveFunsIVP.png")
-# calculator = GamowCalculator(solverType="IVP", XCdataFile="", minimumPotential=10.)
-# calculator.solver.calculateTransmissionForEnergy(-5.)
-# calculator.solver.plotWaveFunction("waveFunsIVP.png")
-
-
-import time
-
-
-# calculator = GamowCalculator(solverType="FDM", XCdataFile="", minimumPotential=10.)
-
-# start_time = time.time()
-# calculator.calculateGamowCurve(64, minBarrierDepth=-1., maxGamow=50)
-# # calculator.solver.plotWaveFunction()
-# print("calculating FDM: %g seconds ---" %(time.time() - start_time))
-# plt.semilogy(calculator.barrierDepthVector, calculator.transmissionCoefficients, ".", label="FDM")
-# spline = ip.UnivariateSpline(calculator.barrierDepthVector, calculator.gamowVector, w = 1/(1+np.exp(-calculator.gamowVector)), s = 1.e-3 * len(calculator.barrierDepthVector))
-# plt.semilogy(calculator.barrierDepthVector, Globals.transmissionCoefficientForGamow(spline(calculator.barrierDepthVector)), label = "FDM spline")
+    calculator = GamowCalculator(XCdataFile="../tabulated/XCdata_W110.npy", minimumPotential=10.)
+    print(calculator.barrierFunction(np.linspace(-0.1484608302148185, 1., 8), 0.))
+    # calculator.solver.calculateTransmissionForEnergy(-5.)
+    # calculator = GamowCalculator(solverType="IVP")
+    # print(calculator.calculateGamow(barrierDepth=4.))
+    # calculator.solver.plotWaveFunction("waveFunsIVP.png")
+    # # calculator = GamowCalculator(solverType="IVP", XCdataFile="", minimumPotential=10.)
+    # # calculator.solver.calculateTransmissionForEnergy(-5.)
+    # # calculator.solver.plotWaveFunction("waveFunsIVP.png")
 
 
-# print(spline.get_knots())
-
-calculator = GamowCalculator(solverType="IVP", XCdataFile="", minimumPotential=10.)
-start_time = time.time()
-calculator.calculateGamowCurve(64, minBarrierDepth=-1., maxGamow=50)
-print("calculating with IVP %g seconds ---" % (time.time() - start_time))
-plt.semilogy(calculator.barrierDepthVector, calculator.transmissionCoefficients, ".", label="IVP")
-
-spline = ip.UnivariateSpline(calculator.barrierDepthVector, calculator.gamowVector, w = 1/(1+np.exp(-calculator.gamowVector)), s = 1.e-3 * len(calculator.barrierDepthVector))
-plt.semilogy(calculator.barrierDepthVector, Globals.transmissionCoefficientForGamow(spline(calculator.barrierDepthVector)), label = "Uni spline")
+    # import time
 
 
+    # # calculator = GamowCalculator(solverType="FDM", XCdataFile="", minimumPotential=10.)
 
-tck = ip.splrep(calculator.barrierDepthVector, calculator.gamowVector, w = 1/(1+np.exp(-calculator.gamowVector)), s = 1.e-3 * len(calculator.barrierDepthVector))
-
-print(tck)
-
-newspline = ip.BSpline(*tck)
-plt.semilogy(calculator.barrierDepthVector, Globals.transmissionCoefficientForGamow(newspline(calculator.barrierDepthVector)), "--", label = "B spline")
-
-
-print(spline.get_knots())
-plt.plot(calculator.barrierDepthVector, calculator.gamowVector, "s", label="IVP")
+    # # start_time = time.time()
+    # # calculator.calculateGamowCurve(64, minBarrierDepth=-1., maxGamow=50)
+    # # # calculator.solver.plotWaveFunction()
+    # # print("calculating FDM: %g seconds ---" %(time.time() - start_time))
+    # # plt.semilogy(calculator.barrierDepthVector, calculator.transmissionCoefficients, ".", label="FDM")
+    # # spline = ip.UnivariateSpline(calculator.barrierDepthVector, calculator.gamowVector, w = 1/(1+np.exp(-calculator.gamowVector)), s = 1.e-3 * len(calculator.barrierDepthVector))
+    # # plt.semilogy(calculator.barrierDepthVector, Globals.transmissionCoefficientForGamow(spline(calculator.barrierDepthVector)), label = "FDM spline")
 
 
-# calculator = GamowCalculator(solverType="FDM", XCdataFile="", minimumPotential=10.)
+    # # print(spline.get_knots())
 
-# start_time = time.time()
-# calculator.calculateGamowCurve(64, minBarrierDepth=-1., maxGamow=50)
-# # calculator.solver.plotWaveFunction()
-# print("calculating FDM: %g seconds ---" %(time.time() - start_time))
-# plt.semilogy(calculator.barrierDepthVector, calculator.transmissionCoefficients, ".", label="FDM")
-# plt.semilogy(calculator.barrierDepthVector, Globals.transmissionCoefficientForGamow(spline(calculator.barrierDepthVector)), label = "FDM spline")
+    # calculator = GamowCalculator(solverType="IVP", XCdataFile="", minimumPotential=10.)
+    # start_time = time.time()
+    # calculator.calculateGamowCurve(64, minBarrierDepth=-1., maxGamow=50)
+    # print("calculating with IVP %g seconds ---" % (time.time() - start_time))
+    # plt.semilogy(calculator.barrierDepthVector, calculator.transmissionCoefficients, ".", label="IVP")
 
-
-# print(spline.get_knots())
-
-calculator = GamowCalculator(solverType="IVP", XCdataFile="", minimumPotential=10.)
-start_time = time.time()
-calculator.calculateGamowCurve(64, minBarrierDepth=-2., maxGamow=50)
-# print("calculating with IVP %g seconds ---" % (time.time() - start_time))
-
-
-# splineLog = ip.UnivariateSpline(calculator.barrierDepthVector, np.log(calculator.transmissionCoefficients), s = 1.e-3 * len(calculator.barrierDepthVector))
-# w = 1/(1+np.exp(-calculator.gamowVector))
-
-# plt.semilogy(calculator.barrierDepthVector, calculator.transmissionCoefficients , ".", label = "calculation")
-# plt.semilogy(calculator.barrierDepthVector, np.exp(splineLog(calculator.barrierDepthVector)), label = "spline")
-
-
-# tck = ip.splrep(calculator.barrierDepthVector, calculator.gamowVector, w = 1/(1+np.exp(-calculator.gamowVector)), s = 1.e-3 * len(calculator.barrierDepthVector))
-
-# newspline = ip.BSpline(*tck)
-
-# alpha = 0.5
-
-intermediateVariable = np.arctanh(2 * calculator.transmissionCoefficients - 1)
-splineIntermediateVariable = ip.UnivariateSpline(calculator.barrierDepthVector, intermediateVariable, w = (1-calculator.transmissionCoefficients)**0.5,  s = 1.e-3 * len(calculator.barrierDepthVector))
-
-splineGamow = ip.UnivariateSpline(calculator.barrierDepthVector, calculator.gamowVector, w = 1/(1+np.exp(-calculator.gamowVector)), s = 1.e-3 * len(calculator.barrierDepthVector))
-
-
-# plt.plot(calculator.barrierDepthVector, intermediateVariable , ".", label = "calculation")
-# plt.plot(calculator.barrierDepthVector, splineIntermediateVariable(calculator.barrierDepthVector), label = "spline")
-# plt.grid()
-# plt.legend()
-# plt.xlabel("barrier Depth [eV]")
-# plt.ylabel("IntermediateVariable")
-# # plt.savefig("TransmissionComparison.png")
-# plt.show()
-
-# plt.close("all")
+    # spline = ip.UnivariateSpline(calculator.barrierDepthVector, calculator.gamowVector, w = 1/(1+np.exp(-calculator.gamowVector)), s = 1.e-3 * len(calculator.barrierDepthVector))
+    # plt.semilogy(calculator.barrierDepthVector, Globals.transmissionCoefficientForGamow(spline(calculator.barrierDepthVector)), label = "Uni spline")
 
 
 
-# spline = ip.UnivariateSpline(calculator.gamowVector, calculator.barrierDepthVector, s = 1.e-3 * len(calculator.barrierDepthVector))
+    # tck = ip.splrep(calculator.barrierDepthVector, calculator.gamowVector, w = 1/(1+np.exp(-calculator.gamowVector)), s = 1.e-3 * len(calculator.barrierDepthVector))
+
+    # print(tck)
+
+    # newspline = ip.BSpline(*tck)
+    # plt.semilogy(calculator.barrierDepthVector, Globals.transmissionCoefficientForGamow(newspline(calculator.barrierDepthVector)), "--", label = "B spline")
 
 
-# plt.plot(calculator.barrierDepthVector, -np.arctanh(2 * calculator.transmissionCoefficients**alpha - 1), label="arctanh alpha")
+    # print(spline.get_knots())
+    # plt.plot(calculator.barrierDepthVector, calculator.gamowVector, "s", label="IVP")
 
 
-# plt.plot(calculator.barrierDepthVector, np.arctan(1/ calculator.transmissionCoefficients), label="arccot alpha")
+    # # calculator = GamowCalculator(solverType="FDM", XCdataFile="", minimumPotential=10.)
+
+    # # start_time = time.time()
+    # # calculator.calculateGamowCurve(64, minBarrierDepth=-1., maxGamow=50)
+    # # # calculator.solver.plotWaveFunction()
+    # # print("calculating FDM: %g seconds ---" %(time.time() - start_time))
+    # # plt.semilogy(calculator.barrierDepthVector, calculator.transmissionCoefficients, ".", label="FDM")
+    # # plt.semilogy(calculator.barrierDepthVector, Globals.transmissionCoefficientForGamow(spline(calculator.barrierDepthVector)), label = "FDM spline")
+
+
+    # # print(spline.get_knots())
+
+    # calculator = GamowCalculator(solverType="IVP", XCdataFile="", minimumPotential=10.)
+    # start_time = time.time()
+    # calculator.calculateGamowCurve(64, minBarrierDepth=-2., maxGamow=50)
+    # # print("calculating with IVP %g seconds ---" % (time.time() - start_time))
+
+
+    # # splineLog = ip.UnivariateSpline(calculator.barrierDepthVector, np.log(calculator.transmissionCoefficients), s = 1.e-3 * len(calculator.barrierDepthVector))
+    # # w = 1/(1+np.exp(-calculator.gamowVector))
+
+    # # plt.semilogy(calculator.barrierDepthVector, calculator.transmissionCoefficients , ".", label = "calculation")
+    # # plt.semilogy(calculator.barrierDepthVector, np.exp(splineLog(calculator.barrierDepthVector)), label = "spline")
+
+
+    # # tck = ip.splrep(calculator.barrierDepthVector, calculator.gamowVector, w = 1/(1+np.exp(-calculator.gamowVector)), s = 1.e-3 * len(calculator.barrierDepthVector))
+
+    # # newspline = ip.BSpline(*tck)
+
+    # # alpha = 0.5
+
+    # intermediateVariable = np.arctanh(2 * calculator.transmissionCoefficients - 1)
+    # splineIntermediateVariable = ip.UnivariateSpline(calculator.barrierDepthVector, intermediateVariable, w = (1-calculator.transmissionCoefficients)**0.5,  s = 1.e-3 * len(calculator.barrierDepthVector))
+
+    # splineGamow = ip.UnivariateSpline(calculator.barrierDepthVector, calculator.gamowVector, w = 1/(1+np.exp(-calculator.gamowVector)), s = 1.e-3 * len(calculator.barrierDepthVector))
+
+
+    # # plt.plot(calculator.barrierDepthVector, intermediateVariable , ".", label = "calculation")
+    # # plt.plot(calculator.barrierDepthVector, splineIntermediateVariable(calculator.barrierDepthVector), label = "spline")
+    # # plt.grid()
+    # # plt.legend()
+    # # plt.xlabel("barrier Depth [eV]")
+    # # plt.ylabel("IntermediateVariable")
+    # # # plt.savefig("TransmissionComparison.png")
+    # # plt.show()
+
+    # # plt.close("all")
 
 
 
-# plt.plot(calculator.barrierDepthVector, calculator.gamowVector, label="Gamow")
-
-# plt.plot(calculator.barrierDepthVector, np.log(calculator.transmissionCoefficients**(-alpha) - 1.) , label="alpha")
+    # # spline = ip.UnivariateSpline(calculator.gamowVector, calculator.barrierDepthVector, s = 1.e-3 * len(calculator.barrierDepthVector))
 
 
-
-plt.semilogy(calculator.barrierDepthVector, calculator.transmissionCoefficients , label="calculation")
-plt.semilogy(calculator.barrierDepthVector, 0.5 * np.tanh(splineIntermediateVariable(calculator.barrierDepthVector)) + 0.5, label = "splineTanh")
-
-plt.semilogy(calculator.barrierDepthVector, 1/(1+np.exp(splineGamow(calculator.barrierDepthVector))), label = "splineGamow")
+    # # plt.plot(calculator.barrierDepthVector, -np.arctanh(2 * calculator.transmissionCoefficients**alpha - 1), label="arctanh alpha")
 
 
-errorGamow = np.mean((np.log(calculator.transmissionCoefficients) +np.log(1+np.exp(splineGamow(calculator.barrierDepthVector))))**2)**0.5
-# errorTanh = np.mean((np.log(calculator.transmissionCoefficients) - np.log(0.5 * np.tanh(splineIntermediateVariable(calculator.barrierDepthVector)) + 0.5))**2)**0.5
-
-plt.grid()
-plt.legend()
-plt.xlabel("barrier Depth [eV]")
-plt.ylabel("Gamow factor")
-plt.savefig("TransmissionComparison.png")
-plt.show()
-
-plt.close("all")
-# pltmod.pushFigureToServer(plt.gcf())
-# plt.show()
-plt.ylabel("Transmission Coefficient")
-# plt.savefig("TransmissionComparison.png")
-plt.show()
-
-plt.close("all")
-
-
-splineInverse = ip.UnivariateSpline(np.log(calculator.transmissionCoefficients), calculator.barrierDepthVector, s = 1.e-3 * len(calculator.barrierDepthVector))
-plt.semilogx(calculator.transmissionCoefficients, calculator.barrierDepthVector , label="calculation")
-plt.semilogx(calculator.transmissionCoefficients, splineInverse(np.log(calculator.transmissionCoefficients)), label = "splineInverse")
+    # # plt.plot(calculator.barrierDepthVector, np.arctan(1/ calculator.transmissionCoefficients), label="arccot alpha")
 
 
 
-errorGamow = np.mean((np.log(calculator.transmissionCoefficients) +np.log(1+np.exp(splineGamow(calculator.barrierDepthVector))))**2)**0.5
-# errorTanh = np.mean((np.log(calculator.transmissionCoefficients) - np.log(0.5 * np.tanh(splineIntermediateVariable(calculator.barrierDepthVector)) + 0.5))**2)**0.5
+    # # plt.plot(calculator.barrierDepthVector, calculator.gamowVector, label="Gamow")
+
+    # # plt.plot(calculator.barrierDepthVector, np.log(calculator.transmissionCoefficients**(-alpha) - 1.) , label="alpha")
 
 
-plt.grid()
-plt.legend()
-plt.ylabel("barrier Depth [eV]")
-plt.xlabel("Transmission Coefficient")
-# plt.savefig("TransmissionComparison.png")
-plt.show()
 
-plt.close("all")
+    # plt.semilogy(calculator.barrierDepthVector, calculator.transmissionCoefficients , label="calculation")
+    # plt.semilogy(calculator.barrierDepthVector, 0.5 * np.tanh(splineIntermediateVariable(calculator.barrierDepthVector)) + 0.5, label = "splineTanh")
+
+    # plt.semilogy(calculator.barrierDepthVector, 1/(1+np.exp(splineGamow(calculator.barrierDepthVector))), label = "splineGamow")
+
+
+    # errorGamow = np.mean((np.log(calculator.transmissionCoefficients) +np.log(1+np.exp(splineGamow(calculator.barrierDepthVector))))**2)**0.5
+    # # errorTanh = np.mean((np.log(calculator.transmissionCoefficients) - np.log(0.5 * np.tanh(splineIntermediateVariable(calculator.barrierDepthVector)) + 0.5))**2)**0.5
+
+    # plt.grid()
+    # plt.legend()
+    # plt.xlabel("barrier Depth [eV]")
+    # plt.ylabel("Gamow factor")
+    # plt.savefig("TransmissionComparison.png")
+    # plt.show()
+
+    # plt.close("all")
+    # # pltmod.pushFigureToServer(plt.gcf())
+    # # plt.show()
+    # plt.ylabel("Transmission Coefficient")
+    # # plt.savefig("TransmissionComparison.png")
+    # plt.show()
+
+    # plt.close("all")
+
+
+    # splineInverse = ip.UnivariateSpline(np.log(calculator.transmissionCoefficients), calculator.barrierDepthVector, s = 1.e-3 * len(calculator.barrierDepthVector))
+    # plt.semilogx(calculator.transmissionCoefficients, calculator.barrierDepthVector , label="calculation")
+    # plt.semilogx(calculator.transmissionCoefficients, splineInverse(np.log(calculator.transmissionCoefficients)), label = "splineInverse")
+
+
+
+    # errorGamow = np.mean((np.log(calculator.transmissionCoefficients) +np.log(1+np.exp(splineGamow(calculator.barrierDepthVector))))**2)**0.5
+    # # errorTanh = np.mean((np.log(calculator.transmissionCoefficients) - np.log(0.5 * np.tanh(splineIntermediateVariable(calculator.barrierDepthVector)) + 0.5))**2)**0.5
+
+
+    # plt.grid()
+    # plt.legend()
+    # plt.ylabel("barrier Depth [eV]")
+    # plt.xlabel("Transmission Coefficient")
+    # # plt.savefig("TransmissionComparison.png")
+    # plt.show()
+
+    # plt.close("all")
 
