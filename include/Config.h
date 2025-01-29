@@ -21,12 +21,15 @@ public:
     Config(string fileName = "GetelecConfig.txt"){
         transmissionSolverParams = TransmissionSolverParams();
         transmissionSolverParams.initializeKeyMap();
+        allPAramGroups.push_back(&transmissionSolverParams);
 
         bandEmitterParams = BandEmitterParams();
         bandEmitterParams.initializeKeyMap();
+        allPAramGroups.push_back(&bandEmitterParams);
 
         xcFunctionParams = XCFunctionParams();
         xcFunctionParams.initializeKeyMap();
+        allPAramGroups.push_back(&xcFunctionParams);
 
         read_all(fileName);
     }
@@ -199,6 +202,22 @@ public:
                 };
         }
     } xcFunctionParams;
+
+
+    vector<ParamGroup*> allPAramGroups; ///< All the parameter groups
+
+    /**
+     * @brief Read the parameters from a ParamGroup
+     * @param paramGroup the group of parameters to be read
+     * @return the number of parameters read
+     */
+    int readParamGroup(ParamGroup* paramGroup){
+        int numberOfReadParams = 0;
+        for (auto& [key, value] : paramGroup->keyMap) {
+            numberOfReadParams += read_command(paramGroup->name + "." + key, value);
+        }
+        return numberOfReadParams;
+    }
 
 private:
     vector<vector<string>> data; ///< commands and their arguments found from the input script

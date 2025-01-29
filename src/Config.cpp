@@ -28,15 +28,9 @@ void Config::read_all(const string& fname) {
     // Store the commands and their arguments
     parse_file(fname);
 
-    for (auto& [key, value] : transmissionSolverParams.keyMap) {
-        read_command("transmissionSolver." + key, value);
+    for (ParamGroup* paramGroup : allPAramGroups) {
+        readParamGroup(paramGroup);
     }
-
-    // Modify the parameters that are specified in input script
-    for (auto& [key, value] : bandEmitterParams.keyMap) {
-        read_command("bandEmitter." + key, value);
-    }
-
 }
 
 void Config::print_all_params(const string& file_name) {
@@ -47,8 +41,9 @@ void Config::print_all_params(const string& file_name) {
         return;
     }
 
-    file << transmissionSolverParams.printParams();
-    file << bandEmitterParams.printParams();
+    for (ParamGroup* paramGroup : allPAramGroups) {
+        file << paramGroup->printParams();
+    }
 
     file.close();
 }
