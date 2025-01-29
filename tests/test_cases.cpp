@@ -77,6 +77,10 @@ TEST(ConfigTest, ConfigFileReadTest){
     EXPECT_EQ(config.bandEmitterParams.absoluteTolerance, config2.bandEmitterParams.absoluteTolerance);
     EXPECT_EQ(config.bandEmitterParams.relativeTolerance, config2.bandEmitterParams.relativeTolerance);
     EXPECT_EQ(config.bandEmitterParams.maxSteps, config2.bandEmitterParams.maxSteps);
+    ifstream file("tempConfig.txt");
+    string line;
+    while (getline(file, line)) cout << line << endl;
+    file.close();
     remove("tempConfig.txt");
 }
 
@@ -89,7 +93,7 @@ TEST(GetelecObjectTest, RunParalleltest){
 }
 
 TEST(GeneralXCFunctionTest, ValueTest){
-    ModifiedSNBarrierWithGenXC barrier;
+    ModifiedSNBarrierWithDftXC barrier;
     barrier.setRadius(1.e3);
     auto xValues = Utilities::linspace(-0.1484608302148185, 1., 8);
     vector<double> expectedBarrierValues = {-27.33779495 ,  -4.500531602652986,  -2.555235757718333,
@@ -105,7 +109,7 @@ TEST(GeneralXCFunctionTest, ValueTest){
 }
 
 TEST(GeneralXCFunctionTest, DerivativeTest){
-    ModifiedSNBarrierWithGenXC barrier;
+    ModifiedSNBarrierWithDftXC barrier;
     
     auto xValues = Utilities::linspace(-0.1484608302148185, 1., 64);
     double dx = 1.e-5;

@@ -288,10 +288,10 @@ public:
 
 };
 
-class ModifiedSNBarrierWithGenXC : public ModifiedSNBarrier {
+class ModifiedSNBarrierWithDftXC : public ModifiedSNBarrier {
 
 public:
-    ModifiedSNBarrierWithGenXC(Config::XCFunctionParams xcParams = Config().xcFunctionParams) : xcFunctionParams(xcParams) {}
+    ModifiedSNBarrierWithDftXC(Config::XCFunctionParams xcParams = Config().xcFunctionParams) : xcFunctionParams(xcParams) {}
 
     /**
      * @brief Calculates the image potential at a point z.

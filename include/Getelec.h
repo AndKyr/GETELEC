@@ -13,12 +13,27 @@ public:
     /**
      * @brief Construct a new Getelec object
      */
-    Getelec(string configFileName = "GetelecConfig.txt") :
-                config(Config(configFileName)),
-                threadLocalBarrier(), 
-                threadLocalSolver([this] {return TransmissionSolver(&threadLocalBarrier.local(), config.transmissionSolverParams);}),
-                threadLocalEmitter([this] {return BandEmitter(threadLocalSolver.local(), config.bandEmitterParams);})
+    Getelec(string configFileName = "GetelecConfig.txt", string barrierType = "modifiedSN") :
+        config(Config(configFileName)),
+        threadLocalBarrier([this, barrierType]() -> unique_ptr<ModifiedSNBarrier> {
+            if (!barrierType.starts_with("dftXC")) {
+                return make_unique<ModifiedSNBarrier>();
+            } else {
+                config.xcFunctionParams.name = barrierType;
+                int nReadParams = config.readParamGroup(&config.xcFunctionParams);
+                if (nReadParams < config.xcFunctionParams.keyMap.size()) {
+                    cerr << "WARNING: No parameters found for the DFT XC function named " << barrierType 
+                            << " ; Using default values, which are for W(110)." << std::endl;
+                    return make_unique<ModifiedSNBarrierWithDftXC>();
+                } else {
+                    return make_unique<ModifiedSNBarrierWithDftXC>(config.xcFunctionParams);
+                }
+            }
+        }), 
+        threadLocalSolver([this] { return TransmissionSolver(threadLocalBarrier.local().get(), config.transmissionSolverParams); }),
+        threadLocalEmitter([this] { return BandEmitter(threadLocalSolver.local(), config.bandEmitterParams); })
     {}
+
 
     ~Getelec(){}
 
@@ -167,8 +182,7 @@ public:
      */
     vector<double> calculateTransmissionCoefficientForEnergies(const vector<double>& energies, size_t paramsIndex = numeric_limits<size_t>::max());
 
-
-        /**
+    /**
      * @brief Calculate the transmission coefficient for multiple energies
      * @param energies The energy levels (eV)
      * @return The transmission coefficients
@@ -275,6 +289,30 @@ public:
         return spectra_i.data(); 
     }
 
+    /**
+     * @brief Get the potential values (eV) of the barrier of the i-th iteration in parameter space
+     * @param i The index of the iteration
+     * @param length The length of the spectra array to be output
+     * @return Pointer to the first element of the spectra array
+     */
+    vector<double> getBarrierValues(const vector<double>& x, size_t paramsIndex = numeric_limits<size_t>::max()){
+
+        setParamsForIteration(paramsIndex);
+        auto& params = threadLocalParams.local(); 
+        auto& barrier = threadLocalBarrier.local();
+        barrier->setBarrierParameters(params.field, params.radius, params.gamma);
+
+        vector<double> result(x.size());
+        for (size_t j = 0; j < x.size(); ++j) {
+            result[j] = barrier->potentialFunction(x[j]);
+        }
+        return result;
+    }
+
+    const double* getBarrierValues(const double* x, size_t size, size_t paramsIndex = numeric_limits<size_t>::max()) {
+        return getBarrierValues(vector<double>(x, x + size), paramsIndex).data();
+    }
+
 private:
 
     Config config; ///< Configuration object for the calculation
@@ -307,7 +345,7 @@ private:
 
     vector<tuple<vector<double>, vector<double>, vector<double>>> spectra; /**< The spectra (output) in A/nm^2/eV, multiple values to iterate over. */
 
-    tbb::enumerable_thread_specific<ModifiedSNBarrier> threadLocalBarrier; ///< Thread-local instances of ModifiedSNBarrier
+    tbb::enumerable_thread_specific<unique_ptr<ModifiedSNBarrier>> threadLocalBarrier; ///< Thread-local instances of ModifiedSNBarrier
     tbb::enumerable_thread_specific<TransmissionSolver> threadLocalSolver; ///< Thread-local instances of TransmissionSolver
     tbb::enumerable_thread_specific<BandEmitter> threadLocalEmitter; ///< Thread-local instances of BandEmitter
     tbb::enumerable_thread_specific<ParamsForIteration> threadLocalParams; ///< Thread-local instances of ParamsForIteration
@@ -335,39 +373,62 @@ extern "C" {
         return new Getelec();
     }
 
+    Getelec* Getelec_new_with_config(const char* configFileName, const char* barrierType) {
+        return new Getelec(configFileName, barrierType);
+    }
+
     // Wrapper to delete a Getelec object
     void Getelec_delete(Getelec* obj) {
         delete obj;
     }
 
-    // Wrapper to set field values
     void Getelec_setField(Getelec* obj, const double* fields, size_t size) {
-        obj->setField(fields, size);
+        if (size == 1)
+            obj->setField(fields[0]);
+        else
+            obj->setField(fields, size);
     }
 
-    // Wrapper to set radius values
     void Getelec_setRadius(Getelec* obj, const double* radii, size_t size) {
-        obj->setRadius(radii, size);
+        if (size == 1)
+            obj->setRadius(radii[0]);
+        else
+            obj->setRadius(radii, size);
     }
 
     void Getelec_setGamma(Getelec* obj, const double* gammas, size_t size) {
-        obj->setGamma(gammas, size);
+        if (size == 1)
+            obj->setGamma(gammas[0]);
+        else
+            obj->setGamma(gammas, size);
     }
 
     void Getelec_setkT(Getelec* obj, const double* kT, size_t size) {
-        obj->setkT(kT, size);
+        if (size == 1)
+            obj->setkT(kT[0]);
+        else
+            obj->setkT(kT, size);
     }
 
     void Getelec_setWorkFunction(Getelec* obj, const double* workFunction, size_t size) {
-        obj->setWorkFunction(workFunction, size);
-    }
-
-    void Getelec_setBandDepth(Getelec* obj, const double* bandDepth, size_t size) {
-        obj->setBandDepth(bandDepth, size);
+        if (size == 1)
+            obj->setWorkFunction(workFunction[0]);
+        else
+            obj->setWorkFunction(workFunction, size);
     }
 
     void Getelec_setEffectiveMass(Getelec* obj, const double* effectiveMass, size_t size) {
-        obj->setEffectiveMass(effectiveMass, size);
+        if (size == 1)
+            obj->setEffectiveMass(effectiveMass[0]);
+        else
+            obj->setEffectiveMass(effectiveMass, size);
+    }
+    
+    void Getelec_setBandDepth(Getelec* obj, const double* bandDepth, size_t size) {
+        if (size == 1)
+            obj->setBandDepth(bandDepth[0]);
+        else
+            obj->setBandDepth(bandDepth, size);
     }
 
     // Wrapper to run the calculation
@@ -408,6 +469,10 @@ extern "C" {
     // Wrapper to calculate transmission coefficient for multiple energies
     const double* Getelec_calculateTransmissionCoefficientForEnergies(Getelec* obj, const double* energies, size_t size, size_t paramsIndex) {
         return obj->calculateTransmissionCoefficientForEnergies(vector<double>(energies, energies + size), paramsIndex).data();
+    }
+
+    const double* Getelec_getBarrierValues(Getelec* obj, const double* x, size_t size, size_t paramsIndex) {
+        return obj->getBarrierValues(x, size, paramsIndex);
     }
 
     // Wrapper to calculate transmission coefficient for many energies

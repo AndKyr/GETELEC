@@ -7,7 +7,7 @@ void Getelec::runIteration(size_t i, bool calculateSpectra) {
     auto& barrier = threadLocalBarrier.local();
     auto& emitter = threadLocalEmitter.local();
 
-    barrier.setBarrierParameters(params.field, params.radius, params.gamma);
+    barrier->setBarrierParameters(params.field, params.radius, params.gamma);
     emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth); 
 
     if (calculateSpectra)
@@ -37,7 +37,7 @@ double Getelec::calculateTransmissionCoefficientForEnergy(double energy, size_t 
     auto& barrier = threadLocalBarrier.local();
     auto& emitter = threadLocalEmitter.local();
 
-    barrier.setBarrierParameters(params.field, params.radius, params.gamma);
+    barrier->setBarrierParameters(params.field, params.radius, params.gamma);
     emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, false); 
     emitter.setTransmissionSolver();
     return emitter.calculateTransmissionCoefficientForEnergy(energy);
@@ -49,7 +49,7 @@ std::vector<double> Getelec::calculateTransmissionCoefficientForEnergies(const s
     auto& barrier = threadLocalBarrier.local();
     auto& emitter = threadLocalEmitter.local();
 
-    barrier.setBarrierParameters(params.field, params.radius, params.gamma);
+    barrier->setBarrierParameters(params.field, params.radius, params.gamma);
     emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, false); 
     emitter.setTransmissionSolver();
 
@@ -67,7 +67,7 @@ std::vector<double> Getelec::calculateTransmissionCoefficientForManyEnergies(con
     auto& barrier = threadLocalBarrier.local();
     auto& emitter = threadLocalEmitter.local();
 
-    barrier.setBarrierParameters(params.field, params.radius, params.gamma);
+    barrier->setBarrierParameters(params.field, params.radius, params.gamma);
     emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, true); 
 
     tbb::concurrent_vector<double> transmissionCoefficients(energies.size());
