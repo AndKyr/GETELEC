@@ -62,6 +62,18 @@ class GetelecInterface:
         self.lib.Getelec_calculateTransmissionCoefficientForManyEnergies.restype = ctypes.POINTER(ctypes.c_double)
         self.lib.Getelec_calculateTransmissionCoefficientForManyEnergies.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.c_size_t, ctypes.c_size_t]
 
+        self.lib.Getelec_delete.restype = None
+        self.lib.Getelec_delete.argtypes = [ctypes.c_void_p]
+
+        self.lib.Getelec_setRandomInputs.restype = None
+        self.lib.Getelec_setRandomInputs.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+
+        self.lib.Getelec_getBarrierIntegrationLimits.restype = None
+        self.lib.Getelec_getBarrierIntegrationLimits.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double)]
+
+        self.lib.Getelec_getBarrierValues.restype = ctypes.POINTER(ctypes.c_double)
+        self.lib.Getelec_getBarrierValues.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.c_size_t, ctypes.c_size_t]
+
     def calculate_transmission_coefficient_for_energy(self, energy, params_index):
         return self.lib.Getelec_calculateTransmissionCoefficientForEnergy(self.obj, energy, params_index)
 
@@ -138,6 +150,23 @@ class GetelecInterface:
 
             self.spectra.append(spi.CubicHermiteSpline(energies[validIndices], values[validIndices], derivatives[validIndices]))
         return self.spectra
+    
+    def calculate_barrier_values(self, energies, params_index = 0):
+        energies_ctypes, size = self._to_ctypes_array(np.atleast_1d(np.asarray(energies, dtype=np.float64)))
+        result_ptr = self.lib.Getelec_getBarrierValues(self.obj, energies_ctypes, size, params_index)
+        return np.ctypeslib.as_array(result_ptr, shape=(size,))
+    
+    def get_barrier_integration_limits(self, params_index = 0):
+        lowerLimit = ctypes.c_double()
+        upperLimit = ctypes.c_double()
+        self.lib.Getelec_getBarrierIntegrationLimits(self.obj, ctypes.byref(lowerLimit), ctypes.byref(upperLimit))
+        return lowerLimit.value, upperLimit.value
+    
+    def get_barrier_plotData(self, Npoints = 512):
+        lowerLimit, upperLimit = self.get_barrier_integration_limits()
+        energies = np.linspace(lowerLimit, upperLimit, Npoints)
+        values = self.calculate_barrier_values(energies)
+        return energies, values
         
     
     def setRandomInputs(self, numberOfInputs):
@@ -155,6 +184,8 @@ class GetelecInterface:
         self.set_workFunction(workFunctions)
         self.set_bandDepth(bandDepths)
         self.set_effectiveMass(effectiveMasses)
+
+    
 
 
     def __del__(self):

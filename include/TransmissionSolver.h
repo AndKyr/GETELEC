@@ -122,6 +122,18 @@ public:
     }
 
     /**
+     * @brief Getter for the xInitial value.
+     * @return The xInitial value.
+     */
+    double getXInitial() const { return xInitial; }
+
+    /**
+     * @brief Getter for the xFinal value.
+     * @return The xFinal value.
+     */
+    double getXFinal() const { return xFinal; }
+
+    /**
      * @brief Updates the wavevector (kappa) values at the integration limits.
      */
     void updateKappaAtLimits();

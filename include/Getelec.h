@@ -313,6 +313,21 @@ public:
         return getBarrierValues(vector<double>(x, x + size), paramsIndex).data();
     }
 
+    pair<double, double> getBarrierIntegrationLimits(size_t paramIndex = numeric_limits<size_t>::max()) {
+        
+        setParamsForIteration(paramIndex);
+        auto& params = threadLocalParams.local(); 
+        auto& barrier = threadLocalBarrier.local();
+        auto& solver = threadLocalSolver.local();
+        auto& emitter = threadLocalEmitter.local();
+
+        barrier->setBarrierParameters(params.field, params.radius, params.gamma);
+        emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, false);
+        emitter.setTransmissionSolver();
+        
+        return {solver.getXInitial(), solver.getXFinal()};  
+    }
+
 private:
 
     Config config; ///< Configuration object for the calculation
@@ -478,6 +493,12 @@ extern "C" {
     // Wrapper to calculate transmission coefficient for many energies
     const double* Getelec_calculateTransmissionCoefficientForManyEnergies(Getelec* obj, const double* energies, size_t size, size_t paramsIndex) {
         return obj->calculateTransmissionCoefficientForManyEnergies(vector<double>(energies, energies + size), paramsIndex).data();
+    }
+
+    void Getelec_getBarrierIntegrationLimits(Getelec* obj, double* xInitial, double* xFinal, size_t paramsIndex) {  
+        auto [xI, xF] = obj->getBarrierIntegrationLimits();
+        *xInitial = xI;
+        *xFinal = xF;
     }
 } // extern "C"
 
