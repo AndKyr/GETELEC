@@ -65,9 +65,6 @@ class GetelecInterface:
         self.lib.Getelec_delete.restype = None
         self.lib.Getelec_delete.argtypes = [ctypes.c_void_p]
 
-        self.lib.Getelec_setRandomInputs.restype = None
-        self.lib.Getelec_setRandomInputs.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
-
         self.lib.Getelec_getBarrierIntegrationLimits.restype = None
         self.lib.Getelec_getBarrierIntegrationLimits.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double)]
 
@@ -211,5 +208,10 @@ for spline in spectra:
     yPlot = spline(xPlot)
     plt.plot(xPlot, yPlot)
     print(np.trapezoid(yPlot, xPlot))
+
+energies, values = getelec.get_barrier_plotData()
+
+plt.figure()
+plt.plot(energies, values)
 
 plt.show()

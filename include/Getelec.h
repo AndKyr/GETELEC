@@ -325,7 +325,7 @@ public:
         emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, false);
         emitter.setTransmissionSolver();
         
-        return {solver.getXInitial(), solver.getXFinal()};  
+        return {solver.getXFinal(), solver.getXInitial()};  
     }
 
 private:
