@@ -71,65 +71,65 @@ class GetelecInterface:
         self.lib.Getelec_getBarrierValues.restype = None
         self.lib.Getelec_getBarrierValues.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double), ctypes.c_size_t, ctypes.c_size_t]
 
-    def calculate_transmission_coefficient_for_energy(self, energy, params_index):
+    def calculateTransmissionForEnergy(self, energy, params_index):
         return self.lib.Getelec_calculateTransmissionCoefficientForEnergy(self.obj, energy, params_index)
 
-    def calculate_transmission_coefficient_for_energies(self, energies, params_index):
-        energies_ctypes, size = self._to_ctypes_array(np.atleast_1d(np.asarray(energies, dtype=np.float64)))
+    def calculateTransmissionForEnergies(self, energies, params_index):
+        energies_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(energies, dtype=np.float64)))
         result_ptr = self.lib.Getelec_calculateTransmissionCoefficientForEnergies(self.obj, energies_ctypes, size, params_index)
         return np.ctypeslib.as_array(result_ptr, shape=(size,))
 
-    def calculate_transmission_coefficient_for_many_energies(self, energies, params_index):
-        energies_ctypes, size = self._to_ctypes_array(np.atleast_1d(np.asarray(energies, dtype=np.float64)))
+    def calculateTransmissionForManyEnergies(self, energies, params_index):
+        energies_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(energies, dtype=np.float64)))
         result_ptr = self.lib.Getelec_calculateTransmissionCoefficientForManyEnergies(self.obj, energies_ctypes, size, params_index)
         return np.ctypeslib.as_array(result_ptr, shape=(size,))
 
-    def _to_ctypes_array(self, numpy_array):
+    def _toCtypesArray(self, numpy_array):
         return numpy_array.ctypes.data_as(ctypes.POINTER(ctypes.c_double)), len(numpy_array)
 
-    def set_field(self, fields):
-        fields_ctypes, size = self._to_ctypes_array(np.atleast_1d(np.asarray(fields, dtype=np.float64)))
+    def setField(self, fields):
+        fields_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(fields, dtype=np.float64)))
         self.lib.Getelec_setField(self.obj, fields_ctypes, size)
 
-    def set_radius(self, radii):
-        radii_ctypes, size = self._to_ctypes_array(np.atleast_1d(np.asarray(radii, dtype=np.float64)))
+    def setRadius(self, radii):
+        radii_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(radii, dtype=np.float64)))
         self.lib.Getelec_setRadius(self.obj, radii_ctypes, size)
     
-    def set_gamma(self, gammas):
-        gammas_ctypes, size = self._to_ctypes_array(np.atleast_1d(np.asarray(gammas, dtype=np.float64)))
+    def setGamma(self, gammas):
+        gammas_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(gammas, dtype=np.float64)))
         self.lib.Getelec_setGamma(self.obj, gammas_ctypes, size)
     
     def set_kT(self, kTs):
-        kTs_ctypes, size = self._to_ctypes_array(np.atleast_1d(np.asarray(kTs, dtype=np.float64)))
+        kTs_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(kTs, dtype=np.float64)))
         self.lib.Getelec_setkT(self.obj, kTs_ctypes, size)
     
-    def set_workFunction(self, workFunctions):
-        workFunctions_ctypes, size = self._to_ctypes_array(np.atleast_1d(np.asarray(workFunctions, dtype=np.float64)))
+    def setWorkFunction(self, workFunctions):
+        workFunctions_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(workFunctions, dtype=np.float64)))
         self.lib.Getelec_setWorkFunction(self.obj, workFunctions_ctypes, size)
     
-    def set_bandDepth(self, bandDepths):
-        bandDepths_ctypes, size = self._to_ctypes_array(np.atleast_1d(np.asarray(bandDepths, dtype=np.float64)))
+    def setBandDepth(self, bandDepths):
+        bandDepths_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(bandDepths, dtype=np.float64)))
         self.lib.Getelec_setBandDepth(self.obj, bandDepths_ctypes, size)
     
-    def set_effectiveMass(self, effectiveMasses):
-        effectiveMasses_ctypes, size = self._to_ctypes_array(np.atleast_1d(np.asarray(effectiveMasses, dtype=np.float64)))
+    def setEffectiveMass(self, effectiveMasses):
+        effectiveMasses_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(effectiveMasses, dtype=np.float64)))
         self.lib.Getelec_setEffectiveMass(self.obj, effectiveMasses_ctypes, size)
     
 
     def run(self, calculate_spectra=False):
         self.numberOfIterations = self.lib.Getelec_run(self.obj, calculate_spectra)
 
-    def get_current_densities(self):
+    def getCurrentDensity(self):
         size = ctypes.c_size_t()
         densities_ptr = self.lib.Getelec_getCurrentDensities(self.obj, ctypes.byref(size))
         return np.ctypeslib.as_array(densities_ptr, shape=(size.value,))
     
-    def get_nottingham_heats(self):
+    def getNottinghamHeat(self):
         size = ctypes.c_size_t()
         densities_ptr = self.lib.Getelec_getNottinghamHeats(self.obj, ctypes.byref(size))
         return np.ctypeslib.as_array(densities_ptr, shape=(size.value,)) 
     
-    def get_spectra(self):
+    def getSpectra(self):
         self.spectra = []
         for i in range(self.numberOfIterations):
             size = ctypes.c_size_t()
@@ -148,29 +148,38 @@ class GetelecInterface:
             self.spectra.append(spi.CubicHermiteSpline(energies[validIndices], values[validIndices], derivatives[validIndices]))
         return self.spectra
     
-    def calculate_barrier_values(self, energies, params_index = 0):
+    def calculateBarrierValues(self, energies, params_index = 0):
         energyArray = np.atleast_1d(np.asarray(energies, dtype=np.float64))
         potentialArray = np.copy(energyArray)
-        energies_ctypes, size = self._to_ctypes_array(energyArray)
-        potential_ctypes, size = self._to_ctypes_array(potentialArray)
+        energies_ctypes, size = self._toCtypesArray(energyArray)
+        potential_ctypes, size = self._toCtypesArray(potentialArray)
 
         self.lib.Getelec_getBarrierValues(self.obj, energies_ctypes, potential_ctypes, size, params_index)
         return np.ctypeslib.as_array(potential_ctypes, shape=(size,))
     
-    def get_barrier_integration_limits(self, params_index = 0):
+    def calculateCurrentDensity(self):
+        self.run()
+        return self.getCurrentDensity()
+    
+    def calculateNottinghamHeat(self):
+        self.run()
+        return self.getNottinghamHeat()
+    
+    
+    def getBarrierIntegrationLimits(self, params_index = 0):
         lowerLimit = ctypes.c_double()
         upperLimit = ctypes.c_double()
         self.lib.Getelec_getBarrierIntegrationLimits(self.obj, ctypes.byref(lowerLimit), ctypes.byref(upperLimit))
         return lowerLimit.value, upperLimit.value
     
-    def get_barrier_plotData(self, Npoints = 512):
-        lowerLimit, upperLimit = self.get_barrier_integration_limits()
+    def getBarrierPlotData(self, Npoints = 512):
+        lowerLimit, upperLimit = self.getBarrierIntegrationLimits()
         energies = np.linspace(lowerLimit, upperLimit, Npoints)
-        values = self.calculate_barrier_values(energies)
+        values = self.calculateBarrierValues(energies)
         return energies, values
         
     
-    def setRandomInputs(self, numberOfInputs):
+    def setRandomParams(self, numberOfInputs):
         fields = np.random.uniform(1., 12., numberOfInputs)
         radii = 1./np.random.uniform(0., 1., numberOfInputs)
         gammas = np.random.uniform(1., 100., numberOfInputs)
@@ -178,15 +187,31 @@ class GetelecInterface:
         workFunctions = np.random.uniform(1., 6., numberOfInputs)
         bandDepths = np.random.uniform(1., 15., numberOfInputs)
         effectiveMasses = np.random.uniform(0.01, 2., numberOfInputs)
-        self.set_field(fields)
-        self.set_radius(radii)
-        self.set_gamma(gammas)
+        self.setField(fields)
+        self.setRadius(radii)
+        self.setGamma(gammas)
         self.set_kT(kTs)
-        self.set_workFunction(workFunctions)
-        self.set_bandDepth(bandDepths)
-        self.set_effectiveMass(effectiveMasses)
+        self.setWorkFunction(workFunctions)
+        self.setBandDepth(bandDepths)
+        self.setEffectiveMass(effectiveMasses)
 
-    
+    def setParameters(self, **params) -> None:
+
+        for key, value in params.items():
+            if key == "field":
+                self.setField(value)
+            elif key == "radius":
+                self.setRadius(value)
+            elif key == "gamma":
+                self.setGamma(value)
+            elif key == "kT":
+                self.set_kT(value)
+            elif key == "workFunction":
+                self.setWorkFunction(value)
+            elif key == "bandDepth":
+                self.setBandDepth(value)
+            elif key == "effectiveMass":
+                self.setEffectiveMass(value)
 
 
     def __del__(self):
@@ -197,14 +222,14 @@ class GetelecInterface:
 # Example usage:
 # Assuming the shared library is compiled as "getelec.so"
 getelec = GetelecInterface("build/libgetelec.so")
-getelec.set_radius([5., 6., 7. , 8., 9.])
+getelec.setRadius([5., 6., 7. , 8., 9.])
 # getelec.setRandomInputs(5)
 # getelec.set_radius(5.)
 
 getelec.run(calculate_spectra=True)
-print(getelec.get_current_densities())
+print(getelec.getCurrentDensity())
 
-spectra = getelec.get_spectra()
+spectra = getelec.getSpectra()
 
 import matplotlib.pyplot as plt
 for spline in spectra:
@@ -213,7 +238,9 @@ for spline in spectra:
     plt.plot(xPlot, yPlot)
     print(np.trapz(yPlot, xPlot))
 
-energies, values = getelec.get_barrier_plotData()
+energies, values = getelec.getBarrierPlotData()
+
+print(getelec.__dict__)
 
 plt.figure()
 plt.plot(energies, values)
