@@ -309,6 +309,17 @@ public:
         return result;
     }
 
+    void getBarrierValues(const double* x, double* potential, size_t size, size_t paramsIndex = numeric_limits<size_t>::max()) {
+        setParamsForIteration(paramsIndex);
+        auto& params = threadLocalParams.local(); 
+        auto& barrier = threadLocalBarrier.local();
+        barrier->setBarrierParameters(params.field, params.radius, params.gamma);
+
+        for (size_t j = 0; j < size; ++j) {
+            potential[j] = barrier->potentialFunction(x[j]);
+        }
+    }
+
     const double* getBarrierValues(const double* x, size_t size, size_t paramsIndex = numeric_limits<size_t>::max()) {
         return getBarrierValues(vector<double>(x, x + size), paramsIndex).data();
     }
@@ -486,8 +497,8 @@ extern "C" {
         return obj->calculateTransmissionCoefficientForEnergies(vector<double>(energies, energies + size), paramsIndex).data();
     }
 
-    const double* Getelec_getBarrierValues(Getelec* obj, const double* x, size_t size, size_t paramsIndex) {
-        return obj->getBarrierValues(x, size, paramsIndex);
+    void Getelec_getBarrierValues(Getelec* obj, const double* x, double* potential, size_t size, size_t paramsIndex) {
+        obj->getBarrierValues(x, potential, size, paramsIndex);
     }
 
     // Wrapper to calculate transmission coefficient for many energies
