@@ -21,6 +21,32 @@ void Getelec::runIteration(size_t i, bool calculateSpectra) {
         spectra[i] = emitter.getSpectra();
 }
 
+void Getelec::getBarrierValues(const double* x, double* potential, size_t size, size_t paramsIndex) {
+    setParamsForIteration(paramsIndex);
+    auto& params = threadLocalParams.local(); 
+    auto& barrier = threadLocalBarrier.local();
+    barrier->setBarrierParameters(params.field, params.radius, params.gamma);
+
+    for (size_t j = 0; j < size; ++j) {
+        potential[j] = barrier->potentialFunction(x[j]);
+    }
+}
+
+pair<double, double> Getelec::getBarrierIntegrationLimits(size_t paramIndex){
+    setParamsForIteration(paramIndex);
+    auto& params = threadLocalParams.local(); 
+    auto& barrier = threadLocalBarrier.local();
+    auto& solver = threadLocalSolver.local();
+    auto& emitter = threadLocalEmitter.local();
+
+    barrier->setBarrierParameters(params.field, params.radius, params.gamma);
+    emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, false);
+    emitter.setTransmissionSolver();
+
+    return {solver.getXFinal(), solver.getXInitial()};  
+}
+
+
 size_t Getelec::run(bool calculateSpectra) {
     size_t maxIterations = getMaxIterations();
     currentDensityVector.resize(maxIterations);

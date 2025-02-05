@@ -295,49 +295,15 @@ public:
      * @param length The length of the spectra array to be output
      * @return Pointer to the first element of the spectra array
      */
-    vector<double> getBarrierValues(const vector<double>& x, size_t paramsIndex = numeric_limits<size_t>::max()){
+    vector<double> getBarrierValues(const vector<double>& x, size_t paramsIndex = numeric_limits<size_t>::max());
 
-        setParamsForIteration(paramsIndex);
-        auto& params = threadLocalParams.local(); 
-        auto& barrier = threadLocalBarrier.local();
-        barrier->setBarrierParameters(params.field, params.radius, params.gamma);
-
-        vector<double> result(x.size());
-        for (size_t j = 0; j < x.size(); ++j) {
-            result[j] = barrier->potentialFunction(x[j]);
-        }
-        return result;
-    }
-
-    void getBarrierValues(const double* x, double* potential, size_t size, size_t paramsIndex = numeric_limits<size_t>::max()) {
-        setParamsForIteration(paramsIndex);
-        auto& params = threadLocalParams.local(); 
-        auto& barrier = threadLocalBarrier.local();
-        barrier->setBarrierParameters(params.field, params.radius, params.gamma);
-
-        for (size_t j = 0; j < size; ++j) {
-            potential[j] = barrier->potentialFunction(x[j]);
-        }
-    }
+    void getBarrierValues(const double* x, double* potential, size_t size, size_t paramsIndex = numeric_limits<size_t>::max());
 
     const double* getBarrierValues(const double* x, size_t size, size_t paramsIndex = numeric_limits<size_t>::max()) {
         return getBarrierValues(vector<double>(x, x + size), paramsIndex).data();
     }
 
-    pair<double, double> getBarrierIntegrationLimits(size_t paramIndex = numeric_limits<size_t>::max()) {
-        
-        setParamsForIteration(paramIndex);
-        auto& params = threadLocalParams.local(); 
-        auto& barrier = threadLocalBarrier.local();
-        auto& solver = threadLocalSolver.local();
-        auto& emitter = threadLocalEmitter.local();
-
-        barrier->setBarrierParameters(params.field, params.radius, params.gamma);
-        emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, false);
-        emitter.setTransmissionSolver();
-        
-        return {solver.getXFinal(), solver.getXInitial()};  
-    }
+    pair<double, double> getBarrierIntegrationLimits(size_t paramIndex = numeric_limits<size_t>::max());
 
 private:
 
@@ -388,8 +354,6 @@ private:
      * @param i The index of the iteration
      */
     void setParamsForIteration(size_t i = numeric_limits<size_t>::max());
-
-
 };
 
 extern "C" {
