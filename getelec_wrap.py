@@ -196,7 +196,6 @@ class GetelecInterface:
         self.setEffectiveMass(effectiveMasses)
 
     def setParameters(self, **params) -> None:
-
         for key, value in params.items():
             if key == "field":
                 self.setField(value)
@@ -219,30 +218,30 @@ class GetelecInterface:
         if hasattr(self, "lib") and self.lib:
             self.lib.Getelec_delete(self.obj)
 
-# Example usage:
-# Assuming the shared library is compiled as "getelec.so"
-getelec = GetelecInterface("build/libgetelec.so")
-getelec.setRadius([5., 6., 7. , 8., 9.])
-# getelec.setRandomInputs(5)
-# getelec.set_radius(5.)
 
-getelec.run(calculate_spectra=True)
-print(getelec.getCurrentDensity())
+if (__name__ == "__main__"):
+    # Example usage:
+    # Assuming the shared library is compiled as "getelec.so"
+    getelec = GetelecInterface("build/libgetelec.so")
+    getelec.setRadius([5., 6., 7. , 8., 9.])
+    # getelec.setRandomInputs(5)
+    # getelec.set_radius(5.)
 
-spectra = getelec.getSpectra()
+    getelec.run(calculate_spectra=True)
+    print(getelec.getCurrentDensity())
 
-import matplotlib.pyplot as plt
-for spline in spectra:
-    xPlot = np.linspace(min(spline.x), max(spline.x), 512)
-    yPlot = spline(xPlot)
-    plt.plot(xPlot, yPlot)
-    print(np.trapz(yPlot, xPlot))
+    spectra = getelec.getSpectra()
 
-energies, values = getelec.getBarrierPlotData()
+    import matplotlib.pyplot as plt
+    for spline in spectra:
+        xPlot = np.linspace(min(spline.x), max(spline.x), 512)
+        yPlot = spline(xPlot)
+        plt.plot(xPlot, yPlot)
+        print(np.trapz(yPlot, xPlot))
 
-print(getelec.__dict__)
+    energies, values = getelec.getBarrierPlotData()
 
-plt.figure()
-plt.plot(energies, values)
+    plt.figure()
+    plt.plot(energies, values)
 
-plt.show()
+    plt.show()
