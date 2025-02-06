@@ -1,14 +1,18 @@
 import ctypes
 import numpy as np
+import os
 import scipy.interpolate as spi
 
 class GetelecInterface:
-    def __init__(self, library_path):
+    def __init__(self, libPath=None, configPath:str="", barrierType="modifiedSN"):
+        if libPath is None:
+            libPath = os.path.join(os.path.dirname(__file__), "../build/libgetelec.so")
+        
         # Load the shared library
-        self.lib = ctypes.CDLL(library_path)
+        self.lib = ctypes.CDLL(libPath)
 
         # Initialize the Getelec instance
-        self.obj = self.lib.Getelec_new()
+        self.obj = self.lib.Getelec_new_with_config(ctypes.c_char_p(configPath.encode('utf-8')), ctypes.c_char_p(barrierType.encode('utf-8')))
 
         # Define argument and return types for methods
         self.lib.Getelec_setField.restype = None
@@ -222,7 +226,7 @@ class GetelecInterface:
 if (__name__ == "__main__"):
     # Example usage:
     # Assuming the shared library is compiled as "getelec.so"
-    getelec = GetelecInterface("build/libgetelec.so")
+    getelec = GetelecInterface()
     getelec.setRadius([5., 6., 7. , 8., 9.])
     # getelec.setRandomInputs(5)
     # getelec.set_radius(5.)
