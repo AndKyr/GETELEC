@@ -1,11 +1,11 @@
-import getelec as gt
+import getelec_wrap as gt
 import numpy as np
 import scipy.optimize as opt
 import matplotlib.pyplot as plt
 
 
 class generalFitter:
-    emitterModel:gt.GETELECModel
+    emitterModel:gt.GetelecInterface
     fittingParameters: dict
     initialParameters: dict
     minParameters: dict
@@ -14,7 +14,7 @@ class generalFitter:
     currentData:np.ndarray
     optimizationData:opt.OptimizeResult
 
-    def __init__(self, emitterModel:gt.GETELECModel = gt.GETELECModel()) -> None:
+    def __init__(self, emitterModel:gt.GetelecInterface = gt.GetelecInterface()) -> None:
         self.emitterModel = emitterModel
         self.fittingParameters = {"fieldConversionFactor": 1.}
         self.minParameters = {"fieldConversionFactor": 1.}
@@ -31,7 +31,7 @@ class generalFitter:
 
 class IVDataFitter(generalFitter):
     
-    def __init__(self, emitterModel:gt.GETELECModel = gt.GETELECModel()) -> None:
+    def __init__(self, emitterModel:gt.GetelecInterface = gt.GetelecInterface()) -> None:
         super().__init__(emitterModel)
 
     def currentDensityforVoltages(self, voltageArray:np.ndarray) -> np.ndarray:
@@ -141,13 +141,6 @@ class IVDataFitter(generalFitter):
             self.prefactorBounds = prefactorBounds
 
 
-        #sanity checks
-        if "radius" in self.fittingParameters:
-            assert self.emitterModel.emitter.barrier.getDimension() >= 2, "you cannot fit for Radius of Gamma if the tabulation dimension is < 2"
-
-        if "gamma" in self.fittingParameters:
-            assert self.emitterModel.emitter.barrier.getDimension() == 3, "You cannot fit for Gamma if the tabulation dimension is < 3"
-
     def getOptCurrentCurve(self, voltageData:np.ndarray = None) -> np.ndarray:
         """Calculates and returns the current curve for a given input voltage data array
         Args:
@@ -189,7 +182,7 @@ class IVDataFitter(generalFitter):
     
 
 class twoEmitterFitter(generalFitter):
-    def __init__(self, emitterModel: gt.GETELECModel = gt.GETELECModel()) -> None:
+    def __init__(self, emitterModel: gt.GetelecInterface = gt.GetelecInterface()) -> None:
         super().__init__(emitterModel)
 
         self.fittingParameters = {"fieldConversionFactor": 1., "secondFieldConversionFactor": 2., "prefactor": 1., "secondPrefactor": 1.}
@@ -325,6 +318,7 @@ def performFullEmissionFitting(voltageData:np.ndarray, currentData:np.ndarray, f
     ivFitter.setParameterRange(field, radius, gamma, workFunction, temperature)
     ivFitter.fitIVCurve()
     ivFitter.printFittingData()
+
     plotVoltages = 1. / np.linspace(1./min(voltageData), 1./max(voltageData), 128)
     plotFields = ivFitter.fittingParameters["fieldConversionFactor"] * plotVoltages
 
@@ -453,3 +447,4 @@ if (__name__ == "__main__"): #some testing operations
 
     ivFitter.printFittingData()
     plt.savefig("twoEmitterFitting.png")
+    plt.show()

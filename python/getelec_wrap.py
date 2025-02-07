@@ -209,6 +209,8 @@ class GetelecInterface:
                 self.setGamma(value)
             elif key == "kT":
                 self.set_kT(value)
+            elif key == "temperature":
+                self.set_kT(value * 8.617333262145e-5)
             elif key == "workFunction":
                 self.setWorkFunction(value)
             elif key == "bandDepth":
