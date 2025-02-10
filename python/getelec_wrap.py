@@ -251,3 +251,12 @@ if (__name__ == "__main__"):
     plt.plot(energies, values)
 
     plt.show()
+
+    getelec.setRadius(1.e5)
+    xFN = np.linspace(1., 10., 512)
+    getelec.setField(1./xFN)
+    getelec.run()
+    currentDensities = getelec.getCurrentDensity()
+    plt.figure()
+    plt.plot(xFN, currentDensities)
+    plt.show()

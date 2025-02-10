@@ -67,7 +67,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "/home/kyritsak/GETELEC/.venv/bin/python",  // Path to your Python interpreter
-            "args": ["getelec_wrap.py"],    // Your Python script
+            "args": ["python/getelec_wrap.py"],    // Your Python script
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",   // Current working directory
             "environment": [],

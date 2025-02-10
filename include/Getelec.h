@@ -171,7 +171,7 @@ public:
      * @return The transmission coefficient
      * @note This method is relevant for a single or a few calculations of the transmission coefficient. Don't use it for multiple calculations on the same barrier as it resets the barrier which might be slow. Use calculateTransmissionCoefficientForEnergies instead
      */
-    double calculateTransmissionCoefficientForEnergy(double energy, size_t paramsIndex = numeric_limits<size_t>::max());
+    double calculateTransmissionCoefficientForEnergy(double energy, size_t paramsIndex = 0);
 
 
     /**
@@ -180,7 +180,7 @@ public:
      * @return The transmission coefficients
      * @note This method is relevant for multiple calculations of the transmission coefficient. It is faster than calculateTransmissionCoefficientForEnergy for multiple calculations on the same barrier. However, if you are iterating over many many energies, it might be better to use calculateTransmissionCoefficientForManyEnergies, which prepares the interpolator and then just interpolates.
      */
-    vector<double> calculateTransmissionCoefficientForEnergies(const vector<double>& energies, size_t paramsIndex = numeric_limits<size_t>::max());
+    vector<double> calculateTransmissionCoefficientForEnergies(const vector<double>& energies, size_t paramsIndex = 0);
 
     /**
      * @brief Calculate the transmission coefficient for multiple energies
@@ -188,7 +188,7 @@ public:
      * @return The transmission coefficients
      * @note This method is relevant for multiple calculations of the transmission coefficient. It is faster than calculateTransmissionCoefficientForEnergy for multiple calculations on the same barrier. However, if you are iterating over many many energies, it might be better to use calculateTransmissionCoefficientForManyEnergies, which prepares the interpolator and then just interpolates.
      */
-    vector<double> calculateTransmissionCoefficientForManyEnergies(const vector<double>& energies, size_t paramsIndex = numeric_limits<size_t>::max());
+    vector<double> calculateTransmissionCoefficientForManyEnergies(const vector<double>& energies, size_t paramsIndex = 0);
 
     /**
      * @brief Get the current density at the i-th element of the array of inputs
@@ -295,15 +295,15 @@ public:
      * @param length The length of the spectra array to be output
      * @return Pointer to the first element of the spectra array
      */
-    vector<double> getBarrierValues(const vector<double>& x, size_t paramsIndex = numeric_limits<size_t>::max());
+    vector<double> getBarrierValues(const vector<double>& x, size_t paramsIndex = 0);
 
-    void getBarrierValues(const double* x, double* potential, size_t size, size_t paramsIndex = numeric_limits<size_t>::max());
+    void getBarrierValues(const double* x, double* potential, size_t size, size_t paramsIndex = 0);
 
-    const double* getBarrierValues(const double* x, size_t size, size_t paramsIndex = numeric_limits<size_t>::max()) {
+    const double* getBarrierValues(const double* x, size_t size, size_t paramsIndex = 0) {
         return getBarrierValues(vector<double>(x, x + size), paramsIndex).data();
     }
 
-    pair<double, double> getBarrierIntegrationLimits(size_t paramIndex = numeric_limits<size_t>::max());
+    pair<double, double> getBarrierIntegrationLimits(size_t paramIndex = 0);
 
 private:
 
@@ -321,13 +321,13 @@ private:
         double gamma = 10.; ///< The gamma parameter of the general barrier model.
     };
 
-    vector<double> fieldsVector; ///< The electric field in V/nm, multiple values to iterate over.
-    vector<double> radiiVector; ///< The radius of the emitter in nm, multiple values to iterate over.
-    vector<double> gammasVector; ///< Gamma parameter of the general barrier model, multiple values to iterate over.
-    vector<double> kTVector; ///< Temperature in eV, multiple values to iterate over.
-    vector<double> workFunctionVector; //< Work function in eV, multiple values to iterate over.
-    vector<double> bandDepthVector; //< Depth of the electronic band in eV, multiple values to iterate over.
-    vector<double> effectiveMassVector; ///< Effective mass of the electron, multiple values to iterate over.
+    vector<double> fieldsVector = {5.}; ///< The electric field in V/nm, multiple values to iterate over.
+    vector<double> radiiVector = {1.e5}; ///< The radius of the emitter in nm, multiple values to iterate over.
+    vector<double> gammasVector = {10.}; ///< Gamma parameter of the general barrier model, multiple values to iterate over.
+    vector<double> kTVector = {.025}; ///< Temperature in eV, multiple values to iterate over.
+    vector<double> workFunctionVector = {4.5}; //< Work function in eV, multiple values to iterate over.
+    vector<double> bandDepthVector = {10.}; //< Depth of the electronic band in eV, multiple values to iterate over.
+    vector<double> effectiveMassVector = {1.}; ///< Effective mass of the electron, multiple values to iterate over.
 
     double currentDensity = 0.; //< The current density (output) in A/nm^2.
     vector<double> currentDensityVector; ///< The current density (output) in A/nm^2, multiple values to iterate over.
@@ -353,7 +353,7 @@ private:
      * @brief Set the parameters for a specific iteration
      * @param i The index of the iteration
      */
-    void setParamsForIteration(size_t i = numeric_limits<size_t>::max());
+    void setParamsForIteration(size_t i = 0);
 };
 
 extern "C" {

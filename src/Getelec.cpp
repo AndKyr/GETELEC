@@ -107,9 +107,14 @@ std::vector<double> Getelec::calculateTransmissionCoefficientForManyEnergies(con
 size_t Getelec::getMaxIterations() {
     const std::vector<const std::vector<double>*> allInputVectors = {&fieldsVector, &radiiVector, &gammasVector, &kTVector, &workFunctionVector, &bandDepthVector, &effectiveMassVector};
     int maxSize = 0;
-    for (auto inputVector : allInputVectors)
-        if (inputVector && inputVector->size() > maxSize)
+    for (auto* inputVector : allInputVectors)
+        if (inputVector->size() > maxSize)
             maxSize = inputVector->size();
+
+    for (auto* inputVector : allInputVectors)
+        if (inputVector->size() != maxSize && inputVector->size() > 1)
+            throw std::runtime_error("All input vectors must have the same size or size 1.");
+    
     return maxSize;
 }
 
@@ -118,22 +123,50 @@ void Getelec::setParamsForIteration(size_t i) {
     
     if (i < workFunctionVector.size())
         params.workFunction = workFunctionVector[i];
+    else if (workFunctionVector.size() == 1)
+        params.workFunction = workFunctionVector[0];
+    else
+        throw std::runtime_error("Work function vector must have size 1 or the same size as the other input vectors.");
 
     if (i < kTVector.size())
         params.kT = kTVector[i];
+    else if (kTVector.size() == 1)
+        params.kT = kTVector[0];
+    else
+        throw std::runtime_error("kT vector must have size 1 or the same size as the other input vectors.");
 
     if (i < effectiveMassVector.size())
         params.effectiveMass = effectiveMassVector[i];
+    else if (effectiveMassVector.size() == 1)
+        params.effectiveMass = effectiveMassVector[0];
+    else
+        throw std::runtime_error("Effective mass vector must have size 1 or the same size as the other input vectors.");
     
     if (i < bandDepthVector.size())
         params.bandDepth = bandDepthVector[i];
+    else if (bandDepthVector.size() == 1)
+        params.bandDepth = bandDepthVector[0];
+    else
+        throw std::runtime_error("Band depth vector must have size 1 or the same size as the other input vectors.");
 
     if (i < fieldsVector.size())
         params.field = fieldsVector[i];
+    else if (fieldsVector.size() == 1)
+        params.field = fieldsVector[0];
+    else
+        throw std::runtime_error("Field vector must have size 1 or the same size as the other input vectors.");
     
     if (i < radiiVector.size())
         params.radius = radiiVector[i];
+    else if (radiiVector.size() == 1)
+        params.radius = radiiVector[0];
+    else
+        throw std::runtime_error("Radius vector must have size 1 or the same size as the other input vectors.");
     
     if (i < gammasVector.size())
         params.gamma = gammasVector[i];
+    else if (gammasVector.size() == 1)
+        params.gamma = gammasVector[0];
+    else
+        throw std::runtime_error("Gamma vector must have size 1 or the same size as the other input vectors.");
 }
