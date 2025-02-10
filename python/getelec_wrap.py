@@ -1,7 +1,51 @@
+"""
+@file getelec_wrap.py
+@brief Python wrapper for the Getelec C++ library using ctypes.
+This module provides a Python interface to the Getelec C++ library, allowing for the calculation of various electronic properties.
+Classes:
+    GetelecInterface: A class to interface with the Getelec C++ library.
+Usage example:
+    getelec.setRadius([5., 6., 7., 8., 9.])
+"""
+
 import ctypes
 import numpy as np
 import os
 import scipy.interpolate as spi
+
+"""
+@class GetelecInterface
+@brief A class to interface with the Getelec C++ library.
+This class provides methods to set parameters, run simulations, and retrieve results from the Getelec C++ library.
+@param libPath Path to the shared library file.
+@param configPath Path to the configuration file.
+@param barrierType Type of barrier to use in calculations.
+Methods:
+    __init__(self, libPath=None, configPath:str="", barrierType="modifiedSN"): Initializes the interface and loads the shared library.
+    calculateTransmissionForEnergy(self, energy, params_index): Calculates the transmission coefficient for a given energy.
+    calculateTransmissionForEnergies(self, energies, params_index): Calculates the transmission coefficients for multiple energies.
+    calculateTransmissionForManyEnergies(self, energies, params_index): Calculates the transmission coefficients for many energies.
+    _toCtypesArray(self, numpy_array): Converts a numpy array to a ctypes array.
+    setField(self, fields): Sets the field values.
+    setRadius(self, radii): Sets the radius values.
+    setGamma(self, gammas): Sets the gamma values.
+    set_kT(self, kTs): Sets the kT values.
+    setWorkFunction(self, workFunctions): Sets the work function values.
+    setBandDepth(self, bandDepths): Sets the band depth values.
+    setEffectiveMass(self, effectiveMasses): Sets the effective mass values.
+    run(self, calculate_spectra=False): Runs the simulation.
+    getCurrentDensity(self): Retrieves the current density values.
+    getNottinghamHeat(self): Retrieves the Nottingham heat values.
+    getSpectra(self): Retrieves the spectra values.
+    calculateBarrierValues(self, energies, params_index=0): Calculates the barrier values for given energies.
+    calculateCurrentDensity(self): Runs the simulation and retrieves the current density values.
+    calculateNottinghamHeat(self): Runs the simulation and retrieves the Nottingham heat values.
+    getBarrierIntegrationLimits(self, params_index=0): Retrieves the barrier integration limits.
+    getBarrierPlotData(self, Npoints=512, params_index=0): Retrieves the barrier plot data.
+    setRandomParams(self, numberOfInputs): Sets random parameters for the simulation.
+    setParameters(self, **params): Sets multiple parameters for the simulation.
+    __del__(self): Cleans up the object and deletes the Getelec instance.
+"""
 
 class GetelecInterface:
     def __init__(self, libPath=None, configPath:str="", barrierType="modifiedSN"):
