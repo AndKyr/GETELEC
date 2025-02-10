@@ -41,7 +41,10 @@ public:
      * @brief Set the field parameters of the calculation at a single value
      * @param field_ The electric field in V/nm.
      */
-    void setField(double field_ = 5.) { threadLocalParams.local().field = field_; }
+    void setField(double field_ = 5.) { 
+        fieldsVector.resize(1);
+        fieldsVector[0] = field_;
+     }
 
     /**
      * @brief Set the field parameters of the calculation at multiple values
@@ -55,7 +58,10 @@ public:
      * @brief Set the radius of the emitter at a single value
      * @param radius_ The radius of the emitter in nm.
      */
-    void setRadius(double radius_ = 1.e4) { threadLocalParams.local().radius = radius_; }
+    void setRadius(double radius_ = 1.e4) {
+        radiiVector.resize(1);
+        radiiVector[0] = radius_;
+    }
 
     /**
      * @brief Set the radius of the emitter at multiple values
@@ -69,7 +75,10 @@ public:
      * @brief Set the gamma parameter of the general barrier model at a single value
      * @param gamma_ The gamma parameter of the general barrier model.
      */
-    void setGamma(double gamma_ = 10.) { threadLocalParams.local().gamma = gamma_; }
+    void setGamma(double gamma_ = 10.){
+        gammasVector.resize(1);
+        gammasVector[0] = gamma_;
+    }
 
     /**
      * @brief Set the gamma parameter of the general barrier model at multiple values
@@ -83,7 +92,10 @@ public:
      * @brief Set the temperature at a single value
      * @param kT_ Temperature in eV.
      */
-    void setkT(double kT_ = .025) { threadLocalParams.local().kT = kT_; }
+    void setkT(double kT_ = .025){
+        kTVector.resize(1);
+        kTVector[0] = kT_;
+    }
 
     /**
      * @brief Set the temperature at multiple values
@@ -98,7 +110,10 @@ public:
      * @brief Set the work function at a single value
      * @param workFunction_ Work function in eV.
      */
-    void setWorkFunction(double workFunction_ = 4.5) { threadLocalParams.local().workFunction = workFunction_; }
+    void setWorkFunction(double workFunction_ = 4.5){
+        workFunctionVector.resize(1);
+        workFunctionVector[0] = workFunction_;
+    }
     
     /**
      * @brief Set the work function at multiple values
@@ -113,7 +128,10 @@ public:
      * @brief Set the band depth at a single value
      * @param bandDepth_ Depth of the electronic band in eV.
      */
-    void setBandDepth(double bandDepth_ = 10.) { threadLocalParams.local().bandDepth = bandDepth_; }
+    void setBandDepth(double bandDepth_ = 10.) {
+        bandDepthVector.resize(1);
+        bandDepthVector[0] = bandDepth_;
+    }
     
     /**
      * @brief Set the band depth at multiple values
@@ -133,8 +151,10 @@ public:
      * @brief Set the effective mass at a single value
      * @param effectiveMass_ Effective mass of the electron.
      */
-    void setEffectiveMass(double effectiveMass_ = 1.) { threadLocalParams.local().effectiveMass = effectiveMass_; }
-    
+    void setEffectiveMass(double effectiveMass_ = 1.){
+        effectiveMassVector.resize(1);
+        effectiveMassVector[0] = effectiveMass_;
+    }
     /**
      * @brief Set the effective mass at multiple values
      * @param effectiveMassVector_ Effective mass of the electron, multiple values to iterate over.
@@ -373,52 +393,31 @@ extern "C" {
     }
 
     void Getelec_setField(Getelec* obj, const double* fields, size_t size) {
-        if (size == 1)
-            obj->setField(fields[0]);
-        else
-            obj->setField(fields, size);
+        obj->setField(fields, size);
     }
 
     void Getelec_setRadius(Getelec* obj, const double* radii, size_t size) {
-        if (size == 1)
-            obj->setRadius(radii[0]);
-        else
-            obj->setRadius(radii, size);
+        obj->setRadius(radii, size);
     }
 
     void Getelec_setGamma(Getelec* obj, const double* gammas, size_t size) {
-        if (size == 1)
-            obj->setGamma(gammas[0]);
-        else
-            obj->setGamma(gammas, size);
+        obj->setGamma(gammas, size);
     }
 
     void Getelec_setkT(Getelec* obj, const double* kT, size_t size) {
-        if (size == 1)
-            obj->setkT(kT[0]);
-        else
-            obj->setkT(kT, size);
+        obj->setkT(kT, size);
     }
 
     void Getelec_setWorkFunction(Getelec* obj, const double* workFunction, size_t size) {
-        if (size == 1)
-            obj->setWorkFunction(workFunction[0]);
-        else
-            obj->setWorkFunction(workFunction, size);
+        obj->setWorkFunction(workFunction, size);
     }
 
     void Getelec_setEffectiveMass(Getelec* obj, const double* effectiveMass, size_t size) {
-        if (size == 1)
-            obj->setEffectiveMass(effectiveMass[0]);
-        else
-            obj->setEffectiveMass(effectiveMass, size);
+        obj->setEffectiveMass(effectiveMass, size);
     }
     
     void Getelec_setBandDepth(Getelec* obj, const double* bandDepth, size_t size) {
-        if (size == 1)
-            obj->setBandDepth(bandDepth[0]);
-        else
-            obj->setBandDepth(bandDepth, size);
+        obj->setBandDepth(bandDepth, size);
     }
 
     // Wrapper to run the calculation
@@ -471,7 +470,7 @@ extern "C" {
     }
 
     void Getelec_getBarrierIntegrationLimits(Getelec* obj, double* xInitial, double* xFinal, size_t paramsIndex) {  
-        auto [xI, xF] = obj->getBarrierIntegrationLimits();
+        auto [xI, xF] = obj->getBarrierIntegrationLimits(paramsIndex);
         *xInitial = xI;
         *xFinal = xF;
     }

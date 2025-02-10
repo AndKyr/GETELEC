@@ -173,13 +173,13 @@ class GetelecInterface:
     def getBarrierIntegrationLimits(self, params_index = 0):
         lowerLimit = ctypes.c_double()
         upperLimit = ctypes.c_double()
-        self.lib.Getelec_getBarrierIntegrationLimits(self.obj, ctypes.byref(lowerLimit), ctypes.byref(upperLimit))
+        self.lib.Getelec_getBarrierIntegrationLimits(self.obj, ctypes.byref(lowerLimit), ctypes.byref(upperLimit), ctypes.c_size_t(params_index))
         return lowerLimit.value, upperLimit.value
     
-    def getBarrierPlotData(self, Npoints = 512):
-        lowerLimit, upperLimit = self.getBarrierIntegrationLimits()
+    def getBarrierPlotData(self, Npoints = 512, params_index = 0):
+        lowerLimit, upperLimit = self.getBarrierIntegrationLimits(params_index=params_index)
         energies = np.linspace(lowerLimit, upperLimit, Npoints)
-        values = self.calculateBarrierValues(energies)
+        values = self.calculateBarrierValues(energies, params_index=params_index)
         return energies, values
         
     
@@ -234,29 +234,34 @@ if (__name__ == "__main__"):
     # getelec.set_radius(5.)
 
     getelec.run(calculate_spectra=True)
-    print(getelec.getCurrentDensity())
+    densities = getelec.getCurrentDensity()
 
     spectra = getelec.getSpectra()
 
     import matplotlib.pyplot as plt
+    fig, [ax1, ax2] = plt.subplots(2, 1)
+    i = 0
     for spline in spectra:
         xPlot = np.linspace(min(spline.x), max(spline.x), 512)
         yPlot = spline(xPlot)
-        plt.plot(xPlot, yPlot)
-        print(np.trapz(yPlot, xPlot))
 
-    energies, values = getelec.getBarrierPlotData()
+        energies, values = getelec.getBarrierPlotData(params_index=i)
+        ax1.plot(xPlot, yPlot)
+        ax2.plot(energies, values)
+        currentDensityFromSpectra = np.trapz(yPlot, xPlot)
 
-    plt.figure()
-    plt.plot(energies, values)
+        if (abs(np.log(currentDensityFromSpectra) - np.log(densities[i])) > 1e-3):
+            print("Error in current density calculation")
+        
+        i += 1
 
-    plt.show()
+
 
     getelec.setRadius(1.e5)
-    xFN = np.linspace(1., 10., 512)
+    xFN = np.linspace(.1, 1., 512)
     getelec.setField(1./xFN)
     getelec.run()
     currentDensities = getelec.getCurrentDensity()
     plt.figure()
-    plt.plot(xFN, currentDensities)
+    plt.semilogy(xFN, currentDensities)
     plt.show()
