@@ -6,6 +6,8 @@ Classes:
     GetelecInterface: A class to interface with the Getelec C++ library.
 Usage example:
     getelec.setRadius([5., 6., 7., 8., 9.])
+    getelec.run()
+    densities = getelec.getCurrentDensity()
 """
 
 import ctypes
