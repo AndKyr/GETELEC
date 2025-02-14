@@ -92,6 +92,37 @@
               "trace": true,
               "engineLogging": false
             }
+          },
+          {
+            "name": "GetelecWrapTestDebug",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/home/kyritsak/GETELEC/.venv/bin/python",  // Path to your Python interpreter
+            "args": ["python/getelecWrapTests.py"],    // Your Python script
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",   // Current working directory
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb", // Path to gdb
+            "setupCommands": [
+              {
+                "description": "Enable pretty-printing for gdb",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+              },
+              {
+                "description": "Load shared library symbols",
+                "text": "sharedlibrary getelec", // Load symbols for your shared library
+                "ignoreFailures": true
+              }
+            ],
+            "preLaunchTask": "buildDebug",
+            "logging": {
+              "moduleLoad": false,
+              "trace": true,
+              "engineLogging": false
+            }
           }
     ]
 }

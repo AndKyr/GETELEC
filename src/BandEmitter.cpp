@@ -124,6 +124,7 @@ int BandEmitter::updateSpectraSpline(){
 }
 
 int BandEmitter::calculateCurrentDensityAndNottingham(double convergenceTolerance) {
+    if (convergenceTolerance <= 0.) convergenceTolerance = relativeTolerance;
     double x = xInitial;
     double dx = initialStep;
     int status;

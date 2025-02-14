@@ -374,6 +374,7 @@ if (__name__ == "__main__"): #some testing operations
 
     # print(outData)
     plt.savefig("fittedCurveOnlyBeta.png")
+    plt.show()
     plt.close()
 
     voltageData = np.array([0.0729348 , 0.07171391, 0.07087798, 0.07008738, 0.06931421, \
@@ -396,6 +397,7 @@ if (__name__ == "__main__"): #some testing operations
     plt.legend()
     plt.grid()
     plt.savefig("fittedCurveChen.png")
+    plt.show()
 
     plt.close()
     plt.figure()
@@ -411,6 +413,7 @@ if (__name__ == "__main__"): #some testing operations
     plt.legend()
 
     plt.savefig("fittedcurve2Emitter.png")
+    plt.show()
     plt.close()
 
     ivFitter.printFittingData()

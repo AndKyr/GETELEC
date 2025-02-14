@@ -274,7 +274,7 @@ class GetelecInterface:
 if (__name__ == "__main__"):
     # Example usage:
     # Assuming the shared library is compiled as "getelec.so"
-    getelec = GetelecInterface()
+    getelec = GetelecInterface(configPath="getelec.cfg")
     getelec.setRadius([5., 6., 7. , 8., 9.])
     # getelec.setRandomInputs(5)
     # getelec.set_radius(5.)

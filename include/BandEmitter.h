@@ -186,7 +186,7 @@ public:
      * @param convergenceTolerance The tolerance for convergence.
      * @return Status of the calculation (e.g., GSL_SUCCESS).
      */
-    int calculateCurrentDensityAndSpectra(double convergenceTolerance = 1.e-5, bool makeSpectralSpline = false);
+    int calculateCurrentDensityAndSpectra(double convergenceTolerance = 0., bool makeSpectralSpline = false);
 
     /**
      * @brief Solves the ODE system to calculate current density and Nottingham heat.
