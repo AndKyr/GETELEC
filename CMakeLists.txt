@@ -8,6 +8,8 @@ project(GETELEC VERSION 3.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+option(ENABLE_JAVA_WRAPPER "Enable Java JNI Wrapper" ON)
+
 
 # Add an option to set the build type (default is Release if not specified)
 if (NOT CMAKE_BUILD_TYPE)
@@ -42,6 +44,24 @@ add_executable(getelec ${PROJECT_SOURCE_DIR}/src/main.cpp)
 
 # Link the GSL and math library
 target_link_libraries(getelec getelec_lib)
+
+if(ENABLE_JAVA_WRAPPER)
+    # Find Java only if JNI is enabled
+    find_package(Java REQUIRED)
+    find_package(JNI REQUIRED)
+    
+    # Include JNI headers
+    include_directories(${JNI_INCLUDE_DIRS})
+
+    # Add JNI shared library target
+    list(APPEND SOURCES ${PROJECT_SOURCE_DIR}/src/jni/*.cpp)
+
+
+    # Link JNI libraries if needed
+    target_link_libraries(getelec_lib ${JNI_LIBRARIES})
+
+    message(STATUS "JNI support enabled. Compiling Java wrapper.")
+endif()
 
 # Add debug flags if building in Debug mode
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")

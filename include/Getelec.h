@@ -52,6 +52,18 @@ public:
      */
     void setField(std::vector<double>& fieldsVector_) { fieldsVector = vector<double>(fieldsVector_.begin(), fieldsVector_.end()); }
 
+    /**
+     * @brief Set the field parameters of the calculation at multiple values
+     * @param fieldsVector_ The electric field in V/nm, multiple values to iterate over.
+     * @note This method uses move semantics and is more efficient than the other setField method, but it invalidates the input vector.
+     */
+    void setFieldMove(std::vector<double>&& fieldsVector_) { fieldsVector = std::move(fieldsVector_); }
+
+    /**
+     * @brief Set the field parameters of the calculation at multiple values with a pointer and size input (C-style)
+     * @param fieldsArray_ The electric field in V/nm, multiple values to iterate over.
+     * @param size The size of the array
+     */
     void setField(const double* fieldsArray_, size_t size) { fieldsVector = std::vector<double>(fieldsArray_, fieldsArray_ + size); }
 
     /**
@@ -69,6 +81,18 @@ public:
      */
     void setRadius(std::vector<double>& radiiVector_) { radiiVector = vector<double>(radiiVector_.begin(), radiiVector_.end()); }
 
+    /**
+     * @brief Set the radius of the emitter at multiple values
+     * @param radiiVector_ The radius of the emitter in nm, multiple values to iterate over.
+     * @note This method uses move semantics and is more efficient than the other setRadius method, but it invalidates the input vector.
+     */
+    void setRadiusMove(std::vector<double>&& radiiVector_) { radiiVector = std::move(radiiVector_); }
+
+    /**
+     * @brief Set the radius of the emitter at multiple values with a pointer and size input (C-style)
+     * @param radiiArray_ The radius of the emitter in nm, multiple values to iterate over.
+     * @param size The size of the array
+     */
     void setRadius(const double* radiiArray_, size_t size) { radiiVector = std::vector<double>(radiiArray_, radiiArray_ + size); }
 
     /**
@@ -86,6 +110,18 @@ public:
      */
     void setGamma(std::vector<double>& gammasVector_) { gammasVector = vector<double>(gammasVector_.begin(), gammasVector_.end()); }
 
+    /**
+     * @brief Set the gamma parameter of the general barrier model at multiple values
+     * @param gammasVector_ The gamma parameter of the general barrier model, multiple values to iterate over.
+     * @note This method uses move semantics and is more efficient than the other setGamma method, but it invalidates the input vector.
+     */
+    void setGammaMove(std::vector<double>&& gammasVector_) { gammasVector = std::move(gammasVector_); }
+
+    /**
+     * @brief Set the gamma parameter of the general barrier model at multiple values with a pointer and size input (C-style)
+     * @param gammasArray_ The gamma parameter of the general barrier model, multiple values to iterate over.
+     * @param size The size of the array
+     */
     void setGamma(const double* gammasArray_, size_t size) { gammasVector = std::vector<double>(gammasArray_, gammasArray_ + size); }
 
     /**
@@ -103,8 +139,19 @@ public:
      */
     void setkT(std::vector<double>& kTVector_) { kTVector = vector<double>(kTVector_.begin(), kTVector_.end()); }
 
-    void setkT(const double* kTArray_, size_t size) { kTVector = std::vector<double>(kTArray_, kTArray_ + size); }
+    /**
+     * @brief Set the temperature at multiple values
+     * @param kTVector_ Temperature in eV, multiple values to iterate over.
+     * @note This method uses move semantics and is more efficient than the other setkT method, but it invalidates the input vector.
+     */
+    void setkTMove(std::vector<double>&& kTVector_) { kTVector = std::move(kTVector_); }
 
+    /**
+     * @brief Set the temperature at multiple values with a pointer and size input (C-style)
+     * @param kTArray_ Temperature in eV, multiple values to iterate over.
+     * @param size The size of the array
+     */
+    void setkT(const double* kTArray_, size_t size) { kTVector = std::vector<double>(kTArray_, kTArray_ + size); }
 
     /**
      * @brief Set the work function at a single value
@@ -121,8 +168,19 @@ public:
      */
     void setWorkFunction(std::vector<double>& workFunctionVector_) { workFunctionVector = vector<double>(workFunctionVector_.begin(), workFunctionVector_.end()); }
 
-    void setWorkFunction(const double* workFunctionArray_, size_t size) { workFunctionVector = std::vector<double>(workFunctionArray_, workFunctionArray_ + size); }
+    /**
+     * @brief Set the work function at multiple values
+     * @param workFunctionVector_ Work function in eV, multiple values to iterate over.
+     * @note This method uses move semantics and is more efficient than the other setWorkFunction method, but it invalidates the input vector.
+     */
+    void setWorkFunctionMove(std::vector<double>&& workFunctionVector_) { workFunctionVector = std::move(workFunctionVector_); }
 
+    /**
+     * @brief Set the work function at multiple values with a pointer and size input (C-style)
+     * @param workFunctionArray_ Work function in eV, multiple values to iterate over.
+     * @param size The size of the array
+     */
+    void setWorkFunction(const double* workFunctionArray_, size_t size) { workFunctionVector = std::vector<double>(workFunctionArray_, workFunctionArray_ + size); }
 
     /**
      * @brief Set the band depth at a single value
@@ -139,6 +197,12 @@ public:
      */
     void setBandDepth(std::vector<double>& bandDepthVector_) { bandDepthVector = vector<double>(bandDepthVector_.begin(), bandDepthVector_.end()); } 
 
+    /**
+     * @brief Set the band depth at multiple values
+     * @param bandDepthVector_ Depth of the electronic band in eV, multiple values to iterate over.
+     * @note This method uses move semantics and is more efficient than the other setBandDepth method, but it invalidates the input vector.
+     */
+    void setBandDepthMove(std::vector<double>&& bandDepthVector_) { bandDepthVector = std::move(bandDepthVector_); }
     /**
      * @brief Set the band depth at multiple values with a pointer and size input (C-style)
      * @param bandDepthArray_ Depth of the electronic band in eV, multiple values to iterate over.
@@ -159,7 +223,14 @@ public:
      * @brief Set the effective mass at multiple values
      * @param effectiveMassVector_ Effective mass of the electron, multiple values to iterate over.
      */
-    void setEffectiveMass(const vector<double>& effectiveMassVector_) { effectiveMassVector = vector<double>(effectiveMassVector_.begin(), effectiveMassVector_.end()); }   
+    void setEffectiveMass(const vector<double>& effectiveMassVector_) { effectiveMassVector = vector<double>(effectiveMassVector_.begin(), effectiveMassVector_.end()); } 
+    
+    /**
+     * @brief Set the effective mass at multiple values
+     * @param effectiveMassVector_ Effective mass of the electron, multiple values to iterate over.
+     * @note This method uses move semantics and is more efficient than the other setEffectiveMass method, but it invalidates the input vector.
+     */
+    void setEffectiveMassMove(std::vector<double>&& effectiveMassVector_) { effectiveMassVector = std::move(effectiveMassVector_); }
 
     /**
      * @brief Set the effective mass at multiple values with a pointer and size input (C-style)
@@ -174,7 +245,6 @@ public:
      * @param calculateSpectra If true, calculate the spectra
      */
     void runIteration(size_t i = 0, bool calculateSpectra = false);
-
 
     /**
      * @brief Run the calculation
@@ -375,105 +445,5 @@ private:
      */
     void setParamsForIteration(size_t i = 0);
 };
-
-extern "C" {
-
-    // Wrapper to create a new Getelec object
-    Getelec* Getelec_new() {
-        return new Getelec();
-    }
-
-    Getelec* Getelec_new_with_config(const char* configFileName, const char* barrierType) {
-        return new Getelec(configFileName, barrierType);
-    }
-
-    // Wrapper to delete a Getelec object
-    void Getelec_delete(Getelec* obj) {
-        delete obj;
-    }
-
-    void Getelec_setField(Getelec* obj, const double* fields, size_t size) {
-        obj->setField(fields, size);
-    }
-
-    void Getelec_setRadius(Getelec* obj, const double* radii, size_t size) {
-        obj->setRadius(radii, size);
-    }
-
-    void Getelec_setGamma(Getelec* obj, const double* gammas, size_t size) {
-        obj->setGamma(gammas, size);
-    }
-
-    void Getelec_setkT(Getelec* obj, const double* kT, size_t size) {
-        obj->setkT(kT, size);
-    }
-
-    void Getelec_setWorkFunction(Getelec* obj, const double* workFunction, size_t size) {
-        obj->setWorkFunction(workFunction, size);
-    }
-
-    void Getelec_setEffectiveMass(Getelec* obj, const double* effectiveMass, size_t size) {
-        obj->setEffectiveMass(effectiveMass, size);
-    }
-    
-    void Getelec_setBandDepth(Getelec* obj, const double* bandDepth, size_t size) {
-        obj->setBandDepth(bandDepth, size);
-    }
-
-    // Wrapper to run the calculation
-    size_t Getelec_run(Getelec* obj, bool calculateSpectra) {
-        return obj->run(calculateSpectra);
-    }
-
-    // Wrapper to get current densities
-    const double* Getelec_getCurrentDensities(Getelec* obj, size_t* size) {
-        return obj->getCurrentDensities(size);
-    }
-
-    // Wrapper to get Nottingham heats
-    const double* Getelec_getNottinghamHeats(Getelec* obj, size_t* size) {
-        return obj->getNottinghamHeats(size);
-    }
-
-    // Wrapper to get spectra energies
-    const double* Getelec_getSpectraEnergies(Getelec* obj, size_t i, size_t* length) {
-        return obj->getSpectraEnergies(i, length);
-    }
-
-    // Wrapper to get spectra values
-    const double* Getelec_getSpectraValues(Getelec* obj, size_t i, size_t* length) {
-        return obj->getSpectraValues(i, length);
-    }
-
-    // Wrapper to get spectra derivatives
-    const double* Getelec_getSpectraDerivatives(Getelec* obj, size_t i, size_t* length) {
-        return obj->getSpectraDerivatives(i, length);
-    }
-    
-    // Wrapper to calculate transmission coefficient for a single energy
-    double Getelec_calculateTransmissionCoefficientForEnergy(Getelec* obj, double energy, size_t paramsIndex) {
-        return obj->calculateTransmissionCoefficientForEnergy(energy, paramsIndex);
-    }
-
-    // Wrapper to calculate transmission coefficient for multiple energies
-    const double* Getelec_calculateTransmissionCoefficientForEnergies(Getelec* obj, const double* energies, size_t size, size_t paramsIndex) {
-        return obj->calculateTransmissionCoefficientForEnergies(vector<double>(energies, energies + size), paramsIndex).data();
-    }
-
-    void Getelec_getBarrierValues(Getelec* obj, const double* x, double* potential, size_t size, size_t paramsIndex) {
-        obj->getBarrierValues(x, potential, size, paramsIndex);
-    }
-
-    // Wrapper to calculate transmission coefficient for many energies
-    const double* Getelec_calculateTransmissionCoefficientForManyEnergies(Getelec* obj, const double* energies, size_t size, size_t paramsIndex) {
-        return obj->calculateTransmissionCoefficientForManyEnergies(vector<double>(energies, energies + size), paramsIndex).data();
-    }
-
-    void Getelec_getBarrierIntegrationLimits(Getelec* obj, double* xInitial, double* xFinal, size_t paramsIndex) {  
-        auto [xI, xF] = obj->getBarrierIntegrationLimits(paramsIndex);
-        *xInitial = xI;
-        *xFinal = xF;
-    }
-} // extern "C"
 
 #endif // GETELEC_H
