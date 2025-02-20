@@ -93,9 +93,9 @@ class dftBandEmitter(BandEmitter):
                 if (mode == "totalEnergy"):
                     pointValues = self.bands[0, :, :, iBand].flatten()
                 elif(mode == "parallelEnergy"):
-                    pointValues = self.parallelEnergy[0, :, :, iBand].flatten()
+                    pointValues = self.normalEnergy[0, :, :, iBand].flatten()
                 elif(mode == "perpendicularEnergy"):
-                    pointValues = self.perpendicularEnergy[0, :, :, iBand].flatten()
+                    pointValues = self.parallelEnergy[0, :, :, iBand].flatten()
                 elif(mode == "deltaEz"):
                     pointValues = self.bands[-1, :, :, iBand].flatten() - self.bands[0, :, :, iBand].flatten()
                 else:
@@ -327,11 +327,11 @@ class dftBandEmitter(BandEmitter):
             fig1.suptitle("Total Energy")
             fig2.suptitle("Total Energy")
         elif(mode == "parallelEnergy"):
-            plotData = self.parallelEnergy
+            plotData = self.normalEnergy
             fig1.suptitle("Parallel Energy")
             fig2.suptitle("Parallel Energy")
         elif (mode == "perpendicularEnergy"):
-            plotData = self.perpendicularEnergy
+            plotData = self.parallelEnergy
             fig1.suptitle("Perpendicular Energy")
             fig2.suptitle("Perpendicular Energy")
         elif (mode == "energyDifference"):
@@ -395,7 +395,7 @@ class dftBandEmitter(BandEmitter):
         weightsOnAllBands = np.copy(self.bands[0,:,:,:])
         for i in range(self.nBands):
             weightsOnAllBands[:,:,i] = self.weights[0,:,:]
-        self.currentDensityElements = barrier.transmissionCoefficient(workFunction - self.parallelEnergy[0, :,:,:]) * self.FermiDiracFunction(self.bands[0,:,:,:], kT) * abs(self.zBandWidth) * Globals.bandIntegrationPrefactor * weightsOnAllBands * self.reciprocalLatticeVectors[0] * self.reciprocalLatticeVectors[1]
+        self.currentDensityElements = barrier.transmissionCoefficient(workFunction - self.normalEnergy[0, :,:,:]) * self.FermiDiracFunction(self.bands[0,:,:,:], kT) * abs(self.zBandWidth) * Globals.bandIntegrationPrefactor * weightsOnAllBands * self.reciprocalLatticeVectors[0] * self.reciprocalLatticeVectors[1]
         return np.sum(self.currentDensityElements)
 
     def getTotalEnergyDistribution(self, bins = 64, range = (-1.5, 0.5), mode = "grid"):
@@ -457,19 +457,21 @@ class dftBandEmitter(BandEmitter):
         # self.getBandDerivativesCspline()
         self.getBAndDerivativesGradient()
         halfMeOverHbarSquare = 0.06561710580766435 #eV^-1 Angstrom^-2
-        self.perpendicularEnergy = halfMeOverHbarSquare * (self.partialDerivativesOfBands[0, :, :, :, :]**2 + self.partialDerivativesOfBands[1, :,  :, :, :]**2)
-        self.parallelEnergy = self.bands - self.perpendicularEnergy
+        self.parallelEnergy = halfMeOverHbarSquare * (self.partialDerivativesOfBands[0, :, :, :, :]**2 + self.partialDerivativesOfBands[1, :,  :, :, :]**2)
+        self.normalEnergy = self.bands - self.parallelEnergy
 
 
 workFunction = 5.25
 kT = 0.025
-emitter = dftBandEmitter("/home/kyritsak/vasp_runs/W_surfaces/W100_slab/smallSlab/16_16_2")
-
+emitter = dftBandEmitter("/home/kyritsak/vasp_runs/W_surfaces/W110_slab/shortSlab/nonSC")
+fig = emitter.vaspData.band.plot()
+fig.show()
+exit()
 barrier = Barrier(tabulationFolder="./tabulated/1D_1024", field=7)
 
 em2 = ConductionBandEmitter(barrier, workFunction=workFunction, kT = kT)
 em2.calculateTotalEnergySpectrum()
-
+emitter.plotBands(show=True)
 # emitter.getBivariateSplinesForBands(verbose=True)
 # emitter.getBivariateSplinesForDeltaEz(verbose=True)
 # emitter.calculateParallelEnergyOnGrid()

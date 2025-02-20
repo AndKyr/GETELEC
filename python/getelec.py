@@ -33,6 +33,9 @@ class Globals:
     electronMass:float = 9.1093837e-31
     imageChargeConstant:float = .359991137
     gamowPrefactor:float = 10.24633444
+    bandIntegrationPrefactor:float = 4.86826961e-2  #A/nm^2 (energy in eV, k in 1/Angstrom)
+
+
    
     #the limit for which different approximations of the Fermi Dirac functions apply
     exponentLimit =  - 0.5 * np.log(np.finfo(float).eps)
