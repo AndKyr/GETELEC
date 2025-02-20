@@ -49,7 +49,16 @@ if(ENABLE_JAVA_WRAPPER)
     # Find Java only if JNI is enabled
     find_package(Java REQUIRED)
     find_package(JNI REQUIRED)
+
+    include(UseJava)  # CMake module to compile Java
     
+    # Add the source files
+    file(GLOB_RECURSE JAVA_SOURCES ${PROJECT_SOURCE_DIR}/src/jni/*.java)  # Add Java interface
+
+    # Compile Java files
+    add_jar(GetelecJNI ${JAVA_SOURCES} OUTPUT_NAME GetelecJNI)
+
+
     # Include JNI headers
     include_directories(${JNI_INCLUDE_DIRS})
 
@@ -59,6 +68,13 @@ if(ENABLE_JAVA_WRAPPER)
 
     # Link JNI libraries if needed
     target_link_libraries(getelec_lib ${JNI_LIBRARIES})
+
+    add_custom_command(
+        TARGET GetelecJNI POST_BUILD
+        COMMAND ${Java_JAVAC_EXECUTABLE} -cp ${CMAKE_BINARY_DIR}/GetelecJNI.jar -d ${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}/src/jni/Main.java
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "Compiling Main.java into build directory"
+    )
 
     message(STATUS "JNI support enabled. Compiling Java wrapper.")
 endif()
