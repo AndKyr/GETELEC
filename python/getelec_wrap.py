@@ -264,7 +264,6 @@ class GetelecInterface:
             elif key == "effectiveMass":
                 self.setEffectiveMass(value)
 
-
     def __del__(self):
         # Cleanup the object
         if hasattr(self, "lib") and self.lib:
@@ -276,6 +275,11 @@ if (__name__ == "__main__"):
     # Assuming the shared library is compiled as "getelec.so"
     getelec = GetelecInterface(configPath="getelec.cfg")
     getelec.setRadius([5., 6., 7. , 8., 9.])
+
+    workFunction = 4.5
+    bandDepth = 10.
+    getelec.setBandDepth([bandDepth])
+    getelec.setWorkFunction([workFunction])
     # getelec.setRandomInputs(5)
     # getelec.set_radius(5.)
 
@@ -285,21 +289,38 @@ if (__name__ == "__main__"):
     spectra = getelec.getSpectra()
 
     import matplotlib.pyplot as plt
-    fig, [ax1, ax2] = plt.subplots(2, 1)
+    fig, [ax1, ax2] = plt.subplots(1, 2, sharey=True)
     i = 0
     for spline in spectra:
-        xPlot = np.linspace(min(spline.x), max(spline.x), 512)
-        yPlot = spline(xPlot)
+        energiesPlot = np.linspace(min(spline.x), max(spline.x), 512)
+        spectraPlot = spline(energiesPlot)
 
-        energies, values = getelec.getBarrierPlotData(params_index=i)
-        ax1.plot(xPlot, yPlot)
-        ax2.plot(energies, values)
-        currentDensityFromSpectra = np.trapz(yPlot, xPlot)
+        barrierX, potentialEnergy = getelec.getBarrierPlotData(params_index=i)
+        potentialEnergy += workFunction
 
-        if (abs(np.log(currentDensityFromSpectra) - np.log(densities[i])) > 1e-3):
-            print("Error in current density calculation")
-        
+        ax1.plot(barrierX, potentialEnergy)
+
+        ax2.plot(spectraPlot, energiesPlot)        
         i += 1
+    
+    ax1.plot([-1, barrierX[-1]], [workFunction, workFunction], "k")
+    ax1.text(barrierX[-1], workFunction, "Vacuum Level", ha="right")
+
+    ax1.plot([-1., barrierX[-1]], [-bandDepth, -bandDepth], "k")
+    ax1.text(barrierX[-1], -bandDepth, "Band bottom", ha="right")
+
+    ax1.plot([-1., barrierX[-1]], [0., 0.], "k")
+    ax1.text(barrierX[-1], 0., "Fermi level", ha="right")
+    ax2.plot([min(spectraPlot), max(spectraPlot)],[0., 0.], "k")
+    ax1.plot([0., 0.], [-bandDepth, workFunction], "k")
+    
+    ax2.set_xlabel("TED")
+    ax2.set_ylabel("Energy (eV)")
+
+
+    ax1.set_xlabel("Barrier position (nm)")
+    ax1.set_ylabel("Potential energy (eV)")
+    ax1.set_ylim(-bandDepth - .5, workFunction + .5)
 
 
 
@@ -311,3 +332,6 @@ if (__name__ == "__main__"):
     plt.figure()
     plt.semilogy(xFN, currentDensities)
     plt.show()
+
+
+
