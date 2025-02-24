@@ -94,6 +94,28 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release")
     target_compile_options(getelec PRIVATE -O3 -DRELEASE)
 endif()
 
+# Install the getelec library
+install(TARGETS getelec_lib EXPORT GetelecTargets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+    INCLUDES DESTINATION include
+)
+
+# Install include headers
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ DESTINATION include)
+
+# Export the getelec target for other projects to use
+install(EXPORT GetelecTargets
+    FILE GetelecConfig.cmake
+    NAMESPACE getelec::
+    DESTINATION lib/cmake/getelec
+)
+
+# Allow this project to be used with `find_package(getelec REQUIRED)`
+export(EXPORT GetelecTargets FILE ${CMAKE_BINARY_DIR}/GetelecConfig.cmake NAMESPACE getelec::)
+
+
 
 #enable the tests
 enable_testing()
