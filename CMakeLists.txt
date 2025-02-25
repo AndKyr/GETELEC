@@ -117,6 +117,7 @@ install(TARGETS getelec
 # # Install include headers
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ DESTINATION include)
 
+
 # Export the GetelecConfig.cmake for find_package()
 install(EXPORT GetelecTargets
     FILE GetelecConfig.cmake
@@ -126,6 +127,13 @@ install(EXPORT GetelecTargets
 
 # Allow this project to be used with `find_package(getelec REQUIRED)`
 export(EXPORT GetelecTargets FILE ${CMAKE_BINARY_DIR}/GetelecConfig.cmake NAMESPACE getelec::)
+
+# Append find_dependency() calls directly to the installed GetelecConfig.cmake file
+install(CODE "
+    file(APPEND \"\${CMAKE_INSTALL_PREFIX}/lib/cmake/getelec/GetelecConfig.cmake\" \"\\ninclude(CMakeFindDependencyMacro)\")
+    file(APPEND \"\${CMAKE_INSTALL_PREFIX}/lib/cmake/getelec/GetelecConfig.cmake\" \"\\nfind_dependency(TBB REQUIRED)\")
+    file(APPEND \"\${CMAKE_INSTALL_PREFIX}/lib/cmake/getelec/GetelecConfig.cmake\" \"\\nfind_dependency(GSL REQUIRED)\")
+")
 
 option(BUILD_TESTS "Build tests" OFF)
 
