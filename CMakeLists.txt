@@ -28,7 +28,7 @@ find_package(TBB REQUIRED)
 
 
 # Add the source files
-file(GLOB_RECURSE SOURCES ${PROJECT_SOURCE_DIR}/src/*.cpp)
+file(GLOB SOURCES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 
 # Define a library target for your project
 add_library(getelec_lib SHARED ${SOURCES})
