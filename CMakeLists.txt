@@ -94,22 +94,37 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release")
     target_compile_options(getelec PRIVATE -O3 -DRELEASE)
 endif()
 
-# Install the getelec library
+
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT OR NOT DEFINED CMAKE_INSTALL_PREFIX)
+    set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Install path prefix" FORCE)
+    message(STATUS "Setting default CMAKE_INSTALL_PREFIX path to ${CMAKE_INSTALL_PREFIX}")
+endif()
+
+
+# Install the getelec library locally
 install(TARGETS getelec_lib EXPORT GetelecTargets
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-    RUNTIME DESTINATION bin
-    INCLUDES DESTINATION include
+    LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
+    RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+    INCLUDES DESTINATION ${CMAKE_INSTALL_PREFIX}/include
 )
 
-# Install include headers
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ DESTINATION include)
-
-# Export the getelec target for other projects to use
+# Export the GetelecConfig.cmake for find_package()
 install(EXPORT GetelecTargets
     FILE GetelecConfig.cmake
     NAMESPACE getelec::
-    DESTINATION lib/cmake/getelec
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake/getelec
+)
+
+
+# # Install include headers
+# install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ DESTINATION include)
+
+# Export the GetelecConfig.cmake for find_package()
+install(EXPORT GetelecTargets
+    FILE GetelecConfig.cmake
+    NAMESPACE getelec::
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake/getelec
 )
 
 # Allow this project to be used with `find_package(getelec REQUIRED)`
