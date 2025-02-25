@@ -7,6 +7,10 @@
 #include <gsl/gsl_sf_erf.h>
 #include "Config.h"
 
+namespace getelec{
+using namespace std;
+
+
 /**
  * @class TunnelingFunction
  * @brief A base class for tunneling-related calculations.
@@ -371,5 +375,7 @@ private:
     Config::XCFunctionParams xcFunctionParams;
 
 };
+
+}
 
 #endif /* TUNNELINGFUNCTION_H_ */

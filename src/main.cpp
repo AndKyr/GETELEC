@@ -4,6 +4,8 @@
 #include <iostream>
 #include <chrono>
 
+using namespace std;
+using namespace getelec;
 
 int main(){
 
@@ -35,6 +37,8 @@ int main(){
     emitter.writeSolution("spectra.dat");
 
     emitter.writePlottingData();
+
+    return 0;
 
 
     // TransmissionInterpolator interpolator = TransmissionInterpolator(calculator, 4.5, 0.025, 1.e-12, 1.e-4);

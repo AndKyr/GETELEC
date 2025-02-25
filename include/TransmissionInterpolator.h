@@ -4,6 +4,8 @@
 #include "Utilities.h"
 #include "TransmissionSolver.h"
 
+namespace getelec{
+
 /**
  * @class TransmissionInterpolator
  * @brief Extends the FunctionInterpolator to refine and evaluate transmission coefficients.
@@ -97,5 +99,7 @@ public:
         return exp(gsl_spline_eval(spline, x, accelerator));
     }
 };
+
+} // namespace getelec
 
 #endif /* TRANSMISSIONINTERPOLATOR_H_ */

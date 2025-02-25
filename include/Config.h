@@ -8,7 +8,10 @@
 #include <sstream>
 
 
+
+namespace getelec {
 using namespace std;
+
 
 /** @brief Class to initialize and read configuration parameters from configuration file */
 class Config {
@@ -239,4 +242,6 @@ private:
     void trim(string& str);
 };
 
+
+} // namespace getelec
 #endif /* CONFIG_H_ */

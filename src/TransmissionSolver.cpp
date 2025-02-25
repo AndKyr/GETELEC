@@ -2,6 +2,7 @@
 #include <cassert>
 #include <sstream>
 
+namespace getelec{
 
 int TransmissionSolver::tunnelingDifferentialSystem(double x, const double y[], double f[], void *params){
         TunnelingFunction* barrier = (TunnelingFunction*) params;
@@ -68,3 +69,5 @@ double TransmissionSolver::calculateTransmissionCoefficientForEnergy(double ener
     }(out)));
     return max(out, 1.e-50);
 }
+
+} // namespace getelec

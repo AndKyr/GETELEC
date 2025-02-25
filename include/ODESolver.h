@@ -11,6 +11,8 @@
 #include <fstream>
 #include <string>
 
+namespace getelec{
+
 using namespace std;
 
 /**
@@ -180,5 +182,7 @@ public:
      */
     double getXInitial() const { return xInitial; }
 };
+
+} // namespace getelec
 
 #endif /* ODESOLVER_H_ */

@@ -1,6 +1,9 @@
 #include "ODESolver.h"
 #include <gsl/gsl_math.h>
 
+
+namespace getelec{
+
 ODESolver::ODESolver( 
         vector<double>initialValues,
         int (*differentialSystem)(double, const double*, double* , void*),
@@ -79,3 +82,5 @@ void ODESolver::writeSolution(string filename){
         outFile << endl; 
     }
 }
+
+} // namespace getelec

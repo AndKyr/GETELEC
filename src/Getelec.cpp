@@ -1,5 +1,7 @@
 #include "Getelec.h"
 
+namespace getelec{
+
 void Getelec::runIteration(size_t i, bool calculateSpectra) {
     setParamsForIteration(i);
     
@@ -170,3 +172,5 @@ void Getelec::setParamsForIteration(size_t i) {
     else
         throw std::runtime_error("Gamma vector must have size 1 or the same size as the other input vectors.");
 }
+
+} // namespace getelec

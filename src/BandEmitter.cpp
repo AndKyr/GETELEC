@@ -3,6 +3,8 @@
 #include <cmath>
 #include <iostream>
 
+namespace getelec{
+
 int BandEmitter::differentialSystem(double energy, const double y[], double f[], void *params) {
     BandEmitter* emitter = (BandEmitter*) params; // Cast the void pointer as SystemParams
     double D = emitter->calculateIntegrand(energy);
@@ -164,4 +166,6 @@ void BandEmitter::writePlottingData(string filename) {
         outFile << x << " " << D << " " << interpolator.evaluate(x) << " " << err << " " << lFD * D << " " << spectraForEnergy(x) << " " << lFD << " " << tol << endl;
     }
     interpolator.writeSplineNodes();
+}
+
 }

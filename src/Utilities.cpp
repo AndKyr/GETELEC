@@ -1,5 +1,7 @@
 #include "Utilities.h"
 
+namespace getelec{
+
 vector<double> Utilities::linspace(double start, double end, int n) {
     vector<double> result(n);
     if (n == 1) {
@@ -104,3 +106,5 @@ void FunctionInterpolator::writeSplineNodes(string filename){
     for (SplineElement& element : samplingList)
         outFile << element.x << " " << element.y << endl;
 }
+
+} // namespace getelec

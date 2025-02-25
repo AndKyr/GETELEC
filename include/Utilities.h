@@ -12,6 +12,9 @@
 #include <gsl/gsl_spline.h>
 #include <random>
 
+
+namespace getelec{
+
 using namespace std;
 
 /**
@@ -222,5 +225,7 @@ public:
      */
     size_t size() const { return samplingList.size(); }
 };
+
+} // namespace getelec
 
 #endif // UTILITIES_H_

@@ -7,6 +7,8 @@
 #include "Config.h"
 #include <cassert>
 
+namespace getelec{
+
 using namespace std;
 
 /**
@@ -185,5 +187,7 @@ public:
      */
     void printXLimits() { cout << "xInitial = " << xInitial << " xFinal = " << xFinal << endl; }
 };
+
+} // namespace getelec
 
 #endif /* TRANSMISSIONSOLVER_H_ */

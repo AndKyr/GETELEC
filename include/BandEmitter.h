@@ -9,6 +9,9 @@
 #include <vector>
 #include <string>
 #include <fstream>
+
+
+namespace getelec{
 using namespace std;
 
 /**
@@ -284,5 +287,7 @@ public:
         return transmissionSolver.calculateTransmissionCoefficientForEnergy(-workFunction + energy);
     }
 };
+
+}
 
 #endif /* BANDEMITTER_H_ */

@@ -13,8 +13,11 @@
 #include <iostream>
 #include <sstream>
 
-
 using namespace std;
+
+
+namespace getelec {
+
 
 // Remove the noise from the beginning of the string
 void Config::trim(string& str) {
@@ -226,3 +229,5 @@ void Config::print_data() {
         cout << endl;
     }
 }
+
+} // namespace getelec

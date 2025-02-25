@@ -8,6 +8,10 @@
 #include "TunnelingFunction.h"
 #include "Config.h"
 
+namespace getelec{
+
+using namespace std;
+
 class Getelec {
 public:
     /**
@@ -445,5 +449,7 @@ private:
      */
     void setParamsForIteration(size_t i = 0);
 };
+
+}
 
 #endif // GETELEC_H
