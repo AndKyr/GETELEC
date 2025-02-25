@@ -5,7 +5,7 @@
 #include "Utilities.h"
 #include <gsl/gsl_poly.h>
 #include <gsl/gsl_sf_erf.h>
-#include "Config.h"
+#include "ConfigGetelec.h"
 
 namespace getelec{
 using namespace std;

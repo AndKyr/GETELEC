@@ -5,7 +5,7 @@
 #include <gsl/gsl_integration.h>
 #include "TransmissionSolver.h"
 #include "TransmissionInterpolator.h"
-#include "Config.h"
+#include "ConfigGetelec.h"
 #include <vector>
 #include <string>
 #include <fstream>

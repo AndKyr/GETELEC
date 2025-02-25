@@ -8,7 +8,7 @@
 #include <fstream>
 #include <algorithm>
 
-#include "Config.h"
+#include "ConfigGetelec.h"
 #include <cassert>
 #include <iostream>
 #include <sstream>

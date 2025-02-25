@@ -6,7 +6,7 @@
 #include <tbb/parallel_for.h>
 #include "BandEmitter.h"
 #include "TunnelingFunction.h"
-#include "Config.h"
+#include "ConfigGetelec.h"
 
 namespace getelec{
 

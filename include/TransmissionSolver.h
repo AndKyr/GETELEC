@@ -4,7 +4,7 @@
 #include "ODESolver.h"
 #include "TunnelingFunction.h"
 #include "Utilities.h"
-#include "Config.h"
+#include "ConfigGetelec.h"
 #include <cassert>
 
 namespace getelec{
