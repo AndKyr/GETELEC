@@ -1,6 +1,4 @@
 #include "Getelec.h"
-#include <jni.h>
-
 
 extern "C" {
 
