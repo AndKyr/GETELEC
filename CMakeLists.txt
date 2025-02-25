@@ -109,16 +109,13 @@ install(TARGETS getelec_lib EXPORT GetelecTargets
     INCLUDES DESTINATION ${CMAKE_INSTALL_PREFIX}/include
 )
 
-# Export the GetelecConfig.cmake for find_package()
-install(EXPORT GetelecTargets
-    FILE GetelecConfig.cmake
-    NAMESPACE getelec::
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake/getelec
+# Install the getelec executable
+install(TARGETS getelec
+    RUNTIME DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
 )
 
-
 # # Install include headers
-# install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ DESTINATION include)
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ DESTINATION include)
 
 # Export the GetelecConfig.cmake for find_package()
 install(EXPORT GetelecTargets
