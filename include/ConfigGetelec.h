@@ -1,5 +1,5 @@
-#ifndef CONFIG_H_
-#define CONFIG_H_
+#ifndef CONFIGGETELEC_H_
+#define CONFIGGETELEC_H_
 
 #include <string>
 #include <vector>
@@ -244,4 +244,4 @@ private:
 
 
 } // namespace getelec
-#endif /* CONFIG_H_ */
+#endif /* CONFIGGETELEC_H_ */
