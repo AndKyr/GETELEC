@@ -115,11 +115,14 @@ install(EXPORT GetelecTargets
 # Allow this project to be used with `find_package(getelec REQUIRED)`
 export(EXPORT GetelecTargets FILE ${CMAKE_BINARY_DIR}/GetelecConfig.cmake NAMESPACE getelec::)
 
+option(BUILD_TESTS "Build tests" OFF)
 
+if (BUILD_TESTS)
 
-#enable the tests
-enable_testing()
+    #enable the tests
+    enable_testing()
 
-# Include the tests directory
-add_subdirectory(tests)
+    # Include the tests directory
+    add_subdirectory(tests)
+endif()
 
