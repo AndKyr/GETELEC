@@ -1,6 +1,9 @@
 #include "Getelec.h"
 using namespace std;
 
+#include <fstream>
+#include <chrono>
+
 extern "C" {
 
     // Wrapper to create a new Getelec object
@@ -99,6 +102,113 @@ extern "C" {
         auto [xI, xF] = obj->getBarrierIntegrationLimits(paramsIndex);
         *xInitial = xI;
         *xFinal = xF;
+    }
+
+
+    string error;
+    // Initialization function for COMSOL wrapper
+    int init(const char *str) {
+
+        ofstream file;
+        file.open("/home/kyritsakis/comsolExtLibLog.txt", ios::app);
+        if (!file.is_open()) {
+            error = "error opening log file";
+            return 0;
+        }
+        string locStr = str;
+
+        auto now = std::chrono::system_clock::now();
+        std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+        file << "Initialized with string: " << locStr << ", at time = " << std::ctime(&now_time) << endl;
+        file.close();
+
+        return 1;
+    }
+     
+    // Error message function for COMSOL wrapper
+    const char* getLastError() {
+    
+        ofstream file;
+        file.open("/home/kyritsakis/comsolExtLibLog.txt", ios::app);
+        if (!file.is_open()) {
+            error = "error opening log file";
+            return error.c_str();
+        }
+        auto now = std::chrono::system_clock::now();
+        std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+        string locStr = error;
+
+        file << "Called getLastError with error string: " << locStr << ", at time = " << std::ctime(&now_time) << endl;
+        file.close();
+
+        return error.c_str();
+    }
+     
+    int eval(const char *func,
+                        int nArgs,
+                        const double **inReal,
+                        const double **inImag,
+                        int blockSize,
+                        double *outReal,
+                        double *outImag) 
+    {
+        ofstream file;
+        file.open("/home/kyritsakis/comsolExtLibLog.txt", ios::app);
+        if (!file.is_open()) {
+            error = "error opening log file";
+            return 0;
+        }
+        string functionStr = func;
+
+        auto now = std::chrono::system_clock::now();
+        std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+        file << "Called function with string: " << functionStr << " and nArgs= " << nArgs << ", at time = " << std::ctime(&now_time) << endl;
+        file.close();
+
+        getelec::Getelec* obj = new getelec::Getelec();
+
+        if (nArgs > 7 || nArgs < 0) {
+            error = "Invalid number of arguments. Expected is between 0 and 7";
+            return 0;
+        }
+
+        if (nArgs >= 0)
+            obj->setField(inReal[0], blockSize);
+        if (nArgs >= 1)
+            obj->setRadius(inReal[1], blockSize);
+        if (nArgs >= 2)
+            obj->setGamma(inReal[2], blockSize);
+        if (nArgs >= 3)
+            obj->setkT(inReal[3], blockSize);
+        if (nArgs >= 4)
+            obj->setWorkFunction(inReal[4], blockSize);
+        if (nArgs >= 5)
+            obj->setEffectiveMass(inReal[5], blockSize);
+        if (nArgs >= 6)
+            obj->setBandDepth(inReal[6], blockSize);
+        
+        obj->run(false);
+        
+        const double* outData;
+        size_t outSize;
+        if (functionStr == "currentDensity")
+            outData = obj->getCurrentDensities(&outSize);
+        else if (functionStr == "nottinghamHeat")
+            outData = obj->getNottinghamHeats(&outSize);
+        else {
+            error = "Unknown function";
+            return 0;
+        }
+
+        if (outSize != blockSize) {
+            error = "Output size does not match input size";
+            return 0;
+        }
+
+        for (size_t i = 0; i < blockSize; i++) {
+            outReal[i] = outData[i];
+        }
+        return 1;
     }
 
 } // extern "C"
