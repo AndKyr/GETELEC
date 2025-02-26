@@ -208,6 +208,8 @@ extern "C" {
         for (size_t i = 0; i < blockSize; i++) {
             outReal[i] = outData[i];
         }
+
+        delete obj;
         return 1;
     }
 
