@@ -3,6 +3,7 @@ using namespace std;
 
 #include <fstream>
 #include <chrono>
+#include <string>
 
 extern "C" {
 
@@ -105,7 +106,7 @@ extern "C" {
     }
 
 
-    string error;
+    string error = "";
     // Initialization function for COMSOL wrapper
     int init(const char *str) {
 
@@ -136,9 +137,8 @@ extern "C" {
         }
         auto now = std::chrono::system_clock::now();
         std::time_t now_time = std::chrono::system_clock::to_time_t(now);
-        string locStr = error;
 
-        file << "Called getLastError with error string: " << locStr << ", at time = " << std::ctime(&now_time) << endl;
+        file << "Called getLastError with error string: " << error << ", at time = " << std::ctime(&now_time) << endl;
         file.close();
 
         return error.c_str();
@@ -152,9 +152,9 @@ extern "C" {
                         double *outReal,
                         double *outImag) 
     {
-        ofstream file;
-        file.open("/home/kyritsakis/comsolExtLibLog.txt", ios::app);
-        if (!file.is_open()) {
+        ofstream logFile;
+        logFile.open("/home/kyritsakis/comsolExtLibLog.txt", ios::app);
+        if (!logFile.is_open()) {
             error = "error opening log file";
             return 0;
         }
@@ -162,54 +162,73 @@ extern "C" {
 
         auto now = std::chrono::system_clock::now();
         std::time_t now_time = std::chrono::system_clock::to_time_t(now);
-        file << "Called function with string: " << functionStr << " and nArgs= " << nArgs << ", at time = " << std::ctime(&now_time) << endl;
-        file.close();
+        logFile << "Called function with string: " << functionStr << " and nArgs= " << nArgs << ", at time = " << std::ctime(&now_time) << endl;
 
         getelec::Getelec* obj = new getelec::Getelec();
 
         if (nArgs > 7 || nArgs < 0) {
             error = "Invalid number of arguments. Expected is between 0 and 7";
+            logFile << "error message = " << error << endl;
+            logFile.close();
+
             return 0;
         }
 
-        if (nArgs >= 0)
+        if (nArgs >= 1){
+            logFile << "setting field and other parameters with blockSize = " << blockSize << endl;
             obj->setField(inReal[0], blockSize);
-        if (nArgs >= 1)
-            obj->setRadius(inReal[1], blockSize);
+        }
         if (nArgs >= 2)
-            obj->setGamma(inReal[2], blockSize);
+            obj->setRadius(inReal[1], blockSize);
         if (nArgs >= 3)
-            obj->setkT(inReal[3], blockSize);
+            obj->setGamma(inReal[2], blockSize);
         if (nArgs >= 4)
-            obj->setWorkFunction(inReal[4], blockSize);
+            obj->setkT(inReal[3], blockSize);
         if (nArgs >= 5)
-            obj->setEffectiveMass(inReal[5], blockSize);
+            obj->setWorkFunction(inReal[4], blockSize);
         if (nArgs >= 6)
+            obj->setEffectiveMass(inReal[5], blockSize);
+        if (nArgs >= 7)
             obj->setBandDepth(inReal[6], blockSize);
         
+        logFile << "running GETELEC" << endl;
         obj->run(false);
         
-        const double* outData;
+        const double* currentDensity;
+        const double* nottinghamHeat;
         size_t outSize;
-        if (functionStr == "currentDensity")
-            outData = obj->getCurrentDensities(&outSize);
-        else if (functionStr == "nottinghamHeat")
-            outData = obj->getNottinghamHeats(&outSize);
+        if (functionStr == "currentDensityAndNottinghamHeat"){
+            logFile << "extracting current density and Nottingham heat" << endl;
+            currentDensity = obj->getCurrentDensities(&outSize);
+            nottinghamHeat = obj->getNottinghamHeats(&outSize);
+        }
         else {
-            error = "Unknown function";
+            error = "Unknown function name string: " + functionStr  + "\n";
+            logFile << "error message = " << error << endl;
+            logFile.close();
             return 0;
         }
 
         if (outSize != blockSize) {
             error = "Output size does not match input size";
+            logFile << "error message = " << error << endl;
+            logFile.close();
             return 0;
         }
 
-        for (size_t i = 0; i < blockSize; i++) {
-            outReal[i] = outData[i];
-        }
+        logFile << "copying current density data into real output" << endl;
+        for (size_t i = 0; i < blockSize; i++)
+            outReal[i] = currentDensity[i];
+
+        logFile << "copying Nottingham heat data into imaginary output" << endl;
+        for (size_t i = 0; i < blockSize; i++)
+            outImag[i] = nottinghamHeat[i];
+
+        logFile << "Deleting getelec object and closing log file. Error message = " << error << endl;
 
         delete obj;
+        logFile.close();
+
         return 1;
     }
 
