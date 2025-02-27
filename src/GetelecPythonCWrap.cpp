@@ -107,9 +107,9 @@ void Getelec_getBarrierIntegrationLimits(getelec::Getelec* obj, double* xInitial
 }
 
 
-string error = "";
-getelec::Getelec* obj = nullptr;
-ofstream logFile;
+static string error;
+static getelec::Getelec* globalGetelecObj = nullptr;
+static ofstream logFile;
 
 // Initialization function for COMSOL wrapper
 int init(const char *str) {
@@ -144,34 +144,16 @@ int init(const char *str) {
     auto now = std::chrono::system_clock::now();
     std::time_t now_time = std::chrono::system_clock::to_time_t(now);
 
-    if (!obj){
-        obj = new getelec::Getelec();
-        logFile << "Initialized GETELEC object at" << obj << " with barrier type " << barrierType << ", at time = " << std::ctime(&now_time) << endl;
+    if (!globalGetelecObj){
+        globalGetelecObj = new getelec::Getelec();
+        logFile << "Initialized GETELEC object at" << globalGetelecObj << " with barrier type " << barrierType << ", at time = " << std::ctime(&now_time) << endl;
     } else{
-        logFile << "Getelec Object already initialized at RAM address" << obj << " at time = " << std::ctime(&now_time) << endl;
+        logFile << "Getelec Object already initialized at RAM address" << globalGetelecObj << " at time = " << std::ctime(&now_time) << endl;
     }
 
     return 1;
 }
     
-// Error message function for COMSOL wrapper
-const char* getLastError() {
-
-    if (!logFile.is_open()) {
-        error = "log file is not open";
-        return error.c_str();
-    }
-    auto now = std::chrono::system_clock::now();
-    std::time_t now_time = std::chrono::system_clock::to_time_t(now);
-
-    logFile << "Called getLastError with error string: " << error << ", at time = " << std::ctime(&now_time) << endl;
-    logFile << "Closing log file and deleting getelec object" << endl;
-
-    logFile.close();
-    delete obj;
-    obj = nullptr;
-    return error.c_str();
-}
 
 
 void terminateGetelec(){
@@ -186,8 +168,28 @@ void terminateGetelec(){
     logFile << "Closing log file and deleting getelec object" << endl;
 
     logFile.close();
-    delete obj;
-    obj = nullptr;
+    delete globalGetelecObj;
+    globalGetelecObj = nullptr;
+}
+
+// Error message function for COMSOL wrapper
+const char* getLastError() {
+
+    if (!logFile.is_open()) {
+        error = "log file is not open";
+        return error.c_str();
+    }
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+
+    logFile << "Called getLastError with error string: " << error << ", at time = " << std::ctime(&now_time) << endl;
+
+    terminateGetelec();
+
+    char* localError = (char*) malloc(error.size() + 1);
+    std::strcpy(localError, error.c_str());
+
+    return localError;
 }
     
 int eval(const char *func,
@@ -227,34 +229,27 @@ int eval(const char *func,
 
     if (nArgs >= 1){
         logFile << "setting field and other parameters with blockSize: " << blockSize << endl;
-        obj->setField(inReal[0], blockSize);
+        globalGetelecObj->setField(inReal[0], blockSize);
     }
     if (nArgs >= 2)
-        obj->setRadius(inReal[1], blockSize);
+        globalGetelecObj->setRadius(inReal[1], blockSize);
     if (nArgs >= 3)
-        obj->setGamma(inReal[2], blockSize);
+        globalGetelecObj->setGamma(inReal[2], blockSize);
     if (nArgs >= 4)
-        obj->setkT(inReal[3], blockSize);
+        globalGetelecObj->setkT(inReal[3], blockSize);
     if (nArgs >= 5)
-        obj->setWorkFunction(inReal[4], blockSize);
+        globalGetelecObj->setWorkFunction(inReal[4], blockSize);
     if (nArgs >= 6)
-        obj->setEffectiveMass(inReal[5], blockSize);
+        globalGetelecObj->setEffectiveMass(inReal[5], blockSize);
     if (nArgs >= 7)
-        obj->setBandDepth(inReal[6], blockSize);
+        globalGetelecObj->setBandDepth(inReal[6], blockSize);
     
     logFile << "running GETELEC and extracting current density and Nottingham heat" << endl;
-    obj->run(false);
+    globalGetelecObj->run(false);
     
     size_t outSize;
-    const double* currentDensity = obj->getCurrentDensities(&outSize);
-    const double* nottinghamHeat = obj->getNottinghamHeats(&outSize);
-
-    // else {
-    //     error = "Unknown function name string: " + functionStr  + "\n";
-    //     logFile << "error message = " << error << endl;
-    //     logFile.close();
-    //     return 0;
-    // }
+    const double* currentDensity = globalGetelecObj->getCurrentDensities(&outSize);
+    const double* nottinghamHeat = globalGetelecObj->getNottinghamHeats(&outSize);
 
     if (outSize != blockSize) {
         error = "Output size does not match input size";
@@ -269,8 +264,6 @@ int eval(const char *func,
     logFile << "copying Nottingham heat data into imaginary output" << endl;
     for (size_t i = 0; i < blockSize; i++)
         outImag[i] = nottinghamHeat[i];
-
-    logFile << "Deleting getelec object and closing log file. Error message = " << error << endl;
 
     return 1;
 }
