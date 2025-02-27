@@ -111,6 +111,14 @@ static string error;
 static getelec::Getelec* globalGetelecObj = nullptr;
 static ofstream logFile;
 
+static char* allocatedErrorStrForOutput = nullptr;
+
+void logTimeStamp(){
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+    logFile << "Time = " << std::ctime(&now_time);
+}
+
 // Initialization function for COMSOL wrapper
 int init(const char *str) {
     string inputString = str;
@@ -138,58 +146,62 @@ int init(const char *str) {
             return 0;
         }
         logFile << error << endl;
-        error.clear();
     }
 
-    auto now = std::chrono::system_clock::now();
-    std::time_t now_time = std::chrono::system_clock::to_time_t(now);
 
+    logTimeStamp();
     if (!globalGetelecObj){
         globalGetelecObj = new getelec::Getelec();
-        logFile << "Initialized GETELEC object at" << globalGetelecObj << " with barrier type " << barrierType << ", at time = " << std::ctime(&now_time) << endl;
+        logFile << "Initialized GETELEC object at" << globalGetelecObj << " with barrier type " << barrierType << endl;
     } else{
-        logFile << "Getelec Object already initialized at RAM address" << globalGetelecObj << " at time = " << std::ctime(&now_time) << endl;
+        logFile << "Getelec Object already initialized at RAM address" << globalGetelecObj << endl;
     }
 
+    error.clear();
     return 1;
 }
-    
 
 
-void terminateGetelec(){
+
+
+int terminateGetelec(){
     if (!logFile.is_open()) {
         error = "log file is not open";
-        return;
+        return 0;
     }
-    auto now = std::chrono::system_clock::now();
-    std::time_t now_time = std::chrono::system_clock::to_time_t(now);
 
-    logFile << "Called terminateGetelec at time = " << std::ctime(&now_time) << endl;
-    logFile << "Closing log file and deleting getelec object" << endl;
+    logTimeStamp();
+    logFile << "Terminating: closing log file and deleting getelec object and error string" << endl;
 
     logFile.close();
-    delete globalGetelecObj;
+    if (allocatedErrorStrForOutput){
+        free(allocatedErrorStrForOutput);
+        allocatedErrorStrForOutput = nullptr;
+    }
+    
+    if (globalGetelecObj)
+        delete globalGetelecObj;
     globalGetelecObj = nullptr;
+    return 1;
 }
 
 // Error message function for COMSOL wrapper
 const char* getLastError() {
 
-    if (!logFile.is_open()) {
-        error = "log file is not open";
-        return error.c_str();
+    if (logFile.is_open()) {
+        logTimeStamp();
+        logFile << "Called getLastError. ERROR: " << error << endl;
+    } else {
+        error += " ERROR: log file is not open";
     }
-    auto now = std::chrono::system_clock::now();
-    std::time_t now_time = std::chrono::system_clock::to_time_t(now);
 
-    logFile << "Called getLastError with error string: " << error << ", at time = " << std::ctime(&now_time) << endl;
+    if (allocatedErrorStrForOutput)
+        free(allocatedErrorStrForOutput);
 
-    terminateGetelec();
+    allocatedErrorStrForOutput = (char*) malloc(error.size() + 1);
+    std::strcpy(allocatedErrorStrForOutput, error.c_str());
 
-    char* localError = (char*) malloc(error.size() + 1);
-    std::strcpy(localError, error.c_str());
-
-    return localError;
+    return allocatedErrorStrForOutput;
 }
     
 int eval(const char *func,
@@ -211,8 +223,7 @@ int eval(const char *func,
     logFile << "Called eval with function string: " << functionStr << " and nArgs= " << nArgs << ", at time = " << std::ctime(&now_time) << endl;
 
     if (functionStr == "terminate"){
-        terminateGetelec();
-        return 1;
+        return terminateGetelec();
     }
 
     if (functionStr != "GETELECrun") {
