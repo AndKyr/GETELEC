@@ -158,6 +158,8 @@ int init(const char *str) {
     }
 
     error.clear();
+
+    logFile << endl;
     return 1;
 }
 
@@ -171,7 +173,7 @@ int terminateGetelec(){
     }
 
     logTimeStamp();
-    logFile << "Terminating: closing log file and deleting getelec object and error string" << endl;
+    logFile << "Terminating: closing log file and deleting getelec object and error string" << endl << endl;
 
     logFile.close();
     if (allocatedErrorStrForOutput){
@@ -190,7 +192,7 @@ const char* getLastError() {
 
     if (logFile.is_open()) {
         logTimeStamp();
-        logFile << "Called getLastError. ERROR: " << error << endl;
+        logFile << "Called getLastError. ERROR: " << error << endl << endl;
     } else {
         error += " ERROR: log file is not open";
     }
@@ -218,9 +220,9 @@ int eval(const char *func,
     }
     string functionStr = func;
 
-    auto now = std::chrono::system_clock::now();
-    std::time_t now_time = std::chrono::system_clock::to_time_t(now);
-    logFile << "Called eval with function string: " << functionStr << " and nArgs= " << nArgs << ", at time = " << std::ctime(&now_time) << endl;
+    logTimeStamp();
+
+    logFile << "Called eval with function string: " << functionStr << " and nArgs= " << nArgs << endl;
 
     if (functionStr == "terminate"){
         return terminateGetelec();
@@ -276,6 +278,7 @@ int eval(const char *func,
     for (size_t i = 0; i < blockSize; i++)
         outImag[i] = nottinghamHeat[i];
 
+    logFile << endl;
     return 1;
 }
 
