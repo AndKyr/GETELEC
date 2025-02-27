@@ -33,8 +33,10 @@ public:
         xcFunctionParams = XCFunctionParams();
         xcFunctionParams.initializeKeyMap();
         allPAramGroups.push_back(&xcFunctionParams);
-
-        read_all(fileName);
+        if (!fileName.empty())
+            read_all(fileName);
+        else
+            read_all("GetelecConfig.txt");
     }
 
     /**
