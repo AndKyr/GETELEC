@@ -110,6 +110,7 @@ void Getelec_getBarrierIntegrationLimits(getelec::Getelec* obj, double* xInitial
 static string error;
 static getelec::Getelec* globalGetelecObj = nullptr;
 static ofstream logFile;
+static bool verbose = false;
 
 static char* allocatedErrorStrForOutput = nullptr;
 
@@ -123,6 +124,11 @@ void logTimeStamp(){
 int init(const char *str) {
     string inputString = str;
 
+    if (inputString.find("verbose") != std::string::npos)
+        verbose = true;
+    else
+        verbose = false;
+
     stringstream ss(inputString);
 
     string logFilePath = "ComsolExternalLibrary.log";
@@ -130,7 +136,7 @@ int init(const char *str) {
 
     
     getline(ss, logFilePath, ',');
-    getline(ss, barrierType);
+    getline(ss, barrierType, ',');
     if (logFilePath.empty())
         logFilePath = "ComsolExternalLibrary.log";
     
@@ -220,9 +226,11 @@ int eval(const char *func,
     }
     string functionStr = func;
 
-    logTimeStamp();
 
-    logFile << "Called eval with function string: " << functionStr << " and nArgs= " << nArgs << endl;
+    if (verbose){
+        logTimeStamp();
+        logFile << "Called eval with function string: " << functionStr << " and nArgs= " << nArgs << endl;
+    }
 
     if (functionStr == "terminate"){
         return terminateGetelec();
@@ -257,7 +265,9 @@ int eval(const char *func,
     if (nArgs >= 7)
         globalGetelecObj->setBandDepth(inReal[6], blockSize);
     
-    logFile << "running GETELEC and extracting current density and Nottingham heat" << endl;
+    if (verbose)
+        logFile << "running GETELEC and extracting current density and Nottingham heat" << endl;
+
     globalGetelecObj->run(false);
     
     size_t outSize;
@@ -270,14 +280,21 @@ int eval(const char *func,
         return 0;
     }
 
-    logFile << "copying current density data into real output" << endl;
+    if (verbose) logFile << "copying current density data into real output" << endl;
+
     for (size_t i = 0; i < blockSize; i++)
         outReal[i] = currentDensity[i];
 
-    logFile << "copying Nottingham heat data into imaginary output" << endl;
+    if (verbose) logFile << "copying Nottingham heat data into imaginary output" << endl;
     for (size_t i = 0; i < blockSize; i++)
         outImag[i] = nottinghamHeat[i];
 
+    if (verbose){
+        logFile << "outReal " << "outImag" << endl;
+        for (size_t i = 0; i < blockSize; i++)
+            logFile << outReal[i] << " " << outImag[i] << endl;
+    }
+    
     logFile << endl;
     return 1;
 }
