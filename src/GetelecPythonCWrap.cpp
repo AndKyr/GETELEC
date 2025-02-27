@@ -163,6 +163,11 @@ int init(const char *str) {
         logFile << "Getelec Object already initialized at RAM address" << globalGetelecObj << endl;
     }
 
+    if (verbose)
+        logFile << "Verbosity mode: Verbose" << endl;
+    else
+        logFile << "Verbosity mode: silent" << endl;
+
     error.clear();
 
     logFile << endl;
@@ -249,7 +254,7 @@ int eval(const char *func,
     }
 
     if (nArgs >= 1){
-        logFile << "setting field and other parameters with blockSize: " << blockSize << endl;
+        if (verbose) logFile << "setting field and other parameters with blockSize: " << blockSize << endl;
         globalGetelecObj->setField(inReal[0], blockSize);
     }
     if (nArgs >= 2)
