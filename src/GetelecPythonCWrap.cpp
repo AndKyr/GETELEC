@@ -124,7 +124,9 @@ void logTimeStamp(){
 int init(const char *str) {
     string inputString = str;
 
-    if (inputString.find("verbose") != std::string::npos)
+    string inputStringLower = inputString;
+    transform(inputString.begin(), inputString.end(), inputString.begin(), ::tolower);
+    if (inputStringLower.find("verbose") != std::string::npos)
         verbose = true;
     else
         verbose = false;
@@ -162,6 +164,11 @@ int init(const char *str) {
     } else{
         logFile << "Getelec Object already initialized at RAM address" << globalGetelecObj << endl;
     }
+
+    if (verbose)
+        logFile << "Verbosity mode: Verbose" << endl;
+    else
+        logFile << "Verbosity mode: silent" << endl;
 
     error.clear();
 
@@ -249,7 +256,7 @@ int eval(const char *func,
     }
 
     if (nArgs >= 1){
-        logFile << "setting field and other parameters with blockSize: " << blockSize << endl;
+        if (verbose) logFile << "setting field and other parameters with blockSize: " << blockSize << endl;
         globalGetelecObj->setField(inReal[0], blockSize);
     }
     if (nArgs >= 2)
