@@ -125,7 +125,7 @@ int init(const char *str) {
     string inputString = str;
 
     string inputStringLower = inputString;
-    transform(inputString.begin(), inputString.end(), inputString.begin(), ::tolower);
+    transform(inputStringLower.begin(), inputStringLower.end(), inputStringLower.begin(), ::tolower);
     if (inputStringLower.find("verbose") != std::string::npos)
         verbose = true;
     else
@@ -237,6 +237,8 @@ int eval(const char *func,
     if (verbose){
         logTimeStamp();
         logFile << "Called eval with function string: " << functionStr << ", nArgs= " << nArgs << "and blockSize= " << blockSize << endl;
+        logFile << "Input data pointers are: inReal: " << inReal << " inImag: " << inImag << " outReal: " << outReal << " outImag: " << outImag << endl;
+
     }
 
     if (functionStr == "terminate"){
@@ -257,12 +259,17 @@ int eval(const char *func,
 
     if (verbose){
         logFile << "Printing input data..." << endl;
-        for (int i = 0; i < nArgs; i++)
-            logFile << "inReal[" << i << "] \t inImag[" << i << "] \t";
+        for (int i = 0; i < nArgs; i++){
+            logFile << "inReal[" << i << "] @ " << inReal[i];
+            if (inImag) logFile << "\t inImag[" << i << "] @ " << inImag[i] <<" \t";
+        }
         logFile << endl;
         for (int j = 0; j < blockSize; j++){
-            for (int i = 0; i < nArgs; i++)
-                logFile << inReal[i][j] << " \t " << inImag[i][j] << " \t";
+            for (int i = 0; i < nArgs; i++){
+                logFile << inReal[i][j];
+                if (inImag && inImag[i]) logFile << " \t " << inImag[i][j] << " \t";
+            }
+            logFile << endl;
         }
         logFile << endl;
     }
