@@ -236,14 +236,14 @@ int eval(const char *func,
 
     if (verbose){
         logTimeStamp();
-        logFile << "Called eval with function string: " << functionStr << " and nArgs= " << nArgs << endl;
+        logFile << "Called eval with function string: " << functionStr << ", nArgs= " << nArgs << "and blockSize= " << blockSize << endl;
     }
 
     if (functionStr == "terminate"){
         return terminateGetelec();
     }
 
-    if (functionStr != "GETELECrun") {
+    if (functionStr != "getelec") {
         error = "Unknown function name string: " + functionStr  + "\n";
         logFile << "error message = " << error << endl;
         return 0;
@@ -253,6 +253,18 @@ int eval(const char *func,
         error = "Invalid number of arguments. Expected is between 0 and 7";
         logFile << "Error with message: " << error << endl;
         return 0;
+    }
+
+    if (verbose){
+        logFile << "Printing input data..." << endl;
+        for (int i = 0; i < nArgs; i++)
+            logFile << "inReal[" << i << "] \t inImag[" << i << "] \t";
+        logFile << endl;
+        for (int j = 0; j < blockSize; j++){
+            for (int i = 0; i < nArgs; i++)
+                logFile << inReal[i][j] << " \t " << inImag[i][j] << " \t";
+        }
+        logFile << endl;
     }
 
     if (nArgs >= 1){
