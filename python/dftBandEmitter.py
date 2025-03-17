@@ -3,7 +3,7 @@ import py4vasp
 import matplotlib.pyplot as plt
 import scipy.interpolate as interp  
 from itertools import cycle
-from getelec import Barrier, Globals, BandEmitter, ConductionBandEmitter
+from getelec_wrap import GetelecInterface
 
 font = 15
 import matplotlib as mb
@@ -19,7 +19,16 @@ figureSize = [16,10]
 colors = cycle(plt.rcParams['axes.prop_cycle'].by_key()['color'])
 
 
-class dftBandEmitter(BandEmitter):
+class Globals:
+    """Keeps global constants and variables"""
+    BoltzmannConstant:float = 8.617333262e-5
+    SommerfeldConstant:float = 1.618311e-4 
+    electronMass:float = 9.1093837e-31
+    imageChargeConstant:float = .359991137
+    gamowPrefactor:float = 10.24633444
+    bandIntegrationPrefactor:float = 4.86826961e-2  #A/nm^2 (energy in eV, k in 1/Angstrom)
+
+class dftBandEmitter:
     
     def __init__(self, dftRunPath = ".") -> None:
         self.vaspData = py4vasp.Calculation.from_path(dftRunPath)
@@ -92,9 +101,9 @@ class dftBandEmitter(BandEmitter):
 
                 if (mode == "totalEnergy"):
                     pointValues = self.bands[0, :, :, iBand].flatten()
-                elif(mode == "parallelEnergy"):
+                elif(mode == "normalEnergy"):
                     pointValues = self.normalEnergy[0, :, :, iBand].flatten()
-                elif(mode == "perpendicularEnergy"):
+                elif(mode == "parallelEnergy"):
                     pointValues = self.parallelEnergy[0, :, :, iBand].flatten()
                 elif(mode == "deltaEz"):
                     pointValues = self.bands[-1, :, :, iBand].flatten() - self.bands[0, :, :, iBand].flatten()
@@ -115,201 +124,9 @@ class dftBandEmitter(BandEmitter):
                 mng.resize(*mng.window.maxsize())
                 plt.show()
 
-    def fitBivariateSpline(self, X, Y, Z, weights = None, eps = 1.e-10):
-        
-        rmsValueOfZ = np.sqrt(np.mean(Z**2))
-        smoothnessTolerances = np.logspace(-4, 3, 16) * rmsValueOfZ
-        for smoothnessTolerance in smoothnessTolerances:
-            try:
-                spline = interp.SmoothBivariateSpline(X, Y, Z, w=weights, s=smoothnessTolerance, eps=eps, kx=4, ky=4)
-                return spline
-            except:
-                pass
 
-    def getBivariateSplinesForDeltaEz(self, verbose = False):
-        """get a list of 2D spline functions(kx, ky) for all bands"""
-
-
-        self.bivariateSplinesForEz = []
-                                
-
-        if (self.kPointSymmetry() >= 4):
-            kPointsX = np.concatenate((kPointsX, kPointsX, -kPointsX, -kPointsX, 2*np.max(kPointsX)-kPointsX, kPointsX,                    2*np.max(kPointsX)-kPointsX, 2*np.max(kPointsX)-kPointsX, -kPointsX))
-            kPointsY = np.concatenate((kPointsY, -kPointsY, kPointsY, -kPointsY, kPointsY,                    2*np.max(kPointsY)-kPointsY, 2*np.max(kPointsY)-kPointsY, -kPointsY, 2*np.max(kPointsY)-kPointsY))
-
-        for iBand in range(self.nBands):
-            energyDifference = self.bands[-1, :, iBand] - self.bands[0, :, iBand]
-            if (self.kPointSymmetry() >= 8):
-                energyDifference = np.concatenate((energyDifference, energyDifference))
-            if (self.kPointSymmetry() >= 4):
-                energyDifference = np.concatenate(tuple([energyDifference] * 9))
-
-            newSpline = self.fitBivariateSpline(kPointsX, kPointsY, energyDifference, eps=1.e-5)
-            if (verbose):
-                print("got deltaEz spline for iBand, iz = ", iBand, "with relative error: ", np.sqrt(newSpline.get_residual() / np.sum(energyDifference**2)))
-
-            self.bivariateSplinesForEz.append(newSpline)
-        
-    def getBivariateSplinesForBands(self, verbose = False):
-        """get a list of 2D spline functions(kx, ky) for all bands"""
-
-        self.bivariateSplinesForBands = []
-                                
-        if (self.kPointSymmetry() >= 8):
-            kPointsX = np.concatenate((self.kPoints[0, :, 0], self.kPoints[0, :, 1]))
-            kPointsY = np.concatenate((self.kPoints[0, :, 1],  self.kPoints[0, :, 0]))
-        if (self.kPointSymmetry() >= 4):
-            kPointsX = np.concatenate((kPointsX, kPointsX, -kPointsX, -kPointsX, 2*np.max(kPointsX)-kPointsX, kPointsX,                    2*np.max(kPointsX)-kPointsX, 2*np.max(kPointsX)-kPointsX, -kPointsX))
-            kPointsY = np.concatenate((kPointsY, -kPointsY, kPointsY, -kPointsY, kPointsY,                    2*np.max(kPointsY)-kPointsY, 2*np.max(kPointsY)-kPointsY, -kPointsY, 2*np.max(kPointsY)-kPointsY))
-            weights = np.concatenate(tuple([self.weights.flatten()] * 9))
-
-        for iBand in range(self.nBands):
-            bandSplines = []
-
-            for iz in range(self.Nkz):
-                energy = self.bands[iz, :, iBand]
-
-                if (self.kPointSymmetry() >= 8):
-                    energy = np.concatenate((energy, energy))
-                if (self.kPointSymmetry() >= 4):
-                    energy = np.concatenate(tuple([energy] * 9))
-
-                newSpline = self.fitBivariateSpline(kPointsX, kPointsY, energy, weights=weights, eps=1.e-5)
-                bandSplines.append(newSpline)
-                if (verbose):
-                    print("got Spline for iBand, iz = ", iBand, iz, "with relative error: ", np.sqrt(newSpline.get_residual() / np.sum(energy**2)))
-
-
-            self.bivariateSplinesForBands.append(bandSplines)
-
-
-    def getIntegrationMesh2D(self, Npoints = 128):
-        kXPoints = np.linspace(0,np.max(self.kPoints[0, :, 0]), Npoints)
-        kYPoints = np.linspace(0,np.max(self.kPoints[0, :, 1]), Npoints)
-        self.kXgrid, self.kYgrid = np.meshgrid(kXPoints, kYPoints)
-        self.weightsOnGrid = np.copy(self.kXgrid)
-        self.weightsOnGrid[:,:] = 4 * np.gradient(kXPoints)[1] * np.gradient(kYPoints)[1]
-        self.weightsOnGrid[0, :] /= 2.
-        self.weightsOnGrid[: ,  0] /= 2.
-        self.weightsOnGrid[-1, :] /= 2.
-        self.weightsOnGrid[:, -1] /= 2.
-        # self.weightsOnGrid *= np.gradient(kXPoints)[1] * np.gradient(kYPoints)[1]
-
-    
-    def calculateParallelEnergyOnGrid(self, NgridPoints = 128):
-        self.getIntegrationMesh2D(NgridPoints)
-        self.perpendicularEnergyOnGrid = np.ones((self.nBands, NgridPoints, NgridPoints))
-        self.parallelEnergyOnGrid = np.copy(self.perpendicularEnergyOnGrid)
-        self.totalEnergyOnGrid = np.copy(self.perpendicularEnergyOnGrid)
-        self.deltaEzOnGrid = np.copy(self.perpendicularEnergyOnGrid)
-
-        for iBand in range(self.nBands):
-            self.totalEnergyOnGrid[iBand, :, :] = self.bivariateSplinesForBands[iBand][0](self.kXgrid, self.kYgrid, grid = False)
-
-            dE_dkx = self.bivariateSplinesForBands[iBand][0](self.kXgrid, self.kYgrid, 1, 0, grid = False)
-            dE_dky = self.bivariateSplinesForBands[iBand][0](self.kXgrid, self.kYgrid, 1, 0, grid = False)
-            halfMeOverHbarSquare = 0.06561710580766435 #eV^-1 Angstrom^-2
-            self.perpendicularEnergyOnGrid[iBand, :, :] = halfMeOverHbarSquare * (dE_dkx**2 + dE_dky**2)
-            self.parallelEnergyOnGrid = self.totalEnergyOnGrid - self.perpendicularEnergyOnGrid
-            self.deltaEzOnGrid[iBand, : , :] = self.bivariateSplinesForEz[iBand](self.kXgrid, self.kYgrid, grid = False)
-
-
-    def getCurrentElementsOnGrid(self, barrier: Barrier, workFunction = 5.25, kT = 0.025):
-        self.currentDensityElementsOnGrid = barrier.transmissionCoefficient(workFunction - self.parallelEnergyOnGrid) * \
-              self.FermiDiracFunction(self.totalEnergyOnGrid, kT) * abs(self.deltaEzOnGrid) * Globals.bandIntegrationPrefactor * self.weightsOnGrid
-        return np.sum(self.currentDensityElementsOnGrid)
-
-
-    def plotBandContoursForBothKz(self, mode = "totalEnergy", show = True):
-
-        for iFigure in range(6,0,-1):
-            if (self.nBands % iFigure == 0):
-                NplotsInRow = iFigure
-                break
-        
-        Nfigures = int(self.nBands / NplotsInRow)
-
-        for iFigure in range(Nfigures):
-            fig, axes = plt.subplots(2, NplotsInRow)
-            for jRow in range(NplotsInRow):
-                iBand = NplotsInRow * iFigure + jRow
-                for iz in range(len(self.kPointsZ)):
-                    splineValues = self.bivariateSplinesForBands[iBand][iz](self.kXgrid, self.kYgrid, grid = False)
-                    minValue = min(np.min(splineValues), np.min(self.bands[iz, :, iBand]))
-                    maxValue = max(np.max(splineValues), np.max(self.bands[iz, :, iBand]))
-                    contour = axes[iz, jRow].contourf(self.kXgrid, self.kYgrid, splineValues, levels = 64, cmap = "jet", vmin = minValue, vmax = maxValue)
-                    cbar = plt.colorbar(contour)
-                    cbar.ax.set_ylabel(r"Energy [eV]")
-                    axes[iz, jRow].scatter(self.kPoints[0, :, 0], self.kPoints[0, :, 1],c =  self.bands[iz, :, iBand], cmap = "jet", vmin = minValue, vmax = maxValue )
-                    # axes[iz, jRow].set_aspect("equal")
-                    axes[iz, jRow].set_xlabel(r"$k_x [\textrm{\AA}^{-1}]$")
-                    axes[iz, jRow].set_ylabel(r"$k_x [\textrm{\AA}^{-1}]$")
-                    axes[iz, jRow].set_title("iBand = %d, iz = %d"%(iBand, iz))
-            
-            if (show):
-                mng = plt.get_current_fig_manager()
-                mng.resize(*mng.window.maxsize())
-                plt.show()
-
-    def plotBandContoursForZeroKz(self, mode = "totalEnergy", show = True):
-
-        for nPlotCandidate in range(8,0,-2):
-            if (self.nBands % nPlotCandidate == 0):
-                nPlots = nPlotCandidate
-                break
-        
-        Nfigures = int(self.nBands / nPlots)
-
-        for iFigure in range(Nfigures):
-            fig, axes = plt.subplots(2, int(nPlots/2))
-            for jPlot in range(nPlots):
-                iBand = nPlots * iFigure + jPlot
-                iRow = jPlot // 2
-                iColumn = jPlot % 2
-
-                if (mode == "totalEnergy"):
-                    splineValues = self.totalEnergyOnGrid[iBand]
-                    pointValues = self.bands[0, :, iBand]
-                    error = np.sqrt(self.bivariateSplinesForBands[iBand][0].get_residual())
-                elif(mode == "parallelEnergy"):
-                    splineValues = self.parallelEnergyOnGrid[iBand]
-                    pointValues = splineValues
-                    error = 0
-                elif(mode == "perpendicularEnergy"):
-                    splineValues = self.perpendicularEnergyOnGrid[iBand]
-                    pointValues = splineValues
-                    error = 0
-                elif(mode == "deltaEz"):
-                    splineValues = self.deltaEzOnGrid[iBand]
-                    pointValues = self.bands[-1, :, iBand] - self.bands[0, :, iBand]
-                    error = np.sqrt(np.mean(self.bivariateSplinesForEz[iBand].get_residual()))
-                else:
-                    assert False, "wrong mode"
-
-                minValue = min(np.min(splineValues), np.min(pointValues))
-                maxValue = max(np.max(splineValues), np.max(pointValues))
-                contour = axes[iColumn, iRow].contourf(self.kXgrid, self.kYgrid, splineValues, levels = 64, cmap = "jet", vmin = minValue, vmax = maxValue)
-
-                if (mode == "totalEnergy" or mode == "deltaEz"):
-                    axes[iColumn, iRow].scatter(self.kPoints[0, :, 0], self.kPoints[0, :, 1],c = pointValues , cmap = "jet", vmin = minValue, vmax = maxValue )
-
-                mappable = plt.cm.ScalarMappable(cmap="jet")
-                mappable.set_clim(minValue, maxValue)
-
-                cbar = plt.colorbar(mappable, ax = axes[iColumn, iRow])
-                cbar.ax.set_ylabel(r"%s [eV]"%mode)
-                # axes[iz, jRow].set_aspect("equal")
-                axes[iColumn, iRow].set_xlabel(r"$k_x [\textrm{\AA}^{-1}]$")
-                axes[iColumn, iRow].set_ylabel(r"$k_x [\textrm{\AA}^{-1}]$")
-                axes[iColumn, iRow].set_title("iBand=%d, res=%g"%(iBand, error))
-            
-            if (show):
-                mng = plt.get_current_fig_manager()
-                mng.resize(*mng.window.maxsize())
-                plt.show()
-        
     def plotBands(self, mode = "totalEnergy", show = False):
-        formats = ["-", ".", ":"]
+        formats = ["-", ".", ":", "--"]
         colors = plt.cm.jet(np.linspace(0,1,self.nBands))
         fig1, axesForDifferentX = plt.subplots(1,len(self.kPointsX))
         fig2, axesForDifferentY = plt.subplots(1, len(self.kPointsY))
@@ -326,21 +143,21 @@ class dftBandEmitter(BandEmitter):
             plotData = self.bands
             fig1.suptitle("Total Energy")
             fig2.suptitle("Total Energy")
-        elif(mode == "parallelEnergy"):
+        elif(mode == "normalEnergy"):
             plotData = self.normalEnergy
+            fig1.suptitle("Normal Energy")
+            fig2.suptitle("Nromal Energy")
+        elif (mode == "parallelEnergy"):
+            plotData = self.parallelEnergy
             fig1.suptitle("Parallel Energy")
             fig2.suptitle("Parallel Energy")
-        elif (mode == "perpendicularEnergy"):
-            plotData = self.parallelEnergy
-            fig1.suptitle("Perpendicular Energy")
-            fig2.suptitle("Perpendicular Energy")
-        elif (mode == "energyDifference"):
+        elif (mode == "deltaEz"):
             plotData = abs(np.array([self.zBandWidth]))
             zRange = 1
             fig1.suptitle("Energy difference in kz")
             fig2.suptitle("Energy difference on kz")
         else:
-            assert False, "wrong mode. Should be 'totalEnergy', 'parallelEnergy', 'energyDifference' or 'perpendicularEnergy'"
+            assert False, "wrong mode. Should be 'totalEnergy', 'normalEnergy', 'parallelEnergy' or 'deltaEz'"
 
         for iz in range(zRange):      
             for iy in range(len(self.kPointsY)):
@@ -355,7 +172,7 @@ class dftBandEmitter(BandEmitter):
                     # derivative = spline.derivative()
                     # color = next(colors)
                     color = colors[iBand]
-                    axis.plot(self.kPoints[iz, iy, :, 0], plotData[iz, iy, :, iBand],formats[iz], color = color)
+                    axis.plot(self.kPoints[0, iz, iy, :], plotData[iz, iy, :, iBand],formats[iz], color = color)
                     # axis.plot(xPlot, spline(xPlot), lines[iz], color = color)
 
         plt.colorbar(plt.cm.ScalarMappable(cmap="jet"), ax = axis)
@@ -373,11 +190,32 @@ class dftBandEmitter(BandEmitter):
 
                     # color = next(colors)
                     color = colors[iBand]
-                    axis.plot(self.kPoints[iz, :, ix, 1], plotData[iz, :, ix, iBand], formats[iz], color = color)
+                    axis.plot(self.kPoints[1, iz, :, ix], plotData[iz, :, ix, iBand], formats[iz], color = color)
                     
         plt.colorbar(plt.cm.ScalarMappable(cmap="jet"), ax = axis)
         if (show):
             plt.show()
+
+    def plotBandsOnKz(self):
+        nPlots = self.nBands  * len(self.kPointsX) * len(self.kPointsY)
+        # colors = plt.cm.jet(np.linspace(0,1,nPlots))  
+        # maxEnergyOnKz0 = np.max(self.bands[0,:,:,:].flatten())
+        # minEnergyOnKz0 = np.min(self.bands[0,:,:,:].flatten())
+        colorNumberArray = np.linspace(0, 1, 128)
+        colors = plt.cm.jet(colorNumberArray)
+        # fig2, axesForDifferentY = plt.subplots(1, len(self.kPointsY))
+        fig, axes = plt.subplots(4,5, squeeze=True)
+        fig.tight_layout()
+        iPlot = 0
+        for ix in range(len(self.kPointsX)):
+            for iy in range(len(self.kPointsY)): 
+                for iBand in range(self.nBands):
+                    if (self.bands[0, iy, ix, iBand] < 0.1 and self.bands[0, iy, ix, iBand] > -1.):
+                        axes.flatten()[iPlot % 20].plot(self.kPoints[2, :, iy, ix], self.bands[:, iy, ix, iBand] - self.bands[0, iy, ix, iBand], color = colors[iPlot % 128])
+                        iPlot += 1
+        
+        # plt.colorbar(plt.cm.ScalarMappable(cmap="jet"), ax = ax)
+        plt.show()
         
     def getBAndDerivativesGradient(self):
         self.partialDerivativesOfBands = np.array(np.gradient(self.bands, axis=(2,1,0)))
@@ -391,11 +229,12 @@ class dftBandEmitter(BandEmitter):
         self.partialDerivativesOfBands[1] /= (self.kPointsY[1] - self.kPointsY[0])
         self.partialDerivativesOfBands[2] /= (self.kPointsZ[1] - self.kPointsZ[0])
 
-    def getCurrentOfStates(self, barrier: Barrier, workFunction = 5.25, kT = 0.025):
+    def getCurrentOfStates(self, getelecInterface: GetelecInterface, workFunction = 5.25, kT = 0.025):
         weightsOnAllBands = np.copy(self.bands[0,:,:,:])
         for i in range(self.nBands):
             weightsOnAllBands[:,:,i] = self.weights[0,:,:]
-        self.currentDensityElements = barrier.transmissionCoefficient(workFunction - self.normalEnergy[0, :,:,:]) * self.FermiDiracFunction(self.bands[0,:,:,:], kT) * abs(self.zBandWidth) * Globals.bandIntegrationPrefactor * weightsOnAllBands * self.reciprocalLatticeVectors[0] * self.reciprocalLatticeVectors[1]
+        
+        self.currentDensityElements = getelecInterface.calculateTransmissionForManyEnergies(self.normalEnergy) * abs(self.zBandWidth) * Globals.bandIntegrationPrefactor * weightsOnAllBands * self.reciprocalLatticeVectors[0] * self.reciprocalLatticeVectors[1]
         return np.sum(self.currentDensityElements)
 
     def getTotalEnergyDistribution(self, bins = 64, range = (-1.5, 0.5), mode = "grid"):
@@ -429,49 +268,34 @@ class dftBandEmitter(BandEmitter):
     def kPointSymmetry(self):
         multiplicities = self.weightsRaw / np.min(self.weightsRaw)
         return max(multiplicities)
-    
-
-    def getBandDerivativesCspline(self):
-        """Calculate an array of derivatives of energy with respect to kx,ky"""
-
-        self.partialDerivativesOfBands = np.array(3*[np.copy(self.bands)])
-
-        for iz in range(2):        
-            for iy in range(len(self.kPointsY)):
-                for iBand in range(self.nBands):
-                    spline = interp.CubicSpline(self.kPoints[iz, iy, :, 0], self.bands[iz, iy, :, iBand], bc_type="clamped")
-                    derivative = spline.derivative()
-                    self.partialDerivativesOfBands[0, iz,iy,:, iBand] = derivative(self.kPoints[iz, iy, :, 0])
-                
-        for iz in range(2):        
-            for ix in range(len(self.kPointsX)):
-                for iBand in range(self.nBands):
-                    spline = interp.CubicSpline(self.kPoints[iz, :, ix, 1], self.bands[iz, :, ix, iBand], bc_type="clamped")
-                    derivative = spline.derivative()
-                    self.partialDerivativesOfBands[1, iz, :, ix, iBand] = derivative(self.kPoints[iz, :, ix, 1])
-        
-        self.partialDerivativesOfBands[2, :, :, :, :] = (self.bands[1, :, :, :] - self.bands[0, :, :, :]) / (self.kPointsZ[1] - self.kPointsZ[0])
-
             
     def calculateParallelEnergy(self):
         # self.getBandDerivativesCspline()
-        self.getBAndDerivativesGradient()
-        halfMeOverHbarSquare = 0.06561710580766435 #eV^-1 Angstrom^-2
-        self.parallelEnergy = halfMeOverHbarSquare * (self.partialDerivativesOfBands[0, :, :, :, :]**2 + self.partialDerivativesOfBands[1, :,  :, :, :]**2)
+        self.parallelEnergy = np.copy(self.kPoints)
+        hbarSquareOver2m = 3.80998211 # Å^2 eV
+        
+        self.parallelEnergy = np.copy(self.bands)
+        for i in range(self.nBands):
+            self.parallelEnergy[:,:,:, i] = hbarSquareOver2m * (self.kPoints[0]**2 + self.kPoints[1]**2)
         self.normalEnergy = self.bands - self.parallelEnergy
+
 
 
 workFunction = 5.25
 kT = 0.025
-emitter = dftBandEmitter("/home/kyritsak/vasp_runs/W_surfaces/W110_slab/shortSlab/nonSC")
-fig = emitter.vaspData.band.plot()
-fig.show()
+emitter = dftBandEmitter("/home/kyritsak/vasp_runs/manyKz")
+# fig = emitter.vaspData.band.plot()
+# fig.show()
+# emitter.plotBands(show=True)
+emitter.plotBandsOnKz()
+exit()
+emitter.calculateParallelEnergy()
+emitter.colorPlotBandsOnkPoints(mode="deltaEz")
 exit()
 barrier = Barrier(tabulationFolder="./tabulated/1D_1024", field=7)
 
 em2 = ConductionBandEmitter(barrier, workFunction=workFunction, kT = kT)
 em2.calculateTotalEnergySpectrum()
-emitter.plotBands(show=True)
 # emitter.getBivariateSplinesForBands(verbose=True)
 # emitter.getBivariateSplinesForDeltaEz(verbose=True)
 # emitter.calculateParallelEnergyOnGrid()
