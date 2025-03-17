@@ -6,9 +6,11 @@ namespace getelec{
 
 int TransmissionSolver::tunnelingDifferentialSystem(double x, const double y[], double f[], void *params){
         TunnelingFunction* barrier = (TunnelingFunction*) params;
-        f[0] =  -barrier->kappaSquared(x) - y[0]*y[0] + y[1]*y[1];
-        f[1] = - 2. * y[0] * y[1];
-        f[2] = y[0];
+        //y[0] = Re{s'}, y[1] = Im{s'}, y[2] = Re{s}, y[3] = Im{s} (no need to follow Im{s} because it is just a phase factor)
+        f[0] =  -barrier->kappaSquared(x) - y[0]*y[0] + y[1]*y[1]; //Re{s''} = -k^2 - Re{s'}^2 + Im{s'}^2
+        f[1] = - 2. * y[0] * y[1]; //Im{s''} = -2 Re{s'} Im{s'}
+        f[2] = y[0];//Re{s'} = Re{s'}
+        // f[3] = y[1];//Im{s'} = Im{s'} . This is not necessary because Im{s} just gives a phase factor that doesn't matter in the end
         return GSL_SUCCESS;
 }
 
