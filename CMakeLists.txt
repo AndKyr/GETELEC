@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 # Define the project name and version
-project(GETELEC VERSION 3.0 LANGUAGES CXX)
+project(GETELEC VERSION 3.0 LANGUAGES CXX C)
 
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 20)
@@ -16,16 +16,84 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type (default is Release)" FORCE)
 endif()
 
+# Set parallel build level if not already defined
+if(NOT DEFINED ENV{CMAKE_BUILD_PARALLEL_LEVEL})
+    # Detect the number of physical cores instead of logical threads
+    execute_process(
+        COMMAND bash -c "lscpu | grep '^Core(s) per socket:' | awk '{print $4}'"
+        OUTPUT_VARIABLE CORES_PER_SOCKET OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    execute_process(
+        COMMAND bash -c "lscpu | grep '^Socket(s):' | awk '{print $2}'"
+        OUTPUT_VARIABLE SOCKETS OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    math(EXPR PHYSICAL_CORES "${CORES_PER_SOCKET} * ${SOCKETS}")
+    # Set CMAKE_BUILD_PARALLEL_LEVEL
+    set(ENV{CMAKE_BUILD_PARALLEL_LEVEL} ${PHYSICAL_CORES})
+    message(STATUS "CMAKE_BUILD_PARALLEL_LEVEL set to ${PHYSICAL_CORES} (physical cores)")
+else()
+    message(STATUS "CMAKE_BUILD_PARALLEL_LEVEL is already set to $ENV{CMAKE_BUILD_PARALLEL_LEVEL}")
+endif()
 
-# Include directories
-include_directories(${PROJECT_SOURCE_DIR}/include)
+# Set the install directory for GSL
+if (NOT GSL_DIR)
+    set(GSL_DIR ${CMAKE_BINARY_DIR}/gsl-install)
+endif()
 
 # Find GSL library
-find_package(GSL REQUIRED)
+message(STATUS "Searching for GSL version>=2.8 at ${GSL_DIR}")
+
+find_package(GSL 2.8 QUIET)
+
+
+if (NOT GSL_FOUND)
+    message(STATUS "GSL version>=2.8 not found (${GSL_DIR}). Downloading and building GSL")
+    include(FetchContent)
+
+    # Set install location for deal.II
+    set(GSL_DIR ${CMAKE_BINARY_DIR}/gsl-install)
+    # Fetch deal.II
+    FetchContent_Declare(
+        gsl
+        URL https://ftp.gnu.org/gnu/gsl/gsl-latest.tar.gz
+        SOURCE_DIR ${CMAKE_BINARY_DIR}/gsl-src
+        INSTALL_DIR ${GSL_DIR}
+    )
+
+    # Ensure deal.II is built before calling find_package
+    FetchContent_GetProperties(gsl)
+    if(NOT gsl_POPULATED)
+        FetchContent_Populate(gsl)
+        execute_process(
+            COMMAND ./configure --prefix=${GSL_DIR} WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/gsl-src
+        )
+        # Build deal.II
+        execute_process(
+            COMMAND make -j$ENV{CMAKE_BUILD_PARALLEL_LEVEL} WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/gsl-src RESULT_VARIABLE MAKE_RESULT
+        )
+
+        if(NOT MAKE_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to build GSL with make")
+        endif()
+
+        # Install deal.II
+        execute_process(
+            COMMAND make install WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/gsl-src
+        )
+    endif()
+
+    message(STATUS "GSL installed to ${GSL_DIR}")
+    # find_package(GSL 2.8 REQUIRED)
+    set(GSL_INCLUDE_DIRS ${GSL_DIR}/include)
+    set(GSL_LIBRARIES ${GSL_DIR}/lib/libgsl.so ${GSL_DIR}/lib/libgslcblas.so)
+    set(GSL_FOUND TRUE)
+endif()
 
 # Find TBB library
 find_package(TBB REQUIRED)
 
+# Include directories
+include_directories(${PROJECT_SOURCE_DIR}/include ${GSL_INCLUDE_DIRS})
 
 # Add the source files
 file(GLOB SOURCES ${PROJECT_SOURCE_DIR}/src/*.cpp)
@@ -34,7 +102,7 @@ file(GLOB SOURCES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 add_library(getelec_lib SHARED ${SOURCES})
 
 # Link the GSL and math library
-target_link_libraries(getelec_lib TBB::tbb GSL::gsl GSL::gslcblas m)
+target_link_libraries(getelec_lib TBB::tbb ${GSL_LIBRARIES} m)
 
 # Set the library's output name to "getelec"
 set_target_properties(getelec_lib PROPERTIES OUTPUT_NAME getelec)
