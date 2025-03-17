@@ -216,6 +216,22 @@ class Schrodinger1DSolverIVP(Schrodinger1DSolver):
         if abs(reflection + transmission - 1) > 1.e-5:
             print("WARNING: reflection + transmission -1 = %g"%(reflection + transmission - 1.))
         return transmission
+
+    def constructPropagator(self):
+        self.propagator = np.zeros((2,2))
+        solution = ig.solve_ivp(self.differentialSystem, [self.xLimits[1], self.xLimits[0]], [1., 1j], rtol=1.e-8)#, jac=self.jacobian)
+        self.propagator[0,0] = np.real(solution.y[0,-1])
+        self.propagator[0,1] = np.imag(solution.y[0,-1])
+        self.propagator[1,0] = np.real(solution.y[1,-1])
+        self.propagator[1,1] = np.imag(solution.y[1,-1])
+
+    def getTransmissionCoefficient(self, kLeft:float) -> complex:
+        psiRight = np.array([self.kRight**(-0.5), 1j * self.kRight**0.5])
+        psiLeft = self.propagator @ psiRight
+        matrix = np.array([[0.5, -0.5 * 1j / kLeft], [0.5, 0.5 * 1j / kLeft]])
+        Cfoeffs = matrix @ psiLeft
+        return 1./ Cfoeffs[0]
+
     
     def getSolutionVector(self):
         self.xVector = self.solution.t
@@ -274,7 +290,8 @@ class GamowCalculator:
         return  Globals.imageChargeConstant / (z + .5 * z * z/ self.radius)
 
     def electrostaticPotential(self, z:np.ndarray):
-        out = self.field * (self.radius * (self.gamma - 1.) * z + z**2) / (self.gamma * z + self.radius * (self.gamma - 1.))
+        out = np.asarray(self.field * (self.radius * (self.gamma - 1.) * z + z**2) / (self.gamma * z + self.radius * (self.gamma - 1.)))
+
         out[z < 0] = 0.
         return out
     
@@ -417,18 +434,33 @@ class GamowCalculator:
 
 if __name__ == "__main__":
 
-    calculator = GamowCalculator(XCdataFile="../tabulated/XCdata_W110.npy", minimumPotential=10.)
-    np.printoptions(precision=15)
-    x = np.linspace(-0.1484608302148185, 1., 8)
-    potentials = calculator.barrierFunction(x, 0.)
-    print(potentials)
+    # calculator = GamowCalculator(XCdataFile="../tabulated/XCdata_W110.npy", minimumPotential=10.)
+
+
     # calculator.solver.calculateTransmissionForEnergy(-5.)
     # calculator = GamowCalculator(solverType="IVP")
     # print(calculator.calculateGamow(barrierDepth=4.))
     # calculator.solver.plotWaveFunction("waveFunsIVP.png")
-    # # calculator = GamowCalculator(solverType="IVP", XCdataFile="", minimumPotential=10.)
-    # # calculator.solver.calculateTransmissionForEnergy(-5.)
-    # # calculator.solver.plotWaveFunction("waveFunsIVP.png")
+    calculator = GamowCalculator(solverType="IVP", XCdataFile="", minimumPotential=10.)
+    calculator.solver.calculateTransmissionForEnergy(-5.)
+    calculator.solver.constructPropagator()
+    Npoints = 256
+    kLeft = np.linspace(0.01 * calculator.solver.kLeft, 5 * calculator.solver.kLeft, Npoints)
+    Dtrans = np.zeros(Npoints)
+    angleTrans = np.zeros(Npoints)
+    for i in range(Npoints):
+        Coeff = calculator.solver.getTransmissionCoefficient(kLeft[i])
+        Dtrans[i] = np.abs(Coeff)**2
+        angleTrans[i] = np.angle(Coeff)
+
+    fig = plt.figure()
+    ax1 = fig.add_subplot(111)
+    ax1.plot(kLeft / calculator.solver.kLeft, Dtrans, label="Dtrans")
+    ax2 = ax1.twinx()
+    ax2.plot(kLeft / calculator.solver.kLeft, angleTrans / (2 * np.pi),"k--" ,label="angleTrans")
+    plt.legend()
+    plt.show()
+        # calculator.solver.plotWaveFunction("waveFunsIVP.png")
 
 
     # import time
