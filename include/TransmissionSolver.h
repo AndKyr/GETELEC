@@ -6,6 +6,7 @@
 #include "Utilities.h"
 #include "ConfigGetelec.h"
 #include <cassert>
+#include <array>
 
 namespace getelec{
 
@@ -25,6 +26,7 @@ private:
     double kappaFinal; /**< Final value of the wavevector (kappa) for the tunneling region. */
     int numberOfCalls = 0; /**< Counter for the number of times the transmission coefficient is calculated. */
     bool recalculateXlimitsAtEachEnergy = false; /**< Flag to recalculate the integration limits for each energy level. */
+    array<double,4> fundamentalMatrix; /**< The fundamental matrix of the general solution of the real problem (\boldsymbol{\Phi} in paper) */
     
     /**
      * @brief Defines the system of differential equations for tunneling.
@@ -186,6 +188,11 @@ public:
      * @brief Prints the integration limits for debugging purposes.
      */
     void printXLimits() { cout << "xInitial = " << xInitial << " xFinal = " << xFinal << endl; }
+
+    /**
+     * @brief Calcualtes the fundamental matrix of the problem by solving for initial conditions psi(xRight)=[1, i]
+     */
+    void calculateFundamentalMatrix();
 };
 
 } // namespace getelec

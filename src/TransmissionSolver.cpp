@@ -72,4 +72,14 @@ double TransmissionSolver::calculateTransmissionCoefficientForEnergy(double ener
     return max(out, 1.e-50);
 }
 
+void TransmissionSolver::calculateFundamentalMatrix(){
+    initialValues = {0, 1, 0};
+    solveNoSave();
+    double prefactor = exp(solutionVector[2]);
+    fundamentalMatrix[0] = prefactor;
+    fundamentalMatrix[1] = 0.;
+    fundamentalMatrix[2] = prefactor * solutionVector[0];
+    fundamentalMatrix[3] = prefactor * solutionVector[1];
+}
+
 } // namespace getelec
