@@ -4,6 +4,7 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/include",
+                "${workspaceFolder}/build/gsl-install/include",
                 "/usr/lib/jvm/java-21-openjdk-amd64/include",
                 "/usr/lib/jvm/java-21-openjdk-amd64/include/linux"
             ],
