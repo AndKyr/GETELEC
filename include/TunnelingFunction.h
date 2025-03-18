@@ -99,6 +99,15 @@ public:
     }
 
     /**
+     * @brief Computes the deriative of the squared kappa value for tunneling.
+     * @param x Position coordinate.
+     * @return The derivative value.
+     */
+    double kappaSquaredDerivative(double x){
+        return -CONSTANTS.kConstant * this->potentialFunctionDerivative(x);
+    }
+
+    /**
      * @brief Sets the energy level for the tunneling function.
      * @param E Energy level (eV).
      */

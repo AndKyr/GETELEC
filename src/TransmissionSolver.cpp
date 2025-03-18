@@ -72,6 +72,12 @@ double TransmissionSolver::calculateTransmissionCoefficientForEnergy(double ener
     return max(out, 1.e-50);
 }
 
+gsl_complex TransmissionSolver::transmissionCoefficientForWaveVector(double k){
+    gsl_complex psiRight[2];
+    GSL_SET_COMPLEX(&psiRight[0], 1/sqrt(kappaInitial), 0.);
+    GSL_SET_COMPLEX(&psiRight[1], barrier->kappaSquaredDerivative(xInitial) / pow(kappaInitial,2.5) / 4., sqrt(kappaInitial));  
+}
+
 void TransmissionSolver::calculateFundamentalMatrix(){
     initialValues = {0, 1, 0};
     solveNoSave();

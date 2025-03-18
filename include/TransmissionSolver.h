@@ -7,6 +7,7 @@
 #include "ConfigGetelec.h"
 #include <cassert>
 #include <array>
+#include <gsl/gsl_complex.h>
 
 namespace getelec{
 
@@ -165,6 +166,11 @@ public:
      * @return The transmission coefficient.
      */
     double calculateTransmissionCoefficientForEnergy(double energy);
+
+    /**
+     * @brief calculates the complex transmission coefficient for a given wavevector
+     */
+    gsl_complex transmissionCoefficientForWaveVector(double waveVector);
 
     /**
      * @brief Retrieves the number of times the transmission coefficient has been calculated.
