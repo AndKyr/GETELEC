@@ -36,28 +36,26 @@ else()
 endif()
 
 # Set the install directory for GSL
-if (NOT GSL_DIR)
-    set(GSL_DIR ${CMAKE_BINARY_DIR}/gsl-install)
+if (NOT GSL_ROOT_DIR)
+    set(GSL_ROOT_DIR ${CMAKE_BINARY_DIR}/gsl-install)
 endif()
 
 # Find GSL library
-message(STATUS "Searching for GSL version>=2.8 at ${GSL_DIR}")
+message(STATUS "Searching for GSL version>=2.8 at ${GSL_ROOT_DIR}")
 
-find_package(GSL 2.8 QUIET)
-
+find_package(GSL 2.8 QUIET MODULE)
 
 if (NOT GSL_FOUND)
-    message(STATUS "GSL version>=2.8 not found (${GSL_DIR}). Downloading and building GSL")
+    message(STATUS "GSL version>=2.8 not found (${GSL_ROOT_DIR}). Downloading and building GSL")
     include(FetchContent)
 
     # Set install location for deal.II
-    set(GSL_DIR ${CMAKE_BINARY_DIR}/gsl-install)
     # Fetch deal.II
     FetchContent_Declare(
         gsl
         URL https://ftp.gnu.org/gnu/gsl/gsl-latest.tar.gz
         SOURCE_DIR ${CMAKE_BINARY_DIR}/gsl-src
-        INSTALL_DIR ${GSL_DIR}
+        INSTALL_DIR ${GSL_ROOT_DIR}
     )
 
     # Ensure deal.II is built before calling find_package
@@ -65,7 +63,7 @@ if (NOT GSL_FOUND)
     if(NOT gsl_POPULATED)
         FetchContent_Populate(gsl)
         execute_process(
-            COMMAND ./configure --prefix=${GSL_DIR} WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/gsl-src
+            COMMAND ./configure --prefix=${GSL_ROOT_DIR} WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/gsl-src
         )
         # Build deal.II
         execute_process(
@@ -82,18 +80,15 @@ if (NOT GSL_FOUND)
         )
     endif()
 
-    message(STATUS "GSL installed to ${GSL_DIR}")
-    # find_package(GSL 2.8 REQUIRED)
-    set(GSL_INCLUDE_DIRS ${GSL_DIR}/include)
-    set(GSL_LIBRARIES ${GSL_DIR}/lib/libgsl.so ${GSL_DIR}/lib/libgslcblas.so)
-    set(GSL_FOUND TRUE)
+    message(STATUS "GSL installed to ${GSL_ROOT_DIR}")
+    find_package(GSL 2.8 REQUIRED MODULE)
 endif()
 
 # Find TBB library
 find_package(TBB REQUIRED)
 
 # Include directories
-include_directories(${PROJECT_SOURCE_DIR}/include ${GSL_INCLUDE_DIRS})
+include_directories(${PROJECT_SOURCE_DIR}/include)
 
 # Add the source files
 file(GLOB SOURCES ${PROJECT_SOURCE_DIR}/src/*.cpp)
@@ -102,7 +97,7 @@ file(GLOB SOURCES ${PROJECT_SOURCE_DIR}/src/*.cpp)
 add_library(getelec_lib SHARED ${SOURCES})
 
 # Link the GSL and math library
-target_link_libraries(getelec_lib TBB::tbb ${GSL_LIBRARIES} m)
+target_link_libraries(getelec_lib TBB::tbb GSL::gsl GSL::gslcblas m)
 
 # Set the library's output name to "getelec"
 set_target_properties(getelec_lib PROPERTIES OUTPUT_NAME getelec)
