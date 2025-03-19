@@ -1,6 +1,7 @@
 #include "TransmissionSolver.h"
 #include <cassert>
 #include <sstream>
+#include <gsl/gsl_complex_math.h>
 
 namespace getelec{
 
@@ -73,16 +74,23 @@ double TransmissionSolver::calculateTransmissionCoefficientForEnergy(double ener
 }
 
 gsl_complex TransmissionSolver::transmissionCoefficientForWaveVector(double k){
-    gsl_complex psiRight[2];
-    GSL_SET_COMPLEX(&psiRight[0], 1/sqrt(kappaInitial), 0.);
-    GSL_SET_COMPLEX(&psiRight[1], barrier->kappaSquaredDerivative(xInitial) / pow(kappaInitial,2.5) / 4., sqrt(kappaInitial));  
+    // double prefactor = exp(solutionVector[2]);
+
+    gsl_complex incidentWaveCoeff;
+    double kappaInitialDerivaitve = 0.5 * barrier->kappaSquaredDerivative(xInitial) / kappaInitial;
+    GSL_SET_COMPLEX(&incidentWaveCoeff, 
+        0.5*(k + solutionVector[1] * kappaInitial) / k / sqrt(kappaInitial), 
+        0.25*(solutionVector[1] * kappaInitialDerivaitve - 2.* solutionVector[0]*kappaInitial ) / k / pow(kappaInitial,1.5)
+    );
+    
+    return gsl_complex_mul_real(gsl_complex_inverse(incidentWaveCoeff), exp(-solutionVector[2]));
 }
 
 void TransmissionSolver::calculateFundamentalMatrix(){
     initialValues = {0, 1, 0};
     solveNoSave();
     double prefactor = exp(solutionVector[2]);
-    fundamentalMatrix[0] = prefactor;
+    fundamentalMatrix[0] = prefactor;   
     fundamentalMatrix[1] = 0.;
     fundamentalMatrix[2] = prefactor * solutionVector[0];
     fundamentalMatrix[3] = prefactor * solutionVector[1];
