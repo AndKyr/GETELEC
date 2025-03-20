@@ -103,7 +103,7 @@ public:
                 barrier(tunnelFunctionPtr)
     {
         setXlimits(maxPotentialDepth);
-        updateKappaAtLimits();
+        updateKappaInitial();
     }
 
 
@@ -141,7 +141,7 @@ public:
     /**
      * @brief Updates the wavevector (kappa) values at the integration limits.
      */
-    void updateKappaAtLimits();
+    void updateKappaInitial();
 
     /**
      * @brief Sets the energy level for the tunneling calculation.
@@ -149,7 +149,7 @@ public:
      */
     void setEnergy(double E){
         barrier->setEnergy(E);
-        updateKappaAtLimits();
+        updateKappaInitial();
     }
 
     void resetNumberOfCalls(){numberOfCalls = 0;}
@@ -170,7 +170,14 @@ public:
     /**
      * @brief calculates the complex transmission coefficient for a given wavevector
      */
-    gsl_complex transmissionCoefficientForWaveVector(double waveVector);
+    gsl_complex transmissionCoefficientForWaveVector(double waveVector) const;
+
+    /**
+     * @brief Calculates the transmission probability for a given wavevector.
+     * @param waveVector Wavevector value.
+     * @return The transmission probability.
+     */
+    double transmissionProbabilityforWaveVector(double waveVector) const;
 
     /**
      * @brief Retrieves the number of times the transmission coefficient has been calculated.

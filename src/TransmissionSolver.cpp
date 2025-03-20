@@ -37,16 +37,13 @@ double TransmissionSolver::transmissionCoefficient() const{
     return kappaInitial / (kappaFinal * CplusCoefficientSquared);
 }
 
-void TransmissionSolver::updateKappaAtLimits(){
+void TransmissionSolver::updateKappaInitial(){
     double kappaSquaredInitial = barrier->kappaSquared(xInitial);
-    double kappaSquaredFinal = barrier->kappaSquared(xFinal);
 
-    if (kappaSquaredInitial <= 0. || kappaSquaredFinal <= 0.) 
+    if (kappaSquaredInitial <= 0.) 
         throw std::runtime_error("The tunneling energy is lower than the edge potential values. The integration interval must extend beyond the classically forbidden region.");
     
     kappaInitial = sqrt(kappaSquaredInitial);
-    kappaFinal = sqrt(kappaSquaredFinal);
-    initialValues = {0., kappaInitial, 0.};
 }
 
 double TransmissionSolver::calculateTransmissionCoefficientForEnergy(double energy){
@@ -73,7 +70,7 @@ double TransmissionSolver::calculateTransmissionCoefficientForEnergy(double ener
     return max(out, 1.e-50);
 }
 
-gsl_complex TransmissionSolver::transmissionCoefficientForWaveVector(double k){
+gsl_complex TransmissionSolver::transmissionCoefficientForWaveVector(double k) const{
     // double prefactor = exp(solutionVector[2]);
 
     gsl_complex incidentWaveCoeff;
@@ -84,6 +81,11 @@ gsl_complex TransmissionSolver::transmissionCoefficientForWaveVector(double k){
     );
     
     return gsl_complex_mul_real(gsl_complex_inverse(incidentWaveCoeff), exp(-solutionVector[2]));
+}
+
+double TransmissionSolver::transmissionProbabilityforWaveVector(double k) const{
+    gsl_complex transmissionCoeff = transmissionCoefficientForWaveVector(k);
+    return gsl_complex_abs2(transmissionCoeff);
 }
 
 void TransmissionSolver::calculateFundamentalMatrix(){
