@@ -29,14 +29,6 @@ int TransmissionSolver::tunnelingSystemJacobian(double x, const double y[], doub
         return GSL_SUCCESS;
 }
 
-double TransmissionSolver::transmissionCoefficient() const{
-    double CplusCoefficientSquared = 0.25 * exp(2. * solutionVector[2]) * (1. + 
-        (solutionVector[0]*solutionVector[0] + solutionVector[1]*solutionVector[1]) / (kappaFinal*kappaFinal) +
-            2. * solutionVector[1] / kappaFinal);
-
-    return kappaInitial / (kappaFinal * CplusCoefficientSquared);
-}
-
 void TransmissionSolver::updateKappaInitial(){
     double kappaSquaredInitial = barrier->kappaSquared(xInitial);
 
@@ -46,20 +38,19 @@ void TransmissionSolver::updateKappaInitial(){
     kappaInitial = sqrt(kappaSquaredInitial);
 }
 
-double TransmissionSolver::calculateTransmissionCoefficientForEnergy(double energy){
+double TransmissionSolver::calculateTransmissionProbability(double energy, double waveVector){
+    numberOfCalls++;
+
     setEnergy(energy);
-    if (recalculateXlimitsAtEachEnergy){
-        setXlimits(-energy + 1., -energy);
-        xInitial += 1.;
-    }
 
     //the tunneling region is really big, there is no point to calculate
     if (xInitial > 11.)
         return 1.e-50;
 
+
+    initialValues = {0, 1, 0};
     solveNoSave();
-    numberOfCalls++;
-    double out = transmissionCoefficient();
+    double out = transmissionProbabilityforWaveVector(waveVector);
     
     // Assert with inline error message construction
     assert(isfinite(out) && out >= 0. && ([](double val) {
@@ -67,12 +58,11 @@ double TransmissionSolver::calculateTransmissionCoefficientForEnergy(double ener
         ss << "transmission coefficient appears to not be finite. Current value: " << val;
         return ss.str().c_str();
     }(out)));
+
     return max(out, 1.e-50);
 }
 
 gsl_complex TransmissionSolver::transmissionCoefficientForWaveVector(double k) const{
-    // double prefactor = exp(solutionVector[2]);
-
     gsl_complex incidentWaveCoeff;
     double kappaInitialDerivaitve = 0.5 * barrier->kappaSquaredDerivative(xInitial) / kappaInitial;
     GSL_SET_COMPLEX(&incidentWaveCoeff, 

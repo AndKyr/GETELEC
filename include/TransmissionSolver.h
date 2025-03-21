@@ -155,17 +155,12 @@ public:
     void resetNumberOfCalls(){numberOfCalls = 0;}
 
     /**
-     * @brief Calculates the transmission coefficient based on the current energy level.
-     * @return The transmission coefficient (dimensionless, between 0 and 1).
-     */
-    double transmissionCoefficient() const;
-
-    /**
-     * @brief Calculates the transmission coefficient for a specific energy.
+     * @brief Calculates the transmission coefficient for a specific energy E and waveVector k.
      * @param energy Energy level (eV).
+     * @param waveVector Wavevector value. [1/nm]
      * @return The transmission coefficient.
      */
-    double calculateTransmissionCoefficientForEnergy(double energy);
+    double calculateTransmissionProbability(double energy, double waveVector);
 
     /**
      * @brief calculates the complex transmission coefficient for a given wavevector
