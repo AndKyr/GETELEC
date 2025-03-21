@@ -9,13 +9,15 @@
 
 #include <random>
 #include <iostream>
+
+namespace getelec{
 // Test for TransmissionSolver:: check that the transmission coefficient for the default barrier is calculated correctly
 TEST(TransmissionSolverTest, DefaultValueTest) {
     ModifiedSNBarrier barrier;
     TransmissionSolver solver(&barrier);
     solver.setXlimits(8.0);
-    double transmission = solver.calculateTransmissionCoefficientForEnergy(-4.5);
-    EXPECT_NEAR(transmission, 0.00066697796753640074, 1.e-10);
+    double transmission = solver.calculateTransmissionProbability(-4.5);
+    EXPECT_NEAR(transmission, 0.00065312391848547998, 1.e-10);
 }
 
 // Test for TransmissionInterpolator:: check that the inteprolated and calculated values are close
@@ -26,7 +28,7 @@ TEST(TransmissionInterpolatorTest, evaluationTest) {
     mt19937 generator(1987);
 
     double testEnergy = Utilities::getUniformRandomDouble(-7., 0., generator);
-    double calculatedValue = solver.calculateTransmissionCoefficientForEnergy(-4.5 + testEnergy);
+    double calculatedValue = solver.calculateTransmissionProbability(-4.5 + testEnergy);
 
     TransmissionInterpolator interpolator(solver);
     interpolator.initialize(-7., 0.0, 8);
@@ -120,6 +122,9 @@ TEST(GeneralXCFunctionTest, DerivativeTest){
     }
 
 }
+
+
+} // namespace getelec
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

@@ -50,7 +50,7 @@ public:
      * @return The y-value, representing the logarithm of the transmission coefficient.
      */
     double calculateYforX(double energy) override{
-        return log(solver.calculateTransmissionCoefficientForEnergy(-workFunction + energy));
+        return log(solver.calculateTransmissionProbability(-workFunction + energy));
     }
 
     /**

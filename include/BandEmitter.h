@@ -284,7 +284,7 @@ public:
      * @note It is not necessary to set the interpolator before, but it might be slow for multiple calls.
      */
     double calculateTransmissionCoefficientForEnergy(double energy){
-        return transmissionSolver.calculateTransmissionCoefficientForEnergy(-workFunction + energy);
+        return transmissionSolver.calculateTransmissionProbability(workFunction + energy);
     }
 };
 

@@ -159,7 +159,7 @@ void BandEmitter::writePlottingData(string filename) {
     ofstream outFile(filename, ios::out);        
     outFile << " E D_calc D_interp error NED TED lFD(E) tolerance" << endl;
     for (double x = xInitial; x < xFinal; x += 0.001) {
-        double D = transmissionSolver.calculateTransmissionCoefficientForEnergy(x - workFunction);
+        double D = transmissionSolver.calculateTransmissionProbability(x - workFunction);
         double lFD = Utilities::logFermiDiracFunction(x, kT);
         double err = interpolator.calculateError(x, log(D));
         double tol = interpolator.calculateTolerance(x, log(D));

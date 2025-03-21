@@ -144,6 +144,12 @@ public:
     void updateKappaInitial();
 
     /**
+     * @brief Calculates the final wavevector (kappa) value at x=xFinal.
+     * @return The final wavevector value.
+     */
+    double calculateKappaFinal() const;
+
+    /**
      * @brief Sets the energy level for the tunneling calculation.
      * @param E Energy level (eV).
      */
@@ -160,7 +166,7 @@ public:
      * @param waveVector Wavevector value. [1/nm]
      * @return The transmission coefficient.
      */
-    double calculateTransmissionProbability(double energy, double waveVector);
+    double calculateTransmissionProbability(double energy, double waveVector=-1.);
 
     /**
      * @brief calculates the complex transmission coefficient for a given wavevector

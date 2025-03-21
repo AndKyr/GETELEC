@@ -38,6 +38,15 @@ void TransmissionSolver::updateKappaInitial(){
     kappaInitial = sqrt(kappaSquaredInitial);
 }
 
+double TransmissionSolver::calculateKappaFinal() const{
+    double kappaSquaredFinal = barrier->kappaSquared(xFinal);
+
+    if (kappaSquaredFinal <= 0.) 
+        throw std::runtime_error("The tunneling energy is lower than the left edge potential values. The integration interval must extend beyond the classically forbidden region.");
+    
+    return sqrt(kappaSquaredFinal);
+}
+
 double TransmissionSolver::calculateTransmissionProbability(double energy, double waveVector){
     numberOfCalls++;
 
@@ -47,10 +56,14 @@ double TransmissionSolver::calculateTransmissionProbability(double energy, doubl
     if (xInitial > 11.)
         return 1.e-50;
 
-
     initialValues = {0, 1, 0};
     solveNoSave();
-    double out = transmissionProbabilityforWaveVector(waveVector);
+
+    double k = waveVector;
+    if (k <= 0.)
+        k = calculateKappaFinal();
+    
+    double out = transmissionProbabilityforWaveVector(k);
     
     // Assert with inline error message construction
     assert(isfinite(out) && out >= 0. && ([](double val) {
@@ -64,18 +77,20 @@ double TransmissionSolver::calculateTransmissionProbability(double energy, doubl
 
 gsl_complex TransmissionSolver::transmissionCoefficientForWaveVector(double k) const{
     gsl_complex incidentWaveCoeff;
-    double kappaInitialDerivaitve = 0.5 * barrier->kappaSquaredDerivative(xInitial) / kappaInitial;
-    GSL_SET_COMPLEX(&incidentWaveCoeff, 
-        0.5*(k + solutionVector[1] * kappaInitial) / k / sqrt(kappaInitial), 
-        0.25*(solutionVector[1] * kappaInitialDerivaitve - 2.* solutionVector[0]*kappaInitial ) / k / pow(kappaInitial,1.5)
-    );
+    double kappaInitialDerivaitve = 0.;// = 0.5 * barrier->kappaSquaredDerivative(xInitial) / kappaInitial;
+    // GSL_SET_COMPLEX(&incidentWaveCoeff, 
+    //     0.5*(k + solutionVector[1] * kappaInitial) / k / sqrt(kappaInitial), 
+    //     0.25*(solutionVector[1] * kappaInitialDerivaitve - 2.* solutionVector[0]*kappaInitial ) / k / pow(kappaInitial,1.5)
+    // );
+
+    GSL_SET_COMPLEX(&incidentWaveCoeff, k + solutionVector[1] * kappaInitial, -solutionVector[0]);
     
-    return gsl_complex_mul_real(gsl_complex_inverse(incidentWaveCoeff), exp(-solutionVector[2]));
+    return gsl_complex_mul_real(gsl_complex_inverse(incidentWaveCoeff), 2. * exp(-solutionVector[2]) * k * sqrt(kappaInitial));
 }
 
 double TransmissionSolver::transmissionProbabilityforWaveVector(double k) const{
     gsl_complex transmissionCoeff = transmissionCoefficientForWaveVector(k);
-    return gsl_complex_abs2(transmissionCoeff);
+    return gsl_complex_abs2(transmissionCoeff) / k;
 }
 
 void TransmissionSolver::calculateFundamentalMatrix(){
