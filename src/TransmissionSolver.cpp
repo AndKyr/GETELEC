@@ -89,8 +89,11 @@ gsl_complex TransmissionSolver::transmissionCoefficientForWaveVector(double k) c
 }
 
 double TransmissionSolver::transmissionProbabilityforWaveVector(double k) const{
-    gsl_complex transmissionCoeff = transmissionCoefficientForWaveVector(k);
-    return gsl_complex_abs2(transmissionCoeff) / k;
+    // gsl_complex transmissionCoeff = transmissionCoefficientForWaveVector(k);
+    // return gsl_complex_abs2(transmissionCoeff) / k;
+    double factor = k + solutionVector[1] * kappaInitial;
+    factor = solutionVector[0] * solutionVector[0] + factor * factor;
+    return 4 * exp(-2*solutionVector[2]) * k * kappaInitial / factor;
 }
 
 void TransmissionSolver::calculateFundamentalMatrix(){
