@@ -38,10 +38,10 @@ double BandEmitter::setTransmissionSolver(){
     // Set the limits for the transmission solver. The argument counts the barrier depth from Evacuum.
     transmissionSolver.setXlimits(workFunction - minNormalEnergy + 2.); 
 
-    if (transmissionSolver.getXFinal() > 10.) 
-        transmissionSolver.setRecalculateXlimitsAtEachEnergy(true);
-    else
-        transmissionSolver.setRecalculateXlimitsAtEachEnergy(false);
+    // if (transmissionSolver.getXFinal() > 10.) 
+    //     transmissionSolver.setRecalculateXlimitsAtEachEnergy(true);
+    // else
+    //     transmissionSolver.setRecalculateXlimitsAtEachEnergy(false);
     
     return minNormalEnergy;
 }

@@ -24,9 +24,9 @@ class TransmissionSolver : public ODESolver {
 private:
     TunnelingFunction* barrier; /**< Pointer to the tunneling function defining the potential barrier. */
     double kappaInitial; /**< Initial value of the wavevector (kappa) for the tunneling region. */
-    double kappaFinal; /**< Final value of the wavevector (kappa) for the tunneling region. */
+    //double kappaFinal; /**< Final value of the wavevector (kappa) for the tunneling region. */
     int numberOfCalls = 0; /**< Counter for the number of times the transmission coefficient is calculated. */
-    bool recalculateXlimitsAtEachEnergy = false; /**< Flag to recalculate the integration limits for each energy level. */
+    //bool recalculateXlimitsAtEachEnergy = false; /**< Flag to recalculate the integration limits for each energy level. */
     array<double,4> fundamentalMatrix; /**< The fundamental matrix of the general solution of the real problem (\boldsymbol{\Phi} in paper) */
     
     /**
@@ -153,9 +153,10 @@ public:
      * @brief Sets the energy level for the tunneling calculation.
      * @param E Energy level (eV).
      */
-    void setEnergy(double E){
+    void setEnergyAndInitialValues(double E){
         barrier->setEnergy(E);
         updateKappaInitial();
+        initialValues = {0., kappaInitial, -0.5 * log(kappaInitial)};
     }
 
     void resetNumberOfCalls(){numberOfCalls = 0;}
@@ -171,14 +172,14 @@ public:
     /**
      * @brief calculates the complex transmission coefficient for a given wavevector
      */
-    gsl_complex transmissionCoefficientForWaveVector(double waveVector) const;
+    gsl_complex getTransmissionCoefficientForWaveVector(double waveVector) const;
 
     /**
      * @brief Calculates the transmission probability for a given wavevector.
      * @param waveVector Wavevector value.
      * @return The transmission probability.
      */
-    double transmissionProbabilityforWaveVector(double waveVector) const;
+    double getTransmissionProbabilityforWaveVector(double waveVector) const;
 
     /**
      * @brief Retrieves the number of times the transmission coefficient has been calculated.
@@ -186,17 +187,17 @@ public:
      */
     int getNumberOfCalls() { return numberOfCalls; }
 
-    /**
-     * @brief Sets the flag to recalculate the integration limits for each energy level.
-     * @param flag Flag value.
-     */
-    void setRecalculateXlimitsAtEachEnergy(bool flag) { recalculateXlimitsAtEachEnergy = flag; }
+    // /**
+    //  * @brief Sets the flag to recalculate the integration limits for each energy level.
+    //  * @param flag Flag value.
+    //  */
+    // void setRecalculateXlimitsAtEachEnergy(bool flag) { recalculateXlimitsAtEachEnergy = flag; }
 
-    /**
-     * @brief Retrieves the flag for recalculating the integration limits.
-     * @return The flag value.
-     */
-    bool getRecalculateXlimitsAtEachEnergy() { return recalculateXlimitsAtEachEnergy; }
+    // /**
+    //  * @brief Retrieves the flag for recalculating the integration limits.
+    //  * @return The flag value.
+    //  */
+    // bool getRecalculateXlimitsAtEachEnergy() { return recalculateXlimitsAtEachEnergy; }
 
     /**
      * @brief Prints the integration limits for debugging purposes.

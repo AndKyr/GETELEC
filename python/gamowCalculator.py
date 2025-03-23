@@ -204,6 +204,10 @@ class Schrodinger1DSolverIVP(Schrodinger1DSolver):
     
     def solveSystem(self) -> None:
         self.solution = ig.solve_ivp(self.differentialSystem, [self.xLimits[1], self.xLimits[0]], [1., 1j * self.kRight], rtol=1.e-8)#, jac=self.jacobian)
+    
+    def solveForInitialConditions(self, initialConditions:np.ndarray) -> None:
+        self.solution = ig.solve_ivp(self.differentialSystem, [self.xLimits[1], self.xLimits[0]], initialConditions, rtol=1.e-8)
+        return self.solution.y[:,-1]
 
     def jacobian(self, x, y):
         return [[0., 1.], [self.kConstant * (self.potentialFunction(x) - self.energy), 0.]]
