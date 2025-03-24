@@ -76,7 +76,7 @@ void BandEmitter::setParameters(double workFunction_, double kT_, double effecti
     bandDepth = bandDepth_;
     effectiveMass = effectiveMass_;
     kT = kT_;
-    interpolator.setParameters(kT, workFunction);
+    interpolator.setParameters(kT, workFunction, bandDepth);
 
     //set ODE integration limits and affected parameters
     xInitial = -bandDepth;

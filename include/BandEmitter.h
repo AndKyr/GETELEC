@@ -143,7 +143,7 @@ public:
             config.relativeTolerance, config.absoluteTolerance, gsl_odeiv2_step_rkck, 
             config.maxSteps, config.minSteps, config.stepExpectedForInitialStep, NULL, this), 
           transmissionSolver(solver), 
-          interpolator(solver, workFun, kT_, config.absoluteTolerance, config.relativeTolerance),
+          interpolator(solver, workFun, kT_, bandDepth_, config.absoluteTolerance, config.relativeTolerance),
           configParams(config) {
         setParameters(workFun, kT_, effMass, bandDepth_);
         updateSolverAndInterpolator();

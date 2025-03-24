@@ -17,7 +17,7 @@ TEST(TransmissionSolverTest, DefaultValueTest) {
     TransmissionSolver solver(&barrier);
     solver.setXlimits(8.0);
     double transmission = solver.calculateTransmissionProbability(-4.5);
-    EXPECT_NEAR(transmission, 0.00065312391848547998, 1.e-10);
+    EXPECT_NEAR(transmission, 0.00066697796753639933, 1.e-10);
 }
 
 // Test for TransmissionInterpolator:: check that the inteprolated and calculated values are close
@@ -25,17 +25,25 @@ TEST(TransmissionInterpolatorTest, evaluationTest) {
     ModifiedSNBarrier barrier;
     TransmissionSolver solver(&barrier);
     solver.setXlimits(12.);
+
+    const double bandDepth = 7.5;
+    const double workFunction = 4.5;
+
+    TransmissionInterpolator interpolator(solver, workFunction, 0.025, bandDepth);
+    interpolator.initialize(-bandDepth+0.1, 1.0, 4);
+    interpolator.refineToTolerance();
+
+
     mt19937 generator(1987);
 
-    double testEnergy = Utilities::getUniformRandomDouble(-7., 0., generator);
-    double calculatedValue = solver.calculateTransmissionProbability(-4.5 + testEnergy);
-
-    TransmissionInterpolator interpolator(solver);
-    interpolator.initialize(-7., 0.0, 8);
-    interpolator.refineToTolerance();
-    double interpolatedValue = interpolator.evaluate(testEnergy);
-    
-    EXPECT_NEAR(interpolatedValue, calculatedValue, interpolator.calculateTolerance(testEnergy, log(calculatedValue))); // Transmission coefficient is expected to be less than 1
+    for (int i = 0; i < 64; i++){
+        double testEnergy = Utilities::getUniformRandomDouble(-bandDepth+0.1, 1., generator);
+        double waveVector = sqrt(testEnergy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
+        double calculatedValue = solver.calculateTransmissionProbability(-4.5 + testEnergy, waveVector);
+        double interpolatedValue = interpolator.evaluate(testEnergy);
+        
+        EXPECT_NEAR(interpolatedValue, calculatedValue, interpolator.calculateTolerance(testEnergy, log(calculatedValue))); // Transmission coefficient is expected to be less than 1
+    }
 }
 
 TEST(BandEmitterTest, DefaultValueTest){

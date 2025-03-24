@@ -454,7 +454,7 @@ if __name__ == "__main__":
     angleTrans = np.zeros(Npoints)
     for i in range(Npoints):
         Coeff = calculator.solver.getTransmissionCoefficient(kLeft[i])
-        Dtrans[i] = np.abs(Coeff)**2
+        Dtrans[i] = np.abs(Coeff)**2 / kLeft[i]
         angleTrans[i] = np.angle(Coeff)
 
     fig = plt.figure()

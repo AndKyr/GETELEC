@@ -27,6 +27,7 @@ using namespace std;
 static constexpr struct PhysicalConstants {
     double hbarSqrOver2m = 3.80998212e-2; /**< Reduced Planck's constant squared over 2m (eV·nm²). */
     double kConstant = 1. / hbarSqrOver2m; /**< Energy-dependent constant. */
+    double sqrt2mOverHbar = sqrt(kConstant); /**<  sqrt(2m)/hbar. */
     double imageChargeConstant = 0.359991137; /**< Constant for image charge effects (eV·nm). */
     double BoltzmannConstant = 8.617333262e-5; /**< Boltzmann constant in eV/K. */
     double SommerfeldConstant = 1.618311e-4; /**< Sommerfeld constant for current density. */
