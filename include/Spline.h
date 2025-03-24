@@ -12,31 +12,38 @@
 
 using namespace std;
 
-class HermiteSpline{
+class BSpline{
 public:
-    HermiteSpline(vector<double>& x, vector<double>& y, vector<double>& dy_dx){
+    BSpline(vector<double>& x, vector<double>& y){
 
         // Ensure the input vectors have the same size
-        if (x.size() != y.size() || x.size() != dy_dx.size())
+        if (x.size() != y.size() || x.size())
             throw invalid_argument("Input vectors must have the same size");
 
         positions = gsl_vector_alloc(x.size());
-        for (size_t i = 0; i < x.size(); i++) gsl_vector_set(positions, i, x[i]); 
+        for (size_t i = 0; i < x.size(); i++) 
+            gsl_vector_set(positions, i, x[i]); 
 
-        gsl_vector* values = gsl_vector_alloc(y.size());
-        for (size_t i = 0; i < y.size(); i++) gsl_vector_set(values, i, y[i]); 
-
-        gsl_vector* derivs = gsl_vector_alloc(y.size());
-        for (size_t i = 0; i < dy_dx.size(); i++) gsl_vector_set(derivs, i, dy_dx[i]); 
-
-        gsl_bspline_init_hermite(1, positions, workSpace);
-        gsl_bspline_interp_chermite(positions, values, derivs, coefficients, workSpace);
+        values = gsl_vector_alloc(y.size());
+        for (size_t i = 0; i < y.size(); i++) 
+            gsl_vector_set(values, i, y[i]); 
 
     }
 
-    ~HermiteSpline() {
+    BSpline(gsl_vector* x, gsl_vector* y){
+
+        // Ensure the input vectors have the same size
+        if (x->size != y->size)
+            throw invalid_argument("Input vectors must have the same size");
+
+        positions = x;
+        values = y;
+    }
+
+    ~BSpline() {
         gsl_bspline_free(workSpace);
         gsl_vector_free(coefficients);
+        gsl_vector_free(positions);
     }
 
     // Function to evaluate the spline at a given point
@@ -59,10 +66,35 @@ public:
         return result;
     }
 
-private:
+protected:
     gsl_bspline_workspace* workSpace;  // Workspace for spline evaluation
     gsl_vector* coefficients;
     gsl_vector* positions;
+    gsl_vector* values;
+};
+
+class HermiteSpline : public BSpline{
+public:
+    HermiteSpline(vector<double>& x, vector<double>& y, vector<double>& dy_dx) : BSpline(x, y) {
+            // Ensure the input vectors have the same size
+        if (x.size() != y.size() || x.size() != dy_dx.size())
+            throw invalid_argument("Input vectors must have the same size");
+
+        gsl_vector* derivs = gsl_vector_alloc(y.size());
+        for (size_t i = 0; i < dy_dx.size(); i++) gsl_vector_set(derivs, i, dy_dx[i]); 
+
+        gsl_bspline_init_hermite(1, positions, workSpace);
+        gsl_bspline_interp_chermite(positions, values, derivs, coefficients, workSpace);
+    }
+
+    HermiteSpline(gsl_vector* x, gsl_vector* y, gsl_vector* dy_dx) : BSpline(x, y) {
+        // Ensure the input vectors have the same size
+        if (x->size != y->size || x->size != dy_dx->size)
+            throw invalid_argument("Input vectors must have the same size");
+
+        gsl_bspline_init_hermite(1, positions, workSpace);
+        gsl_bspline_interp_chermite(positions, values, dy_dx, coefficients, workSpace);
+    }
 };
 
 #endif //SPLINE_H_
