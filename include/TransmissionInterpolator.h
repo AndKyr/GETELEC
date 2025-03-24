@@ -21,6 +21,7 @@ private:
     TransmissionSolver& solver; /**< Reference to a TransmissionSolver for transmission coefficient calculations. */
     double kT; /**< Thermal energy (eV). */
     double workFunction; /**< Work function of the material (eV). */
+    double bandDepth; /**< Bottom of the band (eV). */
 
 public:
 
@@ -36,12 +37,13 @@ public:
     TransmissionInterpolator(TransmissionSolver& solver_, 
                             double workFunction_ = 4.5, 
                             double kT_ = .025, 
+                            double bandDepth_ = 10.,
                             double aTol = 1.e-12, 
                             double rTol = 1.e-5) 
                                 : FunctionInterpolator(aTol, rTol), 
                                 solver(solver_),
                                 workFunction(workFunction_), 
-                                kT(kT_)
+                                kT(kT_), bandDepth(bandDepth_)
     {}
 
     /**
@@ -49,9 +51,7 @@ public:
      * @param x The x-coordinate, representing energy (eV).
      * @return The y-value, representing the logarithm of the transmission coefficient.
      */
-    double calculateYforX(double energy) override{
-        return log(solver.calculateTransmissionProbability(-workFunction + energy));
-    }
+    double calculateYforX(double normalEnergy) override;
 
     /**
      * @brief Calculates the error between the interpolated and calculated values.
@@ -59,9 +59,7 @@ public:
      * @param yCalculated The calculated y-value.
      * @return The error between the calculated and interpolated values.
      */
-    double calculateError(double energy, double logD) override{
-        return Utilities::fermiDiracFunction(energy, kT) * abs(exp(logD) - exp(gsl_spline_eval(spline, energy, accelerator)));
-    }
+    double calculateError(double energy, double logD) override;
 
     /**
      * @brief Computes the tolerance level for the interpolation process.
@@ -69,30 +67,13 @@ public:
      * @param yValue The y-value, representing the logarithm of the transmission coefficient.
      * @return The tolerance level at the given x-coordinate.
      */
-    double calculateTolerance(double energy, double logD) override {
-        double maxEmissionEstimate = 0.;
-        for (auto& v : samplingList){
-            double emissionEstimate = exp(v.y) * Utilities::logFermiDiracFunction(v.x, kT);
-            if (emissionEstimate > maxEmissionEstimate)
-                maxEmissionEstimate = emissionEstimate;
-        }
-
-        double emissionEstimate = exp(logD) * Utilities::logFermiDiracFunction(energy, kT);
-
-        if (energy <= 0 || logD > -2.) // if we are out of the sensitive region
-            return absoluteTolerance + (maxEmissionEstimate) * relativeTolerance;
-        else
-            return absoluteTolerance + emissionEstimate * relativeTolerance;
-    }
+    double calculateTolerance(double energy, double logD) override;
     
     /** @brief set the temperature and work function parameters
      * @param kT_ Thermal energy (eV).
      * @param W Work function (eV).
      */
-    void setParameters(double kT_, double W){
-        kT = kT_;
-        workFunction = W;
-    }
+    void setParameters(double kT_, double W, double bandDepth_);
 
     /** @brief Interpolates the sampled function at position @param x */
     double evaluate(double x) override{
