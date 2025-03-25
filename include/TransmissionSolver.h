@@ -28,16 +28,28 @@ private:
     int numberOfCalls = 0; /**< Counter for the number of times the transmission coefficient is calculated. */
     //bool recalculateXlimitsAtEachEnergy = false; /**< Flag to recalculate the integration limits for each energy level. */
     array<double,4> fundamentalMatrix; /**< The fundamental matrix of the general solution of the real problem (\boldsymbol{\Phi} in paper) */
+    int energyDerivativeLvl; /**< The level of energy derivative to calculate. */
     
     /**
      * @brief Defines the system of differential equations for tunneling.
      * @param x Independent variable (position or distance).
      * @param y Array of dependent variables.
      * @param f Array of derivatives of the dependent variables.
-     * @param params Additional system parameters.
+     * @param params Additional system parameters. In our case it takes a pointer to the tunneling function.
      * @return GSL_SUCCESS on success.
      */
     static int tunnelingDifferentialSystem(double x, const double y[], double f[], void* params);
+
+
+    /**
+     * @brief Defines the system of differential equations for tunneling, including the first derivative with respect to energy.
+     * @param x Independent variable (position or distance).
+     * @param y Array of dependent variables.
+     * @param f Array of derivatives of the dependent variables.
+     * @param params Additional system parameters. Here it takes a pointer to the tunneling function.
+     * @return GSL_SUCCESS on success.
+     */
+    static int tunnelingDifferentialSystemWithEnergyDerivative(double x, const double y[], double f[], void* params);
 
     /**
      * @brief Computes the Jacobian matrix for the tunneling system (currently unused).
@@ -49,35 +61,6 @@ private:
      * @return GSL_SUCCESS on success.
      */
     static int tunnelingSystemJacobian(double x, const double y[], double* dfdy, double dfdt[], void* params);
-
-    static const gsl_odeiv2_step_type* getStepTypeFromString(const string& stepTypeName){
-        if (stepTypeName == "rk2")
-            return gsl_odeiv2_step_rk2;
-        else if (stepTypeName == "rkf45")
-            return gsl_odeiv2_step_rk4;
-        else if (stepTypeName == "rkf45")
-            return gsl_odeiv2_step_rkf45;
-        else if (stepTypeName == "rkck")
-            return gsl_odeiv2_step_rkck;
-        else if (stepTypeName == "rk8pd")
-            return gsl_odeiv2_step_rk8pd;
-        else if (stepTypeName == "rk2imp")
-            return gsl_odeiv2_step_rk2imp;
-        else if (stepTypeName == "rk4imp")
-            return gsl_odeiv2_step_rk4imp;
-        else if (stepTypeName == "bsimp")
-            return gsl_odeiv2_step_bsimp;
-        else if (stepTypeName == "rk1imp")
-            return gsl_odeiv2_step_rk1imp;
-        else if (stepTypeName == "msadams")
-            return gsl_odeiv2_step_msadams;
-        else if (stepTypeName == "msbdf")
-            return gsl_odeiv2_step_msbdf;   
-        else {
-            cout << "WARNING : stpeTypeName " << stepTypeName << "not valid. Reverting to default rkck" << endl;
-            return gsl_odeiv2_step_rkck;
-        }
-    }
  
 
 public:
@@ -95,15 +78,18 @@ public:
     TransmissionSolver(
         TunnelingFunction* tunnelFunctionPtr,
         Config::TransmissionSolverParams config = Config().transmissionSolverParams,
-        double maxPotentialDepth = 10.
-        ) : ODESolver(vector<double>(3, 0.0), tunnelingDifferentialSystem, 3, 
-                {2.00400712, 0.03599847}, config.relativeTolerance, config.absoluteTolerance, 
-                getStepTypeFromString(config.stepType), config.maxSteps, config.minSteps, 
+        double maxPotentialDepth = 10.,
+        int energyDerivativeLvl_ = 0
+        ) : ODESolver(vector<double>(3 * (energyDerivativeLvl_+1), 0.0), 
+                energyDerivativeLvl_ == 0 ? tunnelingDifferentialSystem : tunnelingDifferentialSystemWithEnergyDerivative,
+                3 * (energyDerivativeLvl_+1), {2.00400712, 0.03599847}, config.relativeTolerance, config.absoluteTolerance, 
+                config.stepType, config.maxSteps, config.minSteps, 
                 config.stepExpectedForInitialStep, tunnelingSystemJacobian, tunnelFunctionPtr), 
-                barrier(tunnelFunctionPtr)
+                barrier(tunnelFunctionPtr), energyDerivativeLvl(energyDerivativeLvl_)
     {
         setXlimits(maxPotentialDepth);
         updateKappaInitial();
+        assert(!needsJacobian || (energyDerivativeLvl_ == 0));
     }
 
 

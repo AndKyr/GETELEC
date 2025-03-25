@@ -15,6 +15,18 @@ int TransmissionSolver::tunnelingDifferentialSystem(double x, const double y[], 
         return GSL_SUCCESS;
 }
 
+int TransmissionSolver::tunnelingDifferentialSystemWithEnergyDerivative(double x, const double y[], double f[], void *params){
+    TunnelingFunction* barrier = (TunnelingFunction*) params;
+    //y[0] = Re{s0'}, y[1] = Im{s0'}, y[2] = Re{s0}, y[3] = Re{s1'}, y[4] = Im{s1'}, y[5] = Re{s1}
+    f[0] =  -barrier->kappaSquared(x) - y[0]*y[0] + y[1]*y[1]; //Re{s0''} = -k^2 - Re{s0'}^2 + Im{s0'}^2
+    f[1] = - 2. * y[0] * y[1]; //Im{s0''} = -2 Re{s0'} Im{s0'}
+    f[2] = y[0]; //Re{s'} = Re{s0'}
+    f[3] = -1. + 2. * (y[1] * y[4] - y[0] * y[3]); //Im{s1''} = -1 + 2 Im{s0'} Im{s1'} -2*Re{s0'}Re{s1'}.
+    f[4] = -2. * (y[0] * y[4] + y[1] * y[3]); //Re{s1''} = 2 Re{s0'} Im{s1'} + 2 Im{s0'} Re{s1'}
+    f[5] = y[3]; //Re{s1'} = Re{s1'}
+    return GSL_SUCCESS;
+}
+
 int TransmissionSolver::tunnelingSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params){
         TunnelingFunction* barrier = (TunnelingFunction*) params;
         gsl_matrix_view dfdy_mat = gsl_matrix_view_array(dfdy, 3, 3);

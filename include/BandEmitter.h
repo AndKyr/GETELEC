@@ -140,7 +140,7 @@ public:
                 double bandDepth_ = 7.
                 )
         : ODESolver(vector<double>(3, 0.0), differentialSystem, 3, {0., 1.}, 
-            config.relativeTolerance, config.absoluteTolerance, gsl_odeiv2_step_rkck, 
+            config.relativeTolerance, config.absoluteTolerance, "rkck", 
             config.maxSteps, config.minSteps, config.stepExpectedForInitialStep, NULL, this), 
           transmissionSolver(solver), 
           interpolator(solver, workFun, kT_, bandDepth_, config.absoluteTolerance, config.relativeTolerance),

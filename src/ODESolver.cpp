@@ -1,41 +1,9 @@
 #include "ODESolver.h"
 #include <gsl/gsl_math.h>
+#include <iostream>
 
 
 namespace getelec{
-
-ODESolver::ODESolver( 
-        vector<double>initialValues,
-        int (*differentialSystem)(double, const double*, double* , void*),
-        int systemDimension, 
-        vector<double> xLims,
-        double rtol,
-        double atol,
-        const gsl_odeiv2_step_type* stepType,
-        int maxSteps,
-        int minSteps,
-        int stepExpectedForInitialStep,
-        int (*differentialSystemJacobian)(double, const double*, double*, double*, void*),
-        void* params
-                ) : systemDimension(systemDimension),
-                    xInitial(xLims[0]),
-                    xFinal(xLims[1]),
-                    stepType(stepType),
-                    maxAllowedSteps(maxSteps),
-                    minAllowedSteps(minSteps),
-                    maxStepSize((xLims[1] - xLims[0]) / minSteps),
-                    stepsExpectedForInitialStep(stepExpectedForInitialStep),
-                    initialValues(initialValues),
-                    differentialSystem(differentialSystem),
-                    differentialSystemJacobian(differentialSystemJacobian),
-                    parameters(params),
-                    step(gsl_odeiv2_step_alloc(stepType, systemDimension)),
-                    evolver(gsl_odeiv2_evolve_alloc(systemDimension))
-{
-    initialStep = (xFinal - xInitial) / stepsExpectedForInitialStep;
-    sys = {differentialSystem, differentialSystemJacobian, (size_t) systemDimension, parameters};
-    setTolerances(atol, rtol);
-}
 
 int ODESolver::solve(bool saveSolution){
 
@@ -56,6 +24,40 @@ int ODESolver::solve(bool saveSolution){
             return status;         
     }
     return GSL_CONTINUE;
+}
+
+
+const gsl_odeiv2_step_type* ODESolver::getStepTypeFromString(const string& stepTypeName){
+    needsJacobian = false;
+    if (stepTypeName == "rk2")
+        return gsl_odeiv2_step_rk2;
+    else if (stepTypeName == "rkf45")
+        return gsl_odeiv2_step_rk4;
+    else if (stepTypeName == "rkf45")
+        return gsl_odeiv2_step_rkf45;
+    else if (stepTypeName == "rkck")
+        return gsl_odeiv2_step_rkck;
+    else if (stepTypeName == "rk8pd")
+        return gsl_odeiv2_step_rk8pd;
+    
+    needsJacobian = true;
+    if (stepTypeName == "rk2imp")
+        return gsl_odeiv2_step_rk2imp;
+    else if (stepTypeName == "rk4imp")
+        return gsl_odeiv2_step_rk4imp;
+    else if (stepTypeName == "bsimp")
+        return gsl_odeiv2_step_bsimp;
+    else if (stepTypeName == "rk1imp")
+        return gsl_odeiv2_step_rk1imp;
+    else if (stepTypeName == "msadams")
+        return gsl_odeiv2_step_msadams;
+    else if (stepTypeName == "msbdf")
+        return gsl_odeiv2_step_msbdf;   
+    else {
+        cout << "WARNING : stpeTypeName " << stepTypeName << "not valid. Reverting to default rkck" << endl;
+        needsJacobian = false;
+        return gsl_odeiv2_step_rkck;
+    }
 }
 
 int ODESolver::solveNoSave(){
