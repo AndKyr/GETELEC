@@ -22,6 +22,7 @@ private:
     double kT; /**< Thermal energy (eV). */
     double workFunction; /**< Work function of the material (eV). */
     double bandDepth; /**< Bottom of the band (eV). */
+    double effectiveMass = 1.; /**< Effective mass of the material. */
 
 public:
 
@@ -38,12 +39,13 @@ public:
                             double workFunction_ = 4.5, 
                             double kT_ = .025, 
                             double bandDepth_ = 10.,
+                            double effecitveMass_ = 1.,
                             double aTol = 1.e-12, 
                             double rTol = 1.e-5) 
                                 : FunctionInterpolator(aTol, rTol), 
                                 solver(solver_),
                                 workFunction(workFunction_), 
-                                kT(kT_), bandDepth(bandDepth_)
+                                kT(kT_), bandDepth(bandDepth_), effectiveMass(effecitveMass_)
     {}
 
     /**
@@ -73,7 +75,7 @@ public:
      * @param kT_ Thermal energy (eV).
      * @param W Work function (eV).
      */
-    void setParameters(double kT_, double W, double bandDepth_);
+    void setParameters(double kT_, double W, double bandDepth_, double effectiveMass);
 
     /** @brief Interpolates the sampled function at position @param x */
     double evaluate(double x) override{

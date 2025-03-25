@@ -76,7 +76,7 @@ void BandEmitter::setParameters(double workFunction_, double kT_, double effecti
     bandDepth = bandDepth_;
     effectiveMass = effectiveMass_;
     kT = kT_;
-    interpolator.setParameters(kT, workFunction, bandDepth);
+    interpolator.setParameters(kT, workFunction, bandDepth, effectiveMass);
 
     //set ODE integration limits and affected parameters
     xInitial = -bandDepth;
@@ -163,7 +163,10 @@ void BandEmitter::writePlottingData(string filename) {
         double lFD = Utilities::logFermiDiracFunction(x, kT);
         double err = interpolator.calculateError(x, log(D));
         double tol = interpolator.calculateTolerance(x, log(D));
-        outFile << x << " " << D << " " << interpolator.evaluate(x) << " " << err << " " << lFD * D << " " << spectraForEnergy(x) << " " << lFD << " " << tol << endl;
+        if (spectraSpline)
+            outFile << x << " " << D << " " << interpolator.evaluate(x) << " " << err << " " << lFD * D << " " << spectraForEnergy(x) << " " << lFD << " " << tol << endl;
+        else
+            outFile << x << " " << D << " " << interpolator.evaluate(x) << " " << err << " " << lFD * D << " " << lFD << " " << tol << endl;
     }
     interpolator.writeSplineNodes();
 }

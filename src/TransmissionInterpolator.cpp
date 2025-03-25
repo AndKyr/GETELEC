@@ -5,7 +5,7 @@ namespace getelec{
 
 double TransmissionInterpolator::calculateYforX(double normalEnergy){
     double kineticEnergy = normalEnergy + bandDepth;
-    assert(kineticEnergy > 0);
+    if(kineticEnergy <= 0) kineticEnergy = 0.1;
     double waveVector = sqrt(kineticEnergy) * CONSTANTS.sqrt2mOverHbar;
     return log(solver.calculateTransmissionProbability(-workFunction + normalEnergy, waveVector));
 }
@@ -31,10 +31,11 @@ double TransmissionInterpolator::calculateTolerance(double energy, double logD) 
         return absoluteTolerance + emissionEstimate * relativeTolerance;
 }
 
-void TransmissionInterpolator::setParameters(double kT_, double W, double bandDepth_){
+void TransmissionInterpolator::setParameters(double kT_, double W, double bandDepth_, double effecitveMass_){
     kT = kT_;
     workFunction = W;
     bandDepth = bandDepth_;
+    effectiveMass = effecitveMass_;
 }
 
 

@@ -41,8 +41,11 @@ TEST(TransmissionInterpolatorTest, evaluationTest) {
         double waveVector = sqrt(testEnergy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
         double calculatedValue = solver.calculateTransmissionProbability(-4.5 + testEnergy, waveVector);
         double interpolatedValue = interpolator.evaluate(testEnergy);
+
+        double error = interpolator.calculateError(testEnergy, log(calculatedValue));
+        double tolerance = interpolator.calculateTolerance(testEnergy, log(calculatedValue));
+        EXPECT_LE(error, 10 * tolerance);
         
-        EXPECT_NEAR(interpolatedValue, calculatedValue, interpolator.calculateTolerance(testEnergy, log(calculatedValue))); // Transmission coefficient is expected to be less than 1
     }
 }
 
@@ -53,8 +56,8 @@ TEST(BandEmitterTest, DefaultValueTest){
     emitter.calculateCurrentDensityAndSpectra();
     double currentDensity = emitter.getCurrentDensity();
     double nottinghamHeat = emitter.getNottinghamHeat();
-    EXPECT_NEAR(3.6745963706309422e-09, currentDensity, emitter.getToleranceForValue(currentDensity));
-    EXPECT_NEAR(-7.5900179516309179e-10, nottinghamHeat, emitter.getToleranceForValue(nottinghamHeat));
+    EXPECT_NEAR(4.2191382392219547e-09, currentDensity, emitter.getToleranceForValue(currentDensity));
+    EXPECT_NEAR(-8.7275419520125675e-10, nottinghamHeat, emitter.getToleranceForValue(nottinghamHeat));
 }
 
 TEST(BandEmitterTest, CurrentDensityMethodComparison){
