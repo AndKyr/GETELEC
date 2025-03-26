@@ -139,11 +139,7 @@ public:
      * @brief Sets the energy level for the tunneling calculation.
      * @param E Energy level (eV).
      */
-    void setEnergyAndInitialValues(double E){
-        barrier->setEnergy(E);
-        updateKappaInitial();
-        initialValues = {0., kappaInitial, -0.5 * log(kappaInitial)};
-    }
+    void setEnergyAndInitialValues(double E);
 
     void resetNumberOfCalls(){numberOfCalls = 0;}
 
@@ -189,11 +185,6 @@ public:
      * @brief Prints the integration limits for debugging purposes.
      */
     void printXLimits() { cout << "xInitial = " << xInitial << " xFinal = " << xFinal << endl; }
-
-    /**
-     * @brief Calcualtes the fundamental matrix of the problem by solving for initial conditions psi(xRight)=[1, i]
-     */
-    void calculateFundamentalMatrix();
 };
 
 } // namespace getelec

@@ -120,11 +120,24 @@ public:
      */
     int solveNoSave();
 
+    /**
+     * @brief Getter for the solution vector derivative  (dy/dx).
+     * @param x The position where to get the derivative.
+     * @return The derivative of the solution vector at x.
+     */
     vector<double> getSolutionDerivative(double x) const {
         vector<double> solutionDerivative(systemDimension);
         differentialSystem(x, solutionVector.data(), solutionDerivative.data(), (void*) this);
         return solutionDerivative; 
     }
+
+    /**
+     * @brief Getter for the saved solution.
+     * @return The saved solution.
+     */
+    vector<double> getSolution() const { return solutionVector; }
+
+
 
     /**
      * @brief Writes the saved solution to a file.

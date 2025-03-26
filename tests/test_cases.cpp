@@ -20,6 +20,33 @@ TEST(TransmissionSolverTest, DefaultValueTest) {
     EXPECT_NEAR(transmission, 0.00066697796753639933, 1.e-10);
 }
 
+
+TEST(TransmissionSolverTest, DerivativeTest) {
+    ModifiedSNBarrier barrier;
+    TransmissionSolver solver(&barrier, Config().transmissionSolverParams, 10., 1);
+    solver.setXlimits(10.0);
+
+    double E = -4.5;
+    double dE = 1.e-1;
+    double deltaKappaSquared = CONSTANTS.kConstant * dE;
+
+    solver.setEnergyAndInitialValues(-4.5);
+    solver.solve(true);
+    vector<double> y = solver.getSolution();
+    solver.writeSolution("odeSolution.dat");
+
+    solver.setEnergyAndInitialValues(-4.5 + dE);
+    solver.solve(true);
+    vector<double> y2 = solver.getSolution();
+    solver.writeSolution("odeSolution2.dat");
+
+    for (int i = 0; i < 3; i++){
+        double derivative = y[i+3];
+        double derivativeApprox = (y2[i] - y[i]) / deltaKappaSquared;
+        EXPECT_NEAR(derivative, derivativeApprox, 1.e-5);
+    }
+}
+
 // Test for TransmissionInterpolator:: check that the inteprolated and calculated values are close
 TEST(TransmissionInterpolatorTest, evaluationTest) {
     ModifiedSNBarrier barrier;

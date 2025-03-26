@@ -21,9 +21,9 @@ int TransmissionSolver::tunnelingDifferentialSystemWithEnergyDerivative(double x
     f[0] =  -barrier->kappaSquared(x) - y[0]*y[0] + y[1]*y[1]; //Re{s0''} = -k^2 - Re{s0'}^2 + Im{s0'}^2
     f[1] = - 2. * y[0] * y[1]; //Im{s0''} = -2 Re{s0'} Im{s0'}
     f[2] = y[0]; //Re{s'} = Re{s0'}
-    f[3] = -1. + 2. * (y[1] * y[4] - y[0] * y[3]); //Im{s1''} = -1 + 2 Im{s0'} Im{s1'} -2*Re{s0'}Re{s1'}.
-    f[4] = -2. * (y[0] * y[4] + y[1] * y[3]); //Re{s1''} = 2 Re{s0'} Im{s1'} + 2 Im{s0'} Re{s1'}
-    f[5] = y[3]; //Re{s1'} = Re{s1'}
+    f[3] = -1. + 2. * (y[1] * y[4] - y[0] * y[3]); //Re{s1''} = -1 + 2 Im{s0'} Im{s1'} -2*Re{s0'}Re{s1'}.
+    f[4] = -2. * (y[0] * y[4] + y[1] * y[3]); //Im{s1''} = -2 Re{s0'} Im{s1'} - 2 Im{s0'} Re{s1'}
+    f[5] = y[3]; //Re{s1''} = (Re{s1'})'
     return GSL_SUCCESS;
 }
 
@@ -57,6 +57,17 @@ double TransmissionSolver::calculateKappaFinal() const{
         throw std::runtime_error("The tunneling energy is lower than the left edge potential values. The integration interval must extend beyond the classically forbidden region.");
     
     return sqrt(kappaSquaredFinal);
+}
+
+void TransmissionSolver::setEnergyAndInitialValues(double E){
+    barrier->setEnergy(E);
+    updateKappaInitial();
+    if (energyDerivativeLvl == 0){
+        initialValues = {0., kappaInitial, -0.5 * log(kappaInitial)};
+    } else {
+        initialValues = {0., kappaInitial, -0.5 * log(kappaInitial), 
+            0., 0.5 / kappaInitial, -0.25  / (CONSTANTS.kConstant * barrier->kappaSquared(xInitial))};
+    }
 }
 
 double TransmissionSolver::calculateTransmissionProbability(double energy, double waveVector){
@@ -95,16 +106,6 @@ gsl_complex TransmissionSolver::getTransmissionCoefficientForWaveVector(double k
 double TransmissionSolver::getTransmissionProbabilityforWaveVector(double k) const{
     gsl_complex transmissionCoeff = getTransmissionCoefficientForWaveVector(k);
     return gsl_complex_abs2(transmissionCoeff) / k;
-}
-
-void TransmissionSolver::calculateFundamentalMatrix(){
-    initialValues = {0, 1, 0};
-    solveNoSave();
-    double prefactor = exp(solutionVector[2]);
-    fundamentalMatrix[0] = prefactor;   
-    fundamentalMatrix[1] = 0.;
-    fundamentalMatrix[2] = prefactor * solutionVector[0];
-    fundamentalMatrix[3] = prefactor * solutionVector[1];
 }
 
 } // namespace getelec
