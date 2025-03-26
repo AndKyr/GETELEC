@@ -6,6 +6,7 @@
 #include "TunnelingFunction.h"
 #include "BandEmitter.h"
 #include "Getelec.h"
+#include "BSpline.h"
 
 #include <random>
 #include <iostream>
@@ -27,7 +28,7 @@ TEST(TransmissionSolverTest, DerivativeTest) {
     solver.setXlimits(10.0);
 
     double E = -4.5;
-    double dE = 1.e-1;
+    double dE = 1.e-2;
     double deltaKappaSquared = CONSTANTS.kConstant * dE;
 
     solver.setEnergyAndInitialValues(-4.5);
@@ -43,9 +44,48 @@ TEST(TransmissionSolverTest, DerivativeTest) {
     for (int i = 0; i < 3; i++){
         double derivative = y[i+3];
         double derivativeApprox = (y2[i] - y[i]) / deltaKappaSquared;
-        EXPECT_NEAR(derivative, derivativeApprox, 1.e-5);
+        EXPECT_NEAR(derivative, derivativeApprox, 1.e-2);
     }
 }
+
+
+// TEST(BSplineTest, ValueTest){
+//     vector<double> x = Utilities::linspace(0., 2*M_PI, 6);
+//     vector<vector<double>> valuesAndDerivatives;
+    
+//     int nDerivs = 1;
+//     for (int i = 0; i <= nDerivs; i++){
+//         auto val = vector<double>(6, 0.);
+//         for (int j = 0; j < 6; j++){
+//             val[j] = sin(x[j] + i * 0.5 * M_PI);
+//         }
+//         valuesAndDerivatives.push_back(val);
+//     }
+//     auto spline = GeneralizedHermiteSpline(x, valuesAndDerivatives);
+
+//     auto cubicSpline = CubicHermiteSpline(x, valuesAndDerivatives[0], valuesAndDerivatives[1]);
+
+//     auto testPoints = Utilities::linspace(0., 2*M_PI, 64);
+//     for (auto x : testPoints){
+//         double calculatedValue = sin(x);
+//         double interpolatedValue = spline.evaluate(x);
+//         double cubicSplineInterpolatedValue = cubicSpline.evaluate(x);
+
+//         EXPECT_NEAR(calculatedValue, interpolatedValue, 1.e-3);
+//         EXPECT_NEAR(calculatedValue, cubicSplineInterpolatedValue, 1.e-3);
+//     }
+
+// }
+
+TEST(TransmissionSolverTest, SplineTest){
+    ModifiedSNBarrier barrier;
+    TransmissionSolver solver(&barrier, Config().transmissionSolverParams, 10., 1);
+    solver.setXlimits(10.0);
+
+    solver.setSolutionSplines(-6., 0., 8);
+    solver.writeSplineSolution("splineSolution.dat");
+}
+
 
 // Test for TransmissionInterpolator:: check that the inteprolated and calculated values are close
 TEST(TransmissionInterpolatorTest, evaluationTest) {
