@@ -31,9 +31,9 @@ private:
     array<double,4> fundamentalMatrix; /**< The fundamental matrix of the general solution of the real problem (\boldsymbol{\Phi} in paper) */
     int energyDerivativeLvl; /**< The level of energy derivative to calculate. */
     
-    CubicHermiteSpline splineForReSprime; /**< Spline for the first solution variable Re{s'}. */
-    CubicHermiteSpline splineForImSprime; /**< Spline for the second solution variable Im{s'}. */
-    CubicHermiteSpline splineForReS; /**< Spline for the third solution variable Re{s}. */
+    CubicHermiteSpline solutionSplines; /**< Spline for the first solution variable Re{s'}. */
+    // CubicHermiteSpline splineForImSprime; /**< Spline for the second solution variable Im{s'}. */
+    // CubicHermiteSpline splineForReS; /**< Spline for the third solution variable Re{s}. */
 
     double minSplineEnergy;
     double maxSplineEnergy;
@@ -213,8 +213,9 @@ public:
         for (size_t i = 0; i < energyPoints.size(); i++){
             setEnergyAndInitialValues(energyPoints[i]);
             solveNoSave();
+            auto interpolatedValues = solutionSplines.evaluateMultiple(energyPoints[i]);
             file << energyPoints[i] << " " << solutionVector[0] << " " << solutionVector[1] << " " << solutionVector[2] << " ";
-            file << splineForReSprime.evaluate(energyPoints[i]) << " " << splineForImSprime.evaluate(energyPoints[i]) << " " << splineForReS.evaluate(energyPoints[i]) << endl;
+            file << interpolatedValues[0] << " " << interpolatedValues[1] << " " << interpolatedValues[2] << endl;
         }
         file.close();
     }

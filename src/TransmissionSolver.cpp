@@ -92,9 +92,7 @@ int TransmissionSolver::setSolutionSplinesUniform(double Emin, double Emax, int 
         }
     }
 
-    splineForReSprime.setPositionsValuesAndDerivatives(energyPoints, solutionValues[0], solutionDerivatives[0]);
-    splineForImSprime.setPositionsValuesAndDerivatives(energyPoints, solutionValues[1], solutionDerivatives[1]);
-    splineForReS.setPositionsValuesAndDerivatives(energyPoints, solutionValues[2], solutionDerivatives[2]);
+    solutionSplines.initializeMultiple(energyPoints, solutionValues, solutionDerivatives);
 
     return 0;
 }
