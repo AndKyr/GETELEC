@@ -153,7 +153,7 @@ public:
      * @param nPoints Number of points for the spline.
      * @return 0 on success.
      */
-    int setSolutionSplines(double Emin, double Emax, int nPoints);
+    int setSolutionSplinesUniform(double Emin, double Emax, int nPoints);
 
     /**
      * @brief Sets the energy level for the tunneling calculation.

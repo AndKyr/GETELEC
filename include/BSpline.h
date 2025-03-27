@@ -14,10 +14,20 @@
 
 using namespace std;
 
+/**
+ * @class BSpline
+ * @brief Class to handle B-spline interpolation (wrapping to native GSL code)
+ * @note This class should not be used directly, but rather through derived classes
+ * @note The class (and its derived ones) uses raw C-style arrays for the input data, so it is not safe to use with vectors or other containers, nor with dynamically allocated arrays, as the class does not take ownership of the data
+ * @note The class is not thread-safe
+ * @note The class is not copyable
+ * @note The class is not movable
+ */
 class BSpline{
 public:
     BSpline() = default;
-    void init(vector<double>& x, vector<double>& y){
+
+    void setPositionsAndValues(vector<double>& x, vector<double>& y){
 
         // Ensure the input vectors have the same size
         if (x.size() != y.size())
@@ -38,7 +48,7 @@ public:
 
     }
 
-    void init(gsl_vector* x, gsl_vector* y){
+    void setPositionsAndValues(gsl_vector* x, gsl_vector* y){
 
         // Ensure the input vectors have the same size
         if (x->size != y->size)
@@ -99,12 +109,10 @@ class CubicHermiteSpline : public BSpline{
 public:
     CubicHermiteSpline() = default;
 
-    void init(vector<double>& x, vector<double>& y, vector<double>& dy_dx) {
+    void setPositionsValuesAndDerivatives(vector<double>& x, vector<double>& y, vector<double>& dy_dx) {
             // Ensure the input vectors have the same size
-        if (x.size() != y.size() || x.size() != dy_dx.size())
-            throw invalid_argument("Input vectors must have the same size");
+        setPositionsAndValues(x, y);
         
-        BSpline::init(x, y);
         if (derivs)
             gsl_vector_free(derivs);
         derivs = gsl_vector_alloc(dy_dx.size());
@@ -114,7 +122,7 @@ public:
         intitialize();
     }
 
-    void init(gsl_vector* x, gsl_vector* y, gsl_vector* dy_dx) {
+    void setPositionsValuesAndDerivatives(gsl_vector* x, gsl_vector* y, gsl_vector* dy_dx) {
         // Ensure the input vectors have the same size
         if (x->size != y->size || x->size != dy_dx->size)
             throw invalid_argument("Input vectors must have the same size");

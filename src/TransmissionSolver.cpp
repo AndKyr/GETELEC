@@ -70,7 +70,7 @@ void TransmissionSolver::setEnergyAndInitialValues(double E){
     }
 }
 
-int TransmissionSolver::setSolutionSplines(double Emin, double Emax, int nPoints){
+int TransmissionSolver::setSolutionSplinesUniform(double Emin, double Emax, int nPoints){
     if (nPoints < 2)
         throw std::invalid_argument("The number of points for the spline must be at least 2.");
     
@@ -92,9 +92,9 @@ int TransmissionSolver::setSolutionSplines(double Emin, double Emax, int nPoints
         }
     }
 
-    splineForReSprime.init(energyPoints, solutionValues[0], solutionDerivatives[0]);
-    splineForImSprime.init(energyPoints, solutionValues[1], solutionDerivatives[1]);
-    splineForReS.init(energyPoints, solutionValues[2], solutionDerivatives[2]);
+    splineForReSprime.setPositionsValuesAndDerivatives(energyPoints, solutionValues[0], solutionDerivatives[0]);
+    splineForImSprime.setPositionsValuesAndDerivatives(energyPoints, solutionValues[1], solutionDerivatives[1]);
+    splineForReS.setPositionsValuesAndDerivatives(energyPoints, solutionValues[2], solutionDerivatives[2]);
 
     return 0;
 }
