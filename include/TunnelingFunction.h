@@ -22,6 +22,8 @@ using namespace std;
 class TunnelingFunction {
 private:
     double energy = 0.; /**< Energy level for the tunneling function (eV). */
+    bool doFindBarrierTop = false; /**< Flag to find the maximum kappa value. */
+    double minKappaSquared = numeric_limits<double>::infinity();; /**< Maximum kappa value. */
 
 protected:
     /** @brief A pointer to a random number generator to use for testing purposes */
@@ -93,9 +95,27 @@ public:
      * @brief Computes the squared kappa value for tunneling calculations.
      * @param x Position coordinate.
      * @return The squared kappa value at the specified position.
+     * @note If the flag doFindBarrierTop is set, the maximum kappa value is also calculated.
      */
     double kappaSquared(double x) {
-        return CONSTANTS.kConstant * (energy - this->potentialFunction(x));
+        double kappaSquared = CONSTANTS.kConstant * (energy - this->potentialFunction(x));
+        if (doFindBarrierTop && kappaSquared < minKappaSquared)
+            minKappaSquared = kappaSquared;
+        return kappaSquared;
+    }
+
+    /**
+     * @brief sets the flag to find the maximum kappa value and resets the current value.
+     * @param flag Flag value.
+     */
+    void setBarrierTopFinder(bool flag) { 
+        doFindBarrierTop = flag; 
+        minKappaSquared = numeric_limits<double>::infinity();
+    }
+    
+    double getBarrierTop() const { 
+        assert(isfinite(minKappaSquared) && doFindBarrierTop && "Attempt to get the barrier top without finding it first");
+        return energy - minKappaSquared / CONSTANTS.kConstant;
     }
 
     /**
@@ -198,9 +218,9 @@ public:
      * @param g Gamma parameter controlling the barrier shape.
      */
     void setBarrierParameters(double f, double r, double g){
-        field = f;
-        radius = r;
-        gamma = g;
+        setField(f);
+        setRadius(r);
+        setGamma(g);
     } 
 
     /**
@@ -221,6 +241,10 @@ public:
      * @param f Electric field strength (V/nm).
      */
     void setField(double f){
+        if (f < 1.e-5){
+            cout << "Warning: Field is too small. Setting it to 1.e-5 V/nm" << endl;
+            f = 1.e-5;
+        }
         field = f;
     }
 
@@ -229,6 +253,10 @@ public:
      * @param R Local radius of curvature (nm).
      */
     void setRadius(double R){
+        if (R < 0.1){
+            cout << "Warning: Radius is too small. Setting it to 0.1 nm" << endl;
+            R = 0.1;
+        }
         radius = R;
     }
 
@@ -237,6 +265,10 @@ public:
      * @param g Gamma
      */
     void setGamma(double g){
+        if (g < 1.0001){
+            cout << "Warning: Gamma is too small. Setting it to 1.0001" << endl;
+            g = 1.0001;
+        }
         gamma = g;
     }
 

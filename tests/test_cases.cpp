@@ -49,6 +49,25 @@ TEST(TransmissionSolverTest, DerivativeTest) {
 }
 
 
+TEST(TransmissionSolverTest, TopBarrierFinderTest){
+    ModifiedSNBarrier barrier;
+    barrier.setBarrierTopFinder(true);
+
+    TransmissionSolver solver(&barrier);
+    solver.setXlimits(10.0);
+    solver.setEnergyAndInitialValues(-4.5);
+    solver.solveNoSave();
+
+    double topBarrier = -numeric_limits<double>::infinity();
+    vector<double> xPoints = Utilities::linspace(solver.getXFinal(), solver.getXInitial(), 256);
+    for (auto x : xPoints){
+        if (barrier.potentialFunction(x) > topBarrier)
+            topBarrier = barrier.potentialFunction(x);
+    }
+
+    EXPECT_NEAR(topBarrier, barrier.getBarrierTop(), 1.e-2);
+}
+
 // TEST(BSplineTest, ValueTest){
 //     vector<double> x = Utilities::linspace(0., 2*M_PI, 6);
 //     vector<vector<double>> valuesAndDerivatives;
@@ -80,9 +99,9 @@ TEST(TransmissionSolverTest, DerivativeTest) {
 TEST(TransmissionSolverTest, SplineTest){
     ModifiedSNBarrier barrier;
     TransmissionSolver solver(&barrier, Config().transmissionSolverParams, 10., 1);
-    solver.setXlimits(10.0);
+    solver.setXlimits(12.0);
 
-    solver.setSolutionSplines(-6., 0., 8);
+    solver.setSolutionSplinesUniform(-10., 0., 8);
     solver.writeSplineSolution("splineSolution.dat");
 }
 
