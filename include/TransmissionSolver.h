@@ -199,6 +199,8 @@ public:
      */
     void printXLimits() { cout << "xInitial = " << xInitial << " xFinal = " << xFinal << endl; }
 
+    TunnelingFunction* getBarrier() { return barrier; }
+
 };
 
 } // namespace getelec

@@ -103,8 +103,9 @@ TEST(TransmissionSplineTest, SplineTest){
     TransmissionSpline interpolator(solver);
     solver.setXlimits(12.0);
 
-    interpolator.sampleUniform(-10., 0., 8);
+    interpolator.smartSampling();
     interpolator.writeSplineSolution("splineSolution.dat");
+    interpolator.writeSplineNodes("splineNodes.dat");
 }
 
 
