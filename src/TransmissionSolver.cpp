@@ -70,33 +70,6 @@ void TransmissionSolver::setEnergyAndInitialValues(double E){
     }
 }
 
-int TransmissionSolver::setSolutionSplinesUniform(double Emin, double Emax, int nPoints){
-    if (nPoints < 2)
-        throw std::invalid_argument("The number of points for the spline must be at least 2.");
-    
-    minSplineEnergy = Emin;
-    maxSplineEnergy = Emax;
-    nSplinePoints = nPoints;
-
-    vector<double> energyPoints = Utilities::linspace(Emin, Emax, nPoints);
-    auto solutionValues = vector<vector<double>>(3, vector<double>(nPoints, 0.));
-    auto solutionDerivatives = solutionValues;
-
-
-    for (size_t i = 0; i < energyPoints.size(); i++){
-        setEnergyAndInitialValues(energyPoints[i]);
-        solveNoSave();
-        for (int j = 0; j < 3; j++){
-            solutionValues[j][i] = solutionVector[j];
-            solutionDerivatives[j][i] = solutionVector[j + 3] * CONSTANTS.kConstant;
-        }
-    }
-
-    solutionSplines.initializeMultiple(energyPoints, solutionValues, solutionDerivatives);
-
-    return 0;
-}
-
 double TransmissionSolver::calculateTransmissionProbability(double energy, double waveVector){
     numberOfCalls++;
 

@@ -30,16 +30,7 @@ private:
     //bool recalculateXlimitsAtEachEnergy = false; /**< Flag to recalculate the integration limits for each energy level. */
     array<double,4> fundamentalMatrix; /**< The fundamental matrix of the general solution of the real problem (\boldsymbol{\Phi} in paper) */
     int energyDerivativeLvl; /**< The level of energy derivative to calculate. */
-    
-    CubicHermiteSpline solutionSplines; /**< Spline for the first solution variable Re{s'}. */
-    // CubicHermiteSpline splineForImSprime; /**< Spline for the second solution variable Im{s'}. */
-    // CubicHermiteSpline splineForReS; /**< Spline for the third solution variable Re{s}. */
-
-    double minSplineEnergy;
-    double maxSplineEnergy;
-    int nSplinePoints;
-
-    
+        
     /**
      * @brief Defines the system of differential equations for tunneling.
      * @param x Independent variable (position or distance).
@@ -189,6 +180,8 @@ public:
      */
     int getNumberOfCalls() { return numberOfCalls; }
 
+    const vector<double>& getSolution() const { return solutionVector; }
+
     // /**
     //  * @brief Sets the flag to recalculate the integration limits for each energy level.
     //  * @param flag Flag value.
@@ -206,19 +199,6 @@ public:
      */
     void printXLimits() { cout << "xInitial = " << xInitial << " xFinal = " << xFinal << endl; }
 
-    void writeSplineSolution(string filename, int nPoints = 256){
-        ofstream file(filename);
-
-        auto energyPoints = Utilities::linspace(minSplineEnergy, maxSplineEnergy, nPoints);
-        for (size_t i = 0; i < energyPoints.size(); i++){
-            setEnergyAndInitialValues(energyPoints[i]);
-            solveNoSave();
-            auto interpolatedValues = solutionSplines.evaluateMultiple(energyPoints[i]);
-            file << energyPoints[i] << " " << solutionVector[0] << " " << solutionVector[1] << " " << solutionVector[2] << " ";
-            file << interpolatedValues[0] << " " << interpolatedValues[1] << " " << interpolatedValues[2] << endl;
-        }
-        file.close();
-    }
 };
 
 } // namespace getelec

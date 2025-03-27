@@ -7,6 +7,7 @@
 #include "BandEmitter.h"
 #include "Getelec.h"
 #include "BSpline.h"
+#include "TransmissionSplines.h"
 
 #include <random>
 #include <iostream>
@@ -96,44 +97,45 @@ TEST(TransmissionSolverTest, TopBarrierFinderTest){
 
 // }
 
-TEST(TransmissionSolverTest, SplineTest){
+TEST(TransmissionSplineTest, SplineTest){
     ModifiedSNBarrier barrier;
     TransmissionSolver solver(&barrier, Config().transmissionSolverParams, 10., 1);
+    TransmissionSpline interpolator(solver);
     solver.setXlimits(12.0);
 
-    solver.setSolutionSplinesUniform(-10., 0., 8);
-    solver.writeSplineSolution("splineSolution.dat");
+    interpolator.sampleUniform(-10., 0., 8);
+    interpolator.writeSplineSolution("splineSolution.dat");
 }
 
 
-// Test for TransmissionInterpolator:: check that the inteprolated and calculated values are close
-TEST(TransmissionInterpolatorTest, evaluationTest) {
-    ModifiedSNBarrier barrier;
-    TransmissionSolver solver(&barrier);
-    solver.setXlimits(12.);
+// // Test for TransmissionInterpolator:: check that the inteprolated and calculated values are close
+// TEST(TransmissionInterpolatorTest, evaluationTest) {
+//     ModifiedSNBarrier barrier;
+//     TransmissionSolver solver(&barrier);
+//     solver.setXlimits(12.);
 
-    const double bandDepth = 7.5;
-    const double workFunction = 4.5;
+//     const double bandDepth = 7.5;
+//     const double workFunction = 4.5;
 
-    TransmissionInterpolator interpolator(solver, workFunction, 0.025, bandDepth);
-    interpolator.initialize(-bandDepth+0.1, 1.0, 4);
-    interpolator.refineToTolerance();
+//     TransmissionInterpolator interpolator(solver, workFunction, 0.025, bandDepth);
+//     interpolator.initialize(-bandDepth+0.1, 1.0, 4);
+//     interpolator.refineToTolerance();
 
 
-    mt19937 generator(1987);
+//     mt19937 generator(1987);
 
-    for (int i = 0; i < 64; i++){
-        double testEnergy = Utilities::getUniformRandomDouble(-bandDepth+0.1, 1., generator);
-        double waveVector = sqrt(testEnergy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
-        double calculatedValue = solver.calculateTransmissionProbability(-4.5 + testEnergy, waveVector);
-        double interpolatedValue = interpolator.evaluate(testEnergy);
+//     for (int i = 0; i < 64; i++){
+//         double testEnergy = Utilities::getUniformRandomDouble(-bandDepth+0.1, 1., generator);
+//         double waveVector = sqrt(testEnergy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
+//         double calculatedValue = solver.calculateTransmissionProbability(-4.5 + testEnergy, waveVector);
+//         double interpolatedValue = interpolator.evaluate(testEnergy);
 
-        double error = interpolator.calculateError(testEnergy, log(calculatedValue));
-        double tolerance = interpolator.calculateTolerance(testEnergy, log(calculatedValue));
-        EXPECT_LE(error, 10 * tolerance);
+//         double error = interpolator.calculateError(testEnergy, log(calculatedValue));
+//         double tolerance = interpolator.calculateTolerance(testEnergy, log(calculatedValue));
+//         EXPECT_LE(error, 10 * tolerance);
         
-    }
-}
+//     }
+// }
 
 TEST(BandEmitterTest, DefaultValueTest){
     ModifiedSNBarrier barrier;

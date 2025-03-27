@@ -35,7 +35,7 @@ public:
      * @brief Set the positions for the spline (control points)
      * @param x Vector of positions
      */
-    void setPositions(vector<double>& x){
+    void setPositions(const vector<double>& x){
         if (positions)
             gsl_vector_free(positions);
         positions = gsl_vector_alloc(x.size());
@@ -48,7 +48,7 @@ public:
      * @param x Vector of positions
      * @param y Vector of values
      */
-    void setPositionsAndValues(vector<double>& x, vector<double>& y){
+    void setPositionsAndValues(const vector<double>& x, const vector<double>& y){
 
         // Ensure the input vectors have the same size
         assert(x.size() == y.size() && "Input vectors must have the same size");
@@ -146,7 +146,7 @@ public:
         return result;
     }
 
-    double evaluateIntegral(double a, double b){
+    double evaluateIntegral(double a, double b) const{
         assert(workSpace != nullptr && coefficients != nullptr);
 
         double result;
@@ -154,7 +154,7 @@ public:
         return result;
     }
 
-    vector<double> evaluateIntegralMultiple(double a, double b){
+    vector<double> evaluateIntegralMultiple(double a, double b) const{
         vector<double> result(coefficientSets.size());
         for (size_t i = 0; i < coefficientSets.size(); i++){
             assert(workSpace && coefficientSets[i] && "The spline has not been initialized");
@@ -189,7 +189,7 @@ public:
      * @param y Vector of values
      * @param dy_dx Vector of derivatives
      */
-    void initialize(vector<double>& x, vector<double>& y, vector<double>& dy_dx) {
+    void initialize(const vector<double>& x, const vector<double>& y, const vector<double>& dy_dx) {
             // Ensure the input vectors have the same size
         setPositionsAndValues(x, y);
         
@@ -234,7 +234,7 @@ public:
      * @param ySets Vector of vectors of values
      * @param dy_dxSets Vector of vectors of derivatives 
      */
-    void initializeMultiple(vector<double>& x, vector<vector<double>>& ySets, vector<vector<double>>& dy_dxSets){
+    void initializeMultiple(const vector<double>& x, const vector<vector<double>>& ySets, const vector<vector<double>>& dy_dxSets){
         setPositions(x);
         assert(ySets.size() == dy_dxSets.size() && "The number of sets of values and derivatives must be the same");
         
