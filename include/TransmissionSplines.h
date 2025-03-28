@@ -8,7 +8,6 @@
 #include <gsl/gsl_complex_math.h>
 #include <algorithm>
 
-
 namespace getelec{
 
 /**
@@ -40,7 +39,7 @@ public:
                             double aTol = 1.e-12, 
                             double rTol = 1.e-5) 
                                 : solver(solver_), workFunction(workFunction_), 
-                                kT(kT_), minSamplingEnergy(minimumEnergy_)
+                                kT(kT_), minSamplingEnergy(minimumEnergy_), relativeTolerance(rTol), absoluteTolerance(aTol)
     {}
 
     void setParameters(double kT_, double W, double minimumEnergy_){
@@ -102,10 +101,15 @@ public:
     }
 
 
-    void writeSplineSolution(string filename = "splineSolution.dat", int nPoints = 256){
+    void writeSplineSolution(string filename = "splineSolution.dat", int nPoints = 256, bool fullExtent = false){
         ofstream file(filename);
 
-        auto energyPoints = Utilities::linspace(minSamplingEnergy, 0., nPoints);
+        vector<double> energyPoints;
+        if (fullExtent)
+            energyPoints = Utilities::linspace(minSamplingEnergy, solver.getBarrier()->getBarrierTop(), nPoints);
+        else
+            energyPoints = Utilities::linspace(sampleEnergies[0], sampleEnergies.back(), nPoints);
+        
         for (size_t i = 0; i < energyPoints.size(); i++){
             solver.setEnergyAndInitialValues(energyPoints[i]);
             solver.solveNoSave();
@@ -137,17 +141,12 @@ public:
         solver.setEnergyAndInitialValues(energy);
         solver.solveNoSave();
         auto solutionVector = solver.getSolution();
-        auto solutionValues = vector<double>(3);
-        auto solutionDerivatives = solutionValues;
 
-        for (int i = 0; i < 3; i++){
-            solutionValues[i] = solutionVector[i];
-            solutionDerivatives[i] = solutionVector[i + 3] * CONSTANTS.kConstant;
-        }
-
-        solutionSamples.push_back(solutionValues);
-        solutionDerivativeSamples.push_back(solutionDerivatives);
         sampleEnergies.push_back(energy);
+        for (int i = 0; i < 3; i++){
+            solutionSamples[i].push_back(solutionVector[i]);
+            solutionDerivativeSamples[i].push_back(solutionVector[i + 3] * CONSTANTS.kConstant);
+        }
     }
 
     /**
@@ -155,10 +154,13 @@ public:
      * Samples are taken at the Fermi level and at the top of the barrier. Additional samples are added if the transmission coefficient decays slowly.
      */
     void smartSampling(){
-        solver.getBarrier()->setBarrierTopFinder(true);
-        sampleEnergyPoint(-workFunction);
-        double topOfBarrier = solver.getBarrier()->getBarrierTop();
-        solver.getBarrier()->setBarrierTopFinder(false);
+
+        // sampleEnergyPoint(minSamplingEnergy); //sample the minimum energy level
+
+        solver.getBarrier()->setBarrierTopFinder(true); // set barrier top finder
+        sampleEnergyPoint(-workFunction); //sample the fermi level
+        double topOfBarrier = solver.getBarrier()->getBarrierTop(); //get the barrier top
+        solver.getBarrier()->setBarrierTopFinder(false); // reset the barrier top finder to off. No need any more
 
 
         //the extent by which the transmission coefficient decays below Fermi level
@@ -170,17 +172,21 @@ public:
             sampleEnergyPoint(pointToSample);
         }
 
-        double highDecayLength = 1. / (1./ kT - dLogD_dE_atFermi);
+        double highDecayRate = 1./ kT - dLogD_dE_atFermi;
+        double numberOfDecayLengths = -log(relativeTolerance);
+        double fermiToBarrier = topOfBarrier + workFunction;
 
-        if (abs(highDecayLength) > 1.e-2 || sampleEnergies.size() < 2){
-            double pointToSample = -workFunction + 2*highDecayLength;
-            if (pointToSample < topOfBarrier){
-                sampleEnergyPoint(pointToSample);
-            } else{
-                sampleEnergyPoint(topOfBarrier);
-                sampleEnergyPoint(topOfBarrier + 5* kT);
-            }
+        //If the spectra don't decay fast enough to have decayed before the barrier top (or don't decay at all), sample the top of barrier and a point beyond
+        if (highDecayRate < numberOfDecayLengths / fermiToBarrier){ 
+            sampleEnergyPoint(topOfBarrier);
+            sampleEnergyPoint(topOfBarrier + numberOfDecayLengths* kT);
         }
+        //If the spectra decay slow enough to be worth it, sample a above Ef. Force sample it we have only one sample point
+        else if (highDecayRate < 100. ||  sampleEnergies.size() < 2){
+            double pointToSample = -workFunction + numberOfDecayLengths / highDecayRate;
+            sampleEnergyPoint(pointToSample);
+        }
+
         sortAndInitialize();
     }
 
@@ -189,35 +195,50 @@ private:
     double kT; /**< Thermal energy (eV). */
     double workFunction; /**< Work function of the material (eV). */
     double minSamplingEnergy = -10; /**< Minimum energy level of interest for the interpolation. */
+    double relativeTolerance; /**< Relative tolerance for the interpolation. */
+    double absoluteTolerance; /**< Absolute tolerance for the interpolation. */
 
     vector<double> sampleEnergies; /**< List of sampled points */
-    vector<vector<double>> solutionSamples; /**< List of sampled solution values */
-    vector<vector<double>> solutionDerivativeSamples; /**< List of sampled solution derivative values */
+    vector<vector<double>> solutionSamples = vector<vector<double>>(3); /**< List of sampled solution values */
+    vector<vector<double>> solutionDerivativeSamples = vector<vector<double>>(3); /**< List of sampled solution derivative values */
 
     /**
      * @brief Initializes the interpolator with the sampled data after sorting the samples.
      */
     void sortAndInitialize(){
         // Create a vector of indices
-        vector<size_t> indices(sampleEnergies.size());
-        for (size_t i = 0; i < indices.size(); ++i)
-            indices[i] = i;
+        vector<size_t> sortingIndices(sampleEnergies.size());
+        for (size_t i = 0; i < sortingIndices.size(); ++i)
+            sortingIndices[i] = i;
 
         // Sort the indices based on the corresponding values in `data`
-        std::sort(indices.begin(), indices.end(),
+        // TODO: Use a lambda function to directly sort the data without using indices. This will minimize the swaps.
+        std::sort(sortingIndices.begin(), sortingIndices.end(),
                 [this](size_t i1, size_t i2) { return this->sampleEnergies[i1] < this->sampleEnergies[i2]; });
         
-        vector<double> sortedEnergies(sampleEnergies.size());
-        vector<vector<double>> sortedSolutions(sampleEnergies.size());
-        vector<vector<double>> sortedDerivatives(sampleEnergies.size());
 
-        for (size_t i = 0; i < indices.size(); i++){
-            sortedEnergies[i] = sampleEnergies[indices[i]];
-            sortedSolutions[i] = solutionSamples[indices[i]];
-            sortedDerivatives[i] = solutionDerivativeSamples[indices[i]];
+        vector<double> saveVec(sampleEnergies.size()); // Vector to save the data for sorting
+        // Sort the data
+        for (int i = 0; i < 3; i++){ // loop through the 3 solution values
+            if (i == 0){ // sort the energies only once
+                saveVec = sampleEnergies;
+                for (size_t j = 0; j < sortingIndices.size(); j++)
+                    sampleEnergies[j] = saveVec[sortingIndices[j]];
+            }
+
+            //sort the solution values
+            saveVec = solutionSamples[i];
+            for (size_t j = 0; j < sortingIndices.size(); j++)
+                solutionSamples[i][j] = saveVec[sortingIndices[j]];
+            
+            //sort the derivative values
+            saveVec = solutionDerivativeSamples[i];
+            for (size_t j = 0; j < sortingIndices.size(); j++)
+                solutionDerivativeSamples[i][j] = saveVec[sortingIndices[j]];
         }
 
-        initializeMultiple(sortedEnergies, sortedSolutions, sortedDerivatives);
+
+        initializeMultiple(sampleEnergies, solutionSamples, solutionDerivativeSamples);
     }
 };
 

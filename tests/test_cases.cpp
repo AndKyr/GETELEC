@@ -104,7 +104,7 @@ TEST(TransmissionSplineTest, SplineTest){
     solver.setXlimits(12.0);
 
     interpolator.smartSampling();
-    interpolator.writeSplineSolution("splineSolution.dat");
+    interpolator.writeSplineSolution("splineSolution.dat", 256, true);
     interpolator.writeSplineNodes("splineNodes.dat");
 }
 

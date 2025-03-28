@@ -110,11 +110,12 @@ public:
      */
     void setBarrierTopFinder(bool flag) { 
         doFindBarrierTop = flag; 
-        minKappaSquared = numeric_limits<double>::infinity();
+        if (flag)
+            minKappaSquared = numeric_limits<double>::infinity();
     }
     
     double getBarrierTop() const { 
-        assert(isfinite(minKappaSquared) && doFindBarrierTop && "Attempt to get the barrier top without finding it first");
+        assert(isfinite(minKappaSquared) && "Attempt to get the barrier top without finding it first");
         return energy - minKappaSquared / CONSTANTS.kConstant;
     }
 
