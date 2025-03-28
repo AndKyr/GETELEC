@@ -4,12 +4,12 @@
 #include <gsl/gsl_interp.h>
 #include <gsl/gsl_integration.h>
 #include "TransmissionSolver.h"
-#include "TransmissionInterpolator.h"
+// #include "TransmissionInterpolator.h"
 #include "ConfigGetelec.h"
 #include <vector>
 #include <string>
 #include <fstream>
-
+#include "TransmissionSplines.h"
 
 namespace getelec{
 using namespace std;
@@ -54,7 +54,7 @@ private:
     TransmissionSolver& transmissionSolver;
 
     /** @brief An interpolator for efficient evaluation of transmission coefficients. */
-    TransmissionInterpolator interpolator;
+    TransmissionSpline interpolator;
 
     /** @brief A pointer to a random number generator to use for testing purposes */
     mt19937* generator = NULL;
@@ -117,7 +117,7 @@ public:
      * @param effectiveMass_ The effective mass of the electron.
      * @param bandDepth_ The depth of the electronic band in eV.
      */
-    void setParameters(double workFunction_ = 4.5, double kT_ = 0.025, double effectiveMass_ = 1., double bandDepth_ = 7., bool doUpdateSolverAndInterpolator_ = true);
+    void setParameters(double workFunction_ = 4.5, double kT_ = 0.025, double effectiveMass_ = 1., double bandDepth_ = 7.);
 
     /**
      * @brief Constructs a BandEmitter object.
@@ -143,10 +143,10 @@ public:
             config.relativeTolerance, config.absoluteTolerance, "rkck", 
             config.maxSteps, config.minSteps, config.stepExpectedForInitialStep, NULL, this), 
           transmissionSolver(solver), 
-          interpolator(solver, workFun, kT_, bandDepth_, config.absoluteTolerance, config.relativeTolerance),
-          configParams(config) {
+          interpolator(solver, workFun, kT_, config.absoluteTolerance, config.relativeTolerance),
+          configParams(config) 
+    {
         setParameters(workFun, kT_, effMass, bandDepth_);
-        updateSolverAndInterpolator();
     }
 
     /**
@@ -177,12 +177,12 @@ public:
      * @brief Reinitializes the transmission solver with the proper parameters for a new calculation.
      * @return (optional) The value of the minimum energy that is relevant for the solver (in eV, based on the band depth and effective mass)
      */
-    double setTransmissionSolver();
+    // double setTransmissionSolver();
 
     /**
      * @brief Updates the barrier parameters and interpolator grid.
      */
-    void updateSolverAndInterpolator();
+    // void updateSolverAndInterpolator();
 
     /**
      * @brief Solves the ODE system to calculate current density, Nottingham heat and energy spectra.
@@ -273,8 +273,9 @@ public:
      * @return The transmission coefficient.
      * @note Make sure that the interpolator is properly set before calling this method.
      */
-    double interpolateTransmissionCoefficientForEnergy(double energy){
-        return interpolator.evaluate(energy);
+    double interpolateTransmissionProbability(double energy){
+        double waveVector = sqrt(energy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
+        return interpolator.getTransmissionProbability(energy, waveVector);
     }
 
     /**
@@ -284,7 +285,8 @@ public:
      * @note It is not necessary to set the interpolator before, but it might be slow for multiple calls.
      */
     double calculateTransmissionCoefficientForEnergy(double energy){
-        return transmissionSolver.calculateTransmissionProbability(workFunction + energy);
+        double waveVector = sqrt(energy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
+        return interpolator.getTransmissionProbability(energy - workFunction, waveVector);
     }
 };
 

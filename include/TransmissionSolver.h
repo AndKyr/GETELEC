@@ -113,6 +113,13 @@ public:
         xFinal = barrier->findLeftXLimit(leftPotentialDepth);
     }
 
+    double minimumValidEnergy(double tolerance = 0.1) const {
+        double minKappaSquared = barrier->kappaSquared(xInitial);
+        double dkappaSquared_dx = barrier->kappaSquaredDerivative(xInitial);
+        double kappaSquaredMinimum = pow(2 * tolerance * dkappaSquared_dx, 2./3.);
+        return barrier->potentialFunction(xInitial) / CONSTANTS.kConstant + kappaSquaredMinimum;       
+    }
+
     /**
      * @brief Getter for the xInitial value.
      * @return The xInitial value.
@@ -182,17 +189,11 @@ public:
 
     const vector<double>& getSolution() const { return solutionVector; }
 
-    // /**
-    //  * @brief Sets the flag to recalculate the integration limits for each energy level.
-    //  * @param flag Flag value.
-    //  */
-    // void setRecalculateXlimitsAtEachEnergy(bool flag) { recalculateXlimitsAtEachEnergy = flag; }
-
-    // /**
-    //  * @brief Retrieves the flag for recalculating the integration limits.
-    //  * @return The flag value.
-    //  */
-    // bool getRecalculateXlimitsAtEachEnergy() { return recalculateXlimitsAtEachEnergy; }
+    const double getMaxBArrierDepth() const { 
+        double initialPotential = barrier->potentialFunction(xInitial);
+        double finalPotential = barrier->potentialFunction(xFinal);
+        return max(initialPotential, finalPotential);
+    }
 
     /**
      * @brief Prints the integration limits for debugging purposes.

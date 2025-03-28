@@ -34,23 +34,21 @@ public:
     TransmissionSpline(TransmissionSolver& solver_, 
                             double workFunction_ = 4.5, 
                             double kT_ = .025, 
-                            double minimumEnergy_ = -10.,
-                            double effecitveMass_ = 1.,
                             double aTol = 1.e-12, 
                             double rTol = 1.e-5) 
-                                : solver(solver_), workFunction(workFunction_), 
-                                kT(kT_), minSamplingEnergy(minimumEnergy_), relativeTolerance(rTol), absoluteTolerance(aTol)
+                                : solver(solver_), 
+                                workFunction(workFunction_), kT(kT_), 
+                                relativeTolerance(rTol), absoluteTolerance(aTol)
     {}
 
-    void setParameters(double kT_, double W, double minimumEnergy_){
+    void setParameters(double kT_, double W){
         kT = kT_;
         workFunction = W;
-        minSamplingEnergy = minimumEnergy_;
     }
 
     /**
      * @brief Evaluates the transmission coefficient at a given energy and wave vector.
-     * @param energy Energy level (eV).
+     * @param energy Energy level (eV) (from vacuum level).
      * @param waveVector Wave vector (1/nm).
      */
     gsl_complex getTransmissionCoefficient(double energy, double waveVector) const{
@@ -62,7 +60,7 @@ public:
     
     /**
      * @brief Evaluates the transmission probability at a given energy and wave vector.
-     * @param energy Energy level (eV).
+     * @param energy Energy level (eV) (from vacuum level).
      * @param waveVector Wave vector (1/nm).
      */
     double getTransmissionProbability(double energy, double waveVector) const{
@@ -101,14 +99,10 @@ public:
     }
 
 
-    void writeSplineSolution(string filename = "splineSolution.dat", int nPoints = 256, bool fullExtent = false){
+    void writeSplineSolution(string filename = "splineSolution.dat", int nPoints = 256){
         ofstream file(filename);
 
-        vector<double> energyPoints;
-        if (fullExtent)
-            energyPoints = Utilities::linspace(minSamplingEnergy, solver.getBarrier()->getBarrierTop(), nPoints);
-        else
-            energyPoints = Utilities::linspace(sampleEnergies[0], sampleEnergies.back(), nPoints);
+        vector<double> energyPoints = Utilities::linspace(sampleEnergies[0], sampleEnergies.back(), nPoints);
         
         for (size_t i = 0; i < energyPoints.size(); i++){
             solver.setEnergyAndInitialValues(energyPoints[i]);
@@ -138,6 +132,21 @@ public:
      * @param energy Energy level (eV).
      */
     void sampleEnergyPoint(double energy){
+
+        // ensure that the energy is within the limits of the solver
+        if (energy < minimumValidEnergyForSolver){
+            double newBarrierDepth = -energy + 5.;
+            while(energy < minimumValidEnergyForSolver){
+                solver.setXlimits(newBarrierDepth); // set the limits for the transmission solver.
+                newBarrierDepth += 5.;
+                minimumValidEnergyForSolver = solver.minimumValidEnergy();
+                if (newBarrierDepth > 100.){
+                    throw std::runtime_error("The solver's barrier depth was reduced below 100 eV without satisfying WKB. Something is wrong with the barrier shape");
+                }
+            }
+        }
+
+            
         solver.setEnergyAndInitialValues(energy);
         solver.solveNoSave();
         auto solutionVector = solver.getSolution();
@@ -155,7 +164,8 @@ public:
      */
     void smartSampling(){
 
-        // sampleEnergyPoint(minSamplingEnergy); //sample the minimum energy level
+        solver.setXlimits(workFunction + 5.); // set the limits for the transmission solver. 
+        minimumValidEnergyForSolver = solver.minimumValidEnergy(); // get the minimum valid energy for the solver
 
         solver.getBarrier()->setBarrierTopFinder(true); // set barrier top finder
         sampleEnergyPoint(-workFunction); //sample the fermi level
@@ -168,7 +178,7 @@ public:
         double lowDecayLength = 1. / dLogD_dE_atFermi;
 
         if (abs(lowDecayLength) > 1.e-2){ //it decays slow enough to be worth it
-            double pointToSample = max(-workFunction - 2*lowDecayLength, minSamplingEnergy);
+            double pointToSample = -workFunction - 2*lowDecayLength;
             sampleEnergyPoint(pointToSample);
         }
 
@@ -190,13 +200,23 @@ public:
         sortAndInitialize();
     }
 
+    double getMinimumSampleEnergy() const {
+        return sampleEnergies.front();
+    }
+    double getMaximumSampleEnergy() const {
+        return sampleEnergies.back();
+    }
+    double getMinimumValidEnergyForSolver() const {
+        return minimumValidEnergyForSolver;
+    }
+
 private:
     TransmissionSolver& solver; /**< Reference to a TransmissionSolver for transmission coefficient calculations. */
     double kT; /**< Thermal energy (eV). */
     double workFunction; /**< Work function of the material (eV). */
-    double minSamplingEnergy = -10; /**< Minimum energy level of interest for the interpolation. */
     double relativeTolerance; /**< Relative tolerance for the interpolation. */
     double absoluteTolerance; /**< Absolute tolerance for the interpolation. */
+    double minimumValidEnergyForSolver; /**< Minimum energy that the solver at its current state produces accurate results */
 
     vector<double> sampleEnergies; /**< List of sampled points */
     vector<vector<double>> solutionSamples = vector<vector<double>>(3); /**< List of sampled solution values */
@@ -207,37 +227,22 @@ private:
      */
     void sortAndInitialize(){
         // Create a vector of indices
-        vector<size_t> sortingIndices(sampleEnergies.size());
-        for (size_t i = 0; i < sortingIndices.size(); ++i)
-            sortingIndices[i] = i;
+        // vector<size_t> sortingIndices(sampleEnergies.size());
+        // for (size_t i = 0; i < sortingIndices.size(); ++i)
+        //     sortingIndices[i] = i;
 
         // Sort the indices based on the corresponding values in `data`
-        // TODO: Use a lambda function to directly sort the data without using indices. This will minimize the swaps.
-        std::sort(sortingIndices.begin(), sortingIndices.end(),
-                [this](size_t i1, size_t i2) { return this->sampleEnergies[i1] < this->sampleEnergies[i2]; });
+        auto comparisonLambda = [this](size_t i1, size_t i2) { return this->sampleEnergies[i1] < this->sampleEnergies[i2]; };
         
 
-        vector<double> saveVec(sampleEnergies.size()); // Vector to save the data for sorting
         // Sort the data
         for (int i = 0; i < 3; i++){ // loop through the 3 solution values
-            if (i == 0){ // sort the energies only once
-                saveVec = sampleEnergies;
-                for (size_t j = 0; j < sortingIndices.size(); j++)
-                    sampleEnergies[j] = saveVec[sortingIndices[j]];
-            }
 
-            //sort the solution values
-            saveVec = solutionSamples[i];
-            for (size_t j = 0; j < sortingIndices.size(); j++)
-                solutionSamples[i][j] = saveVec[sortingIndices[j]];
-            
-            //sort the derivative values
-            saveVec = solutionDerivativeSamples[i];
-            for (size_t j = 0; j < sortingIndices.size(); j++)
-                solutionDerivativeSamples[i][j] = saveVec[sortingIndices[j]];
+            sort(solutionSamples[i].begin(), solutionSamples[i].end(), comparisonLambda);
+            sort(solutionDerivativeSamples[i].begin(), solutionDerivativeSamples[i].end(), comparisonLambda);
         }
 
-
+        sort(sampleEnergies.begin(), sampleEnergies.end());
         initializeMultiple(sampleEnergies, solutionSamples, solutionDerivativeSamples);
     }
 };

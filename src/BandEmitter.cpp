@@ -30,61 +30,62 @@ double BandEmitter::normalEnergyDistribution(double energy, void* params) {
     return result * Utilities::logFermiDiracFunction(energy, emitter->kT);
 }
 
-double BandEmitter::setTransmissionSolver(){
-    double minNormalEnergy = xInitial;
-    if (effectiveMass > 1.)
-        minNormalEnergy += (1. - effectiveMass) * (xFinal - xInitial);
+// double BandEmitter::setTransmissionSolver(){
+//     double minNormalEnergy = xInitial;
+//     if (effectiveMass > 1.)
+//         minNormalEnergy += (1. - effectiveMass) * (xFinal - xInitial);
     
-    // Set the limits for the transmission solver. The argument counts the barrier depth from Evacuum.
-    transmissionSolver.setXlimits(workFunction - minNormalEnergy + 2.); 
+//     // Set the limits for the transmission solver. The argument counts the barrier depth from Evacuum.
+//     transmissionSolver.setXlimits(workFunction - minNormalEnergy + 2.); 
 
-    // if (transmissionSolver.getXFinal() > 10.) 
-    //     transmissionSolver.setRecalculateXlimitsAtEachEnergy(true);
-    // else
-    //     transmissionSolver.setRecalculateXlimitsAtEachEnergy(false);
+//     // if (transmissionSolver.getXFinal() > 10.) 
+//     //     transmissionSolver.setRecalculateXlimitsAtEachEnergy(true);
+//     // else
+//     //     transmissionSolver.setRecalculateXlimitsAtEachEnergy(false);
     
-    return minNormalEnergy;
-}
+//     return minNormalEnergy;
+// }
 
-void BandEmitter::updateSolverAndInterpolator() {
-    double minNormalEnergy = setTransmissionSolver();
+// void BandEmitter::updateSolverAndInterpolator() {
+//     // double minNormalEnergy = setTransmissionSolver();
     
-    // Initialize the interpolator with the new limits. Slightly extends th interpolator limits to avoid edge effects.
-    interpolator.initialize(minNormalEnergy - 0.001, xFinal + 0.001, 8);
-
-    int refiningSteps = interpolator.refineToTolerance(configParams.maxAllowedRefiningSteps);
-    if (refiningSteps >= configParams.maxAllowedRefiningSteps) {
-        cout << "GETELEC WARNING: the interpolator reached maxRefiningSteps = " << configParams.maxAllowedRefiningSteps << " without satisfying the tolerance. No Spline Nodes = " << interpolator.size() << endl;
-        writePlottingData();
-        interpolator.writeSplineNodes();
-    }
-}
+//     // Initialize the interpolator with the new limits. Slightly extends th interpolator limits to avoid edge effects.
+//     interpolator.smartSampling();
+//     // TODO: make sure that there is proper refining to tolerance
+//     // int refiningSteps = interpolator.refineToTolerance(configParams.maxAllowedRefiningSteps);
+//     // if (refiningSteps >= configParams.maxAllowedRefiningSteps) {
+//     //     cout << "GETELEC WARNING: the interpolator reached maxRefiningSteps = " << configParams.maxAllowedRefiningSteps << " without satisfying the tolerance. No Spline Nodes = " << interpolator.size() << endl;
+//     //     writePlottingData();
+//     //     interpolator.writeSplineNodes();
+//     // }
+// }
 
 double BandEmitter::calculateIntegrand(double energy) {
     //TODO: be careful with the effective mass. abarX might get below the bandDepth causing problems. The interpolation range must be fixed.
-    double result = interpolator.evaluate(energy);
+    double waveVector = sqrt(energy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
+    double result = interpolator.getTransmissionProbability(energy - workFunction, waveVector);
     if (effectiveMass != 1.) {
         double aBarX = -bandDepth + (1. - effectiveMass) * (energy + bandDepth);
-        result -= (1. - effectiveMass) * interpolator.evaluate(aBarX);
+        result -= (1. - effectiveMass) * interpolator.getTransmissionProbability(aBarX - workFunction, waveVector);
     }
     return result;
 }
 
-void BandEmitter::setParameters(double workFunction_, double kT_, double effectiveMass_, double bandDepth_, bool doUpdateSolverAndInterpolator_) {
+void BandEmitter::setParameters(double workFunction_, double kT_, double effectiveMass_, double bandDepth_) {
     //set the new parameters
     workFunction = workFunction_;
     bandDepth = bandDepth_;
     effectiveMass = effectiveMass_;
     kT = kT_;
-    interpolator.setParameters(kT, workFunction, bandDepth, effectiveMass);
+    interpolator.setParameters(kT, workFunction);
+    interpolator.smartSampling();
 
     //set ODE integration limits and affected parameters
-    xInitial = -bandDepth;
-    xFinal = workFunction + 10. * kT;
+    xInitial = max(interpolator.getMinimumSampleEnergy() + workFunction, -bandDepth);
+    xFinal = interpolator.getMaximumSampleEnergy() + workFunction;
     maxStepSize = (xFinal - xInitial) / minAllowedSteps;
     initialStep = (xFinal - xInitial) / stepsExpectedForInitialStep;
 
-    if (doUpdateSolverAndInterpolator_) updateSolverAndInterpolator();
     setInitialValues({0., 0., 0.});
 }
 
@@ -161,12 +162,12 @@ void BandEmitter::writePlottingData(string filename) {
     for (double x = xInitial; x < xFinal; x += 0.001) {
         double D = transmissionSolver.calculateTransmissionProbability(x - workFunction);
         double lFD = Utilities::logFermiDiracFunction(x, kT);
-        double err = interpolator.calculateError(x, log(D));
-        double tol = interpolator.calculateTolerance(x, log(D));
+        // double err = interpolator.calculateError(x, log(D));
+        // double tol = interpolator.calculateTolerance(x, log(D));
         if (spectraSpline)
-            outFile << x << " " << D << " " << interpolator.evaluate(x) << " " << err << " " << lFD * D << " " << spectraForEnergy(x) << " " << lFD << " " << tol << endl;
+            outFile << x << " " << D << " " << interpolator.evaluate(x) << " " << " " << lFD * D << " " << spectraForEnergy(x) << " " << lFD << " " << endl;
         else
-            outFile << x << " " << D << " " << interpolator.evaluate(x) << " " << err << " " << lFD * D << " " << lFD << " " << tol << endl;
+            outFile << x << " " << D << " " << interpolator.evaluate(x) << " " << " " << lFD * D << " " << lFD << " " << endl;
     }
     interpolator.writeSplineNodes();
 }

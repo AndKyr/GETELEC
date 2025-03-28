@@ -42,8 +42,7 @@ pair<double, double> Getelec::getBarrierIntegrationLimits(size_t paramIndex){
     auto& emitter = threadLocalEmitter.local();
 
     barrier->setBarrierParameters(params.field, params.radius, params.gamma);
-    emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, false);
-    emitter.setTransmissionSolver();
+    emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth);
 
     return {solver.getXFinal(), solver.getXInitial()};  
 }
@@ -66,8 +65,7 @@ double Getelec::calculateTransmissionCoefficientForEnergy(double energy, size_t 
     auto& emitter = threadLocalEmitter.local();
 
     barrier->setBarrierParameters(params.field, params.radius, params.gamma);
-    emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, false); 
-    emitter.setTransmissionSolver();
+    emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth); 
     return emitter.calculateTransmissionCoefficientForEnergy(energy);
 }
 
@@ -78,8 +76,7 @@ std::vector<double> Getelec::calculateTransmissionCoefficientForEnergies(const s
     auto& emitter = threadLocalEmitter.local();
 
     barrier->setBarrierParameters(params.field, params.radius, params.gamma);
-    emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, false); 
-    emitter.setTransmissionSolver();
+    emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth); 
 
     tbb::concurrent_vector<double> transmissionCoefficients(energies.size());
     
@@ -96,12 +93,12 @@ std::vector<double> Getelec::calculateTransmissionCoefficientForManyEnergies(con
     auto& emitter = threadLocalEmitter.local();
 
     barrier->setBarrierParameters(params.field, params.radius, params.gamma);
-    emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth, true); 
+    emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth); 
 
     tbb::concurrent_vector<double> transmissionCoefficients(energies.size());
     
     tbb::parallel_for(size_t(0), energies.size(), [&transmissionCoefficients, &energies, &emitter, this](size_t i) { 
-        transmissionCoefficients[i] = emitter.interpolateTransmissionCoefficientForEnergy(energies[i]);
+        transmissionCoefficients[i] = emitter.interpolateTransmissionProbability(energies[i]);
     });
     return std::vector<double>(transmissionCoefficients.begin(), transmissionCoefficients.end());
 }

@@ -104,7 +104,7 @@ TEST(TransmissionSplineTest, SplineTest){
     solver.setXlimits(12.0);
 
     interpolator.smartSampling();
-    interpolator.writeSplineSolution("splineSolution.dat", 256, true);
+    interpolator.writeSplineSolution("splineSolution.dat", 256);
     interpolator.writeSplineNodes("splineNodes.dat");
 }
 
@@ -159,8 +159,7 @@ TEST(BandEmitterTest, CurrentDensityMethodComparison){
 
     for (int i = 0; i < 64; i++){
         barrier.setRandomParameters();
-        emitter.setRandomParameters();
-        emitter.updateSolverAndInterpolator();
+        emitter.setParameters();
         emitter.calculateCurrentDensityAndNottingham();
         double currentDensity = emitter.getCurrentDensity();
         double currentDensity2 = emitter.calcualteCurrentDensity();
