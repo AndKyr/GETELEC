@@ -114,10 +114,9 @@ public:
     }
 
     double minimumValidEnergy(double tolerance = 0.1) const {
-        double minKappaSquared = barrier->kappaSquared(xInitial);
         double dkappaSquared_dx = barrier->kappaSquaredDerivative(xInitial);
         double kappaSquaredMinimum = pow(2 * tolerance * dkappaSquared_dx, 2./3.);
-        return barrier->potentialFunction(xInitial) / CONSTANTS.kConstant + kappaSquaredMinimum;       
+        return barrier->potentialFunction(xInitial) + kappaSquaredMinimum / CONSTANTS.kConstant;       
     }
 
     /**
@@ -131,6 +130,13 @@ public:
      * @return The xFinal value.
      */
     double getXFinal() const { return xFinal; }
+
+    /**
+     * @brief Getter for the energy derivative level.
+     * @return The energy derivative level.
+     * @note 0 means no energy derivative is calculated, 1 means up to first first derivative, etc.
+     */
+    int getEnergyDerivativeLevel() const { return energyDerivativeLvl; }
 
     /**
      * @brief Updates the wavevector (kappa) values at the integration limits.

@@ -164,8 +164,12 @@ public:
      */
     void smartSampling(){
 
+        assert((solver.getEnergyDerivativeLevel() > 0) && "The solver should be set with energyDerivatigveLevel>0 to get Hermite spline interpolation");
+
+        // make sure that the solver has energy derivatives
         solver.setXlimits(workFunction + 5.); // set the limits for the transmission solver. 
         minimumValidEnergyForSolver = solver.minimumValidEnergy(); // get the minimum valid energy for the solver
+
 
         solver.getBarrier()->setBarrierTopFinder(true); // set barrier top finder
         sampleEnergyPoint(-workFunction); //sample the fermi level
@@ -174,16 +178,17 @@ public:
 
 
         //the extent by which the transmission coefficient decays below Fermi level
-        double dLogD_dE_atFermi = -2. * solutionDerivativeSamples.back()[2];
+        double dLogD_dE_atFermi = -2. * solutionDerivativeSamples[2].back();
         double lowDecayLength = 1. / dLogD_dE_atFermi;
+        double numberOfDecayLengths = -log(relativeTolerance);
+
 
         if (abs(lowDecayLength) > 1.e-2){ //it decays slow enough to be worth it
-            double pointToSample = -workFunction - 2*lowDecayLength;
+            double pointToSample = -workFunction - numberOfDecayLengths * lowDecayLength;
             sampleEnergyPoint(pointToSample);
         }
 
         double highDecayRate = 1./ kT - dLogD_dE_atFermi;
-        double numberOfDecayLengths = -log(relativeTolerance);
         double fermiToBarrier = topOfBarrier + workFunction;
 
         //If the spectra don't decay fast enough to have decayed before the barrier top (or don't decay at all), sample the top of barrier and a point beyond

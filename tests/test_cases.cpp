@@ -140,7 +140,7 @@ TEST(TransmissionSplineTest, SplineTest){
 
 TEST(BandEmitterTest, DefaultValueTest){
     ModifiedSNBarrier barrier;
-    TransmissionSolver solver(&barrier);
+    TransmissionSolver solver(&barrier, Config().transmissionSolverParams, 10., 1);
     BandEmitter emitter(solver);
     emitter.calculateCurrentDensityAndSpectra();
     double currentDensity = emitter.getCurrentDensity();
