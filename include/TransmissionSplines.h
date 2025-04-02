@@ -102,7 +102,7 @@ public:
     void writeSplineSolution(string filename = "splineSolution.dat", int nPoints = 256){
         ofstream file(filename);
 
-        vector<double> energyPoints = Utilities::linspace(sampleEnergies[0], sampleEnergies.back(), nPoints);
+        vector<double> energyPoints = Utilities::linspace(getMinimumSampleEnergy(), getMaximumSampleEnergy(), nPoints);
         
         for (size_t i = 0; i < energyPoints.size(); i++){
             solver.setEnergyAndInitialValues(energyPoints[i]);
@@ -231,23 +231,29 @@ private:
      * @brief Initializes the interpolator with the sampled data after sorting the samples.
      */
     void sortAndInitialize(){
-        // Create a vector of indices
-        // vector<size_t> sortingIndices(sampleEnergies.size());
-        // for (size_t i = 0; i < sortingIndices.size(); ++i)
-        //     sortingIndices[i] = i;
 
-        // Sort the indices based on the corresponding values in `data`
+        // Lambda to compare the indices based on the sample energies
+        // This lambda captures 'this' to access the member variables of the class
         auto comparisonLambda = [this](size_t i1, size_t i2) { return this->sampleEnergies[i1] < this->sampleEnergies[i2]; };
+
+        vector<size_t> indices(sampleEnergies.size());
+        iota(indices.begin(), indices.end(), 0); // Fill indices with 0, 1, ..., n-1
+        // Sort the indices based on the sample energies
+        sort(indices.begin(), indices.end(), comparisonLambda);
         
+        auto savedSolutions = solutionSamples;
+        auto savedDerivatives = solutionDerivativeSamples;
+        auto savedEnergies = sampleEnergies;
+        // Reorder the solution and derivative samples based on the sorted indices
 
-        // Sort the data
-        for (int i = 0; i < 3; i++){ // loop through the 3 solution values
-
-            sort(solutionSamples[i].begin(), solutionSamples[i].end(), comparisonLambda);
-            sort(solutionDerivativeSamples[i].begin(), solutionDerivativeSamples[i].end(), comparisonLambda);
+        for (size_t j = 0; j < sampleEnergies.size(); j++){
+            sampleEnergies[j] = savedEnergies[indices[j]];
+            for (int i = 0; i < 3; i++){
+                solutionSamples[i][j] = savedSolutions[i][indices[j]];
+                solutionDerivativeSamples[i][j] = savedDerivatives[i][indices[j]];
+            }
         }
-
-        sort(sampleEnergies.begin(), sampleEnergies.end());
+    
         initializeMultiple(sampleEnergies, solutionSamples, solutionDerivativeSamples);
     }
 };

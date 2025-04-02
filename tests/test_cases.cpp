@@ -104,8 +104,19 @@ TEST(TransmissionSplineTest, SplineTest){
     solver.setXlimits(12.0);
 
     interpolator.smartSampling();
+
     interpolator.writeSplineSolution("splineSolution.dat", 256);
     interpolator.writeSplineNodes("splineNodes.dat");
+
+    auto testEnergies = Utilities::linspace(interpolator.getMinimumSampleEnergy(), interpolator.getMaximumSampleEnergy(), 8);
+
+    double k = sqrt(7.) * CONSTANTS.sqrt2mOverHbar;
+    for (auto energy : testEnergies){
+        double solverTransmission = solver.calculateTransmissionProbability(energy, k);
+        double interpolatedTransmission = interpolator.getTransmissionProbability(energy, k);
+        EXPECT_NEAR(solverTransmission, interpolatedTransmission, solverTransmission * 1.e-3);
+    }
+
 }
 
 
