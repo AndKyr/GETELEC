@@ -178,14 +178,23 @@ public:
     /**
      * @brief calculates the complex transmission coefficient for a given wavevector
      */
-    gsl_complex getTransmissionCoefficientForWaveVector(double waveVector) const;
+    gsl_complex getTransmissionCoefficientForWaveVector(double waveVector) const{
+        return transmissionCoefficient(waveVector, solutionVector);
+    }
 
     /**
      * @brief Calculates the transmission probability for a given wavevector.
      * @param waveVector Wavevector value.
      * @return The transmission probability.
      */
-    double getTransmissionProbabilityforWaveVector(double waveVector) const;
+    double getTransmissionProbabilityforWaveVector(double waveVector) const{
+        return transmissionProbability(waveVector, solutionVector);
+    }
+
+
+    static gsl_complex transmissionCoefficient(double waveVector, const vector<double>& leftSolution);
+
+    static double transmissionProbability(double waveVector, const vector<double>& leftSolution);
 
     /**
      * @brief Retrieves the number of times the transmission coefficient has been calculated.

@@ -97,15 +97,15 @@ double TransmissionSolver::calculateTransmissionProbability(double energy, doubl
     return max(out, 1.e-50);
 }
 
-gsl_complex TransmissionSolver::getTransmissionCoefficientForWaveVector(double k) const{
+gsl_complex TransmissionSolver::transmissionCoefficient(double waveVector, const vector<double>& leftSolution){
     gsl_complex incidentWaveCoeffTimes2;
-    GSL_SET_COMPLEX(&incidentWaveCoeffTimes2, k + solutionVector[1], -solutionVector[0]);
-    return gsl_complex_mul_real(gsl_complex_inverse(incidentWaveCoeffTimes2), 2. * k * exp(-solutionVector[2]));
+    GSL_SET_COMPLEX(&incidentWaveCoeffTimes2, waveVector + leftSolution[1], -leftSolution[0]);
+    return gsl_complex_mul_real(gsl_complex_inverse(incidentWaveCoeffTimes2), 2. * waveVector * exp(-leftSolution[2]));
 }
 
-double TransmissionSolver::getTransmissionProbabilityforWaveVector(double k) const{
-    gsl_complex transmissionCoeff = getTransmissionCoefficientForWaveVector(k);
-    return gsl_complex_abs2(transmissionCoeff) / k;
+double TransmissionSolver::transmissionProbability(double waveVector, const vector<double>& leftSolution){
+    gsl_complex transmissionCoeff = transmissionCoefficient(waveVector, leftSolution);
+    return gsl_complex_abs2(transmissionCoeff) / waveVector;
 }
 
 } // namespace getelec

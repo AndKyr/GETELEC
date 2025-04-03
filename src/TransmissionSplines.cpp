@@ -1,4 +1,5 @@
 #include "TransmissionSplines.h"
+#include <gsl/gsl_min.h>
 
 namespace getelec{
 
@@ -54,7 +55,7 @@ void TransmissionSpline::writeSplineNodes(string filename){
     file.close();
 }
 
-void TransmissionSpline::sampleEnergyPoint(double energy){
+void TransmissionSpline::sampleEnergyPoint(double energy, size_t index, bool bisect){
 
     // ensure that the energy is within the limits of the solver
     if (energy < minimumValidEnergyForSolver){
@@ -68,18 +69,22 @@ void TransmissionSpline::sampleEnergyPoint(double energy){
             }
         }
     }
-
-        
+   
     solver.setEnergyAndInitialValues(energy);
     solver.solveNoSave();
     auto solutionVector = solver.getSolution();
 
-    sampleEnergies.push_back(energy);
+    if (index < 1 || index > sampleEnergies.size()) index = sampleEnergies.size();
+
+    sampleEnergies.emplace(sampleEnergies.begin() + index, energy);
+    bisectList.emplace(bisectList.begin() + index, bisect);
     for (int i = 0; i < 3; i++){
-        solutionSamples[i].push_back(solutionVector[i]);
-        solutionDerivativeSamples[i].push_back(solutionVector[i + 3] * CONSTANTS.kConstant);
+        solutionSamples[i].emplace(solutionSamples[i].begin() + index, solutionVector[i]);
+        solutionDerivativeSamples[i].emplace(solutionDerivativeSamples[i].begin() + index, solutionVector[i + 3] * CONSTANTS.kConstant);
     }
 }
+
+
 
 void TransmissionSpline::smartSampling(){
 
@@ -127,6 +132,67 @@ void TransmissionSpline::smartSampling(){
     }
 
     sortAndInitialize();
+}
+
+int TransmissionSpline::findMaximumCurrentEstimate(int maxIterations, double rTol){
+    auto lambdaMinimizer = [](double energy, void* params) -> double {
+        TransmissionSpline* thisObject = (TransmissionSpline*) params;
+        return - thisObject->emissionCurrentEstimate(energy);
+    }; // a lambda that gives the - of the NED
+    double (* functionPointer)(double, void*) = lambdaMinimizer;//convert the lambda into raw function pointer
+    gsl_function F = {functionPointer, this}; //define gsl function to be minimized
+    
+    // define and set the minimizer objects (GSL)
+    const gsl_min_fminimizer_type* type = gsl_min_fminimizer_brent;
+    gsl_min_fminimizer* minimizer = gsl_min_fminimizer_alloc(type);
+    gsl_min_fminimizer_set(minimizer, &F, 0.5 * (getMinimumSampleEnergy() + getMaximumSampleEnergy()), getMinimumSampleEnergy(), getMaximumSampleEnergy());
+
+    //do minimization iterations
+    for (int i = 0; i < maxIterations; i++){
+        int status = gsl_min_fminimizer_iterate(minimizer); //perform minimization iteration
+        
+        if (status == GSL_EBADFUNC || status == GSL_FAILURE) // something is messed up. Throw exception
+            throw std::runtime_error("GSL minimizer failed to iterate. Something is wrong with the ");
+
+        //check if we have converged
+        double minValue = gsl_min_fminimizer_f_minimum(minimizer);
+        double maxValueInInterval = max(gsl_min_fminimizer_f_lower(minimizer), gsl_min_fminimizer_f_upper(minimizer));
+        if (abs(minValue / maxValueInInterval - 1.) < rTol){ //if we have reached tolerance
+            mamximumCurrentEstimate = - minValue;
+            maximumCurrentPosition = gsl_min_fminimizer_minimum(minimizer);
+            gsl_min_fminimizer_free(minimizer);
+            return i;
+        }
+    }
+
+    //case when tolerance never met within the maxIterations
+    gsl_min_fminimizer_free(minimizer);
+    throw std::runtime_error("GSL minimizer failed to converge with relative tolerance " + std::to_string(rTol) + " and maxIterations " + std::to_string(maxIterations) + ".");
+    return maxIterations;
+
+}
+
+int TransmissionSpline::refineSampling(){
+    double testWaveVector = sqrt(7.) * CONSTANTS.sqrt2mOverHbar;
+    int noInsertedSamples = 0;
+    for (int i = 0; i < bisectList.size(); i++){
+        if (bisectList[i]){
+            double newEnergy = .5*(sampleEnergies[i] + sampleEnergies[i+1]);
+            noInsertedSamples++;
+
+            double calculatedCurrentEstimate = Utilities::logFermiDiracFunction(newEnergy + workFunction, kT) * solver.getTransmissionProbabilityforWaveVector(testWaveVector);
+            double interpolatedCurrentEstimate = emissionCurrentEstimate(newEnergy, testWaveVector);
+            double error = abs(calculatedCurrentEstimate - interpolatedCurrentEstimate);
+            double tolerance = absoluteTolerance + relativeTolerance * mamximumCurrentEstimate;
+            if (error > tolerance){
+                sampleEnergyPoint(newEnergy, i+1, true);
+            } else{
+                sampleEnergyPoint(newEnergy, i+1, false);
+                bisectList[i] = false;
+            }
+        }
+    }
+    return noInsertedSamples;
 }
 
 void TransmissionSpline::sortAndInitialize(){
