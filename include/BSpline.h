@@ -280,6 +280,11 @@ private:
         size_t nControlPoints = 2 * positions->size;
         if (coefficients)
             gsl_vector_free(coefficients);
+        
+        for (auto coeffs : coefficientSets)
+            if (coeffs) gsl_vector_free(coeffs);
+        
+        coefficientSets.clear();
         coefficients = gsl_vector_alloc(nControlPoints);  
     }
 

@@ -78,7 +78,7 @@ void BandEmitter::setParameters(double workFunction_, double kT_, double effecti
     effectiveMass = effectiveMass_;
     kT = kT_;
     interpolator.setParameters(kT, workFunction);
-    interpolator.smartSampling();
+    interpolator.smartInitialSampling();
 
     //set ODE integration limits and affected parameters
     xInitial = max(interpolator.getMinimumSampleEnergy() + workFunction, -bandDepth);

@@ -69,58 +69,64 @@ TEST(TransmissionSolverTest, TopBarrierFinderTest){
     EXPECT_NEAR(topBarrier, barrier.getBarrierTop(), 1.e-2);
 }
 
-// TEST(BSplineTest, ValueTest){
-//     vector<double> x = Utilities::linspace(0., 2*M_PI, 6);
-//     vector<vector<double>> valuesAndDerivatives;
-    
-//     int nDerivs = 1;
-//     for (int i = 0; i <= nDerivs; i++){
-//         auto val = vector<double>(6, 0.);
-//         for (int j = 0; j < 6; j++){
-//             val[j] = sin(x[j] + i * 0.5 * M_PI);
-//         }
-//         valuesAndDerivatives.push_back(val);
-//     }
-//     auto spline = GeneralizedHermiteSpline(x, valuesAndDerivatives);
-
-//     auto cubicSpline = CubicHermiteSpline(x, valuesAndDerivatives[0], valuesAndDerivatives[1]);
-
-//     auto testPoints = Utilities::linspace(0., 2*M_PI, 64);
-//     for (auto x : testPoints){
-//         double calculatedValue = sin(x);
-//         double interpolatedValue = spline.evaluate(x);
-//         double cubicSplineInterpolatedValue = cubicSpline.evaluate(x);
-
-//         EXPECT_NEAR(calculatedValue, interpolatedValue, 1.e-3);
-//         EXPECT_NEAR(calculatedValue, cubicSplineInterpolatedValue, 1.e-3);
-//     }
-
-// }
-
 TEST(TransmissionSplineTest, SplineTest){
+    double atol = 1.e-13;
+    double rtol = 1.e-2;
+    double workFunction = 4.5;
+    double kT = 0.025;
+    ModifiedSNBarrier barrier;
+    TransmissionSolver solver(&barrier, Config().transmissionSolverParams, 10., 1);
+    TransmissionSpline interpolator(solver, workFunction, kT, atol, rtol);
+    solver.setXlimits(12.0);
+
+    interpolator.smartInitialSampling();
+    interpolator.refineSamplingToTolerance();
+
+    interpolator.writeSplineSolution("splineSolution.dat", 256);
+    interpolator.writeSplineNodes("splineNodes.dat");
+
+    auto testEnergies = Utilities::linspace(interpolator.getMinimumSampleEnergy(), interpolator.getMaximumSampleEnergy(), 64);
+    
+
+    double k = sqrt(7.) * CONSTANTS.sqrt2mOverHbar;
+    for (auto energy : testEnergies){
+        solver.calculateTransmissionProbability(energy, k);
+        double solverCurrentEstimate = solver.getEmissionEstimate(k, workFunction, kT);
+        double interpolatedCurrentEstimate = interpolator.emissionCurrentEstimate(energy, k);
+        double tolerance = atol + interpolator.getmaximumCurrentEstimate() * rtol;
+        EXPECT_NEAR(solverCurrentEstimate, interpolatedCurrentEstimate, tolerance);
+    }
+}
+
+// Test for TransmissionSpline:: check that the inteprolated and calculated values are close
+TEST(TransmissionSplineTest, maxEmissionFindTest){
     ModifiedSNBarrier barrier;
     TransmissionSolver solver(&barrier, Config().transmissionSolverParams, 10., 1);
     TransmissionSpline interpolator(solver);
     solver.setXlimits(12.0);
 
-    interpolator.smartSampling();
+    double tolerance = 0.01;
+    int maxIterations = 15;
+    interpolator.smartInitialSampling();
+    int iterations;
+    EXPECT_NO_THROW(iterations = interpolator.findMaximumCurrentEstimate(maxIterations, tolerance));
 
-    interpolator.writeSplineSolution("splineSolution.dat", 256);
-    interpolator.writeSplineNodes("splineNodes.dat");
+    auto energies = Utilities::linspace(interpolator.getMinimumSampleEnergy(), interpolator.getMaximumSampleEnergy(), 256);
+    
+    double maxEmission = 0.;
 
-    auto testEnergies = Utilities::linspace(interpolator.getMinimumSampleEnergy(), interpolator.getMaximumSampleEnergy(), 8);
-
-    double k = sqrt(7.) * CONSTANTS.sqrt2mOverHbar;
-    for (auto energy : testEnergies){
-        double solverTransmission = solver.calculateTransmissionProbability(energy, k);
-        double interpolatedTransmission = interpolator.getTransmissionProbability(energy, k);
-        EXPECT_NEAR(solverTransmission, interpolatedTransmission, solverTransmission * 1.e-3);
+    for (auto energy : energies){
+        double emissionEstimate = interpolator.emissionCurrentEstimate(energy);
+        if (emissionEstimate > maxEmission) 
+            maxEmission = emissionEstimate;
     }
+    EXPECT_NEAR(maxEmission, interpolator.getmaximumCurrentEstimate(), 2*tolerance);
 
+    cout << "maximum found within " << iterations << " iterations" << endl;
 }
 
 
-// // Test for TransmissionInterpolator:: check that the inteprolated and calculated values are close
+//
 // TEST(TransmissionInterpolatorTest, evaluationTest) {
 //     ModifiedSNBarrier barrier;
 //     TransmissionSolver solver(&barrier);
@@ -156,13 +162,13 @@ TEST(BandEmitterTest, DefaultValueTest){
     emitter.calculateCurrentDensityAndSpectra();
     double currentDensity = emitter.getCurrentDensity();
     double nottinghamHeat = emitter.getNottinghamHeat();
-    EXPECT_NEAR(4.2191382392219547e-09, currentDensity, emitter.getToleranceForValue(currentDensity));
-    EXPECT_NEAR(-8.7275419520125675e-10, nottinghamHeat, emitter.getToleranceForValue(nottinghamHeat));
+    EXPECT_NEAR(4.0751479503250234e-09, currentDensity, emitter.getToleranceForValue(currentDensity));
+    EXPECT_NEAR(-8.2850824863969696e-10, nottinghamHeat, emitter.getToleranceForValue(nottinghamHeat));
 }
 
 TEST(BandEmitterTest, CurrentDensityMethodComparison){
     ModifiedSNBarrier barrier;
-    TransmissionSolver solver(&barrier);
+    TransmissionSolver solver(&barrier, Config().transmissionSolverParams, 10., 1);
     BandEmitter emitter(solver);
     mt19937 generator(1987);
     emitter.setGenerator(&generator);

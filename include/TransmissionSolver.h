@@ -191,6 +191,10 @@ public:
         return transmissionProbability(waveVector, solutionVector);
     }
 
+    double getEmissionEstimate(double waveVector, double workFunction, double kT){
+        return Utilities::logFermiDiracFunction(barrier->getEnergy() + workFunction, kT) * getTransmissionProbabilityforWaveVector(waveVector) * CONSTANTS.SommerfeldConstant * kT;
+    }
+
 
     static gsl_complex transmissionCoefficient(double waveVector, const vector<double>& leftSolution);
 

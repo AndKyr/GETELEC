@@ -86,7 +86,7 @@ void TransmissionSpline::sampleEnergyPoint(double energy, size_t index, bool bis
 
 
 
-void TransmissionSpline::smartSampling(){
+void TransmissionSpline::smartInitialSampling(){
 
     assert((solver.getEnergyDerivativeLevel() > 0) && "The solver should be set with energyDerivatigveLevel>0 to get Hermite spline interpolation");
 
@@ -175,24 +175,36 @@ int TransmissionSpline::findMaximumCurrentEstimate(int maxIterations, double rTo
 int TransmissionSpline::refineSampling(){
     double testWaveVector = sqrt(7.) * CONSTANTS.sqrt2mOverHbar;
     int noInsertedSamples = 0;
-    for (int i = 0; i < bisectList.size(); i++){
+    for (int i = 0; i < sampleEnergies.size() - 1; i++){
         if (bisectList[i]){
             double newEnergy = .5*(sampleEnergies[i] + sampleEnergies[i+1]);
             noInsertedSamples++;
+            sampleEnergyPoint(newEnergy, ++i, true);
 
-            double calculatedCurrentEstimate = Utilities::logFermiDiracFunction(newEnergy + workFunction, kT) * solver.getTransmissionProbabilityforWaveVector(testWaveVector);
+            double calculatedCurrentEstimate = solver.getEmissionEstimate(testWaveVector, workFunction, kT);
             double interpolatedCurrentEstimate = emissionCurrentEstimate(newEnergy, testWaveVector);
             double error = abs(calculatedCurrentEstimate - interpolatedCurrentEstimate);
             double tolerance = absoluteTolerance + relativeTolerance * mamximumCurrentEstimate;
-            if (error > tolerance){
-                sampleEnergyPoint(newEnergy, i+1, true);
-            } else{
-                sampleEnergyPoint(newEnergy, i+1, false);
+            if (error < tolerance){
                 bisectList[i] = false;
+                bisectList[i-1] = false;
             }
         }
     }
     return noInsertedSamples;
+}
+
+void TransmissionSpline::refineSamplingToTolerance(int maxRefineSteps){
+    findMaximumCurrentEstimate();
+    for (int i = 0; i < maxRefineSteps; i++){
+        int insertedSamples = refineSampling();
+        if (!insertedSamples)
+            return;
+        else
+            sortAndInitialize();
+    }
+    cout << "GETELEC WARNING: Max allowed refine steps " << maxRefineSteps << " reached in spline interpolation without satisfying tolerance rtol: " 
+        << relativeTolerance << " atol: " << absoluteTolerance << endl;
 }
 
 void TransmissionSpline::sortAndInitialize(){
@@ -205,17 +217,27 @@ void TransmissionSpline::sortAndInitialize(){
     iota(indices.begin(), indices.end(), 0); // Fill indices with 0, 1, ..., n-1
     // Sort the indices based on the sample energies
     sort(indices.begin(), indices.end(), comparisonLambda);
-    
-    auto savedSolutions = solutionSamples;
-    auto savedDerivatives = solutionDerivativeSamples;
-    auto savedEnergies = sampleEnergies;
-    // Reorder the solution and derivative samples based on the sorted indices
 
-    for (size_t j = 0; j < sampleEnergies.size(); j++){
-        sampleEnergies[j] = savedEnergies[indices[j]];
-        for (int i = 0; i < 3; i++){
-            solutionSamples[i][j] = savedSolutions[i][indices[j]];
-            solutionDerivativeSamples[i][j] = savedDerivatives[i][indices[j]];
+    bool isSorted = true;
+    for (size_t i = 0; i < indices.size(); i++){
+        if (indices[i] != i){
+            isSorted = false;
+            break;
+        }
+    }
+
+    if (!isSorted){
+        auto savedSolutions = solutionSamples;
+        auto savedDerivatives = solutionDerivativeSamples;
+        auto savedEnergies = sampleEnergies;
+        // Reorder the solution and derivative samples based on the sorted indices
+    
+        for (size_t j = 0; j < sampleEnergies.size(); j++){
+            sampleEnergies[j] = savedEnergies[indices[j]];
+            for (int i = 0; i < 3; i++){
+                solutionSamples[i][j] = savedSolutions[i][indices[j]];
+                solutionDerivativeSamples[i][j] = savedDerivatives[i][indices[j]];
+            }
         }
     }
 

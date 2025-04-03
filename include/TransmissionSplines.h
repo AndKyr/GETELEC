@@ -119,7 +119,12 @@ public:
      * @brief Samples the transmission coefficient with an initial very coarse sampling that is smartly chosen for electron emission.
      * Samples are taken at the Fermi level and at the top of the barrier. Additional samples are added if the transmission coefficient decays slowly.
      */
-    void smartSampling();
+    void smartInitialSampling();
+
+    /**
+     * @brief Refines the sampling by bisecting until the required tolerance is met.
+     */
+    void refineSamplingToTolerance(int maxRefineSteps = 10);
 
     double emissionCurrentEstimate(double energy, double waveVector = 12.){
         return Utilities::logFermiDiracFunction(energy + workFunction, kT) * getTransmissionProbability(energy, waveVector) * CONSTANTS.SommerfeldConstant * kT;
@@ -141,6 +146,8 @@ public:
      * @param rTol The relative tolerance of the minimum estimate
      */
     int findMaximumCurrentEstimate(int maxIterations = 10, double rTol = 0.1);
+
+    double getmaximumCurrentEstimate(){ return mamximumCurrentEstimate; }
 
 private:
     TransmissionSolver& solver; /**< Reference to a TransmissionSolver for transmission coefficient calculations. */
