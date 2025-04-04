@@ -194,6 +194,20 @@ private:
 
         bisectList.clear();
     }
+
+    /**
+     * @brief Checks if all emission estimates are below the absolute tolerance.
+     * @return True if all estimates are below the tolerance, false otherwise.
+     * @note This method is used to check if the current is too small to be worth calculating.
+     */
+    bool checkAllBelowTolerance(){
+        for (double energy : sampleEnergies){
+            double emissionEstimate = emissionCurrentEstimate(energy);
+            if (emissionEstimate > absoluteTolerance) 
+                return false;
+        }
+        return true;
+    }
 };
 
 } // namespace getelec

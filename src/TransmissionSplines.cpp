@@ -145,7 +145,18 @@ int TransmissionSpline::findMaximumCurrentEstimate(int maxIterations, double rTo
     // define and set the minimizer objects (GSL)
     const gsl_min_fminimizer_type* type = gsl_min_fminimizer_brent;
     gsl_min_fminimizer* minimizer = gsl_min_fminimizer_alloc(type);
-    gsl_min_fminimizer_set(minimizer, &F, 0.5 * (getMinimumSampleEnergy() + getMaximumSampleEnergy()), getMinimumSampleEnergy(), getMaximumSampleEnergy());
+    gsl_set_error_handler_off(); // turn off GSL error handler
+    int status = gsl_min_fminimizer_set(minimizer, &F, 0.5 * (getMinimumSampleEnergy() + getMaximumSampleEnergy()), getMinimumSampleEnergy(), getMaximumSampleEnergy());
+
+    if (status == GSL_EINVAL){
+        if (checkAllBelowTolerance()){
+            gsl_min_fminimizer_free(minimizer);
+            return -1; // all values are below the tolerance. No need to minimize
+        }
+        else{
+            throw std::runtime_error("GSL minimizer failed to set up. Something is wrong with the initial values.");
+        }
+    }
 
     //do minimization iterations
     for (int i = 0; i < maxIterations; i++){
@@ -195,7 +206,9 @@ int TransmissionSpline::refineSampling(){
 }
 
 void TransmissionSpline::refineSamplingToTolerance(int maxRefineSteps){
-    findMaximumCurrentEstimate();
+    if (findMaximumCurrentEstimate() < 0) 
+        return; // all values are below the tolerance. No need to refine
+
     for (int i = 0; i < maxRefineSteps; i++){
         int insertedSamples = refineSampling();
         if (!insertedSamples)

@@ -34,7 +34,7 @@ public:
                 }
             }
         }), 
-        threadLocalSolver([this] { return TransmissionSolver(threadLocalBarrier.local().get(), config.transmissionSolverParams); }),
+        threadLocalSolver([this] { return TransmissionSolver(threadLocalBarrier.local().get(), config.transmissionSolverParams, 10., 1); }),
         threadLocalEmitter([this] { return BandEmitter(threadLocalSolver.local(), config.bandEmitterParams); })
     {}
 
