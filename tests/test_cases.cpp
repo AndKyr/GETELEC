@@ -13,7 +13,9 @@
 #include <iostream>
 
 namespace getelec{
-// Test for TransmissionSolver:: check that the transmission coefficient for the default barrier is calculated correctly
+/**
+ * @brief Test for TransmissionSolver:: check that the transmission coefficient for the default barrier is the one expected
+ */
 TEST(TransmissionSolverTest, DefaultValueTest) {
     ModifiedSNBarrier barrier;
     TransmissionSolver solver(&barrier);
@@ -22,7 +24,11 @@ TEST(TransmissionSolverTest, DefaultValueTest) {
     EXPECT_NEAR(transmission, 0.00066697796753639933, 1.e-10);
 }
 
-
+/**
+ * @brief Test for TransmissionSolver:: check that the derivative of the transmission solution is correct
+ * @details This test checks the accuracy of the derivative of the transmission solution calculated by the TransmissionSolver class.
+ *        It compares the derivative of the solution with an approximate value calculated using finite differences.
+ */
 TEST(TransmissionSolverTest, DerivativeTest) {
     ModifiedSNBarrier barrier;
     TransmissionSolver solver(&barrier, Config().transmissionSolverParams, 10., 1);
@@ -49,7 +55,11 @@ TEST(TransmissionSolverTest, DerivativeTest) {
     }
 }
 
-
+/**
+ * @brief Test for TransmissionSolver:: check that the top barrier is found correctly
+ * @details This test checks the accuracy of the top barrier found by the TransmissionSolver class.
+ *        It compares the calculated top barrier with the value found by densely sampling the barrier
+ */
 TEST(TransmissionSolverTest, TopBarrierFinderTest){
     ModifiedSNBarrier barrier;
     barrier.setBarrierTopFinder(true);
@@ -179,6 +189,13 @@ TEST(BandEmitterTest, CurrentDensityMethodComparison){
     }
 }
 
+/**
+ * @brief Test for reading the configuration file
+ * @details This test checks the ability to read a configuration file and verify that the parameters are set correctly.
+ *         It creates a temporary configuration file, modifies some parameters, and then reads the file to check if the values match.
+ *         The test also prints the contents of the configuration file to the console for debugging purposes.
+ *         Finally, it removes the temporary file after the test is complete.
+ */
 TEST(ConfigTest, ConfigFileReadTest){
 
     Config config;
@@ -197,7 +214,9 @@ TEST(ConfigTest, ConfigFileReadTest){
     remove("tempConfig.txt");
 }
 
-
+/**
+ * @brief Test for Getelec:: check that the Getelec class can be constructed and run without errors
+ */
 TEST(GetelecObjectTest, RunParalleltest){
     Getelec getelec;
     auto fields = Utilities::linspace(2., 10., 64);
@@ -205,6 +224,9 @@ TEST(GetelecObjectTest, RunParalleltest){
     EXPECT_NO_THROW(getelec.run());
 }
 
+/**
+ * @brief Test for ModifiedSNBarrierWithDftXC:: check that the potential function and its derivative are calculated correctly
+ */
 TEST(GeneralXCFunctionTest, ValueTest){
     ModifiedSNBarrierWithDftXC barrier;
     barrier.setRadius(1.e3);
@@ -221,6 +243,11 @@ TEST(GeneralXCFunctionTest, ValueTest){
     }
 }
 
+/**
+ * @brief Test for ModifiedSNBarrierWithDftXC:: check that the derivative of the potential function is calculated correctly
+ * @details This test checks the accuracy of the derivative of the potential function calculated by the ModifiedSNBarrierWithDftXC class.
+ *         It compares the calculated derivative with an approximate value calculated using finite differences.
+ */
 TEST(GeneralXCFunctionTest, DerivativeTest){
     ModifiedSNBarrierWithDftXC barrier;
     

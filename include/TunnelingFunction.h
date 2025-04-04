@@ -6,6 +6,7 @@
 #include <gsl/gsl_poly.h>
 #include <gsl/gsl_sf_erf.h>
 #include "ConfigGetelec.h"
+#include <cassert>
 
 namespace getelec{
 using namespace std;
@@ -227,51 +228,25 @@ public:
     /**
      * @brief sets all the parameter of the barrier to (meaningful) random values
      */
-
-    void setRandomParameters(){
-        if (!generator)
-            throw runtime_error("Random number generator is empty");
-        field = Utilities::getUniformRandomDouble(1.e-5, 20., *generator);
-        double curvature = Utilities::getUniformRandomDouble(1.e-5, 10., *generator);
-        radius = 1. / curvature;
-        gamma = Utilities::getUniformRandomDouble(1., 20., *generator);
-    }
+    void setRandomParameters();
 
     /**
      * @brief Setter for the field parameter.
      * @param f Electric field strength (V/nm).
      */
-    void setField(double f){
-        if (f < 1.e-5){
-            cout << "Warning: Field is too small. Setting it to 1.e-5 V/nm" << endl;
-            f = 1.e-5;
-        }
-        field = f;
-    }
+    void setField(double f);
 
     /**
      * @brief Setter for the radius parameter.
      * @param R Local radius of curvature (nm).
      */
-    void setRadius(double R){
-        if (R < 0.1){
-            cout << "Warning: Radius is too small. Setting it to 0.1 nm" << endl;
-            R = 0.1;
-        }
-        radius = R;
-    }
+    void setRadius(double R);
 
     /**
      * @brief Setter for the gamma parameter.
      * @param g Gamma
      */
-    void setGamma(double g){
-        if (g < 1.0001){
-            cout << "Warning: Gamma is too small. Setting it to 1.0001" << endl;
-            g = 1.0001;
-        }
-        gamma = g;
-    }
+    void setGamma(double g);
 
     /**
      * @brief Getter for the field.
@@ -325,12 +300,7 @@ public:
      * 
      * @return x position where the potential depth is @param maxPotentialDepth.
      */
-    double findRightXLimit(double maxPotentialDepth){
-        double b = field * radius * (gamma - 1.) - gamma * maxPotentialDepth;
-        double c = - maxPotentialDepth * radius * (gamma - 1.);
-        double result = 0.5 * (-b + sqrt(b*b - 4*field*c)) / field;
-        return max(result, 1.);
-    }
+    double findRightXLimit(double maxPotentialDepth);
 
 };
 
@@ -343,60 +313,13 @@ public:
      * @brief Calculates the image potential at a point z.
      * @param z coordinate - distance from electrical surface (nm)
      */
-    double XCPotential(double z) override{
-
-        if (z <= xcFunctionParams.extensionStartPoint){
-            cerr << "Serious warning: z is out of range of validity of XC function. Returning 0." << endl;
-            return 0.;
-        }
-        double imagePotential = 0.;
-        if (z > 0.) imagePotential = ModifiedSNBarrier::XCPotential(z);
-        if (imagePotential > 20.) imagePotential = 20.;
-
-        double dftXCPotential = 0.;
-        if (z < xcFunctionParams.polynomialRange[0])
-            dftXCPotential = xcFunctionParams.extensionPrefactor / (z - xcFunctionParams.extensionStartPoint);
-        else if (z < xcFunctionParams.polynomialRange[1])
-            dftXCPotential = gsl_poly_eval(xcFunctionParams.dftXcPolynomial.data(), xcFunctionParams.dftXcPolynomial.size(), z);
-
-        double transitionFunction = .5 * gsl_sf_erfc((z - xcFunctionParams.transitionPoint) / xcFunctionParams.transisionWidth);
-        return transitionFunction * dftXCPotential + (1. - transitionFunction) * imagePotential;
-    }
+    double XCPotential(double z) override;
 
     /**
      * @brief Calculates the derivative of the image potential at a point z.
      * @param z coordinate - distance from electrical surface (nm)
      */
-    double XCPotentialDerivative(double z) override{
-        if (z <= xcFunctionParams.extensionStartPoint){
-            cerr << "Serious warning: z is out of range of validity of XC function. Returning 0." << endl;
-            return 0.;
-        }
-
-        double imagePotential = 0., imagePotentialDerivative = 0.;
-        if (z > 0.) {
-            imagePotential = ModifiedSNBarrier::XCPotential(z);
-            imagePotentialDerivative = ModifiedSNBarrier::XCPotentialDerivative(z);
-        }
-
-        if (imagePotential > 20.){
-            imagePotential = 20.;
-            imagePotentialDerivative = 0.;
-        }
-
-        double dftXCPotentialAndDerivative[2];
-        if (z < xcFunctionParams.polynomialRange[0]){
-            dftXCPotentialAndDerivative[0] = xcFunctionParams.extensionPrefactor / (z - xcFunctionParams.extensionStartPoint);
-            dftXCPotentialAndDerivative[1] = - xcFunctionParams.extensionPrefactor / ((z - xcFunctionParams.extensionStartPoint) * (z - xcFunctionParams.extensionStartPoint));
-        } else if (z < xcFunctionParams.polynomialRange[1]){
-            gsl_poly_eval_derivs(xcFunctionParams.dftXcPolynomial.data(), xcFunctionParams.dftXcPolynomial.size(), z, dftXCPotentialAndDerivative, 2);
-        }
-
-        double transitionFunction = .5 * gsl_sf_erfc((z - xcFunctionParams.transitionPoint) / xcFunctionParams.transisionWidth);
-        double transitionFunctionDerivative = - exp(- (z - xcFunctionParams.transitionPoint) * (z - xcFunctionParams.transitionPoint) / (xcFunctionParams.transisionWidth * xcFunctionParams.transisionWidth)) / (sqrt(M_PI) * xcFunctionParams.transisionWidth);
-        return transitionFunction * dftXCPotentialAndDerivative[1] + dftXCPotentialAndDerivative[0] * transitionFunctionDerivative + 
-                (1. - transitionFunction) * imagePotentialDerivative - imagePotential * transitionFunctionDerivative;
-    }
+    double XCPotentialDerivative(double z) override;
 
     /**
      * @brief Finds the left limit of numerical integration for calculating the barrier. 
@@ -404,13 +327,7 @@ public:
      * 
      * @return x position where the potential depth is @param maxPotentialDepth.
      */
-    double findLeftXLimit(double maxPotentialDepth) override{
-        double potentialAtXmin = XCPotential(xcFunctionParams.polynomialRange[0]);
-        if (potentialAtXmin > maxPotentialDepth) 
-            return xcFunctionParams.polynomialRange[0];
-        else
-            return xcFunctionParams.extensionStartPoint + xcFunctionParams.extensionPrefactor / maxPotentialDepth;
-    }
+    double findLeftXLimit(double maxPotentialDepth) override;
 
 
 private:

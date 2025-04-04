@@ -31,36 +31,6 @@ double BandEmitter::normalEnergyDistribution(double energy, void* params) {
     return result * Utilities::logFermiDiracFunction(energy, emitter->kT);
 }
 
-// double BandEmitter::setTransmissionSolver(){
-//     double minNormalEnergy = xInitial;
-//     if (effectiveMass > 1.)
-//         minNormalEnergy += (1. - effectiveMass) * (xFinal - xInitial);
-    
-//     // Set the limits for the transmission solver. The argument counts the barrier depth from Evacuum.
-//     transmissionSolver.setXlimits(workFunction - minNormalEnergy + 2.); 
-
-//     // if (transmissionSolver.getXFinal() > 10.) 
-//     //     transmissionSolver.setRecalculateXlimitsAtEachEnergy(true);
-//     // else
-//     //     transmissionSolver.setRecalculateXlimitsAtEachEnergy(false);
-    
-//     return minNormalEnergy;
-// }
-
-// void BandEmitter::updateSolverAndInterpolator() {
-//     // double minNormalEnergy = setTransmissionSolver();
-    
-//     // Initialize the interpolator with the new limits. Slightly extends th interpolator limits to avoid edge effects.
-//     interpolator.smartSampling();
-//     // TODO: make sure that there is proper refining to tolerance
-//     // int refiningSteps = interpolator.refineToTolerance(configParams.maxAllowedRefiningSteps);
-//     // if (refiningSteps >= configParams.maxAllowedRefiningSteps) {
-//     //     cout << "GETELEC WARNING: the interpolator reached maxRefiningSteps = " << configParams.maxAllowedRefiningSteps << " without satisfying the tolerance. No Spline Nodes = " << interpolator.size() << endl;
-//     //     writePlottingData();
-//     //     interpolator.writeSplineNodes();
-//     // }
-// }
-
 double BandEmitter::calculateIntegrand(double energy) {
     //TODO: be careful with the effective mass. abarX might get below the bandDepth causing problems. The interpolation range must be fixed.
     double waveVector = sqrt(energy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
@@ -79,7 +49,7 @@ void BandEmitter::setParameters(double workFunction_, double kT_, double effecti
     bandDepth = bandDepth_;
     effectiveMass = effectiveMass_;
     kT = kT_;
-    
+
     interpolator.setParameters(kT, workFunction);
     interpolator.smartInitialSampling();
     interpolator.refineSamplingToTolerance();
@@ -118,16 +88,8 @@ int BandEmitter::calculateCurrentDensityAndSpectra(double convergenceTolerance, 
     return GSL_CONTINUE; 
 }
 
-int BandEmitter::updateSpectraSpline(){
-    if (spectraSpline)
-        gsl_spline_free(spectraSpline);
-    if (spectraSplineAccelerator)
-        gsl_interp_accel_free(spectraSplineAccelerator);
-
-    spectraSplineAccelerator = gsl_interp_accel_alloc();
-    spectraSpline = gsl_spline_alloc(gsl_interp_cspline, savedSpectra.size());
-
-    return gsl_spline_init(spectraSpline, xSaved.data(), savedSpectra.data(), xSaved.size());
+void BandEmitter::updateSpectraSpline(){
+    spectraSpline.initialize(xSaved, savedSpectra, savedSpectraDerivative);
 }
 
 int BandEmitter::calculateCurrentDensityAndNottingham(double convergenceTolerance) {
@@ -162,16 +124,11 @@ double BandEmitter::calcualteCurrentDensity() {
 
 void BandEmitter::writePlottingData(string filename) {
     ofstream outFile(filename, ios::out);        
-    outFile << " E D_calc D_interp error NED TED lFD(E) tolerance" << endl;
+    outFile << " E D_calc D_interp NED TED lFD(E)" << endl;
     for (double x = xInitial; x < xFinal; x += 0.001) {
         double D = transmissionSolver.calculateTransmissionProbability(x - workFunction);
         double lFD = Utilities::logFermiDiracFunction(x, kT);
-        // double err = interpolator.calculateError(x, log(D));
-        // double tol = interpolator.calculateTolerance(x, log(D));
-        if (spectraSpline)
-            outFile << x << " " << D << " " << interpolator.evaluate(x) << " " << " " << lFD * D << " " << spectraForEnergy(x) << " " << lFD << " " << endl;
-        else
-            outFile << x << " " << D << " " << interpolator.evaluate(x) << " " << " " << lFD * D << " " << lFD << " " << endl;
+        outFile << x << " " << D << " " << interpolator.evaluate(x) << " " << interpolator.emissionCurrentEstimate(x) << " " << spectraForEnergy(x) << " " << lFD << " " << endl;
     }
     interpolator.writeSplineNodes();
 }

@@ -46,10 +46,6 @@ private:
     /** @brief Stores calculated spectral value derivatives in A/nm^2 / eV / eV */
     vector<double> savedSpectraDerivative;
 
-    gsl_spline* spectraSpline = NULL; /**< Spline for efficient evaluation of the spectra. */
-    gsl_interp_accel* spectraSplineAccelerator = NULL; /**< GSL interpolation accelerator for improved performance. */
-
-
     /** @brief A reference to the transmission solver used for calculating coefficients. */
     TransmissionSolver& transmissionSolver;
 
@@ -58,6 +54,8 @@ private:
 
     /** @brief A pointer to a random number generator to use for testing purposes */
     mt19937* generator = NULL;
+
+    CubicHermiteSpline spectraSpline; /**< Spline for the energy spectra. */
 
     Config::BandEmitterParams configParams; /**< Configuration parameters for the BandEmitter class. */
 
@@ -108,7 +106,7 @@ private:
     /**
      * @brief Updates (allocates if necessary) the spline for the energy spectra.
      */
-    int updateSpectraSpline();
+    void updateSpectraSpline();
 public:
     /**
      * @brief Sets the parameters for the band emitter simulation.
@@ -155,10 +153,6 @@ public:
     ~BandEmitter() {
         if (integrationWorkspace)
             gsl_integration_workspace_free(integrationWorkspace);
-        if (spectraSpline)
-            gsl_spline_free(spectraSpline);
-        if (spectraSplineAccelerator)
-            gsl_interp_accel_free(spectraSplineAccelerator);
     }
 
     /**
@@ -243,7 +237,7 @@ public:
      * @return The evaluated spectra.
      */
     double spectraForEnergy(double energy) const{
-        return gsl_spline_eval(spectraSpline, energy, spectraSplineAccelerator);
+        return spectraSpline.evaluate(energy);
     }
 
     /**
@@ -263,9 +257,7 @@ public:
      * @brief Sets the random number generator for the band emitter.
      * @param generator_ A pointer to the random number generator.
      */
-    void setGenerator(mt19937* generator_){
-        generator = generator_;
-    }
+    void setGenerator(mt19937* generator_){ generator = generator_; }
 
     /**
      * @brief Evaluates the transmission coefficient at a given energy by using the interpolator.
