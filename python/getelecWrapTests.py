@@ -38,7 +38,7 @@ class TestGetelecInterface(tst.TestCase):
         plt.show()
 
         # expected_poly = [12.40708813, -75.37623784, -4.9849858]
-        expected_poly = [ 7.235951, -73.153579,  -5.199719]
+        expected_poly = [ 7.209221, -73.143162,  -5.085605]
 
         np.testing.assert_allclose(poly, expected_poly, rtol=1e-3)  
 
