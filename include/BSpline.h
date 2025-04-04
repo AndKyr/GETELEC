@@ -11,8 +11,11 @@
 #include <typeinfo>
 #include <vector>
 #include <stdexcept>
+#include <cassert>
 
 using namespace std;
+
+namespace getelec{
 
 /**
  * @class BSpline
@@ -35,45 +38,21 @@ public:
      * @brief Set the positions for the spline (control points)
      * @param x Vector of positions
      */
-    void setPositions(const vector<double>& x){
-        if (positions)
-            gsl_vector_free(positions);
-        positions = gsl_vector_alloc(x.size());
-        for (size_t i = 0; i < x.size(); i++) 
-            gsl_vector_set(positions, i, x[i]); 
-    }
+    void setPositions(const vector<double>& x);
 
     /**
      * @brief Set the positions for the spline (control points) and the values of the function at the points
      * @param x Vector of positions
      * @param y Vector of values
      */
-    void setPositionsAndValues(const vector<double>& x, const vector<double>& y){
+    void setPositionsAndValues(const vector<double>& x, const vector<double>& y);
 
-        // Ensure the input vectors have the same size
-        assert(x.size() == y.size() && "Input vectors must have the same size");
-
-        //reallocate the positions and values
-        if (positions)
-            gsl_vector_free(positions);
-        positions = gsl_vector_alloc(x.size());
-        for (size_t i = 0; i < x.size(); i++) 
-            gsl_vector_set(positions, i, x[i]); 
-
-        if (values)
-            gsl_vector_free(values);
-        values = gsl_vector_alloc(y.size());
-        for (size_t i = 0; i < y.size(); i++) 
-            gsl_vector_set(values, i, y[i]); 
-
-    }
-
-    void setPositionsAndValues(gsl_vector* x, gsl_vector* y){
-        // Ensure the input vectors have the same size
-        assert(x->size == y->size && "Input vectors must have the same size");
-        positions = x;
-        values = y;
-    }
+    /**
+     * @brief Set the positions for the spline (control points) and the values of the function at the points
+     * @param x Vector of positions
+     * @param y Vector of values
+     */
+    void setPositionsAndValues(gsl_vector* x, gsl_vector* y);
 
     /**
      * @brief Delete the object and deallocate gsl objects
@@ -108,61 +87,42 @@ public:
      * @param x Point at which to evaluate the spline
      * @return Value of the spline at the given point
      */
-    double evaluate(double x) const {
-        assert(workSpace && coefficients && "The spline has not been initialized");
-        double result;
-        gsl_bspline_calc(x, coefficients, &result, workSpace);
-        return result;
-    }
+    double evaluate(double x) const;
 
     /**
      * @brief Evaluate multiple functions at a given point
      * @param x Point at which to evaluate the functions
      * @return Vector of values of the functions at the given point
      */
-    vector<double> evaluateMultiple(double x) const{
-        vector<double> result(coefficientSets.size());
-        for (size_t i = 0; i < coefficientSets.size(); i++){
-            assert(workSpace && coefficientSets[i] && "The spline has not been initialized");
-            gsl_bspline_calc(x, coefficientSets[i], &result[i], workSpace);
-        }
-        return result;
-    }
+    vector<double> evaluateMultiple(double x) const;
 
 
-    double evaluateDerivative(double x, size_t nDerivative = 1) const {
-        assert(workSpace && coefficients && "The spline has not been initialized");
-        double result;
-        gsl_bspline_calc_deriv(x, coefficients, nDerivative, &result, workSpace);
-        return result;
-    }
+    double evaluateDerivative(double x, size_t nDerivative = 1) const;
 
-    vector<double> evaluateDerivativeMultiple(double x, size_t nDerivative = 1) const {
-        vector<double> result(coefficientSets.size());
-        for (size_t i = 0; i < coefficientSets.size(); i++){
-            assert(workSpace && coefficientSets[i] && "The spline has not been initialized");
-            gsl_bspline_calc_deriv(x, coefficientSets[i], nDerivative, &result[i], workSpace);
-        }
-        return result;
-    }
+    /**
+     * @brief Evaluate the derivatives of multiple splines (on the same workspace and absiccae) at a given point
+     * @param x Point at which to evaluate the derivative
+     * @param nDerivative Order of the derivative to evaluate
+     * @return Value of the derivative at the given point
+     */
+    vector<double> evaluateDerivativeMultiple(double x, size_t nDerivative = 1) const ;
 
-    double evaluateIntegral(double a, double b) const{
-        assert(workSpace != nullptr && coefficients != nullptr);
+    /**
+     * @brief Evaluate the integral of the spline between two points
+     * @param a Lower limit of the integral
+     * @param b Upper limit of the integral
+     * @return Value of the integral between the two points
+     */
+    double evaluateIntegral(double a, double b) const;
 
-        double result;
-        gsl_bspline_calc_integ(a, b, coefficients, &result, workSpace);
-        return result;
-    }
-
-    vector<double> evaluateIntegralMultiple(double a, double b) const{
-        vector<double> result(coefficientSets.size());
-        for (size_t i = 0; i < coefficientSets.size(); i++){
-            assert(workSpace && coefficientSets[i] && "The spline has not been initialized");
-            gsl_bspline_calc_integ(a, b, coefficientSets[i], &result[i], workSpace);
-        }
-        return result;
-    }
-
+    /**
+     * @brief Evaluate the integral of multiple splines between two points
+     * @param a Lower limit of the integral
+     * @param b Upper limit of the integral
+     * @return Vector of values of the integrals between the two points
+     * @note The function assumes that the splines are on the same workspace and have the same abscissa
+     */
+    vector<double> evaluateIntegralMultiple(double a, double b) const;
 
 protected:
     gsl_bspline_workspace* workSpace = nullptr;  // Workspace for spline evaluation
@@ -189,19 +149,7 @@ public:
      * @param y Vector of values
      * @param dy_dx Vector of derivatives
      */
-    void initialize(const vector<double>& x, const vector<double>& y, const vector<double>& dy_dx) {
-            // Ensure the input vectors have the same size
-        setPositionsAndValues(x, y);
-        
-        if (derivs)
-            gsl_vector_free(derivs);
-        derivs = gsl_vector_alloc(dy_dx.size());
-        for (size_t i = 0; i < dy_dx.size(); i++) 
-            gsl_vector_set(derivs, i, dy_dx[i]); 
-        
-        reallocate();
-        intitialize();
-    }
+    void initialize(const vector<double>& x, const vector<double>& y, const vector<double>& dy_dx);
 
     /**
      * @brief Initialize a new CubicHermiteSpline object from positions, values and derivatives
@@ -211,22 +159,7 @@ public:
      * @note The input vectors must have the same size
      * @note The class takes no ownership of the input vectors. They need to be deallocated by the user 
      */
-    void initialize(gsl_vector* x, gsl_vector* y, gsl_vector* dy_dx) {
-        // Ensure the input vectors have the same size
-        if (x->size != y->size || x->size != dy_dx->size)
-            throw invalid_argument("Input vectors must have the same size");
-        
-        positions = x;
-        values = y;
-        derivs = dy_dx;
-        reallocate();
-        intitialize();
-
-        // Since the object has no ownership of the data, avoid freeing the input vectors
-        positions = nullptr;
-        values = nullptr;
-        derivs = nullptr;
-    }
+    void initialize(gsl_vector* x, gsl_vector* y, gsl_vector* dy_dx);
 
     /**
      * @brief Initialize with multiple functions from positions, values and derivatives
@@ -234,75 +167,34 @@ public:
      * @param ySets Vector of vectors of values
      * @param dy_dxSets Vector of vectors of derivatives 
      */
-    void initializeMultiple(const vector<double>& x, const vector<vector<double>>& ySets, const vector<vector<double>>& dy_dxSets){
-        setPositions(x);
-        assert(ySets.size() == dy_dxSets.size() && "The number of sets of values and derivatives must be the same");
-        
-        size_t nPoints = x.size();
-        values = gsl_vector_alloc(nPoints);
-        derivs = gsl_vector_alloc(nPoints);
-        reallocate();
+    void initializeMultiple(const vector<double>& x, const vector<vector<double>>& ySets, const vector<vector<double>>& dy_dxSets);
 
-        for (int i = 0; i < ySets.size(); i++){
-            assert(ySets[i].size() == nPoints && dy_dxSets[i].size() == nPoints && "The number of points in the sets must be the same");
-            for (size_t j = 0; j < nPoints; j++){
-                gsl_vector_set(values, j, ySets[i][j]);
-                gsl_vector_set(derivs, j, dy_dxSets[i][j]);
-            }
-            allocateCoefficients();
-            intitialize();
-            coefficientSets.push_back(coefficients);
-        }
-        coefficients = nullptr;
-    }
-
-
-
+    /**
+     * @brief Delete the object and deallocate gsl objects
+     * @note The destructor is virtual to allow for proper cleanup of derived classes
+     */
     ~CubicHermiteSpline() {
         if (derivs){
             gsl_vector_free(derivs);
             derivs = nullptr;
         }
-
     }
 
 private:
     gsl_vector* derivs = nullptr;
 
-    void reallocateWorkSpace(){
-        size_t nControlPoints = 2 * positions->size;
-        if (workSpace)
-            gsl_bspline_free(workSpace);
-        workSpace = gsl_bspline_alloc_ncontrol(4, nControlPoints);
-    }
+    void reallocateWorkSpace();
 
-    void reallocateCoefficients(){
-        size_t nControlPoints = 2 * positions->size;
-        if (coefficients)
-            gsl_vector_free(coefficients);
-        
-        for (auto coeffs : coefficientSets)
-            if (coeffs) gsl_vector_free(coeffs);
-        
-        coefficientSets.clear();
-        coefficients = gsl_vector_alloc(nControlPoints);  
-    }
+    void reallocateCoefficients();
 
-    void allocateCoefficients(){
-        size_t nControlPoints = 2 * positions->size;
-        coefficients = gsl_vector_alloc(nControlPoints);
-    }
+    void allocateCoefficients();
 
-    void reallocate(){
-        reallocateWorkSpace();
-        reallocateCoefficients();
-    }
+    void reallocate();
     
-    void intitialize(){
-        gsl_bspline_init_hermite(1, positions, workSpace);
-        gsl_bspline_interp_chermite(positions, values, derivs, coefficients, workSpace);
-    }
+    void intitialize();
 };
+
+}
 
 
 // class GeneralizedHermiteSpline : public BSpline{
