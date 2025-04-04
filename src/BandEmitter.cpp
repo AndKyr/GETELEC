@@ -8,6 +8,7 @@ namespace getelec{
 int BandEmitter::differentialSystem(double energy, const double y[], double f[], void *params) {
     BandEmitter* emitter = (BandEmitter*) params; // Cast the void pointer as SystemParams
     double D = emitter->calculateIntegrand(energy);
+    assert(isfinite(D) && "D is not finite in TED ODE system");
     f[0] = Utilities::fermiDiracFunction(energy, emitter->kT) * 
            (D - y[0] * exp(energy / emitter->kT) / emitter->kT);
     f[1] = y[0];
@@ -68,6 +69,7 @@ double BandEmitter::calculateIntegrand(double energy) {
         double aBarX = -bandDepth + (1. - effectiveMass) * (energy + bandDepth);
         result -= (1. - effectiveMass) * interpolator.getTransmissionProbability(aBarX - workFunction, waveVector);
     }
+    assert(isfinite(result) && "Transmission coefficient is not finite");
     return result;
 }
 
@@ -77,11 +79,13 @@ void BandEmitter::setParameters(double workFunction_, double kT_, double effecti
     bandDepth = bandDepth_;
     effectiveMass = effectiveMass_;
     kT = kT_;
+    
     interpolator.setParameters(kT, workFunction);
     interpolator.smartInitialSampling();
+    interpolator.refineSamplingToTolerance();
 
     //set ODE integration limits and affected parameters
-    xInitial = max(interpolator.getMinimumSampleEnergy() + workFunction, -bandDepth);
+    xInitial = max(interpolator.getMinimumSampleEnergy() + workFunction, -bandDepth + 0.001);
     xFinal = interpolator.getMaximumSampleEnergy() + workFunction;
     maxStepSize = (xFinal - xInitial) / minAllowedSteps;
     initialStep = (xFinal - xInitial) / stepsExpectedForInitialStep;

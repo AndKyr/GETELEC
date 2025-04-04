@@ -88,6 +88,8 @@ void TransmissionSpline::sampleEnergyPoint(double energy, size_t index, bool bis
 
 void TransmissionSpline::smartInitialSampling(){
 
+    reset();
+
     assert((solver.getEnergyDerivativeLevel() > 0) && "The solver should be set with energyDerivatigveLevel>0 to get Hermite spline interpolation");
 
     // make sure that the solver has energy derivatives
@@ -111,10 +113,8 @@ void TransmissionSpline::smartInitialSampling(){
 
 
 
-    if (abs(lowDecayLength) > 1.e-2){ //it decays slow enough to be worth it
-        double pointToSample = -workFunction - min(numberOfDecayLengths * lowDecayLength, -(log(absoluteTolerance) - logD_atFermi)/dLogD_dE_atFermi);
-        sampleEnergyPoint(pointToSample);
-    }
+    double pointToSample = -workFunction - numberOfDecayLengths * lowDecayLength; // - min(numberOfDecayLengths * lowDecayLength, -(log(absoluteTolerance) - logD_atFermi)/dLogD_dE_atFermi);
+    sampleEnergyPoint(pointToSample);
 
     double highDecayRate = 1./ kT - dLogD_dE_atFermi;
     double fermiToBarrier = topOfBarrier + workFunction;

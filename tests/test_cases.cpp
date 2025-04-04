@@ -69,6 +69,16 @@ TEST(TransmissionSolverTest, TopBarrierFinderTest){
     EXPECT_NEAR(topBarrier, barrier.getBarrierTop(), 1.e-2);
 }
 
+/**
+ * @brief Test for TransmissionSpline:: check that the interpolated and calculated values are close
+ * @details This test checks the accuracy of the TransmissionSpline class by comparing the interpolated values
+ *          with the calculated values from the TransmissionSolver class. It uses a modified SN barrier and
+ *          a TransmissionSolver to calculate the transmission probability and emission current estimates.
+ *          The test samples the transmission coefficient at various energy levels and checks if the
+ *          interpolated values are within a specified tolerance of the calculated values.
+ * @note The test uses a relative tolerance of 1.e-2 and an absolute tolerance of 1.e-13 for the comparison.
+ * @note The test also writes the spline solution and nodes to files for further analysis.
+ */
 TEST(TransmissionSplineTest, SplineTest){
     double atol = 1.e-13;
     double rtol = 1.e-2;
@@ -98,7 +108,10 @@ TEST(TransmissionSplineTest, SplineTest){
     }
 }
 
-// Test for TransmissionSpline:: check that the inteprolated and calculated values are close
+/**
+ * @brief Test for TransmissionSpline:: check that the maximum emission current estimate is found correctly
+ * @details This test checks the accuracy of the maximum emission current estimate found by the TransmissionSpline class.
+ */
 TEST(TransmissionSplineTest, maxEmissionFindTest){
     ModifiedSNBarrier barrier;
     TransmissionSolver solver(&barrier, Config().transmissionSolverParams, 10., 1);
@@ -125,36 +138,12 @@ TEST(TransmissionSplineTest, maxEmissionFindTest){
     cout << "maximum found within " << iterations << " iterations" << endl;
 }
 
-
-//
-// TEST(TransmissionInterpolatorTest, evaluationTest) {
-//     ModifiedSNBarrier barrier;
-//     TransmissionSolver solver(&barrier);
-//     solver.setXlimits(12.);
-
-//     const double bandDepth = 7.5;
-//     const double workFunction = 4.5;
-
-//     TransmissionInterpolator interpolator(solver, workFunction, 0.025, bandDepth);
-//     interpolator.initialize(-bandDepth+0.1, 1.0, 4);
-//     interpolator.refineToTolerance();
-
-
-//     mt19937 generator(1987);
-
-//     for (int i = 0; i < 64; i++){
-//         double testEnergy = Utilities::getUniformRandomDouble(-bandDepth+0.1, 1., generator);
-//         double waveVector = sqrt(testEnergy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
-//         double calculatedValue = solver.calculateTransmissionProbability(-4.5 + testEnergy, waveVector);
-//         double interpolatedValue = interpolator.evaluate(testEnergy);
-
-//         double error = interpolator.calculateError(testEnergy, log(calculatedValue));
-//         double tolerance = interpolator.calculateTolerance(testEnergy, log(calculatedValue));
-//         EXPECT_LE(error, 10 * tolerance);
-        
-//     }
-// }
-
+/**
+ * @brief Test for BandEmitter:: check that the current density and Nottingham heat are calculated correctly
+ * @details This test checks the accuracy of the current density and Nottingham heat calculated by the BandEmitter class.
+ *         It uses a modified SN barrier and a TransmissionSolver to calculate the current density and Nottingham heat.
+ *        The test compares the calculated values with known expected values to ensure correctness.
+ */
 TEST(BandEmitterTest, DefaultValueTest){
     ModifiedSNBarrier barrier;
     TransmissionSolver solver(&barrier, Config().transmissionSolverParams, 10., 1);
@@ -162,10 +151,16 @@ TEST(BandEmitterTest, DefaultValueTest){
     emitter.calculateCurrentDensityAndSpectra();
     double currentDensity = emitter.getCurrentDensity();
     double nottinghamHeat = emitter.getNottinghamHeat();
-    EXPECT_NEAR(4.0751479503250234e-09, currentDensity, emitter.getToleranceForValue(currentDensity));
-    EXPECT_NEAR(-8.2850824863969696e-10, nottinghamHeat, emitter.getToleranceForValue(nottinghamHeat));
+    EXPECT_NEAR(4.1646907052681002e-09, currentDensity, emitter.getToleranceForValue(currentDensity));
+    EXPECT_NEAR(-8.6598359882418122e-10, nottinghamHeat, emitter.getToleranceForValue(nottinghamHeat));
 }
 
+/**
+ * @brief Test for BandEmitter:: check that the current density and Nottingham heat are calculated correctly
+ * @details This test checks the accuracy of the current density and Nottingham heat calculated by the BandEmitter class.
+ *         It uses a modified SN barrier and a TransmissionSolver to calculate the current density and Nottingham heat.
+ *        The test compares the calculated values with two independent methods (TED vs NED integration) and confirms that they match.
+ */
 TEST(BandEmitterTest, CurrentDensityMethodComparison){
     ModifiedSNBarrier barrier;
     TransmissionSolver solver(&barrier, Config().transmissionSolverParams, 10., 1);

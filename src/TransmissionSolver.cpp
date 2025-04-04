@@ -105,6 +105,8 @@ gsl_complex TransmissionSolver::transmissionCoefficient(double waveVector, const
 
 double TransmissionSolver::transmissionProbability(double waveVector, const vector<double>& leftSolution){
     gsl_complex transmissionCoeff = transmissionCoefficient(waveVector, leftSolution);
+    assert(gsl_complex_abs2(transmissionCoeff) >= 0. && "transmission coefficient appears to not be finite");
+    assert(waveVector > 0. && "wave vector must be positive");
     return gsl_complex_abs2(transmissionCoeff) / waveVector;
 }
 

@@ -68,6 +68,7 @@ public:
      */
     gsl_complex getTransmissionCoefficient(double energy, double waveVector) const{
         vector<double> solutionVector = evaluateMultiple(energy);
+        assert(all_of(solutionVector.begin(), solutionVector.end(), [](double x) { return isfinite(x); }));
         return TransmissionSolver::transmissionCoefficient(waveVector, solutionVector);
     }
     
@@ -77,8 +78,9 @@ public:
      * @param waveVector Wave vector (1/nm).
      */
     double getTransmissionProbability(double energy, double waveVector) const{
-        gsl_complex transmissionCoeff = getTransmissionCoefficient(energy, waveVector);
-        return gsl_complex_abs2(transmissionCoeff) / waveVector;
+        vector<double> solutionVector = evaluateMultiple(energy);
+        assert(all_of(solutionVector.begin(), solutionVector.end(), [](double x) { return isfinite(x); }));
+        return TransmissionSolver::transmissionProbability(waveVector, solutionVector);
     }
 
 
@@ -175,6 +177,23 @@ private:
      * @note This method is called after the initial sampling to ensure that the spline is smooth and meets the specified tolerances.
      */
     int refineSampling(); 
+
+    /**
+     * @brief Resets the spline data and clears the sample lists.
+     * @note This method is used to clear the data before a new calculation or sampling.
+     * @note It clears the sample energies, solution samples, and derivative samples.
+     * @note It also clears the bisect list.
+     * @note This method is called before a new calculation to ensure that the spline data is fresh and does not contain any old data.
+     */
+    void reset(){
+        sampleEnergies.clear();
+        for (auto& sample : solutionSamples)
+            sample.clear();
+        for (auto& sample : solutionDerivativeSamples)
+            sample.clear();
+
+        bisectList.clear();
+    }
 };
 
 } // namespace getelec
