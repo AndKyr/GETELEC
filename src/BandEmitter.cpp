@@ -6,7 +6,7 @@
 namespace getelec{
 
 int BandEmitter::differentialSystem(double energy, const double y[], double f[], void *params) {
-    BandEmitter* emitter = (BandEmitter*) params; // Cast the void pointer as SystemParams
+    BandEmitter* emitter = (BandEmitter*) params; // Cast the void pointer as "this"
     double D = emitter->calculateIntegrand(energy);
     assert(isfinite(D) && "D is not finite in TED ODE system");
     f[0] = Utilities::fermiDiracFunction(energy, emitter->kT) * 
@@ -17,7 +17,7 @@ int BandEmitter::differentialSystem(double energy, const double y[], double f[],
 }
 
 int BandEmitter::differentialSystemLog(double energy, const double y[], double f[], void *params) {
-    BandEmitter* emitter = (BandEmitter*) params; // Cast the void pointer as SystemParams
+    BandEmitter* emitter = (BandEmitter*) params; // Cast the void pointer as "this"
     double D = emitter->calculateIntegrand(energy); // Calculate transmission coefficient
     f[0] = Utilities::fermiDiracFunction(energy, emitter->kT) * 
            (D * exp(-y[0]) - exp(energy / emitter->kT) / emitter->kT);
@@ -26,7 +26,7 @@ int BandEmitter::differentialSystemLog(double energy, const double y[], double f
 }
 
 double BandEmitter::normalEnergyDistribution(double energy, void* params) {
-    BandEmitter* emitter = (BandEmitter*) params; // Cast the void pointer as SystemParams
+    BandEmitter* emitter = (BandEmitter*) params; // Cast the void pointer as "this"
     double result = emitter->calculateIntegrand(energy);
     return result * Utilities::logFermiDiracFunction(energy, emitter->kT);
 }

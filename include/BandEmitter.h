@@ -168,17 +168,6 @@ public:
     }
 
     /**
-     * @brief Reinitializes the transmission solver with the proper parameters for a new calculation.
-     * @return (optional) The value of the minimum energy that is relevant for the solver (in eV, based on the band depth and effective mass)
-     */
-    // double setTransmissionSolver();
-
-    /**
-     * @brief Updates the barrier parameters and interpolator grid.
-     */
-    // void updateSolverAndInterpolator();
-
-    /**
      * @brief Solves the ODE system to calculate current density, Nottingham heat and energy spectra.
      * @param convergenceTolerance The tolerance for convergence.
      * @return Status of the calculation (e.g., GSL_SUCCESS).

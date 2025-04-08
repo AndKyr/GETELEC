@@ -1,5 +1,4 @@
 #include "TransmissionSplines.h"
-#include <gsl/gsl_min.h>
 
 namespace getelec{
 
@@ -137,25 +136,20 @@ void TransmissionSpline::smartInitialSampling(){
 int TransmissionSpline::findMaximumCurrentEstimate(int maxIterations, double rTol){
     auto lambdaMinimizer = [](double energy, void* params) -> double {
         TransmissionSpline* thisObject = (TransmissionSpline*) params;
-        return - thisObject->emissionCurrentEstimate(energy);
+        return -thisObject->emissionCurrentEstimate(energy);
     }; // a lambda that gives the - of the NED
     double (* functionPointer)(double, void*) = lambdaMinimizer;//convert the lambda into raw function pointer
     gsl_function F = {functionPointer, this}; //define gsl function to be minimized
     
-    // define and set the minimizer objects (GSL)
-    const gsl_min_fminimizer_type* type = gsl_min_fminimizer_brent;
-    gsl_min_fminimizer* minimizer = gsl_min_fminimizer_alloc(type);
+
     gsl_set_error_handler_off(); // turn off GSL error handler
     int status = gsl_min_fminimizer_set(minimizer, &F, 0.5 * (getMinimumSampleEnergy() + getMaximumSampleEnergy()), getMinimumSampleEnergy(), getMaximumSampleEnergy());
 
     if (status == GSL_EINVAL){
-        if (checkAllBelowTolerance()){
-            gsl_min_fminimizer_free(minimizer);
+        if (checkAllBelowTolerance())
             return -1; // all values are below the tolerance. No need to minimize
-        }
-        else{
+        else
             throw std::runtime_error("GSL minimizer failed to set up. Something is wrong with the initial values.");
-        }
     }
 
     //do minimization iterations
@@ -171,13 +165,11 @@ int TransmissionSpline::findMaximumCurrentEstimate(int maxIterations, double rTo
         if (abs(minValue / maxValueInInterval - 1.) < rTol){ //if we have reached tolerance
             mamximumCurrentEstimate = - minValue;
             maximumCurrentPosition = gsl_min_fminimizer_minimum(minimizer);
-            gsl_min_fminimizer_free(minimizer);
             return i;
         }
     }
 
     //case when tolerance never met within the maxIterations
-    gsl_min_fminimizer_free(minimizer);
     throw std::runtime_error("GSL minimizer failed to converge with relative tolerance " + std::to_string(rTol) + " and maxIterations " + std::to_string(maxIterations) + ".");
     return maxIterations;
 

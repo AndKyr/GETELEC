@@ -6,6 +6,8 @@
 #include "BSpline.h"
 #include <gsl/gsl_complex.h>
 #include <gsl/gsl_complex_math.h>
+#include <gsl/gsl_min.h>
+
 #include <algorithm>
 
 namespace getelec{
@@ -54,7 +56,14 @@ public:
                                 : solver(solver_), 
                                 workFunction(workFunction_), kT(kT_), 
                                 relativeTolerance(rTol), absoluteTolerance(aTol)
-    {}
+    {
+        minimizer = gsl_min_fminimizer_alloc(type); /**< Allocate GSL minimizer for finding the max of the expected emission current */
+    }
+
+    ~TransmissionSpline(){
+        if (minimizer) gsl_min_fminimizer_free(minimizer);
+        minimizer = nullptr;
+    }
 
     void setParameters(double kT_, double W){
         kT = kT_;
@@ -165,6 +174,9 @@ private:
     vector<bool> bisectList; /**< List of booleans indicating if the interval following a sample point should be bisected */
     double mamximumCurrentEstimate = 0; /**< Estimation of the maximum current emitted (integrand of the NED) */
     double maximumCurrentPosition = 0; /**< Estimation of the position (in normal energy) of the maximum emission */
+
+    const gsl_min_fminimizer_type* type = gsl_min_fminimizer_brent; /**< GSL object (minimizer type) for finding the max of the expected emission current */
+    gsl_min_fminimizer* minimizer = nullptr; /**< GSL object (minimizer) for finding the max of the expected emission current */
 
     /**
      * @brief Initializes the interpolator with the sampled data after sorting the samples.
