@@ -13,9 +13,9 @@ void Getelec::runIteration(size_t i, bool calculateSpectra) {
     emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth); 
 
     if (calculateSpectra)
-        emitter.calculateCurrentDensityAndSpectra();
+        emitter.integrateTotalEnergyDistributionODEAndSaveSpectra();
     else
-        emitter.calculateCurrentDensityAndNottingham(); 
+        emitter.integrateTotalEnergyDistributionODE(); 
     
     currentDensityVector[i] = emitter.getCurrentDensity();
     nottinghamHeatVector[i] = emitter.getNottinghamHeat();

@@ -19,7 +19,7 @@ int main(){
     BandEmitter emitter = BandEmitter(calculator);
 
 
-    emitter.calculateCurrentDensityAndSpectra();
+    emitter.integrateTotalEnergyDistributionODEAndSaveSpectra();
     cout << emitter.getCurrentDensity() << endl;
 
     auto fields = Utilities::linspace(1., 10, 64);
@@ -27,7 +27,7 @@ int main(){
     auto start = std::chrono::high_resolution_clock::now();
     for (double kT : kTs){
         emitter.setParameters(4.5, kT);
-        emitter.calculateCurrentDensityAndSpectra();
+        emitter.integrateTotalEnergyDistributionODEAndSaveSpectra();
         cout << kT  << " " << emitter.getCurrentDensity() << endl;
     }
     auto end = std::chrono::high_resolution_clock::now();

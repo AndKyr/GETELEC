@@ -58,13 +58,17 @@ private:
     CubicHermiteSpline spectraSpline; /**< Spline for the energy spectra. */
 
     Config::BandEmitterParams configParams; /**< Configuration parameters for the BandEmitter class. */
+  
+    gsl_integration_workspace* integrationWorkspace = NULL;  /**< GSL Workspace for numerical integration using GSL. */
 
     /**
-     * @brief Calculates the integrand based on electron energy and transmission coefficients.
-     * @param energy The energy of the electron.
-     * @return The calculated integrand value.
+     * @brief Calculates the g'(E) (see Andreas' notes) for a given (normal) energy.
+     * @param energy The normal energy of the electron.
+     * @return The calculated g'(E) value.
+     * @note For effectiveMass=1, g'(E) simplifies into the transmission probability, i.e. g'(E) = D(E)
+     * @note For effectiveMass far away from 1, g'(E) remains a complex integral and double integration should be used.
      */
-    double calculateIntegrand(double energy);
+    double gPrimeFunction(double energy);
 
     /**
      * @brief Defines the system of differential equations to solve.
@@ -77,28 +81,12 @@ private:
     static int differentialSystem(double energy, const double y[], double f[], void *params);
 
     /**
-     * @brief Defines the system of differential equations in logarithmic form.
-     * @param energy The independent variable (energy).
-     * @param y The dependent variables.
-     * @param f The derivatives of the dependent variables.
-     * @param params Additional system parameters.
-     * @return GSL_SUCCESS on success.
-     */
-    static int differentialSystemLog(double energy, const double y[], double f[], void *params);
-
-    /**
      * @brief Function for calculating the normal energy distribution.
      * @param energy The energy of the electron.
      * @param params Additional parameters.
      * @return The calculated distribution value.
      */
     static double normalEnergyDistribution(double energy, void* params);
-
-    /** @brief Integration function used by GSL. */
-    gsl_function integrationFunction = {&normalEnergyDistribution, this};
-
-    /** @brief Workspace for numerical integration using GSL. */
-    gsl_integration_workspace* integrationWorkspace = NULL;
 
     /** @brief Defines the Jacobian matrix for the differential system (optional, currently unused). */
     static int differentialSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params);
@@ -172,22 +160,22 @@ public:
      * @param convergenceTolerance The tolerance for convergence.
      * @return Status of the calculation (e.g., GSL_SUCCESS).
      */
-    int calculateCurrentDensityAndSpectra(double convergenceTolerance = 0., bool makeSpectralSpline = false);
+    int integrateTotalEnergyDistributionODEAndSaveSpectra(double convergenceTolerance = 0., bool makeSpectralSpline = false);
 
     /**
      * @brief Solves the ODE system to calculate current density and Nottingham heat.
      * @param convergenceTolerance The tolerance for convergence.
      * @return Status of the calculation (e.g., GSL_SUCCESS).
      * 
-     * @note This method runs the same as calculateCurrentDensityAndSpectra but a bit faster because it does not save the spectra.
+     * @note This method runs the same as integrateTotalEnergyDistributionODEAndSaveSpectra but a bit faster because it does not save the spectra.
      */
-    int calculateCurrentDensityAndNottingham(double convergenceTolerance = 1.e-5);
+    int integrateTotalEnergyDistributionODE(double convergenceTolerance = 1.e-5);
 
     /**
      * @brief Calculates the current density using numerical integration.
      * @return The calculated current density.
      */
-    double calcualteCurrentDensity();
+    double integrateNormalEnergyDistribution();
 
     /**
      * @brief Writes data for plotting the band emitter's behavior.
@@ -199,9 +187,7 @@ public:
      * @brief Gets the current density from the solution vector.
      * @return The current density in appropriate units.
      */
-    double getCurrentDensity() {
-        return solutionVector[1] * CONSTANTS.SommerfeldConstant;
-    }
+    double getCurrentDensity() { return solutionVector[1] * CONSTANTS.SommerfeldConstant; }
 
     /**
      * @brief Gets the Nottingham heat from the solution vector.
@@ -220,6 +206,13 @@ public:
         return {move(xSaved), move(savedSpectra), move(savedSpectraDerivative)};
     }   
 
+    /**
+     * @brief Calculates and returns the Parallel (to the surface) Energy Distribution of the emitted electrons for a 
+     * @param parallelEnergy The parallel energy of the emitted electrons (eV).
+     * @return The calculated distribution (A/nm^2 / eV at the given parallel energy).
+     */
+    double calculateParallelEnergyDistribution(double parallelEnergy);
+    
     /**
      * @brief Evaluates the speactra at a given energy.
      * @param energy The energy at which to evaluate the spectra.

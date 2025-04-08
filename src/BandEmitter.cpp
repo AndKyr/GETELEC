@@ -7,7 +7,7 @@ namespace getelec{
 
 int BandEmitter::differentialSystem(double energy, const double y[], double f[], void *params) {
     BandEmitter* emitter = (BandEmitter*) params; // Cast the void pointer as "this"
-    double D = emitter->calculateIntegrand(energy);
+    double D = emitter->gPrimeFunction(energy);
     assert(isfinite(D) && "D is not finite in TED ODE system");
     f[0] = Utilities::fermiDiracFunction(energy, emitter->kT) * 
            (D - y[0] * exp(energy / emitter->kT) / emitter->kT);
@@ -16,22 +16,13 @@ int BandEmitter::differentialSystem(double energy, const double y[], double f[],
     return GSL_SUCCESS;
 }
 
-int BandEmitter::differentialSystemLog(double energy, const double y[], double f[], void *params) {
-    BandEmitter* emitter = (BandEmitter*) params; // Cast the void pointer as "this"
-    double D = emitter->calculateIntegrand(energy); // Calculate transmission coefficient
-    f[0] = Utilities::fermiDiracFunction(energy, emitter->kT) * 
-           (D * exp(-y[0]) - exp(energy / emitter->kT) / emitter->kT);
-    f[1] = exp(y[0] - y[1]);
-    return GSL_SUCCESS;
-}
-
 double BandEmitter::normalEnergyDistribution(double energy, void* params) {
     BandEmitter* emitter = (BandEmitter*) params; // Cast the void pointer as "this"
-    double result = emitter->calculateIntegrand(energy);
+    double result = emitter->gPrimeFunction(energy);
     return result * Utilities::logFermiDiracFunction(energy, emitter->kT);
 }
 
-double BandEmitter::calculateIntegrand(double energy) {
+double BandEmitter::gPrimeFunction(double energy) {
     //TODO: be careful with the effective mass. abarX might get below the bandDepth causing problems. The interpolation range must be fixed.
     double waveVector = sqrt(energy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
     double result = interpolator.getTransmissionProbability(energy - workFunction, waveVector);
@@ -63,7 +54,7 @@ void BandEmitter::setParameters(double workFunction_, double kT_, double effecti
     setInitialValues({0., 0., 0.});
 }
 
-int BandEmitter::calculateCurrentDensityAndSpectra(double convergenceTolerance, bool makeSpectralSpline) {
+int BandEmitter::integrateTotalEnergyDistributionODEAndSaveSpectra(double convergenceTolerance, bool makeSpectralSpline) {
     double x = xInitial;
     double dx = initialStep;
     int status;
@@ -92,7 +83,7 @@ void BandEmitter::updateSpectraSpline(){
     spectraSpline.initialize(xSaved, savedSpectra, savedSpectraDerivative);
 }
 
-int BandEmitter::calculateCurrentDensityAndNottingham(double convergenceTolerance) {
+int BandEmitter::integrateTotalEnergyDistributionODE(double convergenceTolerance) {
     if (convergenceTolerance <= 0.) convergenceTolerance = relativeTolerance;
     double x = xInitial;
     double dx = initialStep;
@@ -111,11 +102,12 @@ int BandEmitter::calculateCurrentDensityAndNottingham(double convergenceToleranc
     return GSL_CONTINUE; 
 }
 
-double BandEmitter::calcualteCurrentDensity() {
+double BandEmitter::integrateNormalEnergyDistribution() {
     double result, error;
     if (!integrationWorkspace)
         integrationWorkspace = gsl_integration_workspace_alloc(maxAllowedSteps);
 
+    gsl_function integrationFunction = {&normalEnergyDistribution, this};
     gsl_integration_qag(&integrationFunction, xInitial, xFinal, 0., relativeTolerance, maxAllowedSteps, 
                         GSL_INTEG_GAUSS41, integrationWorkspace, &result, &error);
     return result * CONSTANTS.SommerfeldConstant * kT;
@@ -133,4 +125,17 @@ void BandEmitter::writePlottingData(string filename) {
     interpolator.writeSplineNodes();
 }
 
+
+double BandEmitter::calculateParallelEnergyDistribution(double parallelEnergy) {
+    double result, error;
+    if (!integrationWorkspace)
+        integrationWorkspace = gsl_integration_workspace_alloc(maxAllowedSteps);
+    
+    gsl_function integrationFunction = {&normalEnergyDistribution, this};
+
+    gsl_integration_qag(&integrationFunction, xInitial, xFinal, 0., relativeTolerance, maxAllowedSteps, 
+                        GSL_INTEG_GAUSS41, integrationWorkspace, &result, &error);
+    return result * CONSTANTS.SommerfeldConstant * kT;
+
+}
 }
