@@ -113,11 +113,25 @@ public:
         xFinal = barrier->findLeftXLimit(leftPotentialDepth);
     }
 
+    /**
+     * @brief Calculates the minimum valid energy for the tunneling calculation.
+     * @param tolerance Tolerance for the energy calculation.
+     * @return The minimum valid energy.
+     * @note It checks the JWKB validity criterion, i.e. whether (d_{\kappa}/dx / kappa^2) < tolerance at the initial point
+     */
     double minimumValidEnergy(double tolerance = 0.1) const {
         double dkappaSquared_dx = barrier->kappaSquaredDerivative(xInitial);
         double kappaSquaredMinimum = pow(2 * tolerance * dkappaSquared_dx, 2./3.);
         return barrier->potentialFunction(xInitial) + kappaSquaredMinimum / CONSTANTS.kConstant;       
     }
+
+    /**
+     * @brief Ensures that the barrier is deep enough for the tunneling calculation at a given energy. Deepen it if not.
+     * @param energy Energy level (eV).
+     * @param depthLimit Upper limit for adjusting the barrier depth.
+     * @return The number of times the barrier depth was adjusted.
+     */
+    int ensureBarrierDeepEnough(double energy, double depthLimit = 100.);
 
     /**
      * @brief Getter for the xInitial value.
@@ -208,11 +222,13 @@ public:
 
     const vector<double>& getSolution() const { return solutionVector; }
 
-    const double getMaxBArrierDepth() const { 
-        double initialPotential = barrier->potentialFunction(xInitial);
-        double finalPotential = barrier->potentialFunction(xFinal);
-        return max(initialPotential, finalPotential);
-    }
+    /**
+     * @brief Retrieves the maximum barrier depth within the integration limits.
+     * @return The maximum barrier depth.
+     * @note This is the maximum potential value at the initial and final x limits.
+     */
+    const double getMaxBArrierDepth() const;
+
 
     /**
      * @brief Prints the integration limits for debugging purposes.
@@ -220,6 +236,8 @@ public:
     void printXLimits() { cout << "xInitial = " << xInitial << " xFinal = " << xFinal << endl; }
 
     TunnelingFunction* getBarrier() { return barrier; }
+
+    void writeBarrierPlottingData(string filename = "barrier.dat", int nPoints = 256);
 
 };
 

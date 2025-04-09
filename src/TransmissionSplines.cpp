@@ -56,34 +56,36 @@ void TransmissionSpline::writeSplineNodes(string filename){
 
 void TransmissionSpline::sampleEnergyPoint(double energy, size_t index, bool bisect){
 
-    // ensure that the energy is within the limits of the solver
-    if (energy < minimumValidEnergyForSolver){
-        double newBarrierDepth = -energy + 5.;
-        while(energy < minimumValidEnergyForSolver){
-            solver.setXlimits(newBarrierDepth); // set the limits for the transmission solver.
-            newBarrierDepth += 5.;
-            minimumValidEnergyForSolver = solver.minimumValidEnergy();
-            if (newBarrierDepth > 100.){
-                throw std::runtime_error("The solver's barrier depth was reduced below 100 eV without satisfying WKB. Something is wrong with the barrier shape");
-            }
-        }
+    if (index < 1 || index > sampleEnergies.size()) index = sampleEnergies.size(); //if the index is out of bounds, set it to the end
+    sampleEnergies.emplace(sampleEnergies.begin() + index, energy);
+    bisectList.emplace(bisectList.begin() + index, bisect);
+
+    for (int i = 0; i < 3; i++){
+        solutionSamples[i].emplace(solutionSamples[i].begin() + index, 0.);
+        solutionDerivativeSamples[i].emplace(solutionDerivativeSamples[i].begin() + index, 0.);
     }
-   
+
+    if (solver.ensureBarrierDeepEnough(energy)){ // make sure the barrier is deep enough for the energy
+        for(int i = 0; i < sampleEnergies.size(); i++){ // if the barrier depth has been changed, recalculate all the points
+            calculateAndSetSampleValues(i);
+        }
+    } else // if nothing has changed, just calculate the new point
+        calculateAndSetSampleValues(index); // calculate the values for the new point
+
+}
+
+void TransmissionSpline::calculateAndSetSampleValues(size_t index){
+    double energy = sampleEnergies[index];
+    solver.ensureBarrierDeepEnough(energy); // make sure the barrier is deep enough for the energy
     solver.setEnergyAndInitialValues(energy);
     solver.solveNoSave();
     auto solutionVector = solver.getSolution();
-
-    if (index < 1 || index > sampleEnergies.size()) index = sampleEnergies.size();
-
-    sampleEnergies.emplace(sampleEnergies.begin() + index, energy);
-    bisectList.emplace(bisectList.begin() + index, bisect);
     for (int i = 0; i < 3; i++){
-        solutionSamples[i].emplace(solutionSamples[i].begin() + index, solutionVector[i]);
-        solutionDerivativeSamples[i].emplace(solutionDerivativeSamples[i].begin() + index, solutionVector[i + 3] * CONSTANTS.kConstant);
+        solutionSamples[i][index] = solutionVector[i];
+        solutionDerivativeSamples[i][index] = solutionVector[i + 3] * CONSTANTS.kConstant;
     }
+    assert((checkSolutionSanity(solutionVector, energy, 0.5, true), true)); //check if solution is continuous and write the solution if not
 }
-
-
 
 void TransmissionSpline::smartInitialSampling(){
 
@@ -93,8 +95,6 @@ void TransmissionSpline::smartInitialSampling(){
 
     // make sure that the solver has energy derivatives
     solver.setXlimits(workFunction + 5.); // set the limits for the transmission solver. 
-    minimumValidEnergyForSolver = solver.minimumValidEnergy(); // get the minimum valid energy for the solver
-
 
     solver.getBarrier()->setBarrierTopFinder(true); // set barrier top finder
     sampleEnergyPoint(-workFunction); //sample the fermi level
@@ -136,7 +136,7 @@ void TransmissionSpline::smartInitialSampling(){
 int TransmissionSpline::findMaximumCurrentEstimate(int maxIterations, double rTol){
     auto lambdaMinimizer = [](double energy, void* params) -> double {
         TransmissionSpline* thisObject = (TransmissionSpline*) params;
-        return -thisObject->emissionCurrentEstimate(energy);
+        return -thisObject->normalEnergyDistributionEstimate(energy);
     }; // a lambda that gives the - of the NED
     double (* functionPointer)(double, void*) = lambdaMinimizer;//convert the lambda into raw function pointer
     gsl_function F = {functionPointer, this}; //define gsl function to be minimized
@@ -185,7 +185,7 @@ int TransmissionSpline::refineSampling(){
             sampleEnergyPoint(newEnergy, ++i, true);
 
             double calculatedCurrentEstimate = solver.getEmissionEstimate(testWaveVector, workFunction, kT);
-            double interpolatedCurrentEstimate = emissionCurrentEstimate(newEnergy, testWaveVector);
+            double interpolatedCurrentEstimate = normalEnergyDistributionEstimate(newEnergy, testWaveVector);
             double error = abs(calculatedCurrentEstimate - interpolatedCurrentEstimate);
             double tolerance = absoluteTolerance + relativeTolerance * mamximumCurrentEstimate;
             if (error < tolerance){
@@ -195,6 +195,41 @@ int TransmissionSpline::refineSampling(){
         }
     }
     return noInsertedSamples;
+}
+
+bool TransmissionSpline::checkSolutionSanity(vector<double> &solutionVector, double energy, double absoluteTolerance, bool writeSolverPlottingData){
+    // Check if the solution vector is finite
+    if (!all_of(solutionVector.begin(), solutionVector.end(), [](double x) { return isfinite(x); })) {
+        return false;
+    }
+
+    if (!isInitialized)
+        return true; // if not initialized, we can't check the solution
+
+    vector<double> expectedSolution = evaluateMultiple(energy);
+
+    for (int i = 0; i < 3; i++){
+        double diff = abs(solutionVector[i] - expectedSolution[i]);
+        if (diff > absoluteTolerance){
+            cout << "GETELEC WARNING: The solution vector is not continuous. The difference is " << diff << " at energy " << energy << endl;
+            if(writeSolverPlottingData){
+                cout << "Writing the problematic solution to file 'problematicWaveFunctionSolution.dat' and barrier to 'problematicBarrier.dat' " << endl;
+                solver.solve(true);
+                solver.writeSolution("problematicWaveFunctionSolution.dat");
+                solver.writeBarrierPlottingData("problematicBarrier.dat", 0);
+
+                solver.setEnergyAndInitialValues(energy + 0.1);
+                solver.solve(true);
+                solver.writeSolution("problematicWaveFunctionSolution_neighborEnergy.dat");
+
+                writeSplineSolution("problematicSplineSolution.dat", 64);
+                writeSplineNodes("problematicSplineNodes.dat");
+            }
+            return false;
+        }
+    }
+
+    return true;
 }
 
 void TransmissionSpline::refineSamplingToTolerance(int maxRefineSteps){
@@ -210,6 +245,8 @@ void TransmissionSpline::refineSamplingToTolerance(int maxRefineSteps){
     }
     cout << "GETELEC WARNING: Max allowed refine steps " << maxRefineSteps << " reached in spline interpolation without satisfying tolerance rtol: " 
         << relativeTolerance << " atol: " << absoluteTolerance << endl;
+    
+    assert((writeSplineSolution(), writeSplineNodes(), true)); //if in debug mode, then write the splines to check them.
 }
 
 void TransmissionSpline::sortAndInitialize(){
@@ -247,6 +284,7 @@ void TransmissionSpline::sortAndInitialize(){
     }
 
     initializeMultiple(sampleEnergies, solutionSamples, solutionDerivativeSamples);
+    isInitialized = true;
 }
 
 

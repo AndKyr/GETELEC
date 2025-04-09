@@ -41,6 +41,19 @@ int TransmissionSolver::tunnelingSystemJacobian(double x, const double y[], doub
         return GSL_SUCCESS;
 }
 
+int TransmissionSolver::ensureBarrierDeepEnough(double energy, double depthLimit){
+    int numberOfBarrierDepthAdjustments = 0;
+    // setEnergyAndInitialValues(energy);
+    for (double newBarrierDepth = -energy + 5.; energy < minimumValidEnergy(); newBarrierDepth += 5.){
+        setXlimits(newBarrierDepth);
+        numberOfBarrierDepthAdjustments++;
+        if (newBarrierDepth > depthLimit)
+            throw std::runtime_error("The solver's barrier depth was reduced below " + 
+                std::to_string(depthLimit) + " eV without satisfying WKB validity conditions. Something is wrong with the barrier shape");
+    }
+    return numberOfBarrierDepthAdjustments;
+}
+
 void TransmissionSolver::updateKappaInitial(){
     double kappaSquaredInitial = barrier->kappaSquared(xInitial);
 
@@ -59,8 +72,8 @@ double TransmissionSolver::calculateKappaFinal() const{
     return sqrt(kappaSquaredFinal);
 }
 
-void TransmissionSolver::setEnergyAndInitialValues(double E){
-    barrier->setEnergy(E);
+void TransmissionSolver::setEnergyAndInitialValues(double energy){
+    barrier->setEnergy(energy);
     updateKappaInitial();
     if (energyDerivativeLvl == 0){
         initialValues = {0., kappaInitial, -0.5 * log(kappaInitial)};
@@ -108,6 +121,27 @@ double TransmissionSolver::transmissionProbability(double waveVector, const vect
     assert(gsl_complex_abs2(transmissionCoeff) >= 0. && "transmission coefficient appears to not be finite");
     assert(waveVector > 0. && "wave vector must be positive");
     return gsl_complex_abs2(transmissionCoeff) / waveVector;
+}
+
+const double TransmissionSolver::getMaxBArrierDepth() const{ 
+    double initialPotential = barrier->potentialFunction(xInitial);
+    double finalPotential = barrier->potentialFunction(xFinal);
+    return max(initialPotential, finalPotential);
+}
+
+void TransmissionSolver::writeBarrierPlottingData(string filename, int nPoints){
+    ofstream file(filename);
+
+    vector<double>& xPoints = xSaved;
+
+    if (nPoints > 2)
+        xPoints = Utilities::linspace(xInitial, xFinal, nPoints);
+
+    file << "# x [nm] V(x) - E [eV]" << endl;
+    for (auto x : xPoints){
+        file << x << " " << barrier->potentialFunction(x) - barrier->getEnergy()  << endl;
+    }
+    file.close();
 }
 
 } // namespace getelec
