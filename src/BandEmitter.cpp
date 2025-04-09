@@ -120,7 +120,7 @@ void BandEmitter::writePlottingData(string filename) {
     for (double x = xInitial; x < xFinal; x += 0.001) {
         double D = transmissionSolver.calculateTransmissionProbability(x - workFunction);
         double lFD = Utilities::logFermiDiracFunction(x, kT);
-        outFile << x << " " << D << " " << interpolator.evaluate(x) << " " << interpolator.emissionCurrentEstimate(x) << " " << spectraForEnergy(x) << " " << lFD << " " << endl;
+        outFile << x << " " << D << " " << interpolator.evaluate(x) << " " << interpolator.normalEnergyDistributionEstimate(x) << " " << spectraForEnergy(x) << " " << lFD << " " << endl;
     }
     interpolator.writeSplineNodes();
 }
@@ -137,5 +137,47 @@ double BandEmitter::calculateParallelEnergyDistribution(double parallelEnergy) {
                         GSL_INTEG_GAUSS41, integrationWorkspace, &result, &error);
     return result * CONSTANTS.SommerfeldConstant * kT;
 
+}
+
+double BandEmitter::doubleIntegrandTotalParallel(double totalEnergy, double parallelEnergy){
+    double waveVectorZ = sqrt((totalEnergy+bandDepth) * effectiveMass - parallelEnergy) * CONSTANTS.sqrt2mOverHbar;
+    
+    assert(waveVectorZ > 0 && "waveVectorZ is not positive");
+
+    double normalEnergy = totalEnergy - parallelEnergy - workFunction;
+    
+    // Check if normalEnergy is within the valid range
+    if (normalEnergy < interpolator.getMinimumSampleEnergy() || normalEnergy > interpolator.getMaximumSampleEnergy())
+        return 0.;
+    
+    double transmissionProbability = interpolator.getTransmissionProbability(normalEnergy, waveVectorZ);
+    
+    return Utilities::fermiDiracFunction(totalEnergy, kT) * transmissionProbability;
+}
+
+double BandEmitter::totalEnergyDistributionIntegrateParallel(double totalEnergy){
+    if (!integrationWorkspace)
+        integrationWorkspace = gsl_integration_workspace_alloc(maxAllowedSteps);
+
+    struct IntegrationParams {
+        double totalEnergy;
+        BandEmitter* emitter;
+    } integrationParams = {totalEnergy, this};
+
+    auto integrationLamba = [](double parallelEnergy, void* params) {
+        IntegrationParams* p =  static_cast<IntegrationParams*>(params);
+        return p->emitter->doubleIntegrandTotalParallel(p->totalEnergy, parallelEnergy);
+    };
+
+    double(*integrationFunctionPointer)(double, void*) = integrationLamba; // convert the lambda into raw function pointer
+    gsl_function gslIntegrationFunction = {integrationFunctionPointer, &integrationParams};
+
+    double maxParallelEnergy = effectiveMass * (totalEnergy + bandDepth);
+    assert(maxParallelEnergy >= 0 && "maxParallelEnergy is not positive");
+
+    double result, error;
+    gsl_integration_qag(&gslIntegrationFunction, 0., maxParallelEnergy, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
+                        GSL_INTEG_GAUSS41, integrationWorkspace, &result, &error);
+    return result;
 }
 }

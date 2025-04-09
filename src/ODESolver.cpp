@@ -12,13 +12,20 @@ int ODESolver::solve(bool saveSolution){
     int status;
     reinitialize();
 
+    if (saveSolution){
+        savedSolution.push_back(solutionVector);
+        xSaved.push_back(x);
+    }
+    
     for (size_t i = 0; i < maxAllowedSteps; i++){ //loop over blocks
+
+        dx = GSL_SIGN(dx) *  min(abs(maxStepSize), abs(dx));
+        status = gsl_odeiv2_evolve_apply(evolver, controller, step, &sys, &x, xFinal, &dx, solutionVector.data());
+
         if (saveSolution){
             savedSolution.push_back(solutionVector);
             xSaved.push_back(x);
         } 
-        dx = GSL_SIGN(dx) *  min(abs(maxStepSize), abs(dx));
-        status = gsl_odeiv2_evolve_apply(evolver, controller, step, &sys, &x, xFinal, &dx, solutionVector.data());
 
         if (x == xFinal || status != GSL_SUCCESS)    
             return status;         
@@ -80,7 +87,8 @@ void ODESolver::writeSolution(string filename){
     ofstream outFile(filename, ios::out);        
     for (size_t i = 0; i < xSaved.size(); i++){
         outFile << xSaved[i] << " ";
-        for (auto &y : savedSolution[i]) outFile << y << " ";
+        for (auto &y : savedSolution[i]) 
+            outFile << y << " ";
         outFile << endl; 
     }
 }

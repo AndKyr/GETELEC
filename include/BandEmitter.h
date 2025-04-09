@@ -97,15 +97,6 @@ private:
     void updateSpectraSpline();
 public:
     /**
-     * @brief Sets the parameters for the band emitter simulation.
-     * @param workFunction_ The work function in eV.
-     * @param kT_ Thermal energy in eV.
-     * @param effectiveMass_ The effective mass of the electron.
-     * @param bandDepth_ The depth of the electronic band in eV.
-     */
-    void setParameters(double workFunction_ = 4.5, double kT_ = 0.025, double effectiveMass_ = 1., double bandDepth_ = 7.);
-
-    /**
      * @brief Constructs a BandEmitter object.
      * @param solver A reference to the transmission solver.
      * @param workFun The work function in eV.
@@ -142,6 +133,15 @@ public:
         if (integrationWorkspace)
             gsl_integration_workspace_free(integrationWorkspace);
     }
+
+    /**
+     * @brief Sets the parameters for the band emitter simulation.
+     * @param workFunction_ The work function in eV.
+     * @param kT_ Thermal energy in eV.
+     * @param effectiveMass_ The effective mass of the electron.
+     * @param bandDepth_ The depth of the electronic band in eV.
+     */
+    void setParameters(double workFunction_ = 4.5, double kT_ = 0.025, double effectiveMass_ = 1., double bandDepth_ = 7.);
 
     /**
      * @brief Sets parameters to (meaningful) random values
@@ -257,11 +257,32 @@ public:
      * @param energy The (perpendicular to the surface component) energy of the electron.
      * @return The transmission coefficient.
      * @note It is not necessary to set the interpolator before, but it might be slow for multiple calls.
+     * TODO: This function should be refactored
      */
     double calculateTransmissionCoefficientForEnergy(double energy){
         double waveVector = sqrt(energy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
         return interpolator.getTransmissionProbability(energy - workFunction, waveVector);
     }
+
+    /**
+     * @brief Evaluates the double emission integrand for a given pair of total and parallel energies.
+     * @param totalEnergy The total energy of the emitted electrons (eV).
+     * @param parallelEnergy The parallel energy of the emitted electrons (eV).
+     * @return The evaluated double integrand.
+     * @note This function is used for double integration to calculate the emission current density, Nottingham heat, PED and TED.
+     * @note The total energy counts from the Fermi level. The parallel energy (hbar^2 k^2/2m) has an absolute value since it is purely kinetic.
+     */
+    double doubleIntegrandTotalParallel(double totalEnergy, double parallelEnergy);
+
+
+    /**
+     * @brief Calculates the total energy distribution for a given total energy by integrating the double integral over parallel energies.
+     * @param totalEnergy The total energy of the emitted electrons (eV).
+     * @return The calculated total energy distribution (A/nm^2 / eV).
+     * @note This function is closer than the ODE, but it is always applicable, i.e. for any value of the effectiveMass.
+     * TODO: Test if defining the struct and lambda inside the function makes it slower and consider defining in the class.
+     */
+    double totalEnergyDistributionIntegrateParallel(double totalEnergy);
 };
 
 }

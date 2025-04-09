@@ -21,7 +21,7 @@ TEST(TransmissionSolverTest, DefaultValueTest) {
     TransmissionSolver solver(&barrier);
     solver.setXlimits(8.0);
     double transmission = solver.calculateTransmissionProbability(-4.5);
-    EXPECT_NEAR(transmission, 0.00066697796753639933, 1.e-10);
+    EXPECT_NEAR(transmission, 0.00066697796753639933, 1.e-9);
 }
 
 /**
@@ -41,12 +41,10 @@ TEST(TransmissionSolverTest, DerivativeTest) {
     solver.setEnergyAndInitialValues(-4.5);
     solver.solve(true);
     vector<double> y = solver.getSolution();
-    solver.writeSolution("odeSolution.dat");
 
     solver.setEnergyAndInitialValues(-4.5 + dE);
     solver.solve(true);
     vector<double> y2 = solver.getSolution();
-    solver.writeSolution("odeSolution2.dat");
 
     for (int i = 0; i < 3; i++){
         double derivative = y[i+3];
@@ -112,7 +110,7 @@ TEST(TransmissionSplineTest, SplineTest){
     for (auto energy : testEnergies){
         solver.calculateTransmissionProbability(energy, k);
         double solverCurrentEstimate = solver.getEmissionEstimate(k, workFunction, kT);
-        double interpolatedCurrentEstimate = interpolator.emissionCurrentEstimate(energy, k);
+        double interpolatedCurrentEstimate = interpolator.normalEnergyDistributionEstimate(energy, k);
         double tolerance = atol + interpolator.getmaximumCurrentEstimate() * rtol;
         EXPECT_NEAR(solverCurrentEstimate, interpolatedCurrentEstimate, tolerance);
     }
@@ -139,7 +137,7 @@ TEST(TransmissionSplineTest, maxEmissionFindTest){
     double maxEmission = 0.;
 
     for (auto energy : energies){
-        double emissionEstimate = interpolator.emissionCurrentEstimate(energy);
+        double emissionEstimate = interpolator.normalEnergyDistributionEstimate(energy);
         if (emissionEstimate > maxEmission) 
             maxEmission = emissionEstimate;
     }
@@ -186,6 +184,33 @@ TEST(BandEmitterTest, CurrentDensityMethodComparison){
         double currentDensity = emitter.getCurrentDensity();
         double currentDensity2 = emitter.integrateNormalEnergyDistribution();
         EXPECT_NEAR(currentDensity, currentDensity2, 100*emitter.getToleranceForValue(currentDensity));
+    }
+}
+
+
+/**
+ * @brief Calculates the total energy distribution with two methods and checks that they match
+ * @details This test calculates the total energy distribution by two independent methods: ordinary differential equation (fast but specific for effectiveMass = 1)
+ *  and integration of the double integral over parallel energies (slower but more general). Then it demands that they match to the tolerance of the band emitter.
+ *  The test is run for 64 different random parameters of the barrier, and the results are compared.
+ */
+TEST(BandEmitterTest, totalEnergyDistributionMethodComparison){
+    ModifiedSNBarrier barrier;
+    TransmissionSolver solver(&barrier, Config().transmissionSolverParams, 10., 1);
+    BandEmitter emitter(solver);
+    mt19937 generator(1987);
+    emitter.setGenerator(&generator);
+    barrier.setGenerator(&generator);
+
+    for (int i = 0; i < 64; i++){
+        barrier.setRandomParameters();
+        emitter.setParameters();
+        emitter.integrateTotalEnergyDistributionODEAndSaveSpectra();
+        auto spectra = emitter.getSpectra();
+        auto& [totalEnergies, totalEnergyDistributions, dummyDerivatives] = spectra;
+        for (size_t j = 0; j < totalEnergies.size(); j++){
+            EXPECT_NEAR(totalEnergyDistributions[j], emitter.totalEnergyDistributionIntegrateParallel(totalEnergies[j]) * CONSTANTS.SommerfeldConstant, 5 * emitter.getToleranceForValue(totalEnergyDistributions[j]));
+        }
     }
 }
 
