@@ -64,8 +64,7 @@ private:
                                                                                 This space is used for double integral,
                                                                                  when the internal and external integrals need to use independent workspaces */
 
-    double totalEnergy_class; /**< Helper variable storing the totalEnergy variable for evaluating the double integral. */
-    double parallelEnergy; /**< Helper variable storing the parallelEnergy variable for evaluating the double integral. */
+    double helperEnergy; /**< Helper variable storing the totalEnergy variable for evaluating the double integral. */
 
     /**
      * @brief Calculates the g'(E) (see Andreas' notes) for a given (normal) energy.
@@ -296,11 +295,30 @@ public:
      * @param totalEnergy The total energy of the emitted electrons (eV).
      * @return The calculated total energy distribution (A/nm^2 / eV).
      * @note This function is closer than the ODE, but it is always applicable, i.e. for any value of the effectiveMass.
-     * TODO: Test if defining the struct and lambda inside the function makes it slower and consider defining in the class.
      */
     double totalEnergyDistributionIntegrateParallel(double totalEnergy);
 
+    /**
+     * @brief Calculates the total current density by integrating the double integral first (inner) over parallel and then over total energies
+     * @return The calculated current density (A / nm^2)
+     * @note This function uses a second integration workSpace to avoid conflicts in the GSL integration functions
+     */
     double currentDensityIntegrateTotalParallel();
+
+    /**
+     * @brief Calcualtes the parallel energy distribution by integrating the double integral over total energies
+     * @param parallelEnergy The parallel energy for which it is calculated (eV)
+     * @return parallel energy
+     */
+    double parallelEnergyDistribution(double parallelEnergy);
+
+    /**
+     * @brief Calculates the total current density by integrating the double integral first over toal(inner) and then over parallel energies
+     * @return The calculated current density (A / nm^2)
+     * @note This function uses a second integration workSpace to avoid conflicts in the GSL integration functions
+     */
+    double currentDensityIntegrateParallelTotal();
+
 };
 
 }

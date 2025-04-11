@@ -158,7 +158,7 @@ double BandEmitter::doubleIntegrandTotalParallel(double totalEnergy, double para
 
     double normalEnergy = totalEnergy - parallelEnergy - workFunction;
     
-    // Check if normalEnergy is within the valid range
+    // Check if normalEnergy is within the valid range. The interpolator should have informed and valid energy ranges (even for effectiveMass!=1)
     if (normalEnergy < interpolator.getMinimumSampleEnergy() || normalEnergy > interpolator.getMaximumSampleEnergy())
         return 0.;
     
@@ -170,10 +170,10 @@ double BandEmitter::totalEnergyDistributionIntegrateParallel(double totalEnergy)
     assert(integrationWorkspace && "integrationWorkspace is not initialized");
 
 
-    totalEnergy_class = totalEnergy; // store the totalEnergy in the class variable to be used in the lambda function
+    helperEnergy = totalEnergy; // store the totalEnergy in the class variable to be used in the lambda function
     auto integrationLamba = [](double parallelEnergy, void* params) {
         BandEmitter* thisObj =  static_cast<BandEmitter*>(params);
-        return thisObj->doubleIntegrandTotalParallel(thisObj->totalEnergy_class, parallelEnergy);
+        return thisObj->doubleIntegrandTotalParallel(thisObj->helperEnergy, parallelEnergy);
     };
 
     double(*integrationFunctionPointer)(double, void*) = integrationLamba; // convert the lambda into raw function pointer
@@ -185,7 +185,7 @@ double BandEmitter::totalEnergyDistributionIntegrateParallel(double totalEnergy)
     double result, error;
     gsl_integration_qag(&gslIntegrationFunction, 0., maxParallelEnergy, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
                         GSL_INTEG_GAUSS41, integrationWorkspace, &result, &error);
-    return result;
+    return result * CONSTANTS.SommerfeldConstant;
 }
 
 double BandEmitter::currentDensityIntegrateTotalParallel(){
@@ -205,8 +205,46 @@ double BandEmitter::currentDensityIntegrateTotalParallel(){
     double result, error;
     gsl_integration_qag(&gslIntegrationFunction, xInitial, xFinal, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
                         GSL_INTEG_GAUSS31, externalIntegrationWorkSpace, &result, &error);
+    return result;
+}
+
+double BandEmitter::parallelEnergyDistribution(double parallelEnergy){
+    assert(integrationWorkspace && "integrationWorkspace is not initialized");
+
+
+    helperEnergy = parallelEnergy; // store the totalEnergy in the class variable to be used in the lambda function
+    auto integrationLamba = [](double totalEnergy, void* params) {
+        BandEmitter* thisObj =  static_cast<BandEmitter*>(params);
+        return thisObj->doubleIntegrandTotalParallel(totalEnergy, thisObj->helperEnergy);
+    };
+
+    double(*integrationFunctionPointer)(double, void*) = integrationLamba; // convert the lambda into raw function pointer
+    gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
+
+    double minTotalEnergy = -bandDepth + parallelEnergy / effectiveMass;
+
+    double result, error;
+    gsl_integration_qag(&gslIntegrationFunction, minTotalEnergy, xFinal, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
+                        GSL_INTEG_GAUSS41, integrationWorkspace, &result, &error);
     return result * CONSTANTS.SommerfeldConstant;
 }
 
+double BandEmitter::currentDensityIntegrateParallelTotal(){
+    if (!externalIntegrationWorkSpace)
+        externalIntegrationWorkSpace = gsl_integration_workspace_alloc(maxAllowedSteps);
+    assert(externalIntegrationWorkSpace && "externalIntegrationWorkSpace is not initialized");
 
+    auto integrationLamba = [](double parallelEnergy, void* params) {
+        BandEmitter* thisObj =  static_cast<BandEmitter*>(params);
+        return thisObj->parallelEnergyDistribution(parallelEnergy);
+    };
+
+    double(*integrationFunctionPointer)(double, void*) = integrationLamba; // convert the lambda into raw function pointer
+    gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
+    
+    double result, error;
+    gsl_integration_qag(&gslIntegrationFunction, 0., xFinal - xInitial, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
+                        GSL_INTEG_GAUSS31, externalIntegrationWorkSpace, &result, &error);
+    return result;
+}
 }

@@ -186,7 +186,7 @@ TEST(BandEmitterTest, totalEnergyDistributionMethodComparison){
         auto [totalEnergies, totalEnergyDistributions, dummyDerivatives] = emitter.getSpectra();
 
         for (size_t j = 0; j < totalEnergies.size(); j++){
-            double TEDFromIntegral = emitter.totalEnergyDistributionIntegrateParallel(totalEnergies[j]) * CONSTANTS.SommerfeldConstant;
+            double TEDFromIntegral = emitter.totalEnergyDistributionIntegrateParallel(totalEnergies[j]);
             EXPECT_NEAR(totalEnergyDistributions[j], TEDFromIntegral , 5 * emitter.getToleranceForValue(totalEnergyDistributions[j]));
         }
     }
@@ -213,8 +213,10 @@ TEST(BandEmitterTest, CurrentDensityMethodComparison){
         double currentDensity = emitter.getCurrentDensity();
         double currentDensity2 = emitter.integrateNormalEnergyDistribution();
         double currentDensity3 = emitter.currentDensityIntegrateTotalParallel();
+        double currentDensity4 = emitter.currentDensityIntegrateParallelTotal();
         EXPECT_NEAR(currentDensity, currentDensity2, 10*emitter.getToleranceForValue(currentDensity));
         EXPECT_NEAR(currentDensity, currentDensity3, 10*emitter.getToleranceForValue(currentDensity));
+        EXPECT_NEAR(currentDensity, currentDensity4, 10*emitter.getToleranceForValue(currentDensity));
     }
 }
 
