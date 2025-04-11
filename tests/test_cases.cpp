@@ -165,6 +165,34 @@ TEST(BandEmitterTest, DefaultValueTest){
 }
 
 /**
+ * @brief Calculates the total energy distribution with two methods and checks that they match
+ * @details This test calculates the total energy distribution by two independent methods: ordinary differential equation (fast but specific for effectiveMass = 1)
+ *  and integration of the double integral over parallel energies (slower but more general). Then it demands that they match to the tolerance of the band emitter.
+ *  The test is run for 64 different random parameters of the barrier, and the results are compared.
+ */
+TEST(BandEmitterTest, totalEnergyDistributionMethodComparison){
+    ModifiedSNBarrier barrier;
+    TransmissionSolver solver(&barrier, Config().transmissionSolverParams, 10., 1);
+    BandEmitter emitter(solver);
+    mt19937 generator(1987);
+    emitter.setGenerator(&generator);
+    barrier.setGenerator(&generator);
+
+    for (int i = 0; i < 64; i++){
+        barrier.setRandomParameters();
+        emitter.setParameters();
+        emitter.integrateTotalEnergyDistributionODEAndSaveSpectra();
+        emitter.writePlottingData("bandEmitterPlotting.dat");
+        auto [totalEnergies, totalEnergyDistributions, dummyDerivatives] = emitter.getSpectra();
+
+        for (size_t j = 0; j < totalEnergies.size(); j++){
+            double TEDFromIntegral = emitter.totalEnergyDistributionIntegrateParallel(totalEnergies[j]) * CONSTANTS.SommerfeldConstant;
+            EXPECT_NEAR(totalEnergyDistributions[j], TEDFromIntegral , 5 * emitter.getToleranceForValue(totalEnergyDistributions[j]));
+        }
+    }
+}
+
+/**
  * @brief Test for BandEmitter:: check that the current density and Nottingham heat are calculated correctly
  * @details This test checks the accuracy of the current density and Nottingham heat calculated by the BandEmitter class.
  *         It uses a modified SN barrier and a TransmissionSolver to calculate the current density and Nottingham heat.
@@ -184,34 +212,9 @@ TEST(BandEmitterTest, CurrentDensityMethodComparison){
         emitter.integrateTotalEnergyDistributionODE();
         double currentDensity = emitter.getCurrentDensity();
         double currentDensity2 = emitter.integrateNormalEnergyDistribution();
-        EXPECT_NEAR(currentDensity, currentDensity2, 100*emitter.getToleranceForValue(currentDensity));
-    }
-}
-
-
-/**
- * @brief Calculates the total energy distribution with two methods and checks that they match
- * @details This test calculates the total energy distribution by two independent methods: ordinary differential equation (fast but specific for effectiveMass = 1)
- *  and integration of the double integral over parallel energies (slower but more general). Then it demands that they match to the tolerance of the band emitter.
- *  The test is run for 64 different random parameters of the barrier, and the results are compared.
- */
-TEST(BandEmitterTest, totalEnergyDistributionMethodComparison){
-    ModifiedSNBarrier barrier;
-    TransmissionSolver solver(&barrier, Config().transmissionSolverParams, 10., 1);
-    BandEmitter emitter(solver);
-    mt19937 generator(1987);
-    emitter.setGenerator(&generator);
-    barrier.setGenerator(&generator);
-
-    for (int i = 0; i < 64; i++){
-        barrier.setRandomParameters();
-        emitter.setParameters();
-        emitter.integrateTotalEnergyDistributionODEAndSaveSpectra();
-        auto spectra = emitter.getSpectra();
-        auto& [totalEnergies, totalEnergyDistributions, dummyDerivatives] = spectra;
-        for (size_t j = 0; j < totalEnergies.size(); j++){
-            EXPECT_NEAR(totalEnergyDistributions[j], emitter.totalEnergyDistributionIntegrateParallel(totalEnergies[j]) * CONSTANTS.SommerfeldConstant, 5 * emitter.getToleranceForValue(totalEnergyDistributions[j]));
-        }
+        double currentDensity3 = emitter.currentDensityIntegrateTotalParallel();
+        EXPECT_NEAR(currentDensity, currentDensity2, 10*emitter.getToleranceForValue(currentDensity));
+        EXPECT_NEAR(currentDensity, currentDensity3, 10*emitter.getToleranceForValue(currentDensity));
     }
 }
 

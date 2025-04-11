@@ -60,6 +60,12 @@ private:
     Config::BandEmitterParams configParams; /**< Configuration parameters for the BandEmitter class. */
   
     gsl_integration_workspace* integrationWorkspace = NULL;  /**< GSL Workspace for numerical integration using GSL. */
+    gsl_integration_workspace* externalIntegrationWorkSpace = nullptr; /**< Second GSL Workspace for numerical integration using GSL. 
+                                                                                This space is used for double integral,
+                                                                                 when the internal and external integrals need to use independent workspaces */
+
+    double totalEnergy_class; /**< Helper variable storing the totalEnergy variable for evaluating the double integral. */
+    double parallelEnergy; /**< Helper variable storing the parallelEnergy variable for evaluating the double integral. */
 
     /**
      * @brief Calculates the g'(E) (see Andreas' notes) for a given (normal) energy.
@@ -130,8 +136,15 @@ public:
      * @brief Destructor for the BandEmitter object.
      */
     ~BandEmitter() {
-        if (integrationWorkspace)
+        if (integrationWorkspace){
             gsl_integration_workspace_free(integrationWorkspace);
+            integrationWorkspace = NULL;
+        }
+
+        if(externalIntegrationWorkSpace){
+            gsl_integration_workspace_free(externalIntegrationWorkSpace);
+            externalIntegrationWorkSpace = NULL;
+        }
     }
 
     /**
@@ -140,8 +153,10 @@ public:
      * @param kT_ Thermal energy in eV.
      * @param effectiveMass_ The effective mass of the electron.
      * @param bandDepth_ The depth of the electronic band in eV.
+     * @param doQuadrature Whether quadrature integration is to be used. If false, the integration workspace is not allocated.
+     * @note Quadrature is not needed if only the ODE will be used, which is valid for effectiveMass~1 and only current density, Nottingham heat, and TED spectra are to be evaluated
      */
-    void setParameters(double workFunction_ = 4.5, double kT_ = 0.025, double effectiveMass_ = 1., double bandDepth_ = 7.);
+    void setParameters(double workFunction_ = 4.5, double kT_ = 0.025, double effectiveMass_ = 1., double bandDepth_ = 7., bool doQuadrature = true);
 
     /**
      * @brief Sets parameters to (meaningful) random values
@@ -157,10 +172,11 @@ public:
 
     /**
      * @brief Solves the ODE system to calculate current density, Nottingham heat and energy spectra.
-     * @param convergenceTolerance The tolerance for convergence.
+     * @param convergenceTolerance The relative tolerance for convergence of the integration towards high currents. If <=0 it reverts to the object's relativeTolrance
+     * @param makeSpectralSpline Whether to create a spline for the spectra.
      * @return Status of the calculation (e.g., GSL_SUCCESS).
      */
-    int integrateTotalEnergyDistributionODEAndSaveSpectra(double convergenceTolerance = 0., bool makeSpectralSpline = false);
+    int integrateTotalEnergyDistributionODEAndSaveSpectra(double convergenceTolerance = 0., bool makeSpectralSpline = true);
 
     /**
      * @brief Solves the ODE system to calculate current density and Nottingham heat.
@@ -272,7 +288,7 @@ public:
      * @note This function is used for double integration to calculate the emission current density, Nottingham heat, PED and TED.
      * @note The total energy counts from the Fermi level. The parallel energy (hbar^2 k^2/2m) has an absolute value since it is purely kinetic.
      */
-    double doubleIntegrandTotalParallel(double totalEnergy, double parallelEnergy);
+    double doubleIntegrandTotalParallel(double totalEnergy, double parallelEnergy) const;
 
 
     /**
@@ -283,6 +299,8 @@ public:
      * TODO: Test if defining the struct and lambda inside the function makes it slower and consider defining in the class.
      */
     double totalEnergyDistributionIntegrateParallel(double totalEnergy);
+
+    double currentDensityIntegrateTotalParallel();
 };
 
 }
