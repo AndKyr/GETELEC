@@ -161,7 +161,7 @@ TEST(BandEmitterTest, DefaultValueTest){
     double currentDensity = emitter.getCurrentDensity();
     double nottinghamHeat = emitter.getNottinghamHeat();
     EXPECT_NEAR(4.1646907052681002e-09, currentDensity, emitter.getToleranceForValue(currentDensity));
-    EXPECT_NEAR(-5405686509.1719494, nottinghamHeat, emitter.getToleranceForValue(nottinghamHeat));
+    EXPECT_NEAR(-8.660864615724323e-10, nottinghamHeat, emitter.getToleranceForValue(nottinghamHeat));
 }
 
 /**
@@ -220,7 +220,7 @@ TEST(BandEmitterTest, CurrentDensityMethodComparison){
         EXPECT_NEAR(currentDensity, currentDensity2, 10*emitter.getToleranceForValue(currentDensity));
         EXPECT_NEAR(currentDensity, currentDensity3, 10*emitter.getToleranceForValue(currentDensity));
         EXPECT_NEAR(currentDensity, currentDensity4, 10*emitter.getToleranceForValue(currentDensity));
-        EXPECT_NEAR(nottingham, nottingham2, 100*emitter.getToleranceForValue(nottingham * CONSTANTS.electronCharge));
+        EXPECT_NEAR(nottingham, nottingham2, 100*emitter.getToleranceForValue(nottingham));
     }
 }
 

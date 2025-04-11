@@ -206,10 +206,11 @@ public:
 
     /**
      * @brief Gets the Nottingham heat from the solution vector.
-     * @return The Nottingham heat  (W / nm^2).
+     * @return The Nottingham heat  (eV A / nm^2).
+     * @note This value needs to be divided by the electron charge to be converted to W/nm^2
      */
     double getNottinghamHeat() {
-        return solutionVector[2] * CONSTANTS.SommerfeldConstant / CONSTANTS.electronCharge;
+        return solutionVector[2] * CONSTANTS.SommerfeldConstant;
     }
 
     /**
@@ -306,8 +307,9 @@ public:
 
     /**
      * @brief Calculates the Nottingham heat by integrating the double integral first (inner) over parallel and then over total energies
-     * @return The calculated heat (W / nm^2)
+     * @return The calculated heat (eV A / nm^2)
      * @note This function uses a second integration workSpace to avoid conflicts in the GSL integration functions
+     * @note This value needs to be divided by the electron charge to obtain the heat in W/nm^2
      */
     double nottinghamIntegrateTotalPrallel();
 

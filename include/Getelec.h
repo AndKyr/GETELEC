@@ -423,10 +423,10 @@ private:
     vector<double> bandDepthVector = {10.}; //< Depth of the electronic band in eV, multiple values to iterate over.
     vector<double> effectiveMassVector = {1.}; ///< Effective mass of the electron, multiple values to iterate over.
 
-    double currentDensity = 0.; //< The current density (output) in A/nm^2.
+    // double currentDensity = 0.; //< The current density (output) in A/nm^2.
     vector<double> currentDensityVector; ///< The current density (output) in A/nm^2, multiple values to iterate over.
 
-    double nottinghamHeat = 0.; //< The Nottingham heat (output) in W/nm^2.
+    // double nottinghamHeat = 0.; //< The Nottingham heat (output) in W/nm^2.
     vector<double> nottinghamHeatVector; ///< The Nottingham heat (output) in W/nm^2, multiple values to iterate over.
 
     vector<tuple<vector<double>, vector<double>, vector<double>>> spectra; /**< The spectra (output) in A/nm^2/eV, multiple values to iterate over. */

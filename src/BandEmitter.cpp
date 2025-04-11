@@ -225,7 +225,7 @@ double BandEmitter::nottinghamIntegrateTotalPrallel()
     double result, error;
     gsl_integration_qag(&gslIntegrationFunction, xInitial, xFinal, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
                         GSL_INTEG_GAUSS31, externalIntegrationWorkSpace, &result, &error);
-    return result / CONSTANTS.electronCharge;
+    return result;
 }
 
 double BandEmitter::parallelEnergyDistribution(double parallelEnergy){
