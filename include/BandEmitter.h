@@ -150,7 +150,7 @@ public:
      * @brief Sets the parameters for the band emitter simulation.
      * @param workFunction_ The work function in eV.
      * @param kT_ Thermal energy in eV.
-     * @param effectiveMass_ The effective mass of the electron.
+     * @param effectiveMass_ The effective mass of the electron (fraction of the electron rest mass, i.e. m_n/m_e).
      * @param bandDepth_ The depth of the electronic band in eV.
      * @param doQuadrature Whether quadrature integration is to be used. If false, the integration workspace is not allocated.
      * @note Quadrature is not needed if only the ODE will be used, which is valid for effectiveMass~1 and only current density, Nottingham heat, and TED spectra are to be evaluated
@@ -199,17 +199,17 @@ public:
     void writePlottingData(string filename = "bandEmitterPlotting.dat");
 
     /**
-     * @brief Gets the current density from the solution vector.
-     * @return The current density in appropriate units.
+     * @brief Gets the current density from the solution vector 
+     * @return The current density (A / nm^2).
      */
     double getCurrentDensity() { return solutionVector[1] * CONSTANTS.SommerfeldConstant; }
 
     /**
      * @brief Gets the Nottingham heat from the solution vector.
-     * @return The Nottingham heat in appropriate units.
+     * @return The Nottingham heat  (W / nm^2).
      */
     double getNottinghamHeat() {
-        return solutionVector[2] * CONSTANTS.SommerfeldConstant;
+        return solutionVector[2] * CONSTANTS.SommerfeldConstant / CONSTANTS.electronCharge;
     }
 
     /**
@@ -269,14 +269,13 @@ public:
 
     /**
      * @brief Evaluates the transmission coefficient at a given energy by using the solver directly.
-     * @param energy The (perpendicular to the surface component) energy of the electron.
+     * @param energy The (perpendicular to the surface component) energy of the electron (eV).
      * @return The transmission coefficient.
      * @note It is not necessary to set the interpolator before, but it might be slow for multiple calls.
-     * TODO: This function should be refactored
      */
     double calculateTransmissionCoefficientForEnergy(double energy){
         double waveVector = sqrt(energy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
-        return interpolator.getTransmissionProbability(energy - workFunction, waveVector);
+        return transmissionSolver.calculateTransmissionProbability(energy, waveVector);
     }
 
     /**
@@ -304,6 +303,13 @@ public:
      * @note This function uses a second integration workSpace to avoid conflicts in the GSL integration functions
      */
     double currentDensityIntegrateTotalParallel();
+
+    /**
+     * @brief Calculates the Nottingham heat by integrating the double integral first (inner) over parallel and then over total energies
+     * @return The calculated heat (W / nm^2)
+     * @note This function uses a second integration workSpace to avoid conflicts in the GSL integration functions
+     */
+    double nottinghamIntegrateTotalPrallel();
 
     /**
      * @brief Calcualtes the parallel energy distribution by integrating the double integral over total energies

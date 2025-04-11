@@ -151,7 +151,7 @@ public:
      * @return The tolerance for the value
      */
     double getToleranceForValue(double value){
-        return value * relativeTolerance + absoluteTolerance;
+        return abs(value) * relativeTolerance + absoluteTolerance;
     }
 
     /**

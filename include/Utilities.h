@@ -32,6 +32,8 @@ static constexpr struct PhysicalConstants {
     double BoltzmannConstant = 8.617333262e-5; /**< Boltzmann constant in eV/K. */
     double SommerfeldConstant = 1.618311e-4; /**< Sommerfeld constant for current density. */
     double exponentLimit = -0.5 * log(numeric_limits<double>::epsilon()); /**< Exponent limit to prevent underflow. */
+    double electronCharge = 1.602176634e-19; /**< Electron charge in Cb. */
+    
 } CONSTANTS;
 
 /**

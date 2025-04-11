@@ -208,6 +208,26 @@ double BandEmitter::currentDensityIntegrateTotalParallel(){
     return result;
 }
 
+double BandEmitter::nottinghamIntegrateTotalPrallel()
+{
+    if (!externalIntegrationWorkSpace)
+        externalIntegrationWorkSpace = gsl_integration_workspace_alloc(maxAllowedSteps);
+    assert(externalIntegrationWorkSpace && "externalIntegrationWorkSpace is not initialized");
+
+    auto integrationLamba = [](double totalEnergy, void* params) {
+        BandEmitter* thisObj =  static_cast<BandEmitter*>(params);
+        return totalEnergy * thisObj->totalEnergyDistributionIntegrateParallel(totalEnergy);
+    };
+
+    double(*integrationFunctionPointer)(double, void*) = integrationLamba; // convert the lambda into raw function pointer
+    gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
+    
+    double result, error;
+    gsl_integration_qag(&gslIntegrationFunction, xInitial, xFinal, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
+                        GSL_INTEG_GAUSS31, externalIntegrationWorkSpace, &result, &error);
+    return result / CONSTANTS.electronCharge;
+}
+
 double BandEmitter::parallelEnergyDistribution(double parallelEnergy){
     assert(integrationWorkspace && "integrationWorkspace is not initialized");
 
