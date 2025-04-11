@@ -48,7 +48,10 @@ void Getelec_setBandDepth(getelec::Getelec* obj, const double* bandDepth, size_t
 
 // Wrapper to run the calculation
 size_t Getelec_run(getelec::Getelec* obj, bool calculateSpectra) {
-    return obj->run(calculateSpectra);
+    if (calculateSpectra)
+        return obj->run(getelec::CalculationFlags::CurrentDensity | getelec::CalculationFlags::NottinghamHeat | getelec::CalculationFlags::TotalEnergyDistribution);
+    else
+        return obj->run(getelec::CalculationFlags::CurrentDensity | getelec::CalculationFlags::NottinghamHeat);
 }
 
 // Wrapper to get current densities

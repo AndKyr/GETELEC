@@ -12,6 +12,32 @@ namespace getelec{
 
 using namespace std;
 
+
+enum class CalculationFlags : unsigned int {
+    None            = 0,
+    CurrentDensity  = 1 << 0, // 1
+    NottinghamHeat  = 1 << 1, // 2
+    TotalEnergyDistribution         = 1 << 2, // 4
+    NormalEnergyDistribution        = 1 << 3, // 8
+    ParallelEnergyDistribution      = 1 << 4 //16
+};
+
+inline bool operator&(CalculationFlags a, CalculationFlags b) {
+    using T = std::underlying_type_t<CalculationFlags>;
+    return (static_cast<T>(a) & static_cast<T>(b)) != 0;
+}
+
+inline CalculationFlags operator|(CalculationFlags a, CalculationFlags b) {
+    using T = std::underlying_type_t<CalculationFlags>;
+    return static_cast<CalculationFlags>(static_cast<T>(a) | static_cast<T>(b));
+}
+
+inline CalculationFlags& operator|=(CalculationFlags& a, CalculationFlags b) {
+    a = a | b;
+    return a;
+}
+
+
 class Getelec {
 public:
     /**
@@ -248,14 +274,14 @@ public:
      * @param i The index of the element to calculate
      * @param calculateSpectra If true, calculate the spectra
      */
-    void runIteration(size_t i = 0, bool calculateSpectra = false);
+    void runIteration(size_t i = 0, CalculationFlags flags = CalculationFlags::CurrentDensity);
 
     /**
      * @brief Run the calculation
      * @param calculateSpectra If true, calculate the spectra
      * @return The number of iterations
      */
-    size_t run(bool calculateSpectra = false);
+    size_t run(CalculationFlags flags = CalculationFlags::CurrentDensity);
 
 
     /**

@@ -195,7 +195,7 @@ int eval(const char *func,
     if (verbose)
         logFile << "running GETELEC and extracting current density and Nottingham heat" << endl;
 
-    globalGetelecObj->run(false);
+    globalGetelecObj->run(getelec::CalculationFlags::CurrentDensity | getelec::CalculationFlags::NottinghamHeat);
     
     size_t outSize;
     const double* currentDensity = globalGetelecObj->getCurrentDensities(&outSize);

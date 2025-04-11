@@ -2,7 +2,7 @@
 
 namespace getelec{
 
-void Getelec::runIteration(size_t i, bool calculateSpectra) {
+void Getelec::runIteration(size_t i, CalculationFlags flags) {
     setParamsForIteration(i);
     
     auto& params = threadLocalParams.local();
@@ -12,14 +12,14 @@ void Getelec::runIteration(size_t i, bool calculateSpectra) {
     barrier->setBarrierParameters(params.field, params.radius, params.gamma);
     emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth); 
 
-    if (calculateSpectra)
+    if (flags & CalculationFlags::TotalEnergyDistribution)
         emitter.integrateTotalEnergyDistributionODEAndSaveSpectra();
     else
         emitter.integrateTotalEnergyDistributionODE(); 
     
     currentDensityVector[i] = emitter.getCurrentDensity();
     nottinghamHeatVector[i] = emitter.getNottinghamHeat() / CONSTANTS.electronCharge;
-    if (calculateSpectra)
+    if (flags & CalculationFlags::ParallelEnergyDistribution)
         spectra[i] = emitter.getSpectra();
 }
 
@@ -48,13 +48,13 @@ pair<double, double> Getelec::getBarrierIntegrationLimits(size_t paramIndex){
 }
 
 
-size_t Getelec::run(bool calculateSpectra) {
+size_t Getelec::run(CalculationFlags flags) {
     size_t maxIterations = getMaxIterations();
     currentDensityVector.resize(maxIterations);
     nottinghamHeatVector.resize(maxIterations);
-    if (calculateSpectra)
+    if (flags & CalculationFlags::ParallelEnergyDistribution)
         spectra.resize(maxIterations);
-    tbb::parallel_for(size_t(0), maxIterations, [this, calculateSpectra](size_t i) { runIteration(i, calculateSpectra); });
+    tbb::parallel_for(size_t(0), maxIterations, [this, flags](size_t i) { runIteration(i, flags); });
     return maxIterations;
 }
 
