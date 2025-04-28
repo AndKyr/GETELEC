@@ -73,7 +73,7 @@ int BandEmitter::integrateTotalEnergyDistributionODEAndSaveSpectra(double conver
     if(convergenceTolerance <= 0.) convergenceTolerance = relativeTolerance;
 
     totalEnergyDistribution.second.push_back(solutionVector[0] * CONSTANTS.SommerfeldConstant);
-    savedSpectraDerivative.push_back(getSolutionDerivative(x)[0] * CONSTANTS.SommerfeldConstant);
+    totalEnergyDistributionDerivatives.push_back(getSolutionDerivative(x)[0] * CONSTANTS.SommerfeldConstant);
     totalEnergyDistribution.first.push_back(x);
 
     for (size_t i = 0; i < maxAllowedSteps; i++) { // Loop over blocks
@@ -82,17 +82,17 @@ int BandEmitter::integrateTotalEnergyDistributionODEAndSaveSpectra(double conver
         status = gsl_odeiv2_evolve_apply(evolver, controller, step, &sys, &x, xFinal, &dx, solutionVector.data());
 
         totalEnergyDistribution.second.push_back(solutionVector[0] * CONSTANTS.SommerfeldConstant);
-        savedSpectraDerivative.push_back(getSolutionDerivative(x)[0] * CONSTANTS.SommerfeldConstant);
+        totalEnergyDistributionDerivatives.push_back(getSolutionDerivative(x)[0] * CONSTANTS.SommerfeldConstant);
         totalEnergyDistribution.first.push_back(x);
 
         bool hasConverged = abs(previousCurrentDensity - solutionVector[1]) / previousCurrentDensity < convergenceTolerance;
         if (x >= xFinal || status != GSL_SUCCESS || hasConverged){
-            if (makeSpectralSpline) totalEnergyDistributionSpline.initialize(totalEnergyDistribution.first, totalEnergyDistribution.second, savedSpectraDerivative);   
+            if (makeSpectralSpline) totalEnergyDistributionSpline.initialize(totalEnergyDistribution.first, totalEnergyDistribution.second, totalEnergyDistributionDerivatives);   
             return status;         
         }
     }
 
-    if (makeSpectralSpline) totalEnergyDistributionSpline.initialize(totalEnergyDistribution.first, totalEnergyDistribution.second, savedSpectraDerivative);
+    if (makeSpectralSpline) totalEnergyDistributionSpline.initialize(totalEnergyDistribution.first, totalEnergyDistribution.second, totalEnergyDistributionDerivatives);
     return GSL_CONTINUE; 
 }
 
@@ -125,7 +125,6 @@ double BandEmitter::integrateNormalEnergyDistribution() {
     return result * CONSTANTS.SommerfeldConstant * kT;
 }
 
-
 void BandEmitter::writePlottingData(string filename) {
     ofstream outFile(filename, ios::out);        
     outFile << "#E D_calc(En=E) D_interp(En=E) NED(En=E) TED(Et=E)" << endl;
@@ -155,9 +154,19 @@ double BandEmitter::doubleIntegrandTotalParallel(double totalEnergy, double para
     return Utilities::fermiDiracFunction(totalEnergy, kT) * transmissionProbability;
 }
 
-double BandEmitter::doubleIntegrandParallelNormal(double parallelEnergy, double normalEnergy) const
-{
-    return 0.0;
+double BandEmitter::doubleIntegrandParallelNormal(double parallelEnergy, double normalEnergy) const {
+    double totalEnergy = normalEnergy + parallelEnergy;
+    double waveVectorZ = sqrt((totalEnergy+bandDepth) * effectiveMass - parallelEnergy) * CONSTANTS.sqrt2mOverHbar;
+    assert(waveVectorZ > 0 && "waveVectorZ is not positive");
+
+    double normalEnegyForInterpolator = normalEnergy - workFunction;
+    
+    // Check if normalEnergy is within the valid range. The interpolator should have informed and valid energy ranges (even for effectiveMass!=1)
+    if (normalEnegyForInterpolator < interpolator.getMinimumSampleEnergy() || normalEnegyForInterpolator > interpolator.getMaximumSampleEnergy())
+        return 0.;
+    
+    double transmissionProbability = interpolator.getTransmissionProbability(normalEnegyForInterpolator, waveVectorZ);
+    return Utilities::fermiDiracFunction(totalEnergy, kT) * transmissionProbability;
 }
 
 double BandEmitter::totalEnergyDistributionIntegrateParallel(double totalEnergy){
@@ -202,8 +211,7 @@ double BandEmitter::currentDensityIntegrateTotalParallel(){
     return result;
 }
 
-double BandEmitter::nottinghamIntegrateTotalPrallel()
-{
+double BandEmitter::nottinghamIntegrateTotalPrallel(){
     if (!externalIntegrationWorkSpace)
         externalIntegrationWorkSpace = gsl_integration_workspace_alloc(maxAllowedSteps);
     assert(externalIntegrationWorkSpace && "externalIntegrationWorkSpace is not initialized");
@@ -253,13 +261,13 @@ double BandEmitter::currentDensityIntegrateParallelTotal(bool saveSpectra){
         parallelEnergyDistribution.first.clear();
         parallelEnergyDistribution.second.reserve(maxAllowedSteps);
         parallelEnergyDistribution.second.clear();
-        saveParallelEnergyDistribution = true;
+        saveSpectra = true;
     }
 
     auto integrationLamba = [](double parallelEnergy, void* params) {
         BandEmitter* thisObj =  static_cast<BandEmitter*>(params);
         double result = thisObj->parallelEnergyDistributionForEnergy(parallelEnergy);
-        if (thisObj->saveParallelEnergyDistribution){
+        if (thisObj->saveSpectra){
             thisObj->parallelEnergyDistribution.first.push_back(parallelEnergy);
             thisObj->parallelEnergyDistribution.second.push_back(result);
         }
@@ -274,4 +282,56 @@ double BandEmitter::currentDensityIntegrateParallelTotal(bool saveSpectra){
                         GSL_INTEG_GAUSS31, externalIntegrationWorkSpace, &result, &error);
     return result;
 }
+
+double BandEmitter::normalEnergyDistributionIntegratePrallel(double normalEnergy){
+    assert(integrationWorkspace && "integrationWorkspace is not initialized");
+
+
+    helperEnergy = normalEnergy; // store the totalEnergy in the class variable to be used in the lambda function
+    auto integrationLamba = [](double parallelEnergy, void* params) {
+        BandEmitter* thisObj =  static_cast<BandEmitter*>(params);
+        return thisObj->doubleIntegrandParallelNormal(parallelEnergy, thisObj->helperEnergy);
+    };
+
+    double(*integrationFunctionPointer)(double, void*) = integrationLamba; // convert the lambda into raw function pointer
+    gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
+
+    double result, error;
+    gsl_integration_qag(&gslIntegrationFunction, 0., xFinal - normalEnergy, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
+                        GSL_INTEG_GAUSS41, integrationWorkspace, &result, &error);
+    return result * CONSTANTS.SommerfeldConstant;
+}
+
+double BandEmitter::currentDensityIntegrateNormalParallel(bool saveNormalEnergyDistribution){
+    if (!externalIntegrationWorkSpace)
+        externalIntegrationWorkSpace = gsl_integration_workspace_alloc(maxAllowedSteps);
+    assert(externalIntegrationWorkSpace && "externalIntegrationWorkSpace is not initialized");
+
+    if (saveNormalEnergyDistribution){
+        normalEnergyDistribution.first.reserve(maxAllowedSteps);
+        normalEnergyDistribution.first.clear();
+        normalEnergyDistribution.second.reserve(maxAllowedSteps);
+        normalEnergyDistribution.second.clear();
+        saveSpectra = true;
+    }
+
+    auto integrationLamba = [](double normalEnergy, void* params) {
+        BandEmitter* thisObj =  static_cast<BandEmitter*>(params);
+        double result = thisObj->normalEnergyDistributionIntegratePrallel(normalEnergy);
+        if (thisObj->saveSpectra){
+            thisObj->normalEnergyDistribution.first.push_back(normalEnergy);
+            thisObj->normalEnergyDistribution.second.push_back(result);
+        }
+        return result;
+    };
+
+    double(*integrationFunctionPointer)(double, void*) = integrationLamba; // convert the lambda into raw function pointer
+    gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
+    
+    double result, error;
+    gsl_integration_qag(&gslIntegrationFunction, xInitial, xFinal, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
+                        GSL_INTEG_GAUSS31, externalIntegrationWorkSpace, &result, &error);
+    return result;
+}
+
 }

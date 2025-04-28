@@ -48,7 +48,7 @@ private:
     pair<vector<double>, vector<double>> normalEnergyDistribution; ///< Normal energy distribution
 
     /** @brief Stores calculated spectral value derivatives in A/nm^2 / eV / eV */
-    vector<double> savedSpectraDerivative;
+    vector<double> totalEnergyDistributionDerivatives;
 
     /** @brief A reference to the transmission solver used for calculating coefficients. */
     TransmissionSolver& transmissionSolver;
@@ -70,7 +70,7 @@ private:
 
     double helperEnergy; /**< Helper variable storing the totalEnergy variable for evaluating the double integral. */
 
-    bool saveParallelEnergyDistribution; /**< Helper flag that determines whether the parallel energy distribution will be saved upon double integration */
+    bool saveSpectra; /**< Helper flag that determines whether the parallel energy distribution will be saved upon double integration */
 
     /**
      * @brief Calculates the g'(E) (see Andreas' notes) for a given (normal) energy.
@@ -91,13 +91,6 @@ private:
      */
     static int differentialSystem(double energy, const double y[], double f[], void *params);
 
-    /**
-     * @brief Function for calculating the normal energy distribution.
-     * @param energy The energy of the electron.
-     * @param params Additional parameters.
-     * @return The calculated distribution value.
-     */
-    static double normalEnergyDistributionForEnergy(double energy, void* params);
 
     /** @brief Defines the Jacobian matrix for the differential system (optional, currently unused). */
     static int differentialSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params);
@@ -200,6 +193,24 @@ public:
      */
     void writePlottingData(string filename = "bandEmitterPlotting.dat");
 
+
+    /**
+     * @brief Function for calculating the normal energy distribution (strictly correct only for effectiveMass = 1.).
+     * @param energy The energy of the electron.
+     * @param params Additional parameters.
+     * @return The calculated distribution value.
+     */
+    static double normalEnergyDistributionForEnergy(double energy, void* params);
+
+
+    /**
+     * @brief Gets the temperature parameter kT (eV) 
+     */
+    double getkT() const { return kT; }
+    double getEffectiveMass() const { return effectiveMass; }
+    double getBandDepth() const { return bandDepth; }
+    double getWorkFunction() const { return workFunction; }
+
     /**
      * @brief Gets the current density from the solution vector 
      * @return The current density (A / nm^2).
@@ -221,8 +232,20 @@ public:
      * @note This functions uses move semantics to avoid copying the data. This means that the data inside the emitter class is no longer available in the object after calling this function.
      */
     tuple<vector<double>, vector<double>, vector<double>> getSpectra(){
-        return {move(totalEnergyDistribution.first), move(totalEnergyDistribution.second), move(savedSpectraDerivative)};
-    }   
+        return {move(totalEnergyDistribution.first), move(totalEnergyDistribution.second), move(totalEnergyDistributionDerivatives)};
+    }
+
+    pair<vector<double>, vector<double>> getParallelEnergyDistribution(){
+        return parallelEnergyDistribution;
+    }
+
+    pair<vector<double>, vector<double>> getNormalEnergyDistribution(){
+        return normalEnergyDistribution;
+    }
+
+    pair<vector<double>, vector<double>> getTotalEnergyDistribution(){
+        return totalEnergyDistribution;
+    }
     
     /**
      * @brief Evaluates the speactra at a given energy.
@@ -296,7 +319,7 @@ public:
      * @brief Calculates the total energy distribution for a given total energy by integrating the double integral over parallel energies.
      * @param totalEnergy The total energy of the emitted electrons (eV).
      * @return The calculated total energy distribution (A/nm^2 / eV).
-     * @note This function is closer than the ODE, but it is always applicable, i.e. for any value of the effectiveMass.
+     * @note This function is slower than the ODE, but it is always applicable, i.e. for any value of the effectiveMass.
      */
     double totalEnergyDistributionIntegrateParallel(double totalEnergy);
 
@@ -328,7 +351,23 @@ public:
      * @return The calculated current density (A / nm^2)
      * @note This function uses a second integration workSpace to avoid conflicts in the GSL integration functions
      */
-    double currentDensityIntegrateParallelTotal(bool saveSpectra = false);
+    double currentDensityIntegrateParallelTotal(bool saveParallelEnergyDistribution = false);
+
+    /**
+     * @brief Calculates the normal energy distribution by integrating the double integral over parallel energies
+     * @param normalEnergy The normal energy at which to evaluate (eV)
+     * @return The calculated total energy distribution (A/nm^2 / eV).
+     * @note This function is slower than the simple integral normalEnergyDistribution, but it is applicable for any effective mass
+     */
+    double normalEnergyDistributionIntegratePrallel(double normalEnergy); 
+
+    /**
+     * @brief Calculates the total current density by integrating the double integral first over parallel(inner) and then over normal (outer) energies
+     * @param saveNormalEnergyDistribution Whether to save the integration points and values in the parallel energy distribution pair of vectors.
+     * @return The calculated current density (A / nm^2)
+     * @note This function uses a second integration workSpace to avoid conflicts in the GSL integration functions
+     */
+    double currentDensityIntegrateNormalParallel(bool saveNormalEnergyDistribution = false);
 
 };
 

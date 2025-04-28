@@ -192,6 +192,7 @@ TEST(BandEmitterTest, totalEnergyDistributionMethodComparison){
     }
 }
 
+
 /**
  * @brief Test for BandEmitter:: check that the current density and Nottingham heat are calculated correctly
  * @details This test checks the accuracy of the current density and Nottingham heat calculated by the BandEmitter class.
@@ -217,10 +218,33 @@ TEST(BandEmitterTest, CurrentDensityMethodComparison){
         double currentDensity2 = emitter.integrateNormalEnergyDistribution();
         double currentDensity3 = emitter.currentDensityIntegrateTotalParallel();
         double currentDensity4 = emitter.currentDensityIntegrateParallelTotal();
+        double currentDensity5 = emitter.currentDensityIntegrateNormalParallel();
         EXPECT_NEAR(currentDensity, currentDensity2, 10*emitter.getToleranceForValue(currentDensity));
         EXPECT_NEAR(currentDensity, currentDensity3, 10*emitter.getToleranceForValue(currentDensity));
         EXPECT_NEAR(currentDensity, currentDensity4, 10*emitter.getToleranceForValue(currentDensity));
+        EXPECT_NEAR(currentDensity, currentDensity5, 10*emitter.getToleranceForValue(currentDensity));
         EXPECT_NEAR(nottingham, nottingham2, 100*emitter.getToleranceForValue(nottingham));
+    }
+}
+
+TEST(BandEmitterTest, normalEnergyDistributionMethodComparison){
+    ModifiedSNBarrier barrier;
+    TransmissionSolver solver(&barrier, Config().transmissionSolverParams, 10., 1);
+    BandEmitter emitter(solver);
+    mt19937 generator(1987);
+    emitter.setGenerator(&generator);
+    barrier.setGenerator(&generator);
+
+    for (int i = 0; i < 64; i++){
+        barrier.setRandomParameters();
+        emitter.setParameters();
+        double currentDensity = emitter.currentDensityIntegrateNormalParallel(true);
+        auto [normalEnergies, normalEnergyDistribution] = emitter.getNormalEnergyDistribution();
+
+        for (size_t j = 0; j < normalEnergies.size(); j++){
+            double NEDSimple = BandEmitter::normalEnergyDistributionForEnergy(normalEnergies[j], &emitter) * emitter.getkT() * CONSTANTS.SommerfeldConstant;
+            EXPECT_NEAR(normalEnergyDistribution[j], NEDSimple , currentDensity * (emitter.getXFinal() - emitter.getXInitial()));
+        }
     }
 }
 
