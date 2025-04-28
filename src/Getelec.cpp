@@ -12,6 +12,10 @@ void Getelec::runIteration(size_t i, CalculationFlags flags) {
     barrier->setBarrierParameters(params.field, params.radius, params.gamma);
     emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth); 
 
+    if (abs(params.effectiveMass - 1.) < config.bandEmitterParams.effectiveMassTolerance){
+        emitter.integrateTotalEnergyDistributionODE();
+    }
+
     if (flags & CalculationFlags::TotalEnergyDistribution)
         emitter.integrateTotalEnergyDistributionODEAndSaveSpectra();
     else

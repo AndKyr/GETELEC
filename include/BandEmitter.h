@@ -37,11 +37,15 @@ private:
     /** @brief Depth of the electronic band from the Fermi level in eV. */
     double bandDepth = 10.;
 
-    /** @brief Stores energy values for spectra (abssicae) in eV. */
-    vector<double> savedEnergies;
-
     /** @brief Stores calculated spectral values in A/nm^2 / eV */
-    vector<double> savedSpectra;
+    // vector<double> savedSpectra;
+
+    /** @brief Energy distributions saved as pairs of vectors. The first vector stores the energy abcissae (eV)
+     * and the second vector the electron emission distribution (A / nm^2 / eV)
+     */
+    pair<vector<double>, vector<double>> totalEnergyDistribution; ///< Total energy distribution
+    pair<vector<double>, vector<double>> parallelEnergyDistribution; ///< Parallel energy distribution
+    pair<vector<double>, vector<double>> normalEnergyDistribution; ///< Normal energy distribution
 
     /** @brief Stores calculated spectral value derivatives in A/nm^2 / eV / eV */
     vector<double> savedSpectraDerivative;
@@ -55,7 +59,7 @@ private:
     /** @brief A pointer to a random number generator to use for testing purposes */
     mt19937* generator = NULL;
 
-    CubicHermiteSpline spectraSpline; /**< Spline for the energy spectra. */
+    CubicHermiteSpline totalEnergyDistributionSpline; /**< Spline for the energy spectra. */
 
     Config::BandEmitterParams configParams; /**< Configuration parameters for the BandEmitter class. */
   
@@ -65,6 +69,8 @@ private:
                                                                                  when the internal and external integrals need to use independent workspaces */
 
     double helperEnergy; /**< Helper variable storing the totalEnergy variable for evaluating the double integral. */
+
+    bool saveParallelEnergyDistribution; /**< Helper flag that determines whether the parallel energy distribution will be saved upon double integration */
 
     /**
      * @brief Calculates the g'(E) (see Andreas' notes) for a given (normal) energy.
@@ -91,15 +97,11 @@ private:
      * @param params Additional parameters.
      * @return The calculated distribution value.
      */
-    static double normalEnergyDistribution(double energy, void* params);
+    static double normalEnergyDistributionForEnergy(double energy, void* params);
 
     /** @brief Defines the Jacobian matrix for the differential system (optional, currently unused). */
     static int differentialSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params);
 
-    /**
-     * @brief Updates (allocates if necessary) the spline for the energy spectra.
-     */
-    void updateSpectraSpline();
 public:
     /**
      * @brief Constructs a BandEmitter object.
@@ -219,15 +221,8 @@ public:
      * @note This functions uses move semantics to avoid copying the data. This means that the data inside the emitter class is no longer available in the object after calling this function.
      */
     tuple<vector<double>, vector<double>, vector<double>> getSpectra(){
-        return {move(xSaved), move(savedSpectra), move(savedSpectraDerivative)};
+        return {move(totalEnergyDistribution.first), move(totalEnergyDistribution.second), move(savedSpectraDerivative)};
     }   
-
-    /**
-     * @brief Calculates and returns the Parallel (to the surface) Energy Distribution of the emitted electrons for a 
-     * @param parallelEnergy The parallel energy of the emitted electrons (eV).
-     * @return The calculated distribution (A/nm^2 / eV at the given parallel energy).
-     */
-    double calculateParallelEnergyDistribution(double parallelEnergy);
     
     /**
      * @brief Evaluates the speactra at a given energy.
@@ -235,7 +230,7 @@ public:
      * @return The evaluated spectra.
      */
     double spectraForEnergy(double energy) const{
-        return spectraSpline.evaluate(energy);
+        return totalEnergyDistributionSpline.evaluate(energy);
     }
 
     /**
@@ -283,12 +278,19 @@ public:
      * @brief Evaluates the double emission integrand for a given pair of total and parallel energies.
      * @param totalEnergy The total energy of the emitted electrons (eV).
      * @param parallelEnergy The parallel energy of the emitted electrons (eV).
-     * @return The evaluated double integrand.
+     * @return The evaluated double integrand (if multiplied by Sommerfeld constant, in A/nm^2/eV^2).
      * @note This function is used for double integration to calculate the emission current density, Nottingham heat, PED and TED.
      * @note The total energy counts from the Fermi level. The parallel energy (hbar^2 k^2/2m) has an absolute value since it is purely kinetic.
      */
     double doubleIntegrandTotalParallel(double totalEnergy, double parallelEnergy) const;
 
+    /**
+     * @brief Evaluates the double emission integrand for a given pair of normal and parallel energies
+     * @param parallelEnergy The parallel (to the emitting surface) energy of the emitted electrons (eV)
+     * @param normalEnergy The normal (to the emitting surface) energy of the emitted electrons (eV)
+     * @return The evaluated double integrand (if multiplied by Sommerfeld constant, in A/nm^2/eV^2).
+     */
+    double doubleIntegrandParallelNormal(double parallelEnergy, double normalEnergy) const;
 
     /**
      * @brief Calculates the total energy distribution for a given total energy by integrating the double integral over parallel energies.
@@ -318,14 +320,15 @@ public:
      * @param parallelEnergy The parallel energy for which it is calculated (eV)
      * @return parallel energy
      */
-    double parallelEnergyDistribution(double parallelEnergy);
+    double parallelEnergyDistributionForEnergy(double parallelEnergy);
 
     /**
      * @brief Calculates the total current density by integrating the double integral first over toal(inner) and then over parallel energies
+     * @param saveParallelEnergyDistribution Whether to save the integration points and values in the parallel energy distribution pair of vectors.
      * @return The calculated current density (A / nm^2)
      * @note This function uses a second integration workSpace to avoid conflicts in the GSL integration functions
      */
-    double currentDensityIntegrateParallelTotal();
+    double currentDensityIntegrateParallelTotal(bool saveSpectra = false);
 
 };
 
