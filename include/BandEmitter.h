@@ -185,7 +185,7 @@ public:
      * @brief Calculates the current density using numerical integration.
      * @return The calculated current density.
      */
-    double integrateNormalEnergyDistribution();
+    double currentDensityIntegrateNormal(bool saveNormalEnergyDistribution = false);
 
     /**
      * @brief Writes data for plotting the band emitter's behavior.
@@ -196,19 +196,31 @@ public:
 
     /**
      * @brief Function for calculating the normal energy distribution (strictly correct only for effectiveMass = 1.).
-     * @param energy The energy of the electron.
-     * @param params Additional parameters.
-     * @return The calculated distribution value.
+     * @param energy The energy of the electron (eV).
+     * @return The calculated distribution value (if multiplied by kT * Sommerfeld constant, in A / nm^2 / eV).
      */
-    static double normalEnergyDistributionForEnergy(double energy, void* params);
-
+    double normalEnergyDistributionForEnergy(double energy){
+        return  gPrimeFunction(energy) * Utilities::logFermiDiracFunction(energy, kT);
+    }
 
     /**
      * @brief Gets the temperature parameter kT (eV) 
      */
     double getkT() const { return kT; }
+
+    /**
+     * @brief Gets the effective mass of the band (fraction of electron mass)
+     */
     double getEffectiveMass() const { return effectiveMass; }
+
+    /**
+     * @brief Gets the band depth (eV)
+     */
     double getBandDepth() const { return bandDepth; }
+
+    /**
+     * @brief Gets the work function (eV)
+     */
     double getWorkFunction() const { return workFunction; }
 
     /**

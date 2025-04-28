@@ -215,7 +215,7 @@ TEST(BandEmitterTest, CurrentDensityMethodComparison){
         double nottingham = emitter.getNottinghamHeat();
         double nottingham2 = emitter.nottinghamIntegrateTotalPrallel();
 
-        double currentDensity2 = emitter.integrateNormalEnergyDistribution();
+        double currentDensity2 = emitter.currentDensityIntegrateNormal();
         double currentDensity3 = emitter.currentDensityIntegrateTotalParallel();
         double currentDensity4 = emitter.currentDensityIntegrateParallelTotal();
         double currentDensity5 = emitter.currentDensityIntegrateNormalParallel();
@@ -242,8 +242,8 @@ TEST(BandEmitterTest, normalEnergyDistributionMethodComparison){
         auto [normalEnergies, normalEnergyDistribution] = emitter.getNormalEnergyDistribution();
 
         for (size_t j = 0; j < normalEnergies.size(); j++){
-            double NEDSimple = BandEmitter::normalEnergyDistributionForEnergy(normalEnergies[j], &emitter) * emitter.getkT() * CONSTANTS.SommerfeldConstant;
-            EXPECT_NEAR(normalEnergyDistribution[j], NEDSimple , currentDensity * (emitter.getXFinal() - emitter.getXInitial()));
+            double NEDSimple = emitter.normalEnergyDistributionForEnergy(normalEnergies[j]) * emitter.getkT() * CONSTANTS.SommerfeldConstant;
+            EXPECT_NEAR(normalEnergyDistribution[j], NEDSimple , currentDensity / (emitter.getXFinal() - emitter.getXInitial()));
         }
     }
 }

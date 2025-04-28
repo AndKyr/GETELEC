@@ -16,12 +16,6 @@ int BandEmitter::differentialSystem(double energy, const double y[], double f[],
     return GSL_SUCCESS;
 }
 
-double BandEmitter::normalEnergyDistributionForEnergy(double energy, void* params) {
-    BandEmitter* emitter = (BandEmitter*) params; // Cast the void pointer as "this"
-    double result = emitter->gPrimeFunction(energy);
-    return result * Utilities::logFermiDiracFunction(energy, emitter->kT);
-}
-
 double BandEmitter::gPrimeFunction(double energy) {
     //TODO: be careful with the effective mass. abarX might get below the bandDepth causing problems. The interpolation range must be fixed.
     double waveVector = sqrt(energy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
@@ -115,14 +109,36 @@ int BandEmitter::integrateTotalEnergyDistributionODE(double convergenceTolerance
     return GSL_CONTINUE; 
 }
 
-double BandEmitter::integrateNormalEnergyDistribution() {
-    assert(integrationWorkspace && "integrationWorkspace is not initialized");
+double BandEmitter::currentDensityIntegrateNormal(bool saveNormalEnergyDistribution) {
+    if (!externalIntegrationWorkSpace)
+        externalIntegrationWorkSpace = gsl_integration_workspace_alloc(maxAllowedSteps);
+    assert(externalIntegrationWorkSpace && "externalIntegrationWorkSpace is not initialized");
 
-    gsl_function integrationFunction = {&normalEnergyDistributionForEnergy, this};
+    if (saveNormalEnergyDistribution){
+        normalEnergyDistribution.first.reserve(maxAllowedSteps);
+        normalEnergyDistribution.first.clear();
+        normalEnergyDistribution.second.reserve(maxAllowedSteps);
+        normalEnergyDistribution.second.clear();
+        saveSpectra = true;
+    }
+
+    auto integrationLamba = [](double normalEnergy, void* params) {
+        BandEmitter* thisObj =  static_cast<BandEmitter*>(params);
+        double result = thisObj->normalEnergyDistributionForEnergy(normalEnergy);
+        if (thisObj->saveSpectra){
+            thisObj->normalEnergyDistribution.first.push_back(normalEnergy);
+            thisObj->normalEnergyDistribution.second.push_back(result);
+        }
+        return result;
+    };
+
+    double(*integrationFunctionPointer)(double, void*) = integrationLamba; // convert the lambda into raw function pointer
+    gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
+    
     double result, error;
-    gsl_integration_qag(&integrationFunction, xInitial, xFinal, 0., relativeTolerance, maxAllowedSteps, 
-                        GSL_INTEG_GAUSS41, integrationWorkspace, &result, &error);
-    return result * CONSTANTS.SommerfeldConstant * kT;
+    gsl_integration_qag(&gslIntegrationFunction, xInitial, xFinal, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
+                        GSL_INTEG_GAUSS31, externalIntegrationWorkSpace, &result, &error);
+    return result * kT * CONSTANTS.SommerfeldConstant;
 }
 
 void BandEmitter::writePlottingData(string filename) {
