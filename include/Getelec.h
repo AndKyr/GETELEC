@@ -19,7 +19,8 @@ enum class CalculationFlags : unsigned int {
     NottinghamHeat  = 1 << 1, // 2
     TotalEnergyDistribution         = 1 << 2, // 4
     NormalEnergyDistribution        = 1 << 3, // 8
-    ParallelEnergyDistribution      = 1 << 4 //16
+    ParallelEnergyDistribution      = 1 << 4, // 16
+    TotalEnergyDistributionDerivatives = 1 << 5 //32
 };
 
 inline bool operator&(CalculationFlags a, CalculationFlags b) {
@@ -315,37 +316,77 @@ public:
      * @param i The index of the element to get
      * @return The current density in A/nm^2
      */
-    double getCurrentDensity(unsigned i = 0) const { return currentDensityVector[i]; }
+    double getCurrentDensity(unsigned i = 0) const { 
+        assert(calculationStatusFlags & CalculationFlags::CurrentDensity && "Current density not calculated yet");
+        assert(i < currentDensityVector.size() && "Index out of bounds");
+        return currentDensityVector[i]; 
+    }
     
     /**
      * @brief Get the Nottingham heat at the i-th element of the array of inputs
      * @param i The index of the element to get
      * @return The Nottingham heat in W/nm^2
      */
-    double getNottinghamHeat(unsigned i = 0) const { return nottinghamHeatVector[i]; }
-    
-    /**
-     * @brief Get the spectra at the i-th element of the array of inputs
-     * @param i The index of the element to get
-     * @return The spectra in A/nm^2/eV
-     */
-    const tuple<vector<double>, vector<double>, vector<double>>& getSpectra(unsigned i = 0) const { return spectra[i]; }
-    
-    /**
-     * @brief Get all the spectra
-     * @param i The index of the element to get
-     * @return The spectra in A/nm^2/eV
-     */
-    vector<tuple<vector<double>, vector<double>, vector<double>>> getAllSpectra() const { 
-        return spectra; 
+    double getNottinghamHeat(unsigned i = 0) const { 
+        assert(calculationStatusFlags & CalculationFlags::NottinghamHeat && "Nottingham heat not calculated yet");
+        assert(i < nottinghamHeatVector.size() && "Index out of bounds");
+        return nottinghamHeatVector[i]; 
     }
+    
+    /**
+     * @brief Get the total energy distribution at the i-th element of the array of inputs
+     * @param i The index of the element to get
+     * @return The spectra in A/nm^2/eV
+     */
+    const pair<vector<double>, vector<double>> getTotalEnergyDistribution(unsigned i = 0) const { 
+        assert(calculationStatusFlags & CalculationFlags::TotalEnergyDistribution && "Total energy distribution not calculated yet");
+        assert(i < totalEnergyDistributions.size() && "Index out of bounds");
+        return totalEnergyDistributions[i]; 
+    }
+
+    /**
+     * @brief Get the total energy distribution at the i-th element of the array of inputs
+     * @param i The index of the element to get
+     * @return The spectra in A/nm^2/eV
+     */
+    const pair<vector<double>, vector<double>> getNormalEnergyDistribution(unsigned i = 0) const { 
+        assert(calculationStatusFlags & CalculationFlags::NormalEnergyDistribution && "Normal energy distribution not calculated yet");
+        assert(i < normalEnergyDistributions.size() && "Index out of bounds");
+        return normalEnergyDistributions[i]; 
+    }
+
+    /**
+     * @brief Get the total energy distribution at the i-th element of the array of inputs
+     * @param i The index of the element to get
+     * @return The spectra in A/nm^2/eV
+     */
+    const pair<vector<double>, vector<double>> getParallelEnergyDistribution(unsigned i = 0) const { 
+        assert(calculationStatusFlags & CalculationFlags::ParallelEnergyDistribution && "Total energy distribution not calculated yet");
+        assert(i < parallelEnergyDistributions.size() && "Index out of bounds");
+        return parallelEnergyDistributions[i]; 
+    }
+
+    /**
+     * @brief Get the total energy distribution derivatives of the i-th element of the array of inputs
+     * @param i The index of the element to get
+     * @return The spectra derivative in A/nm^2/eV/eV
+     */
+    const vector<double> getTotalEnergyDistributionDerivatives(unsigned i = 0) const { 
+        assert(calculationStatusFlags & CalculationFlags::TotalEnergyDistributionDerivatives && "Total energy distribution derivatives not calculated yet");
+        assert(i < totalEnergyDistributionsDerivatives.size() && "Index out of bounds");
+        return totalEnergyDistributionsDerivatives[i]; 
+    }
+    
     
     /**
      * @brief Get all the resulting current densities as a vector
      * @return The vector
      * @note This is a copy of the internal vector, so it is safe to modify it.
      */
-    vector<double> getCurrentDensities() const { return vector<double>(currentDensityVector.begin(), currentDensityVector.end()); }
+    vector<double> getCurrentDensities() const { 
+        assert(calculationStatusFlags & CalculationFlags::CurrentDensity && "Current density not calculated yet");
+        return currentDensityVector; 
+    }
     
     /**
      * @brief Get all the resulting current densities as a vector (used for C and python interface)
@@ -353,6 +394,7 @@ public:
      * @return Pointer to the first element of the vector
      */
     const double* getCurrentDensities(size_t* size) const { 
+        assert(calculationStatusFlags & CalculationFlags::CurrentDensity && "Current density not calculated yet");
         *size = currentDensityVector.size();
         return currentDensityVector.data(); 
     }
@@ -362,7 +404,10 @@ public:
      * @return The vector
      * @note This is a copy of the internal vector, so it is safe to modify it.
      */
-    vector<double> getNottinghamHeats() const { return vector<double>(nottinghamHeatVector.begin(), nottinghamHeatVector.end()); }
+    vector<double> getNottinghamHeats() const { 
+        assert(calculationStatusFlags & CalculationFlags::NottinghamHeat && "Nottingham heat not calculated yet");
+        return nottinghamHeatVector;
+    }
 
     /**
      * @brief Get all the resulting Nottingham heats as a vector (used for C and python interface)
@@ -370,6 +415,7 @@ public:
      * @return Pointer to the first element of the vector
      */
     const double* getNottinghamHeats(size_t* size) const { 
+        assert(calculationStatusFlags & CalculationFlags::NottinghamHeat && "Nottingham heat not calculated yet");
         *size = nottinghamHeatVector.size();
         return nottinghamHeatVector.data(); 
     }
@@ -378,43 +424,56 @@ public:
      * @brief Get the spectra abssicae (energies in eV) of the i-th iteration in parameter space
      * @param i The index of the iteration
      * @param length The length of the spectra array to be output
+     * @param spectraType The type of spectra to be returned. 'T' for TED, 'N' for NED, 'P' for PED
      * @return Pointer to the first element of the spectra array
      */
-    const double* getSpectraEnergies(size_t i, size_t* length) const {
-        auto& spectra_i = get<0>(spectra[i]);
-        *length = spectra_i.size();
-        return spectra_i.data(); 
+    const double* getSpectraEnergies(size_t i, size_t* length, char spectraType = 'T') const {
+        switch(spectraType) {
+            case 'T':
+                assert(calculationStatusFlags & CalculationFlags::TotalEnergyDistribution && "TED not calculated yet");
+                *length = totalEnergyDistributions[i].first.size();
+                return totalEnergyDistributions[i].first.data();
+            case 'N':
+                assert(calculationStatusFlags & CalculationFlags::NormalEnergyDistribution && "NED not calculated yet");
+                *length = normalEnergyDistributions[i].first.size();
+                return normalEnergyDistributions[i].first.data();
+            case 'P':
+                assert(calculationStatusFlags & CalculationFlags::ParallelEnergyDistribution && "NED not calculated yet");
+                *length = parallelEnergyDistributions[i].first.size();
+                return parallelEnergyDistributions[i].first.data();
+
+        }
     }
 
     /**
-     * @brief Get the spectra values (ordinates) (values in A/nm^2/eV) of the i-th iteration in parameter space
+     * @brief Get the spectra values (A / nm^2 / eV) of the i-th iteration in parameter space
      * @param i The index of the iteration
      * @param length The length of the spectra array to be output
+     * @param spectraType The type of spectra to be returned. 'T' for TED, 'N' for NED, 'P' for PED, 'D' for TED derivatives (if D in A/nm^2/eV/eV)
      * @return Pointer to the first element of the spectra array
      */
-    const double* getSpectraValues(size_t i, size_t* length) const { 
-        *length = get<1>(spectra[i]).size();
-        return get<1>(spectra[i]).data(); 
+    const double* getSpectraValues(size_t i, size_t* length, char spectraType = 'T') const { 
+        switch(spectraType) {
+            case 'T':
+                assert(calculationStatusFlags & CalculationFlags::TotalEnergyDistribution && "TED not calculated yet");
+                *length = totalEnergyDistributions[i].second.size();
+                return totalEnergyDistributions[i].second.data();
+            case 'N':
+                assert(calculationStatusFlags & CalculationFlags::NormalEnergyDistribution && "NED not calculated yet");
+                *length = normalEnergyDistributions[i].second.size();
+                return normalEnergyDistributions[i].second.data();
+            case 'P':
+                assert(calculationStatusFlags & CalculationFlags::ParallelEnergyDistribution && "NED not calculated yet");
+                *length = parallelEnergyDistributions[i].second.size();
+                return parallelEnergyDistributions[i].second.data();
+            case 'D':
+                assert(calculationStatusFlags & CalculationFlags::TotalEnergyDistributionDerivatives && "TED derivatives not calculated yet");
+                *length = totalEnergyDistributionsDerivatives[i].size();
+                return totalEnergyDistributionsDerivatives[i].data();
+        } 
     }
 
-    /**
-     * @brief Get the spectra derivatives (values in A/nm^2/eV^2) of the i-th iteration in parameter space
-     * @param i The index of the iteration
-     * @param length The length of the spectra array to be output
-     * @return Pointer to the first element of the spectra array
-     */
-    const double* getSpectraDerivatives(size_t i, size_t* length) const {
-        auto& spectra_i = get<2>(spectra[i]);
-        *length = spectra_i.size();
-        return spectra_i.data(); 
-    }
-
-    /**
-     * @brief Get the potential values (eV) of the barrier of the i-th iteration in parameter space
-     * @param i The index of the iteration
-     * @param length The length of the spectra array to be output
-     * @return Pointer to the first element of the spectra array
-     */
+    /** @TODO: Consider exposing the barrier object rather than writing endless wrapper functions here */
     vector<double> getBarrierValues(const vector<double>& x, size_t paramsIndex = 0);
 
     void getBarrierValues(const double* x, double* potential, size_t size, size_t paramsIndex = 0);
@@ -458,8 +517,7 @@ private:
     vector<pair<vector<double>, vector<double>>> totalEnergyDistributions; ///< The total energy distributions (output) in A/nm^2/eV.
     vector<pair<vector<double>, vector<double>>> normalEnergyDistributions; ///< The normal energy distributions (output) in A/nm^2/eV.
     vector<pair<vector<double>, vector<double>>> parallelEnergyDistributions; ///< The parallel energy distributions (output) in A/nm^2/eV.
-
-    vector<tuple<vector<double>, vector<double>, vector<double>>> spectra; /**< The spectra (output) in A/nm^2/eV, multiple values to iterate over. */
+    vector<vector<double>> totalEnergyDistributionsDerivatives; ///< The total energy distributions derivatives (A / nm^2 / eV / eV)
 
     tbb::enumerable_thread_specific<unique_ptr<ModifiedSNBarrier>> threadLocalBarrier; ///< Thread-local instances of ModifiedSNBarrier
     tbb::enumerable_thread_specific<TransmissionSolver> threadLocalSolver; ///< Thread-local instances of TransmissionSolver

@@ -243,20 +243,26 @@ public:
         return {move(totalEnergyDistribution.first), move(totalEnergyDistribution.second), move(totalEnergyDistributionDerivatives)};
     }
 
-    pair<vector<double>, vector<double>> getParallelEnergyDistribution(){
+    pair<vector<double>, vector<double>> getParallelEnergyDistribution() const{
         return parallelEnergyDistribution;
     }
 
     /**
      * @TODO: consider using move semantics for speed
      */
-    pair<vector<double>, vector<double>> getNormalEnergyDistribution(){
+    pair<vector<double>, vector<double>> getNormalEnergyDistribution() const{
         return normalEnergyDistribution;
     }
 
-    pair<vector<double>, vector<double>> getTotalEnergyDistribution(){
+    pair<vector<double>, vector<double>> getTotalEnergyDistribution() const{
         return totalEnergyDistribution;
     }
+
+    vector<double> getTotalEnergyDistributionDerivatives() const{
+        return totalEnergyDistributionDerivatives;
+    }
+
+
     
     /**
      * @brief Evaluates the speactra at a given energy.

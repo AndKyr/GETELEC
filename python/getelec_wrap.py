@@ -50,6 +50,17 @@ Methods:
 """
 
 class GetelecInterface:
+
+
+    flagMap = {
+        "CurrentDensity": 1,
+        "NottinghamHeat": 2,
+        "TotalEnergyDistribution": 4,
+        "NormalEnergyDistribution": 8,
+        "ParallelEnergyDistribution": 16,
+        "TotalEnergyDistributionDerivatives": 32,
+    }
+
     def __init__(self, libPath=None, configPath:str="", barrierType="modifiedSN", fields = 5., radii = 1.e5, gammas = 10., kTs = 0.025, workFunctions = 4.5, bandDepths = 10., effectiveMasses = 1.):
         if libPath is None:
             libPath = os.path.join(os.path.dirname(__file__), "../build/libgetelec.so")
@@ -86,7 +97,7 @@ class GetelecInterface:
         self.lib.Getelec_setEffectiveMass.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.c_size_t]
 
         self.lib.Getelec_run.restype = ctypes.c_size_t
-        self.lib.Getelec_run.argtypes = [ctypes.c_void_p, ctypes.c_bool]
+        self.lib.Getelec_run.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
 
         self.lib.Getelec_getCurrentDensities.restype = ctypes.POINTER(ctypes.c_double)
         self.lib.Getelec_getCurrentDensities.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_size_t)]
@@ -95,10 +106,10 @@ class GetelecInterface:
         self.lib.Getelec_getNottinghamHeats.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_size_t)]
 
         self.lib.Getelec_getSpectraEnergies.restype = ctypes.POINTER(ctypes.c_double)
-        self.lib.Getelec_getSpectraEnergies.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_size_t)]
+        self.lib.Getelec_getSpectraEnergies.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_size_t), ctypes.c_char]
 
         self.lib.Getelec_getSpectraValues.restype = ctypes.POINTER(ctypes.c_double)
-        self.lib.Getelec_getSpectraValues.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_size_t)]
+        self.lib.Getelec_getSpectraValues.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_size_t), ctypes.c_char]
 
         self.lib.Getelec_getSpectraDerivatives.restype = ctypes.POINTER(ctypes.c_double)
         self.lib.Getelec_getSpectraDerivatives.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_size_t)]
@@ -181,8 +192,15 @@ class GetelecInterface:
         self.lib.Getelec_setEffectiveMass(self.obj, effectiveMasses_ctypes, size)
     
 
-    def run(self, calculate_spectra=False):
-        self.numberOfIterations = self.lib.Getelec_run(self.obj, calculate_spectra)
+    def run(self, calculationFlags):
+        combinedFlagsInt:int = 0
+        for flagStr in calculationFlags:
+            if flagStr in self.flagMap:
+                combinedFlagsInt |= self.flagMap[flagStr]
+            else:
+                raise ValueError(f"Invalid flag: {flagStr}")
+
+        self.numberOfIterations = self.lib.Getelec_run(self.obj, combinedFlagsInt)
 
     def getCurrentDensity(self):
         size = ctypes.c_size_t()

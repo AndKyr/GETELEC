@@ -8,7 +8,7 @@ JNIEXPORT jlong JNICALL Java_GetelecInterface_Getelec_1new_1with_1config
 (JNIEnv* env, jobject obj, jstring configFileName, jstring barrierType) {
     const char* config = env->GetStringUTFChars(configFileName, nullptr);
     const char* barrier = env->GetStringUTFChars(barrierType, nullptr);
-    Getelec* instance = new Getelec(config, barrier);
+    getelec::Getelec* instance = new getelec::Getelec(config, barrier);
     env->ReleaseStringUTFChars(configFileName, config);
     env->ReleaseStringUTFChars(barrierType, barrier);
     return (jlong)instance;
@@ -17,12 +17,12 @@ JNIEXPORT jlong JNICALL Java_GetelecInterface_Getelec_1new_1with_1config
 // Destructor
 JNIEXPORT void JNICALL Java_GetelecInterface_Getelec_1delete
 (JNIEnv* env, jobject obj, jlong instancePtr) {
-    delete (Getelec*)instancePtr;
+    delete (getelec::Getelec*)instancePtr;
 }
 
 JNIEXPORT jint JNICALL Java_GetelecInterface_Getelec_1run
 (JNIEnv* env, jobject obj, jlong instancePtr, jboolean calculateSpectra) {
-    return ((Getelec*)instancePtr)->run(calculateSpectra);
+    return ((getelec::Getelec*)instancePtr)->run(getelec::CalculationFlags::CurrentDensity | getelec::CalculationFlags::TotalEnergyDistribution | getelec::CalculationFlags::NottinghamHeat);
 }
 
 JNIEXPORT void JNICALL Java_GetelecInterface_Getelec_1setField
@@ -57,7 +57,7 @@ JNIEXPORT void JNICALL Java_GetelecInterface_Getelec_1setRadius
 
     if (!data) throw std::runtime_error("Cannot get primitive array critical");
 
-    ((Getelec*)instancePtr)->setRadius(data, length);
+    ((getelec::Getelec*)instancePtr)->setRadius(data, length);
 
     // Release the array
     env->ReleasePrimitiveArrayCritical(radiusArray, rawData, JNI_ABORT);
@@ -153,7 +153,7 @@ JNIEXPORT void JNICALL Java_GetelecInterface_Getelec_1setEffectiveMass
 
     if (!data) throw std::runtime_error("Cannot get primitive array critical");
 
-    ((Getelec*)instancePtr)->setEffectiveMass(data, length);
+    ((getelec::Getelec*)instancePtr)->setEffectiveMass(data, length);
 
     // Release the array
     env->ReleasePrimitiveArrayCritical(effectiveMassArray, rawData, JNI_ABORT);
@@ -164,7 +164,7 @@ JNIEXPORT void JNICALL Java_GetelecInterface_Getelec_1setEffectiveMass
 JNIEXPORT jdoubleArray JNICALL Java_GetelecInterface_Getelec_1getCurrentDensities
 (JNIEnv* env, jobject obj, jlong instancePtr) {
     size_t size;
-    const double* densities = ((Getelec*)instancePtr)->getCurrentDensities(&size);
+    const double* densities = ((getelec::Getelec*)instancePtr)->getCurrentDensities(&size);
 
     jdoubleArray result = env->NewDoubleArray(size);
     env->SetDoubleArrayRegion(result, 0, size, densities);
@@ -175,7 +175,7 @@ JNIEXPORT jdoubleArray JNICALL Java_GetelecInterface_Getelec_1getCurrentDensitie
 JNIEXPORT jdoubleArray JNICALL Java_GetelecInterface_Getelec_1getNottinghamHeats
 (JNIEnv* env, jobject obj, jlong instancePtr) {
     size_t size;
-    const double* heats = ((Getelec*)instancePtr)->getNottinghamHeats(&size);
+    const double* heats = ((getelec::Getelec*)instancePtr)->getNottinghamHeats(&size);
 
     jdoubleArray result = env->NewDoubleArray(size);
     env->SetDoubleArrayRegion(result, 0, size, heats);
@@ -185,7 +185,7 @@ JNIEXPORT jdoubleArray JNICALL Java_GetelecInterface_Getelec_1getNottinghamHeats
 
 JNIEXPORT jdouble JNICALL Java_GetelecInterface_Getelec_1calculateTransmissionForEnergy
 (JNIEnv* env, jobject obj, jlong instancePtr, jdouble energy, jint paramsIndex) {
-    return ((Getelec*)instancePtr)->calculateTransmissionCoefficientForEnergy(energy, paramsIndex);
+    return ((getelec::Getelec*)instancePtr)->calculateTransmissionCoefficientForEnergy(energy, paramsIndex);
 }
 
 JNIEXPORT jdoubleArray JNICALL Java_GetelecInterface_Getelec_1calculateTransmissionForEnergies
@@ -202,7 +202,7 @@ JNIEXPORT jdoubleArray JNICALL Java_GetelecInterface_Getelec_1calculateTransmiss
     if (!data) throw std::runtime_error("Cannot get primitive array critical");
 
     std::vector<double> energies(data, data + length);
-    std::vector<double> result = ((Getelec*)instancePtr)->calculateTransmissionCoefficientForEnergies(energies, paramsIndex);
+    std::vector<double> result = ((getelec::Getelec*)instancePtr)->calculateTransmissionCoefficientForEnergies(energies, paramsIndex);
 
     // Release the array
     env->ReleasePrimitiveArrayCritical(energyArray, rawData, JNI_ABORT);
@@ -227,7 +227,7 @@ JNIEXPORT jdoubleArray JNICALL Java_GetelecInterface_Getelec_1calculateTransmiss
     if (!data) throw std::runtime_error("Cannot get primitive array critical");
 
     std::vector<double> energies(data, data + length);
-    std::vector<double> result = ((Getelec*)instancePtr)->calculateTransmissionCoefficientForManyEnergies(energies, paramsIndex);
+    std::vector<double> result = ((getelec::Getelec*)instancePtr)->calculateTransmissionCoefficientForManyEnergies(energies, paramsIndex);
 
     // Release the array
     env->ReleasePrimitiveArrayCritical(energyArray, rawData, JNI_ABORT);
@@ -241,7 +241,7 @@ JNIEXPORT jdoubleArray JNICALL Java_GetelecInterface_Getelec_1calculateTransmiss
 JNIEXPORT jdoubleArray JNICALL Java_GetelecInterface_Getelec_1getSpectraEnergies
 (JNIEnv* env, jobject obj, jlong instancePtr, jint index) {
     size_t length;
-    const double* energies = ((Getelec*)instancePtr)->getSpectraEnergies(index, &length);
+    const double* energies = ((getelec::Getelec*)instancePtr)->getSpectraEnergies(index, &length, 'T');
 
     jdoubleArray result = env->NewDoubleArray(length);
     env->SetDoubleArrayRegion(result, 0, length, energies);
@@ -252,7 +252,7 @@ JNIEXPORT jdoubleArray JNICALL Java_GetelecInterface_Getelec_1getSpectraEnergies
 JNIEXPORT jdoubleArray JNICALL Java_GetelecInterface_Getelec_1getSpectraValues
 (JNIEnv* env, jobject obj, jlong instancePtr, jint index) {
     size_t length;
-    const double* values = ((Getelec*)instancePtr)->getSpectraValues(index, &length);
+    const double* values = ((getelec::Getelec*)instancePtr)->getSpectraValues(index, &length, 'T');
 
     jdoubleArray result = env->NewDoubleArray(length);
     env->SetDoubleArrayRegion(result, 0, length, values);
@@ -263,7 +263,7 @@ JNIEXPORT jdoubleArray JNICALL Java_GetelecInterface_Getelec_1getSpectraValues
 JNIEXPORT jdoubleArray JNICALL Java_GetelecInterface_Getelec_1getSpectraDerivatives
 (JNIEnv* env, jobject obj, jlong instancePtr, jint index) {
     size_t length;
-    const double* derivatives = ((Getelec*)instancePtr)->getSpectraDerivatives(index, &length);
+    const double* derivatives = ((getelec::Getelec*)instancePtr)->getSpectraValues(index, &length, 'D');
 
     jdoubleArray result = env->NewDoubleArray(length);
     env->SetDoubleArrayRegion(result, 0, length, derivatives);
@@ -286,7 +286,7 @@ JNIEXPORT void JNICALL Java_GetelecInterface_Getelec_1getBarrierValues
 
     if (!xData || !potentialData) throw std::runtime_error("Cannot get primitive array critical");
 
-    ((Getelec*)instancePtr)->getBarrierValues(xData, potentialData, length, paramsIndex);
+    ((getelec::Getelec*)instancePtr)->getBarrierValues(xData, potentialData, length, paramsIndex);
 
     // Release the arrays
     env->ReleasePrimitiveArrayCritical(xArray, rawDataX, JNI_ABORT);
@@ -297,7 +297,7 @@ JNIEXPORT void JNICALL Java_GetelecInterface_Getelec_1getBarrierIntegrationLimit
 (JNIEnv* env, jobject obj, jlong instancePtr, jdoubleArray xInitial, jdoubleArray xFinal, jint paramsIndex) {
     
     // Get direct pointer to Java array (may pin memory, avoids copy)
-    auto [xI, xF] = ((Getelec*)instancePtr)->getBarrierIntegrationLimits(paramsIndex);
+    auto [xI, xF] = ((getelec::Getelec*)instancePtr)->getBarrierIntegrationLimits(paramsIndex);
     env->SetDoubleArrayRegion(xInitial, 0, 1, &xI);
     env->SetDoubleArrayRegion(xFinal, 0, 1, &xF);
 }

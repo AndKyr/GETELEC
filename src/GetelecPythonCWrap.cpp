@@ -47,12 +47,10 @@ void Getelec_setBandDepth(getelec::Getelec* obj, const double* bandDepth, size_t
 }
 
 // Wrapper to run the calculation
-size_t Getelec_run(getelec::Getelec* obj, bool calculateSpectra) {
-    if (calculateSpectra)
-        return obj->run(getelec::CalculationFlags::CurrentDensity | getelec::CalculationFlags::NottinghamHeat | getelec::CalculationFlags::TotalEnergyDistribution);
-    else
-        return obj->run(getelec::CalculationFlags::CurrentDensity | getelec::CalculationFlags::NottinghamHeat);
+size_t Getelec_run(getelec::Getelec* obj, unsigned flags) {
+    return obj->run(static_cast<getelec::CalculationFlags>(flags));
 }
+
 
 // Wrapper to get current densities
 const double* Getelec_getCurrentDensities(getelec::Getelec* obj, size_t* size) {
@@ -65,18 +63,18 @@ const double* Getelec_getNottinghamHeats(getelec::Getelec* obj, size_t* size) {
 }
 
 // Wrapper to get spectra energies
-const double* Getelec_getSpectraEnergies(getelec::Getelec* obj, size_t i, size_t* length) {
-    return obj->getSpectraEnergies(i, length);
+const double* Getelec_getSpectraEnergies(getelec::Getelec* obj, size_t i, size_t* length, char spectraType) {
+    return obj->getSpectraEnergies(i, length, spectraType);
 }
 
 // Wrapper to get spectra values
-const double* Getelec_getSpectraValues(getelec::Getelec* obj, size_t i, size_t* length) {
-    return obj->getSpectraValues(i, length);
+const double* Getelec_getSpectraValues(getelec::Getelec* obj, size_t i, size_t* length, char spectraType) {
+    return obj->getSpectraValues(i, length, spectraType);
 }
 
 // Wrapper to get spectra derivatives
 const double* Getelec_getSpectraDerivatives(getelec::Getelec* obj, size_t i, size_t* length) {
-    return obj->getSpectraDerivatives(i, length);
+    return obj->getSpectraValues(i, length, 'D');
 }
 
 // Wrapper to calculate transmission coefficient for a single energy

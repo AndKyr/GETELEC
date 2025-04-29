@@ -50,7 +50,8 @@ void Getelec::runIterationEffectiveMassUnity(size_t i, CalculationFlags flags){
     if (flags & CalculationFlags::TotalEnergyDistribution){ // the TED has been requested
         emitter.integrateTotalEnergyDistributionODEAndSaveSpectra();
         totalEnergyDistributions[i] = emitter.getTotalEnergyDistribution();
-        calculationStatusFlags |= CalculationFlags::TotalEnergyDistribution;
+        totalEnergyDistributionsDerivatives[i] = emitter.getTotalEnergyDistributionDerivatives();
+        calculationStatusFlags |= CalculationFlags::TotalEnergyDistribution | CalculationFlags::TotalEnergyDistributionDerivatives;
     } else if (flags & (CalculationFlags::CurrentDensity | CalculationFlags::NottinghamHeat)){ // the TED has not been asked, but current density or Nottingham have
         emitter.integrateTotalEnergyDistributionODE(true);
     }
@@ -129,8 +130,13 @@ pair<double, double> Getelec::getBarrierIntegrationLimits(size_t paramIndex){
 
 
 size_t Getelec::run(CalculationFlags flags) {
+    // Get how many iterations to run
     size_t maxIterations = getMaxIterations();
 
+    // Reset the flags to nothing calculated
+    calculationStatusFlags = CalculationFlags::None;
+
+    //Do the necessary array resizings
     if (flags & CalculationFlags::CurrentDensity)
         currentDensityVector.resize(maxIterations);
         
@@ -146,7 +152,7 @@ size_t Getelec::run(CalculationFlags flags) {
     if (flags & CalculationFlags::ParallelEnergyDistribution)
         parallelEnergyDistributions.resize(maxIterations);
 
-
+    //run the iterations in parallel
     tbb::parallel_for(size_t(0), maxIterations, [this, flags](size_t i) { runIteration(i, flags); });
     return maxIterations;
 }
