@@ -20,7 +20,7 @@ int main(){
 
 
     emitter.integrateTotalEnergyDistributionODEAndSaveSpectra();
-    cout << emitter.getCurrentDensity() << endl;
+    cout << emitter.getCurrentDensityODE() << endl;
 
     auto fields = Utilities::linspace(1., 10, 64);
     auto kTs = Utilities::linspace(.01, .3, 64);
@@ -28,7 +28,7 @@ int main(){
     for (double kT : kTs){
         emitter.setParameters(4.5, kT);
         emitter.integrateTotalEnergyDistributionODEAndSaveSpectra();
-        cout << kT  << " " << emitter.getCurrentDensity() << endl;
+        cout << kT  << " " << emitter.getCurrentDensityODE() << endl;
     }
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);

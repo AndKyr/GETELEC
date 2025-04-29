@@ -20,8 +20,7 @@ using namespace std;
 
 /**
  * @class BandEmitter
- * @brief Simulates the electron emission process by solving a system of differential equations
- * and calculating transmission coefficients.
+ * @brief Simulates the electron emission process from an isotropic parabolic band, i.e. E = |k|^2 / 2 m*
  */
 class BandEmitter : public ODESolver {
 private:
@@ -37,10 +36,8 @@ private:
     /** @brief Depth of the electronic band from the Fermi level in eV. */
     double bandDepth = 10.;
 
-    /** @brief Stores calculated spectral values in A/nm^2 / eV */
-    // vector<double> savedSpectra;
-
-    /** @brief Energy distributions saved as pairs of vectors. The first vector stores the energy abcissae (eV)
+    /**
+     * @brief Energy distributions saved as pairs of vectors. The first vector stores the energy abcissae (eV)
      * and the second vector the electron emission distribution (A / nm^2 / eV)
      */
     pair<vector<double>, vector<double>> totalEnergyDistribution; ///< Total energy distribution
@@ -193,7 +190,6 @@ public:
      */
     void writePlottingData(string filename = "bandEmitterPlotting.dat");
 
-
     /**
      * @brief Function for calculating the normal energy distribution (strictly correct only for effectiveMass = 1.).
      * @param energy The energy of the electron (eV).
@@ -227,14 +223,14 @@ public:
      * @brief Gets the current density from the solution vector 
      * @return The current density (A / nm^2).
      */
-    double getCurrentDensity() { return solutionVector[1] * CONSTANTS.SommerfeldConstant; }
+    double getCurrentDensityODE() { return solutionVector[1] * CONSTANTS.SommerfeldConstant; }
 
     /**
      * @brief Gets the Nottingham heat from the solution vector.
      * @return The Nottingham heat  (eV A / nm^2).
      * @note This value needs to be divided by the electron charge to be converted to W/nm^2
      */
-    double getNottinghamHeat() {
+    double getNottinghamHeatODE() {
         return solutionVector[2] * CONSTANTS.SommerfeldConstant;
     }
 
@@ -251,6 +247,9 @@ public:
         return parallelEnergyDistribution;
     }
 
+    /**
+     * @TODO: consider using move semantics for speed
+     */
     pair<vector<double>, vector<double>> getNormalEnergyDistribution(){
         return normalEnergyDistribution;
     }
@@ -264,7 +263,7 @@ public:
      * @param energy The energy at which to evaluate the spectra.
      * @return The evaluated spectra.
      */
-    double spectraForEnergy(double energy) const{
+    double getTotalEnergyDistributionForEnergy(double energy) const{
         return totalEnergyDistributionSpline.evaluate(energy);
     }
 
@@ -276,7 +275,7 @@ public:
     vector<double> getSpectraForEnergies(vector<double> energies){
         std::vector<double> result(energies.size());
         for (size_t i = 0; i < energies.size(); ++i) {
-            result[i] = spectraForEnergy(energies[i]);
+            result[i] = getTotalEnergyDistributionForEnergy(energies[i]);
         }
         return result;
     }
@@ -337,10 +336,11 @@ public:
 
     /**
      * @brief Calculates the total current density by integrating the double integral first (inner) over parallel and then over total energies
+     * @param saveTotalEnergyDistribution Whether to save the integration points and values in the total energy distribution.
      * @return The calculated current density (A / nm^2)
      * @note This function uses a second integration workSpace to avoid conflicts in the GSL integration functions
      */
-    double currentDensityIntegrateTotalParallel();
+    double currentDensityIntegrateTotalParallel(bool saveTotalEnergyDistribution = false);
 
     /**
      * @brief Calculates the Nottingham heat by integrating the double integral first (inner) over parallel and then over total energies

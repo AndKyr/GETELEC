@@ -272,13 +272,13 @@ public:
     /**
      * @brief Calculate for the i-th element of the array of inputs
      * @param i The index of the element to calculate
-     * @param calculateSpectra If true, calculate the spectra
+     * @param flags Determines what quantities are to be calculated
      */
     void runIteration(size_t i = 0, CalculationFlags flags = CalculationFlags::CurrentDensity);
 
     /**
      * @brief Run the calculation
-     * @param calculateSpectra If true, calculate the spectra
+     * @param flags Determines what quantities are to be calculated
      * @return The number of iterations
      */
     size_t run(CalculationFlags flags = CalculationFlags::CurrentDensity);
@@ -455,12 +455,17 @@ private:
     // double nottinghamHeat = 0.; //< The Nottingham heat (output) in W/nm^2.
     vector<double> nottinghamHeatVector; ///< The Nottingham heat (output) in W/nm^2, multiple values to iterate over.
 
+    vector<pair<vector<double>, vector<double>>> totalEnergyDistributions; ///< The total energy distributions (output) in A/nm^2/eV.
+    vector<pair<vector<double>, vector<double>>> normalEnergyDistributions; ///< The normal energy distributions (output) in A/nm^2/eV.
+    vector<pair<vector<double>, vector<double>>> parallelEnergyDistributions; ///< The parallel energy distributions (output) in A/nm^2/eV.
+
     vector<tuple<vector<double>, vector<double>, vector<double>>> spectra; /**< The spectra (output) in A/nm^2/eV, multiple values to iterate over. */
 
     tbb::enumerable_thread_specific<unique_ptr<ModifiedSNBarrier>> threadLocalBarrier; ///< Thread-local instances of ModifiedSNBarrier
     tbb::enumerable_thread_specific<TransmissionSolver> threadLocalSolver; ///< Thread-local instances of TransmissionSolver
     tbb::enumerable_thread_specific<BandEmitter> threadLocalEmitter; ///< Thread-local instances of BandEmitter
     tbb::enumerable_thread_specific<ParamsForIteration> threadLocalParams; ///< Thread-local instances of ParamsForIteration
+    CalculationFlags calculationStatusFlags; ///< Flag that shows which output data is available
 
 
     /**
@@ -474,6 +479,21 @@ private:
      * @param i The index of the iteration
      */
     void setParamsForIteration(size_t i = 0);
+
+
+    /**
+     * @brief Runs the calculation iteration in the case when effectiveMass ~= 1. (within a given tolerance determined in config)
+     * @param i The iteration to run for
+     * @param flags The flags determining which quantities are to be calculated
+     */
+    void runIterationEffectiveMassUnity(size_t i = 0, CalculationFlags flags = CalculationFlags::CurrentDensity);
+
+    /**
+     * @brief Runs the calculation iteration in the case when effectiveMass != 1. (out of a given tolerance determined in config)
+     * @param i The iteration to run for
+     * @param flags The flags determining which quantities are to be calculated
+     */
+    void runIterationEffectiveMassNonUnity(size_t i = 0, CalculationFlags flags = CalculationFlags::CurrentDensity);
 };
 
 }

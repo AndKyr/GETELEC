@@ -158,8 +158,8 @@ TEST(BandEmitterTest, DefaultValueTest){
     TransmissionSolver solver(&barrier, Config().transmissionSolverParams, 10., 1);
     BandEmitter emitter(solver);
     emitter.integrateTotalEnergyDistributionODEAndSaveSpectra();
-    double currentDensity = emitter.getCurrentDensity();
-    double nottinghamHeat = emitter.getNottinghamHeat();
+    double currentDensity = emitter.getCurrentDensityODE();
+    double nottinghamHeat = emitter.getNottinghamHeatODE();
     EXPECT_NEAR(4.1646907052681002e-09, currentDensity, emitter.getToleranceForValue(currentDensity));
     EXPECT_NEAR(-8.660864615724323e-10, nottinghamHeat, emitter.getToleranceForValue(nottinghamHeat));
 }
@@ -211,8 +211,8 @@ TEST(BandEmitterTest, CurrentDensityMethodComparison){
         barrier.setRandomParameters();
         emitter.setParameters();
         emitter.integrateTotalEnergyDistributionODE();
-        double currentDensity = emitter.getCurrentDensity();
-        double nottingham = emitter.getNottinghamHeat();
+        double currentDensity = emitter.getCurrentDensityODE();
+        double nottingham = emitter.getNottinghamHeatODE();
         double nottingham2 = emitter.nottinghamIntegrateTotalPrallel();
 
         double currentDensity2 = emitter.currentDensityIntegrateNormal();
@@ -227,6 +227,12 @@ TEST(BandEmitterTest, CurrentDensityMethodComparison){
     }
 }
 
+/**
+ * @brief Test for BandEmitter:: check that the normal energy distribution is calculated correctly
+ * @details This test checks the accuracy of the normal energy distributtion calculated by the BandEmitter class.
+ *         It uses a modified SN barrier and a TransmissionSolver to calculate the current density and Nottingham heat.
+ *        The test compares the calculated values with two independent methods (single integral vs double integral) and confirms that they match.
+ */
 TEST(BandEmitterTest, normalEnergyDistributionMethodComparison){
     ModifiedSNBarrier barrier;
     TransmissionSolver solver(&barrier, Config().transmissionSolverParams, 10., 1);

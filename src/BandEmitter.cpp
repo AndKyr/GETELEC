@@ -122,7 +122,7 @@ double BandEmitter::currentDensityIntegrateNormal(bool saveNormalEnergyDistribut
         saveSpectra = true;
     }
 
-    auto integrationLamba = [](double normalEnergy, void* params) {
+    auto integrationLambda = [](double normalEnergy, void* params) {
         BandEmitter* thisObj =  static_cast<BandEmitter*>(params);
         double result = thisObj->normalEnergyDistributionForEnergy(normalEnergy);
         if (thisObj->saveSpectra){
@@ -132,7 +132,7 @@ double BandEmitter::currentDensityIntegrateNormal(bool saveNormalEnergyDistribut
         return result;
     };
 
-    double(*integrationFunctionPointer)(double, void*) = integrationLamba; // convert the lambda into raw function pointer
+    double(*integrationFunctionPointer)(double, void*) = integrationLambda; // convert the lambda into raw function pointer
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
     
     double result, error;
@@ -149,7 +149,7 @@ void BandEmitter::writePlottingData(string filename) {
         double D_calculated = transmissionSolver.calculateTransmissionProbability(energy - workFunction, waveVector);
         double D_interpolated = interpolator.getTransmissionProbability(energy - workFunction, waveVector);
         double NED = interpolator.normalEnergyDistributionEstimate(energy - workFunction, waveVector);
-        double TED = spectraForEnergy(energy);
+        double TED = getTotalEnergyDistributionForEnergy(energy);
 
         outFile << energy << " " << D_calculated << " " << D_interpolated << " " << NED << " " << TED << " " << endl;
     }
@@ -190,12 +190,12 @@ double BandEmitter::totalEnergyDistributionIntegrateParallel(double totalEnergy)
 
 
     helperEnergy = totalEnergy; // store the totalEnergy in the class variable to be used in the lambda function
-    auto integrationLamba = [](double parallelEnergy, void* params) {
+    auto integrationLambda = [](double parallelEnergy, void* params) {
         BandEmitter* thisObj =  static_cast<BandEmitter*>(params);
         return thisObj->doubleIntegrandTotalParallel(thisObj->helperEnergy, parallelEnergy);
     };
 
-    double(*integrationFunctionPointer)(double, void*) = integrationLamba; // convert the lambda into raw function pointer
+    double(*integrationFunctionPointer)(double, void*) = integrationLambda; // convert the lambda into raw function pointer
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
 
     double maxParallelEnergy = effectiveMass * (totalEnergy + bandDepth);
@@ -207,18 +207,31 @@ double BandEmitter::totalEnergyDistributionIntegrateParallel(double totalEnergy)
     return result * CONSTANTS.SommerfeldConstant;
 }
 
-double BandEmitter::currentDensityIntegrateTotalParallel(){
+double BandEmitter::currentDensityIntegrateTotalParallel(bool saveTotalEnergyDistribution){
 
     if (!externalIntegrationWorkSpace)
         externalIntegrationWorkSpace = gsl_integration_workspace_alloc(maxAllowedSteps);
     assert(externalIntegrationWorkSpace && "externalIntegrationWorkSpace is not initialized");
 
-    auto integrationLamba = [](double totalEnergy, void* params) {
+    if (saveTotalEnergyDistribution){
+        totalEnergyDistribution.first.reserve(maxAllowedSteps);
+        totalEnergyDistribution.first.clear();
+        totalEnergyDistribution.second.reserve(maxAllowedSteps);
+        totalEnergyDistribution.second.clear();
+        saveSpectra = true;
+    }
+
+    auto integrationLambda = [](double totalEnergy, void* params) {
         BandEmitter* thisObj =  static_cast<BandEmitter*>(params);
-        return thisObj->totalEnergyDistributionIntegrateParallel(totalEnergy);
+        double result = thisObj->totalEnergyDistributionIntegrateParallel(totalEnergy);
+        if (thisObj->saveSpectra){
+            thisObj->totalEnergyDistribution.first.push_back(totalEnergy);
+            thisObj->totalEnergyDistribution.second.push_back(result);
+        }
+        return result;
     };
 
-    double(*integrationFunctionPointer)(double, void*) = integrationLamba; // convert the lambda into raw function pointer
+    double(*integrationFunctionPointer)(double, void*) = integrationLambda; // convert the lambda into raw function pointer
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
     
     double result, error;
@@ -232,12 +245,12 @@ double BandEmitter::nottinghamIntegrateTotalPrallel(){
         externalIntegrationWorkSpace = gsl_integration_workspace_alloc(maxAllowedSteps);
     assert(externalIntegrationWorkSpace && "externalIntegrationWorkSpace is not initialized");
 
-    auto integrationLamba = [](double totalEnergy, void* params) {
+    auto integrationLambda = [](double totalEnergy, void* params) {
         BandEmitter* thisObj =  static_cast<BandEmitter*>(params);
         return totalEnergy * thisObj->totalEnergyDistributionIntegrateParallel(totalEnergy);
     };
 
-    double(*integrationFunctionPointer)(double, void*) = integrationLamba; // convert the lambda into raw function pointer
+    double(*integrationFunctionPointer)(double, void*) = integrationLambda; // convert the lambda into raw function pointer
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
     
     double result, error;
@@ -251,12 +264,12 @@ double BandEmitter::parallelEnergyDistributionForEnergy(double parallelEnergy){
 
 
     helperEnergy = parallelEnergy; // store the totalEnergy in the class variable to be used in the lambda function
-    auto integrationLamba = [](double totalEnergy, void* params) {
+    auto integrationLambda = [](double totalEnergy, void* params) {
         BandEmitter* thisObj =  static_cast<BandEmitter*>(params);
         return thisObj->doubleIntegrandTotalParallel(totalEnergy, thisObj->helperEnergy);
     };
 
-    double(*integrationFunctionPointer)(double, void*) = integrationLamba; // convert the lambda into raw function pointer
+    double(*integrationFunctionPointer)(double, void*) = integrationLambda; // convert the lambda into raw function pointer
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
 
     double minTotalEnergy = -bandDepth + parallelEnergy / effectiveMass;
@@ -280,7 +293,7 @@ double BandEmitter::currentDensityIntegrateParallelTotal(bool saveSpectra){
         saveSpectra = true;
     }
 
-    auto integrationLamba = [](double parallelEnergy, void* params) {
+    auto integrationLambda = [](double parallelEnergy, void* params) {
         BandEmitter* thisObj =  static_cast<BandEmitter*>(params);
         double result = thisObj->parallelEnergyDistributionForEnergy(parallelEnergy);
         if (thisObj->saveSpectra){
@@ -290,7 +303,7 @@ double BandEmitter::currentDensityIntegrateParallelTotal(bool saveSpectra){
         return result;
     };
 
-    double(*integrationFunctionPointer)(double, void*) = integrationLamba; // convert the lambda into raw function pointer
+    double(*integrationFunctionPointer)(double, void*) = integrationLambda; // convert the lambda into raw function pointer
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
     
     double result, error;
@@ -304,12 +317,12 @@ double BandEmitter::normalEnergyDistributionIntegratePrallel(double normalEnergy
 
 
     helperEnergy = normalEnergy; // store the totalEnergy in the class variable to be used in the lambda function
-    auto integrationLamba = [](double parallelEnergy, void* params) {
+    auto integrationLambda = [](double parallelEnergy, void* params) {
         BandEmitter* thisObj =  static_cast<BandEmitter*>(params);
         return thisObj->doubleIntegrandParallelNormal(parallelEnergy, thisObj->helperEnergy);
     };
 
-    double(*integrationFunctionPointer)(double, void*) = integrationLamba; // convert the lambda into raw function pointer
+    double(*integrationFunctionPointer)(double, void*) = integrationLambda; // convert the lambda into raw function pointer
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
 
     double result, error;
@@ -331,7 +344,7 @@ double BandEmitter::currentDensityIntegrateNormalParallel(bool saveNormalEnergyD
         saveSpectra = true;
     }
 
-    auto integrationLamba = [](double normalEnergy, void* params) {
+    auto integrationLambda = [](double normalEnergy, void* params) {
         BandEmitter* thisObj =  static_cast<BandEmitter*>(params);
         double result = thisObj->normalEnergyDistributionIntegratePrallel(normalEnergy);
         if (thisObj->saveSpectra){
@@ -341,7 +354,7 @@ double BandEmitter::currentDensityIntegrateNormalParallel(bool saveNormalEnergyD
         return result;
     };
 
-    double(*integrationFunctionPointer)(double, void*) = integrationLamba; // convert the lambda into raw function pointer
+    double(*integrationFunctionPointer)(double, void*) = integrationLambda; // convert the lambda into raw function pointer
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
     
     double result, error;

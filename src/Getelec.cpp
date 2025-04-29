@@ -12,19 +12,95 @@ void Getelec::runIteration(size_t i, CalculationFlags flags) {
     barrier->setBarrierParameters(params.field, params.radius, params.gamma);
     emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth); 
 
-    if (abs(params.effectiveMass - 1.) < config.bandEmitterParams.effectiveMassTolerance){
-        emitter.integrateTotalEnergyDistributionODE();
+    if (abs(params.effectiveMass - 1.) > config.bandEmitterParams.effectiveMassTolerance){
+        runIterationEffectiveMassNonUnity(i, flags);
+    } else {
+        runIterationEffectiveMassUnity(i, flags);
     }
 
-    if (flags & CalculationFlags::TotalEnergyDistribution)
-        emitter.integrateTotalEnergyDistributionODEAndSaveSpectra();
-    else
-        emitter.integrateTotalEnergyDistributionODE(); 
+}
+
+void Getelec::runIterationEffectiveMassUnity(size_t i, CalculationFlags flags){
+    auto& emitter = threadLocalEmitter.local();
+
+    if (flags == CalculationFlags::None){
+        calculationStatusFlags = CalculationFlags::None;
+        return;
+    }
     
-    currentDensityVector[i] = emitter.getCurrentDensity();
-    nottinghamHeatVector[i] = emitter.getNottinghamHeat() / CONSTANTS.electronCharge;
-    if (flags & CalculationFlags::ParallelEnergyDistribution)
-        spectra[i] = emitter.getSpectra();
+    if (flags == CalculationFlags::CurrentDensity){ // if we ask only for the current density
+        currentDensityVector[i] = emitter.currentDensityIntegrateNormal(false);
+        calculationStatusFlags = CalculationFlags::CurrentDensity;
+        return;
+    }
+
+    if (flags & CalculationFlags::NormalEnergyDistribution){ // the normal energy distribution is requested
+        currentDensityVector[i] = emitter.currentDensityIntegrateNormal(true);
+        normalEnergyDistributions[i] = emitter.getNormalEnergyDistribution();
+        calculationStatusFlags = CalculationFlags::NormalEnergyDistribution | CalculationFlags::CurrentDensity;
+    }
+
+    if (flags & CalculationFlags::ParallelEnergyDistribution){ // if the parallel energy distribution is asked
+        currentDensityVector[i] = emitter.currentDensityIntegrateParallelTotal(true);
+        parallelEnergyDistributions[i] = emitter.getParallelEnergyDistribution();
+        calculationStatusFlags |= CalculationFlags::ParallelEnergyDistribution | CalculationFlags::CurrentDensity;
+    }
+
+
+    if (flags & CalculationFlags::TotalEnergyDistribution){ // the TED has been requested
+        emitter.integrateTotalEnergyDistributionODEAndSaveSpectra();
+        totalEnergyDistributions[i] = emitter.getTotalEnergyDistribution();
+        calculationStatusFlags |= CalculationFlags::TotalEnergyDistribution;
+    } else if (flags & (CalculationFlags::CurrentDensity | CalculationFlags::NottinghamHeat)){ // the TED has not been asked, but current density or Nottingham have
+        emitter.integrateTotalEnergyDistributionODE(true);
+    }
+    
+    if (flags & CalculationFlags::NottinghamHeat){ // if Nottingham has been asked
+        nottinghamHeatVector[i] = emitter.getNottinghamHeatODE() / CONSTANTS.electronCharge;
+        calculationStatusFlags |= CalculationFlags::NottinghamHeat;
+    }
+    
+    if (flags & CalculationFlags::CurrentDensity){
+        currentDensityVector[i] = emitter.getCurrentDensityODE();
+        calculationStatusFlags |= CalculationFlags::CurrentDensity;
+    }
+}
+
+void Getelec::runIterationEffectiveMassNonUnity(size_t i, CalculationFlags flags){
+    auto& emitter = threadLocalEmitter.local();
+
+    if (flags == CalculationFlags::None){
+        calculationStatusFlags = CalculationFlags::None;
+        return;
+    }
+
+    if (flags & CalculationFlags::NormalEnergyDistribution){ // the normal energy distribution is requested
+        currentDensityVector[i] = emitter.currentDensityIntegrateNormal(true);
+        normalEnergyDistributions[i] = emitter.getNormalEnergyDistribution();
+        calculationStatusFlags = CalculationFlags::NormalEnergyDistribution | CalculationFlags::CurrentDensity;
+    }
+
+    if (flags & CalculationFlags::ParallelEnergyDistribution){ // if the parallel energy distribution is asked
+        currentDensityVector[i] = emitter.currentDensityIntegrateParallelTotal(true);
+        parallelEnergyDistributions[i] = emitter.getParallelEnergyDistribution();
+        calculationStatusFlags |= CalculationFlags::ParallelEnergyDistribution | CalculationFlags::CurrentDensity;
+    }
+
+    if (flags & CalculationFlags::TotalEnergyDistribution){ // the TED has been requested
+        currentDensityVector[i] = emitter.currentDensityIntegrateTotalParallel(true);
+        totalEnergyDistributions[i] = emitter.getTotalEnergyDistribution();
+        calculationStatusFlags |= CalculationFlags::TotalEnergyDistribution | CalculationFlags::CurrentDensity;
+    }
+    
+    if (flags & CalculationFlags::NottinghamHeat){ // if Nottingham has been asked
+        nottinghamHeatVector[i] = emitter.nottinghamIntegrateTotalPrallel() / CONSTANTS.electronCharge;
+        calculationStatusFlags |= CalculationFlags::NottinghamHeat;
+    }
+    
+    if (flags & CalculationFlags::CurrentDensity && !(calculationStatusFlags & CalculationFlags::CurrentDensity)){ //Current density has been asked and not already calculated
+        currentDensityVector[i] = emitter.currentDensityIntegrateTotalParallel(false);
+        calculationStatusFlags |= CalculationFlags::CurrentDensity;
+    }
 }
 
 void Getelec::getBarrierValues(const double* x, double* potential, size_t size, size_t paramsIndex) {
@@ -54,10 +130,23 @@ pair<double, double> Getelec::getBarrierIntegrationLimits(size_t paramIndex){
 
 size_t Getelec::run(CalculationFlags flags) {
     size_t maxIterations = getMaxIterations();
-    currentDensityVector.resize(maxIterations);
-    nottinghamHeatVector.resize(maxIterations);
+
+    if (flags & CalculationFlags::CurrentDensity)
+        currentDensityVector.resize(maxIterations);
+        
+    if (flags & CalculationFlags::NottinghamHeat)
+        nottinghamHeatVector.resize(maxIterations);
+
+    if (flags & CalculationFlags::TotalEnergyDistribution)
+        totalEnergyDistributions.resize(maxIterations);
+    
+    if (flags & CalculationFlags::NormalEnergyDistribution)
+        normalEnergyDistributions.resize(maxIterations);
+    
     if (flags & CalculationFlags::ParallelEnergyDistribution)
-        spectra.resize(maxIterations);
+        parallelEnergyDistributions.resize(maxIterations);
+
+
     tbb::parallel_for(size_t(0), maxIterations, [this, flags](size_t i) { runIteration(i, flags); });
     return maxIterations;
 }
