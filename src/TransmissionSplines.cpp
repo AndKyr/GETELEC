@@ -2,6 +2,25 @@
 
 namespace getelec{
 
+vector<double> TransmissionSpline::evaluateSolution(double energy) const{
+    double minEnergy = getMinimumSampleEnergy();
+    double maxEnergy = getMaximumSampleEnergy();
+    if (energy < minEnergy){
+        vector<double> solutionOut = evaluateMultiple(minEnergy);
+        vector<double> solutionDerivatives = evaluateDerivativeMultiple(minEnergy);
+        for (int i = 0; i < solutionOut.size(); i++)
+            solutionOut[i] += solutionDerivatives[i] * (energy - minEnergy);         
+        return solutionOut;          
+    } else if (energy > maxEnergy){
+        vector<double> solutionOut = evaluateMultiple(maxEnergy);
+        vector<double> solutionDerivatives = evaluateDerivativeMultiple(maxEnergy);
+        for (int i = 0; i < solutionOut.size(); i++)
+            solutionOut[i] += solutionDerivatives[i] * (energy - maxEnergy);
+        return solutionOut;
+    } else
+        return evaluateMultiple(energy); 
+}
+
 void TransmissionSpline::sampleUniform(double Emin, double Emax, int nPoints){
     if (nPoints < 2)
         throw std::invalid_argument("The number of points for the spline must be at least 2.");

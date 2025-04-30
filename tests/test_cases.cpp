@@ -290,6 +290,18 @@ TEST(GetelecObjectTest, RunParalleltest){
 }
 
 /**
+ * @brief Test for Getelec:: check that the Getelec class can be constructed and run without errors
+ */
+TEST(GetelecTest, runRandomCasesTest){
+    mt19937 generator(1987);
+
+    Getelec getelec;
+    getelec.setGenerator(&generator);
+    getelec.setRandomParameters(64);
+    EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
+}
+
+/**
  * @brief Test for ModifiedSNBarrierWithDftXC:: check that the potential function and its derivative are calculated correctly
  */
 TEST(GeneralXCFunctionTest, ValueTest){

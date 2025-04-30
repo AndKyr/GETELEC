@@ -96,6 +96,22 @@ struct Utilities {
         std::uniform_real_distribution<> dis(a, b); // Distribution in range [a, b]
         return dis(generator);
     }
+
+    /**
+     * @brief Generates a vector of uniformly distributed random numbers
+     * @param lowerLimit The bottom limit of the distribution
+     * @param upperLimit The upper limit of the distribution
+     * @param size The size of the generated vector
+     * @param generator The RNG object to be used.
+     */
+    static vector<double> getUniformRandomDoubles(double lowerLimit, double upperLimit, int size, mt19937& generator){
+        vector<double> result(size);
+        std::uniform_real_distribution<> dis(lowerLimit, upperLimit); // Distribution in range [a, b]
+        for (int i = 0; i < size; ++i) 
+            result[i] = dis(generator);
+        
+        return move(result);
+    }
 };
 
 

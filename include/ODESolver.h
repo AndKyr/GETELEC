@@ -150,7 +150,7 @@ public:
      * @param value The value of the solution
      * @return The tolerance for the value
      */
-    double getToleranceForValue(double value){
+    double getToleranceForValue(double value) const{
         return abs(value) * relativeTolerance + absoluteTolerance;
     }
 

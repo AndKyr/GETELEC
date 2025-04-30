@@ -61,7 +61,7 @@ class GetelecInterface:
         "TotalEnergyDistributionDerivatives": 32,
     }
 
-    def __init__(self, libPath=None, configPath:str="", barrierType="modifiedSN", fields = 5., radii = 1.e5, gammas = 10., kTs = 0.025, workFunctions = 4.5, bandDepths = 10., effectiveMasses = 1.):
+    def __init__(self, libPath=None, configPath:str="", barrierType="modifiedSN", fields = 5., radii = 1.e5, gammas = 10., kTs = 0.025, workFunctions = 4.5, bandDepths = 10., effectiveMasses = 1., numberOfThreads = 0):
         if libPath is None:
             libPath = os.path.join(os.path.dirname(__file__), "../build/libgetelec.so")
         
@@ -69,7 +69,7 @@ class GetelecInterface:
         self.lib = ctypes.CDLL(libPath)
 
         # Initialize the Getelec instance
-        self.obj = self.lib.Getelec_new_with_config(ctypes.c_char_p(configPath.encode('utf-8')), ctypes.c_char_p(barrierType.encode('utf-8')))
+        self.obj = self.lib.Getelec_new_with_config(ctypes.c_char_p(configPath.encode('utf-8')), ctypes.c_char_p(barrierType.encode('utf-8')), ctypes.c_int(numberOfThreads))
 
         # Define argument and return types for methods
         self.lib.Getelec_setField.restype = None
@@ -142,6 +142,7 @@ class GetelecInterface:
         self.setWorkFunction(workFunctions)
         self.setBandDepth(bandDepths)
         self.setEffectiveMass(effectiveMasses)
+        self.resultDictionary = {}
 
     def calculateTransmissionProbability(self, energy, waveVector = -1., params_index = 0):
         return self.lib.Getelec_calculateTransmissionProbability(self.obj, energy, waveVector, params_index)
@@ -182,20 +183,22 @@ class GetelecInterface:
         self.lib.Getelec_setkT(self.obj, kTs_ctypes, size)
     
     def setWorkFunction(self, workFunctions):
-        self.setWorkFunctions = workFunctions
+        self.workFunctions = workFunctions
         workFunctions_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(workFunctions, dtype=np.float64)))
         self.lib.Getelec_setWorkFunction(self.obj, workFunctions_ctypes, size)
     
     def setBandDepth(self, bandDepths):
-        self.setBandDepths = bandDepths
+        self.bandDepths = bandDepths
         bandDepths_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(bandDepths, dtype=np.float64)))
         self.lib.Getelec_setBandDepth(self.obj, bandDepths_ctypes, size)
     
     def setEffectiveMass(self, effectiveMasses):
-        self.setEffectiveMasses = effectiveMasses
+        self.effectiveMasses = effectiveMasses
         effectiveMasses_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(effectiveMasses, dtype=np.float64)))
         self.lib.Getelec_setEffectiveMass(self.obj, effectiveMasses_ctypes, size)
     
+    def getInputsDict(self):
+        return {"fields": self.fields, "radii": self.radii, "gammas": self.gammas, "kTs": self.kTs, "workFunctions": self.workFunctions, "bandDepths": self.bandDepths, "effectiveMasses": self.effectiveMasses}
 
     def run(self, calculationFlags):
         combinedFlagsInt = 0
@@ -231,51 +234,69 @@ class GetelecInterface:
     def getCurrentDensity(self):
         size = ctypes.c_size_t()
         densities_ptr = self.lib.Getelec_getCurrentDensities(self.obj, ctypes.byref(size))
-        return np.ctypeslib.as_array(densities_ptr, shape=(size.value,))
-    
+        result = np.ctypeslib.as_array(densities_ptr, shape=(size.value,))
+        self.resultDictionary["CurrentDensity"] = result
+        return result
+        
     def getNottinghamHeat(self):
         size = ctypes.c_size_t()
         densities_ptr = self.lib.Getelec_getNottinghamHeats(self.obj, ctypes.byref(size))
-        return np.ctypeslib.as_array(densities_ptr, shape=(size.value,)) 
+        result = np.ctypeslib.as_array(densities_ptr, shape=(size.value,)) 
+        self.resultDictionary["NottinghamHeat"] = result
+        return result
     
-    def getSpectra(self):
+    def extractAllSpectra(self):
         self.totalEnergyDistributions = []
         self.normalEnergyDistributions = []
         self.parallelEnergyDistributions = []
         self.totalEnergyDistributionSplines = []
-        for i in range(self.numberOfIterations):
-            size = ctypes.c_size_t()
+        calculationStatus = self.getCalculationStatus()
 
-            calculationStatus = self.getCalculationStatus()
-
-            if ("TotalEnergyDistribution" in calculationStatus):
+        if ("TotalEnergyDistribution" in calculationStatus):
+            for i in range(self.numberOfIterations):
                 (energies, values) = self._extractSpectra(i, 'T')
                 self.totalEnergyDistributions.append((energies, values))
-
                 if ("TotalEnergyDistributionDerivatives" in calculationStatus):
                     energies2, derivatives = self._extractSpectra(i, 'D')
-                    assert(energies == energies2, "abssicae for TED values and derivatives don't match")
+                    assert np.allclose(energies, energies2), "abssicae for TED values and derivatives don't match"
                     self.totalEnergyDistributionSplines.append(spi.CubicHermiteSpline(energies, values, derivatives))
+            self.resultDictionary["TotalEnergyDistributions"] = self.totalEnergyDistributions
+            if ("TotalEnergyDistributionDerivatives" in calculationStatus):
+                self.resultDictionary["TotalEnergyDistributionSplines"] = self.totalEnergyDistributionSplines
 
 
-            if ("NormalEnergyDistribution" in calculationStatus):
+        if ("NormalEnergyDistribution" in calculationStatus):
+            for i in range(self.numberOfIterations):
                 self.normalEnergyDistributions.append(self._extractSpectra(i, "N"))
+            self.resultDictionary["NormalEnergyDistributions"] = self.normalEnergyDistributions
 
-            if ("ParallelEnergyDistribution" in calculationStatus):
+        if ("ParallelEnergyDistribution" in calculationStatus):
+            for i in range(self.numberOfIterations):
                 self.parallelEnergyDistributions.append(self._extractSpectra(i, "P"))
+            self.resultDictionary["ParallelEnergyDistributions"] = self.parallelEnergyDistributions
 
+    def getResultDictionary(self):
+        self.getCurrentDensity()
+        self.getNottinghamHeat()
+        self.extractAllSpectra()
+        return self.resultDictionary
+    
+    def getAllDataDictionary(self):
+        inputDict = self.getInputsDict()
+        resultDict = self.getResultDictionary()
+        inputDict.update(resultDict)
+        return inputDict
 
+        
     def _extractSpectra(self, i:int, spectraType:str) -> tuple[np.ndarray, np.ndarray]:
         size = ctypes.c_size_t()
-
-        energies_ptr = self.lib.Getelec_getSpectraEnergies(self.obj, ctypes.c_size_t(i), ctypes.byref(size), ctypes.c_char('P'))
-        values_ptr = self.lib.Getelec_getSpectraValues(self.obj, ctypes.c_size_t(i) , ctypes.byref(size), ctypes.c_char('P'))
+        energies_ptr = self.lib.Getelec_getSpectraEnergies(self.obj, ctypes.c_size_t(i), ctypes.byref(size), ctypes.c_char(spectraType.encode("utf-8")))
+        values_ptr = self.lib.Getelec_getSpectraValues(self.obj, ctypes.c_size_t(i) , ctypes.byref(size), ctypes.c_char(spectraType.encode("utf-8")))
         energies = np.ctypeslib.as_array(energies_ptr, shape=(size.value,))
         values = np.ctypeslib.as_array(values_ptr, shape=(size.value,))
         sortInds = np.argsort(energies)
         energies = energies[sortInds]
         values = values[sortInds]
-
         return (energies, values)
                     
     def calculateBarrierValues(self, energies, params_index = 0):

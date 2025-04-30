@@ -76,7 +76,7 @@ public:
      * @param waveVector Wave vector (1/nm).
      */
     gsl_complex getTransmissionCoefficient(double energy, double waveVector) const{
-        vector<double> solutionVector = evaluateMultiple(energy);
+        vector<double> solutionVector = evaluateSolution(energy);
         assert(all_of(solutionVector.begin(), solutionVector.end(), [](double x) { return isfinite(x); }));
         return TransmissionSolver::transmissionCoefficient(waveVector, solutionVector);
     }
@@ -87,11 +87,17 @@ public:
      * @param waveVector Wave vector (1/nm).
      */
     double getTransmissionProbability(double energy, double waveVector) const{
-        vector<double> solutionVector = evaluateMultiple(energy);
+        vector<double> solutionVector = evaluateSolution(energy);
         assert(all_of(solutionVector.begin(), solutionVector.end(), [](double x) { return isfinite(x); }));
         return TransmissionSolver::transmissionProbability(waveVector, solutionVector);
     }
 
+    /**
+     * @brief Evaluates the solution vector at a given energy
+     * @param energy The energy to evaluate at (eV)
+     * @note If the energy is out of the interval where sampling nodes exist, a linear extrapolation is used
+     */
+    vector<double> evaluateSolution(double energy) const;
 
     /**
      * @brief Uniformly samples the transmission coefficient between two energy levels.

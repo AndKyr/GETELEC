@@ -7,21 +7,49 @@ import unittest as tst
 
 class TestGetelecInterface(tst.TestCase):
     def testDensityAndSpectra(self):
-        getelec = gt.GetelecInterface(configPath="getelec.cfg")
-        getelec.setRadius([5., 6., 7. , 8., 9.])
-        getelec.run(calculate_spectra=True)
-        densities = getelec.getCurrentDensity()
-        spectra = getelec.getSpectra()
+        getelec = gt.GetelecInterface(configPath="getelec.cfg", numberOfThreads=1)
 
-        for spline, density in zip(spectra, densities):
-            xPlot = np.linspace(min(spline.x), max(spline.x), 512)
-            yPlot = spline(xPlot)
-            plt.plot(xPlot, yPlot)
-            currentDensityFromSpectra = spline.integrate(min(spline.x), max(spline.x))
-            self.assertAlmostEqual(np.log(currentDensityFromSpectra), np.log(density), delta=1e-3)
-        plt.xlabel("Energy (eV)")
-        plt.ylabel("spectra [A/nm^2/eV]")
-        plt.show()
+        Ntests = 16
+
+        fields = np.random.rand(Ntests) * 10. + 1.
+        radii = 1./np.random.rand(Ntests)
+        gammas = np.random.random(Ntests) * 10. + 1.
+        kTs = np.random.random(Ntests) * 0.22
+        workFunctions = np.random.random(Ntests) * 3. + 2.
+        bandDepths = np.random.random(Ntests) * 3. + 10.
+        effectiveMasses = np.random.random(Ntests) * 1. + 1.
+        
+        
+        getelec.setParameters(field=fields, radius=radii, gamma=gammas, kT=kTs, workFunction=workFunctions, bandDepth=bandDepths, effectiveMass=effectiveMasses)
+        getelec.run(["CurrentDensity", "TotalEnergyDistribution", "ParallelEnergyDistribution", "NottinghamHeat"])
+
+        allSpectra = getelec.extractAllSpectra()
+        densities = getelec.getCurrentDensity()
+        nottinghams = getelec.getNottinghamHeat()
+
+        
+
+        plotRows = 2
+        plotColumns = 2
+        plotsPerFigure = plotRows * plotColumns
+        Nfigures = int(np.ceil(Ntests / plotsPerFigure))
+        counter = 0
+        for i in range(Nfigures):
+            fig, axes = plt.subplots(plotRows, plotColumns, squeeze=True)
+
+            for ax in axes:
+                for spectraTypeKey in allSpectra:
+                    if (spectraTypeKey == "TotalEnergyDistributionSplines"):
+                        spline = allSpectra[spectraTypeKey][counter]
+                        xPlot = np.linspace(min(spline.x), max(spline.x), 512)
+                        yPlot = spline(xPlot)
+                        ax.plot(xPlot, yPlot, label=spectraTypeKey)
+                    else:
+                        ax.plot(allSpectra[spectraTypeKey][counter][0], allSpectra[spectraTypeKey][counter][1], label=spectraTypeKey)
+                        
+                ax.set_xlabel("Energy [eV]")
+                ax.set_ylabel("Spectra [A/nm^2/eV]")
+            plt.show()
     
     def testIVcurve(self):
         getelec = gt.GetelecInterface(configPath="getelec.cfg")

@@ -8,8 +8,8 @@ getelec::Getelec* Getelec_new() {
     return new getelec::Getelec();
 }
 
-getelec::Getelec* Getelec_new_with_config(const char* configFileName, const char* barrierType) {
-    return new getelec::Getelec(configFileName, barrierType);
+getelec::Getelec* Getelec_new_with_config(const char* configFileName, const char* barrierType, int numberOfThreads) {
+    return new getelec::Getelec(configFileName, barrierType, numberOfThreads);
 }
 
 // Wrapper to delete a Getelec object
@@ -51,6 +51,33 @@ size_t Getelec_run(getelec::Getelec* obj, unsigned flags) {
     return obj->run(static_cast<getelec::CalculationFlags>(flags));
 }
 
+const double* Getelec_getFields(getelec::Getelec* obj, size_t* size) {
+    return obj->getFields(size);
+}
+
+const double* Getelec_getRadii(getelec::Getelec* obj, size_t* size) {
+    return obj->getRadii(size);
+}
+
+const double* Getelec_getGammas(getelec::Getelec* obj, size_t* size) {
+    return obj->getGammas(size);
+}
+
+const double* Getelec_getkT(getelec::Getelec* obj, size_t* size) {
+    return obj->getkT(size);
+}
+
+const double* Getelec_getWorkFunction(getelec::Getelec* obj, size_t* size) {
+    return obj->getWorkFunction(size);
+}
+
+const double* Getelec_getEffectiveMass(getelec::Getelec* obj, size_t* size) {
+    return obj->getEffectiveMass(size);
+}
+
+const double* Getelec_getBandDepth(getelec::Getelec* obj, size_t* size) {
+    return obj->getBandDepth(size);
+}
 
 // Wrapper to get current densities
 const double* Getelec_getCurrentDensities(getelec::Getelec* obj, size_t* size) {

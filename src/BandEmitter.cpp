@@ -20,11 +20,22 @@ double BandEmitter::gPrimeFunction(double energy) {
     //TODO: be careful with the effective mass. abarX might get below the bandDepth causing problems. The interpolation range must be fixed.
     double waveVector = sqrt(energy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
     double result = interpolator.getTransmissionProbability(energy - workFunction, waveVector);
-    if (effectiveMass != 1.) {
-        double aBarX = -bandDepth + (1. - effectiveMass) * (energy + bandDepth);
-        result -= (1. - effectiveMass) * interpolator.getTransmissionProbability(aBarX - workFunction, waveVector);
-    }
     assert(isfinite(result) && "Transmission coefficient is not finite");
+
+    if (effectiveMass != 1.) {
+        double reducedEnergy = -bandDepth + (1. - effectiveMass) * (energy + bandDepth);
+        double reducedTransmission = interpolator.getTransmissionProbability(reducedEnergy - workFunction, waveVector);
+        result -= (1. - effectiveMass) * reducedTransmission;
+
+        // Debug code
+        if (! isfinite(result))
+            interpolator.getTransmissionProbability(reducedEnergy - workFunction, waveVector);
+        
+        // end of debug code
+
+
+        assert(isfinite(result) && "Transmission coefficient is not finite");
+    }
     return result;
 }
 
@@ -59,6 +70,8 @@ int BandEmitter::integrateTotalEnergyDistributionODEAndSaveSpectra(double conver
 
     totalEnergyDistribution.first.reserve(maxAllowedSteps);
     totalEnergyDistribution.second.reserve(maxAllowedSteps);
+    totalEnergyDistributionDerivatives.reserve(maxAllowedSteps);
+    totalEnergyDistributionDerivatives.clear();
     totalEnergyDistribution.first.clear();
     totalEnergyDistribution.second.clear();
 
