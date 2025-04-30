@@ -104,7 +104,52 @@ void Getelec::runIterationEffectiveMassNonUnity(size_t i, CalculationFlags flags
     }
 }
 
-void Getelec::getBarrierValues(const double* x, double* potential, size_t size, size_t paramsIndex) {
+const double* Getelec::getSpectraEnergies(size_t i, size_t *length, char spectraType) const{
+    switch(spectraType) {
+        case 'D':
+            assert(calculationStatusFlags & CalculationFlags::TotalEnergyDistributionDerivatives && "TED derivatives not calculated");
+        case 'T':
+            assert(calculationStatusFlags & CalculationFlags::TotalEnergyDistribution && "TED not calculated yet");
+            *length = totalEnergyDistributions[i].first.size();
+            return totalEnergyDistributions[i].first.data();
+        case 'N':
+            assert(calculationStatusFlags & CalculationFlags::NormalEnergyDistribution && "NED not calculated yet");
+            *length = normalEnergyDistributions[i].first.size();
+            return normalEnergyDistributions[i].first.data();
+        case 'P':
+            assert(calculationStatusFlags & CalculationFlags::ParallelEnergyDistribution && "NED not calculated yet");
+            *length = parallelEnergyDistributions[i].first.size();
+            return parallelEnergyDistributions[i].first.data();
+        default:
+            throw std::runtime_error("getSpectraEnergies called with invalid spectra type. Should be 'D', 'T', 'N' or 'P'");
+    }
+}
+
+const double *Getelec::getSpectraValues(size_t i, size_t *length, char spectraType) const{ 
+    switch(spectraType) {
+        case 'T':
+            assert(calculationStatusFlags & CalculationFlags::TotalEnergyDistribution && "TED not calculated yet");
+            *length = totalEnergyDistributions[i].second.size();
+            return totalEnergyDistributions[i].second.data();
+        case 'N':
+            assert(calculationStatusFlags & CalculationFlags::NormalEnergyDistribution && "NED not calculated yet");
+            *length = normalEnergyDistributions[i].second.size();
+            return normalEnergyDistributions[i].second.data();
+        case 'P':
+            assert(calculationStatusFlags & CalculationFlags::ParallelEnergyDistribution && "NED not calculated yet");
+            *length = parallelEnergyDistributions[i].second.size();
+            return parallelEnergyDistributions[i].second.data();
+        case 'D':
+            assert(calculationStatusFlags & CalculationFlags::TotalEnergyDistributionDerivatives && "TED derivatives not calculated yet");
+            *length = totalEnergyDistributionsDerivatives[i].size();
+            return totalEnergyDistributionsDerivatives[i].data();
+        default:
+            throw std::runtime_error("getSpectraValues called with invalid spectra type. Should be 'D', 'T', 'N' or 'P'");
+    } 
+}
+
+void Getelec::getBarrierValues(const double *x, double *potential, size_t size, size_t paramsIndex)
+{
     setParamsForIteration(paramsIndex);
     auto& params = threadLocalParams.local(); 
     auto& barrier = threadLocalBarrier.local();
@@ -127,7 +172,6 @@ pair<double, double> Getelec::getBarrierIntegrationLimits(size_t paramIndex){
 
     return {solver.getXFinal(), solver.getXInitial()};  
 }
-
 
 size_t Getelec::run(CalculationFlags flags) {
     // Get how many iterations to run
@@ -157,7 +201,7 @@ size_t Getelec::run(CalculationFlags flags) {
     return maxIterations;
 }
 
-double Getelec::calculateTransmissionCoefficientForEnergy(double energy, size_t paramsIndex) {
+double Getelec::calculateTransmissionProbability(double energy, double waveVector, size_t paramsIndex) {
     setParamsForIteration(paramsIndex);   
     auto& params = threadLocalParams.local();
     auto& barrier = threadLocalBarrier.local();
@@ -165,10 +209,10 @@ double Getelec::calculateTransmissionCoefficientForEnergy(double energy, size_t 
 
     barrier->setBarrierParameters(params.field, params.radius, params.gamma);
     emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth); 
-    return emitter.calculateTransmissionCoefficientForEnergy(energy);
+    return emitter.calculateTransmissionProbability(energy, waveVector);
 }
 
-std::vector<double> Getelec::calculateTransmissionCoefficientForEnergies(const std::vector<double>& energies, size_t paramsIndex) {
+std::vector<double> Getelec::calculateTransmissionProbabilities(const std::vector<double>& energies, const vector<double>& waveVectors, size_t paramsIndex) {
     setParamsForIteration(paramsIndex);   
     auto& params = threadLocalParams.local();
     auto& barrier = threadLocalBarrier.local();
@@ -178,14 +222,17 @@ std::vector<double> Getelec::calculateTransmissionCoefficientForEnergies(const s
     emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth); 
 
     tbb::concurrent_vector<double> transmissionCoefficients(energies.size());
+
+    auto iterationLambda = [&transmissionCoefficients, &energies, &waveVectors, &emitter, this](size_t i) { 
+        double waveVector = waveVectors.size() == 0 ? -1. : waveVectors[i];
+        transmissionCoefficients[i] = emitter.calculateTransmissionProbability(energies[i], waveVector);
+    };
     
-    tbb::parallel_for(size_t(0), energies.size(), [&transmissionCoefficients, &energies, &emitter, this](size_t i) { 
-        transmissionCoefficients[i] = emitter.calculateTransmissionCoefficientForEnergy(energies[i]);
-    });
+    tbb::parallel_for(size_t(0), energies.size(), iterationLambda);
     return std::vector<double>(transmissionCoefficients.begin(), transmissionCoefficients.end());
 }
 
-std::vector<double> Getelec::calculateTransmissionCoefficientForManyEnergies(const std::vector<double>& energies, size_t paramsIndex) {
+std::vector<double> Getelec::interpolateTransmissionProbabilities(const std::vector<double>& energies, const vector<double>& waveVectors, size_t paramsIndex) {
     setParamsForIteration(paramsIndex);   
     auto& params = threadLocalParams.local();
     auto& barrier = threadLocalBarrier.local();
@@ -195,10 +242,12 @@ std::vector<double> Getelec::calculateTransmissionCoefficientForManyEnergies(con
     emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth); 
 
     tbb::concurrent_vector<double> transmissionCoefficients(energies.size());
-    
-    tbb::parallel_for(size_t(0), energies.size(), [&transmissionCoefficients, &energies, &emitter, this](size_t i) { 
+    auto iterationLambda = [&transmissionCoefficients, &energies, &waveVectors, &emitter, this](size_t i) { 
+        double waveVector = waveVectors.size() == 0 ? -1. : waveVectors[i];
         transmissionCoefficients[i] = emitter.interpolateTransmissionProbability(energies[i]);
-    });
+    };
+    
+    tbb::parallel_for(size_t(0), energies.size(), iterationLambda);
     return std::vector<double>(transmissionCoefficients.begin(), transmissionCoefficients.end());
 }
 

@@ -185,7 +185,7 @@ JNIEXPORT jdoubleArray JNICALL Java_GetelecInterface_Getelec_1getNottinghamHeats
 
 JNIEXPORT jdouble JNICALL Java_GetelecInterface_Getelec_1calculateTransmissionForEnergy
 (JNIEnv* env, jobject obj, jlong instancePtr, jdouble energy, jint paramsIndex) {
-    return ((getelec::Getelec*)instancePtr)->calculateTransmissionCoefficientForEnergy(energy, paramsIndex);
+    return ((getelec::Getelec*)instancePtr)->calculateTransmissionProbability(energy, paramsIndex);
 }
 
 JNIEXPORT jdoubleArray JNICALL Java_GetelecInterface_Getelec_1calculateTransmissionForEnergies
@@ -202,7 +202,7 @@ JNIEXPORT jdoubleArray JNICALL Java_GetelecInterface_Getelec_1calculateTransmiss
     if (!data) throw std::runtime_error("Cannot get primitive array critical");
 
     std::vector<double> energies(data, data + length);
-    std::vector<double> result = ((getelec::Getelec*)instancePtr)->calculateTransmissionCoefficientForEnergies(energies, paramsIndex);
+    std::vector<double> result = ((getelec::Getelec*)instancePtr)->calculateTransmissionProbabilities(energies, paramsIndex);
 
     // Release the array
     env->ReleasePrimitiveArrayCritical(energyArray, rawData, JNI_ABORT);
@@ -227,7 +227,7 @@ JNIEXPORT jdoubleArray JNICALL Java_GetelecInterface_Getelec_1calculateTransmiss
     if (!data) throw std::runtime_error("Cannot get primitive array critical");
 
     std::vector<double> energies(data, data + length);
-    std::vector<double> result = ((getelec::Getelec*)instancePtr)->calculateTransmissionCoefficientForManyEnergies(energies, paramsIndex);
+    std::vector<double> result = ((getelec::Getelec*)instancePtr)->interpolateTransmissionProbabilities(energies, paramsIndex);
 
     // Release the array
     env->ReleasePrimitiveArrayCritical(energyArray, rawData, JNI_ABORT);

@@ -298,8 +298,9 @@ public:
      * @return The transmission coefficient.
      * @note Make sure that the interpolator is properly set before calling this method.
      */
-    double interpolateTransmissionProbability(double energy){
-        double waveVector = sqrt(energy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
+    double interpolateTransmissionProbability(double energy, double waveVector = -1.){
+        if (waveVector < 0.)
+            waveVector = sqrt(energy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
         return interpolator.getTransmissionProbability(energy, waveVector);
     }
 
@@ -309,8 +310,9 @@ public:
      * @return The transmission coefficient.
      * @note It is not necessary to set the interpolator before, but it might be slow for multiple calls.
      */
-    double calculateTransmissionCoefficientForEnergy(double energy){
-        double waveVector = sqrt(energy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
+    double calculateTransmissionProbability(double energy, double waveVector = -1.){
+        if (waveVector < 0.)
+            waveVector = sqrt(energy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
         return transmissionSolver.calculateTransmissionProbability(energy, waveVector);
     }
 

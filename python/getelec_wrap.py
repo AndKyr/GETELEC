@@ -114,15 +114,18 @@ class GetelecInterface:
         self.lib.Getelec_getSpectraDerivatives.restype = ctypes.POINTER(ctypes.c_double)
         self.lib.Getelec_getSpectraDerivatives.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_size_t)]
 
-        self.lib.Getelec_calculateTransmissionCoefficientForEnergy.restype = ctypes.c_double
-        self.lib.Getelec_calculateTransmissionCoefficientForEnergy.argtypes = [ctypes.c_void_p, ctypes.c_double, ctypes.c_size_t]
+        self.lib.Getelec_calculateTransmissionProbability.restype = ctypes.c_double
+        self.lib.Getelec_calculateTransmissionProbability.argtypes = [ctypes.c_void_p, ctypes.c_double, ctypes.c_double, ctypes.c_size_t]
 
-        self.lib.Getelec_calculateTransmissionCoefficientForEnergies.restype = ctypes.POINTER(ctypes.c_double)
-        self.lib.Getelec_calculateTransmissionCoefficientForEnergies.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.c_size_t, ctypes.c_size_t]
+        self.lib.Getelec_calculateTransmissionProbabilities.restype = ctypes.POINTER(ctypes.c_double)
+        self.lib.Getelec_calculateTransmissionProbabilities.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double), ctypes.c_size_t, ctypes.c_size_t]
 
-        self.lib.Getelec_calculateTransmissionCoefficientForManyEnergies.restype = ctypes.POINTER(ctypes.c_double)
-        self.lib.Getelec_calculateTransmissionCoefficientForManyEnergies.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.c_size_t, ctypes.c_size_t]
+        self.lib.Getelec_interpolateTransmissionProbabilities.restype = ctypes.POINTER(ctypes.c_double)
+        self.lib.Getelec_interpolateTransmissionProbabilities.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double), ctypes.c_size_t, ctypes.c_size_t]
 
+        self.lib.Getelec_getCalculationStatus.restype = ctypes.c_uint
+        self.lib.Getelec_getCalculationStatus.argtypes = [ctypes.c_void_p]
+    
         self.lib.Getelec_delete.restype = None
         self.lib.Getelec_delete.argtypes = [ctypes.c_void_p]
 
@@ -140,17 +143,19 @@ class GetelecInterface:
         self.setBandDepth(bandDepths)
         self.setEffectiveMass(effectiveMasses)
 
-    def calculateTransmissionForEnergy(self, energy, params_index):
-        return self.lib.Getelec_calculateTransmissionCoefficientForEnergy(self.obj, energy, params_index)
+    def calculateTransmissionProbability(self, energy, waveVector = -1., params_index = 0):
+        return self.lib.Getelec_calculateTransmissionProbability(self.obj, energy, waveVector, params_index)
 
-    def calculateTransmissionForEnergies(self, energies, params_index):
+    def calculateTransmissionProbabilities(self, energies, waveVectors, params_index):
         energies_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(energies, dtype=np.float64)))
-        result_ptr = self.lib.Getelec_calculateTransmissionCoefficientForEnergies(self.obj, energies_ctypes, size, params_index)
+        waveVectors_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(waveVectors, dtype=np.float64)))
+        result_ptr = self.lib.Getelec_calculateTransmissionProbabilities(self.obj, energies_ctypes, waveVectors_ctypes, size, params_index)
         return np.ctypeslib.as_array(result_ptr, shape=(size,))
 
-    def calculateTransmissionForManyEnergies(self, energies, params_index=0):
+    def calculateTransmissionForManyEnergies(self, energies, waveVectors, params_index=0):
         energies_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(energies, dtype=np.float64)))
-        result_ptr = self.lib.Getelec_calculateTransmissionCoefficientForManyEnergies(self.obj, energies_ctypes, size, params_index)
+        waveVectors_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(waveVectors, dtype=np.float64)))
+        result_ptr = self.lib.Getelec_interpolateTransmissionProbabilities(self.obj, energies_ctypes, waveVectors_ctypes, size, params_index)
         return np.ctypeslib.as_array(result_ptr, shape=(size,))
 
     def _toCtypesArray(self, numpy_array):
@@ -193,6 +198,27 @@ class GetelecInterface:
     
 
     def run(self, calculationFlags):
+        combinedFlagsInt = 0
+        for flagStr in calculationFlags:
+            if flagStr in self.flagMap:
+                combinedFlagsInt |= self.flagMap[flagStr]
+            else:
+                raise ValueError(f"Invalid flag: {flagStr}")
+
+        self.numberOfIterations = self.lib.Getelec_run(self.obj, combinedFlagsInt)
+
+
+    def getCalculationStatus(self):
+        combinedFlagsInt = self.lib.Getelec_getCalculationStatus(self.obj)
+
+        flags = []
+        for flagName, flagValue in self.flagMap.items():
+            if combinedFlagsInt & flagValue:
+                flags.append(flagName)
+
+        return flags
+
+    def run(self, calculationFlags):
         combinedFlagsInt:int = 0
         for flagStr in calculationFlags:
             if flagStr in self.flagMap:
@@ -213,24 +239,45 @@ class GetelecInterface:
         return np.ctypeslib.as_array(densities_ptr, shape=(size.value,)) 
     
     def getSpectra(self):
-        self.spectra = []
+        self.totalEnergyDistributions = []
+        self.normalEnergyDistributions = []
+        self.parallelEnergyDistributions = []
+        self.totalEnergyDistributionSplines = []
         for i in range(self.numberOfIterations):
             size = ctypes.c_size_t()
 
-            energies_ptr = self.lib.Getelec_getSpectraEnergies(self.obj, ctypes.c_size_t(i), ctypes.byref(size))
-            energies = np.ctypeslib.as_array(energies_ptr, shape=(size.value,))
+            calculationStatus = self.getCalculationStatus()
 
-            values_ptr = self.lib.Getelec_getSpectraValues(self.obj, ctypes.c_size_t(i) , ctypes.byref(size))
-            values = np.ctypeslib.as_array(values_ptr, shape=(size.value,))
+            if ("TotalEnergyDistribution" in calculationStatus):
+                (energies, values) = self._extractSpectra(i, 'T')
+                self.totalEnergyDistributions.append((energies, values))
 
-            derivatives_ptr = self.lib.Getelec_getSpectraDerivatives(self.obj, ctypes.c_size_t(i) , ctypes.byref(size))
-            derivatives = np.ctypeslib.as_array(derivatives_ptr, shape=(size.value,))
+                if ("TotalEnergyDistributionDerivatives" in calculationStatus):
+                    energies2, derivatives = self._extractSpectra(i, 'D')
+                    assert(energies == energies2, "abssicae for TED values and derivatives don't match")
+                    self.totalEnergyDistributionSplines.append(spi.CubicHermiteSpline(energies, values, derivatives))
 
-            validIndices = np.where(np.isfinite(energies) & np.isfinite(values) & np.isfinite(derivatives) & (values > max(values) * 1e-5))
 
-            self.spectra.append(spi.CubicHermiteSpline(energies[validIndices], values[validIndices], derivatives[validIndices]))
-        return self.spectra
-    
+            if ("NormalEnergyDistribution" in calculationStatus):
+                self.normalEnergyDistributions.append(self._extractSpectra(i, "N"))
+
+            if ("ParallelEnergyDistribution" in calculationStatus):
+                self.parallelEnergyDistributions.append(self._extractSpectra(i, "P"))
+
+
+    def _extractSpectra(self, i:int, spectraType:str) -> tuple[np.ndarray, np.ndarray]:
+        size = ctypes.c_size_t()
+
+        energies_ptr = self.lib.Getelec_getSpectraEnergies(self.obj, ctypes.c_size_t(i), ctypes.byref(size), ctypes.c_char('P'))
+        values_ptr = self.lib.Getelec_getSpectraValues(self.obj, ctypes.c_size_t(i) , ctypes.byref(size), ctypes.c_char('P'))
+        energies = np.ctypeslib.as_array(energies_ptr, shape=(size.value,))
+        values = np.ctypeslib.as_array(values_ptr, shape=(size.value,))
+        sortInds = np.argsort(energies)
+        energies = energies[sortInds]
+        values = values[sortInds]
+
+        return (energies, values)
+                    
     def calculateBarrierValues(self, energies, params_index = 0):
         energyArray = np.atleast_1d(np.asarray(energies, dtype=np.float64))
         potentialArray = np.copy(energyArray)
@@ -247,7 +294,6 @@ class GetelecInterface:
     def calculateNottinghamHeat(self):
         self.run()
         return self.getNottinghamHeat()
-    
     
     def getBarrierIntegrationLimits(self, params_index = 0):
         lowerLimit = ctypes.c_double()

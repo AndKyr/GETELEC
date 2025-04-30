@@ -292,16 +292,7 @@ public:
      * @return The transmission coefficient
      * @note This method is relevant for a single or a few calculations of the transmission coefficient. Don't use it for multiple calculations on the same barrier as it resets the barrier which might be slow. Use calculateTransmissionCoefficientForEnergies instead
      */
-    double calculateTransmissionCoefficientForEnergy(double energy, size_t paramsIndex = 0);
-
-
-    /**
-     * @brief Calculate the transmission coefficient for multiple energies
-     * @param energies The energy levels (eV)
-     * @return The transmission coefficients
-     * @note This method is relevant for multiple calculations of the transmission coefficient. It is faster than calculateTransmissionCoefficientForEnergy for multiple calculations on the same barrier. However, if you are iterating over many many energies, it might be better to use calculateTransmissionCoefficientForManyEnergies, which prepares the interpolator and then just interpolates.
-     */
-    vector<double> calculateTransmissionCoefficientForEnergies(const vector<double>& energies, size_t paramsIndex = 0);
+    double calculateTransmissionProbability(double energy, double waveVector = -1., size_t paramsIndex = 0);
 
     /**
      * @brief Calculate the transmission coefficient for multiple energies
@@ -309,7 +300,15 @@ public:
      * @return The transmission coefficients
      * @note This method is relevant for multiple calculations of the transmission coefficient. It is faster than calculateTransmissionCoefficientForEnergy for multiple calculations on the same barrier. However, if you are iterating over many many energies, it might be better to use calculateTransmissionCoefficientForManyEnergies, which prepares the interpolator and then just interpolates.
      */
-    vector<double> calculateTransmissionCoefficientForManyEnergies(const vector<double>& energies, size_t paramsIndex = 0);
+    vector<double> calculateTransmissionProbabilities(const vector<double>& energies, const vector<double>& waveVectors = {}, size_t paramsIndex = 0);
+
+    /**
+     * @brief Calculate the transmission coefficient for multiple energies
+     * @param energies The energy levels (eV)
+     * @return The transmission coefficients
+     * @note This method is relevant for multiple calculations of the transmission coefficient. It is faster than calculateTransmissionCoefficientForEnergy for multiple calculations on the same barrier. However, if you are iterating over many many energies, it might be better to use calculateTransmissionCoefficientForManyEnergies, which prepares the interpolator and then just interpolates.
+     */
+    vector<double> interpolateTransmissionProbabilities(const vector<double>& energies, const vector<double>& waveVectors = {}, size_t paramsIndex = 0);
 
     /**
      * @brief Get the current density at the i-th element of the array of inputs
@@ -427,23 +426,7 @@ public:
      * @param spectraType The type of spectra to be returned. 'T' for TED, 'N' for NED, 'P' for PED
      * @return Pointer to the first element of the spectra array
      */
-    const double* getSpectraEnergies(size_t i, size_t* length, char spectraType = 'T') const {
-        switch(spectraType) {
-            case 'T':
-                assert(calculationStatusFlags & CalculationFlags::TotalEnergyDistribution && "TED not calculated yet");
-                *length = totalEnergyDistributions[i].first.size();
-                return totalEnergyDistributions[i].first.data();
-            case 'N':
-                assert(calculationStatusFlags & CalculationFlags::NormalEnergyDistribution && "NED not calculated yet");
-                *length = normalEnergyDistributions[i].first.size();
-                return normalEnergyDistributions[i].first.data();
-            case 'P':
-                assert(calculationStatusFlags & CalculationFlags::ParallelEnergyDistribution && "NED not calculated yet");
-                *length = parallelEnergyDistributions[i].first.size();
-                return parallelEnergyDistributions[i].first.data();
-
-        }
-    }
+    const double* getSpectraEnergies(size_t i, size_t* length, char spectraType = 'T') const; 
 
     /**
      * @brief Get the spectra values (A / nm^2 / eV) of the i-th iteration in parameter space
@@ -452,26 +435,7 @@ public:
      * @param spectraType The type of spectra to be returned. 'T' for TED, 'N' for NED, 'P' for PED, 'D' for TED derivatives (if D in A/nm^2/eV/eV)
      * @return Pointer to the first element of the spectra array
      */
-    const double* getSpectraValues(size_t i, size_t* length, char spectraType = 'T') const { 
-        switch(spectraType) {
-            case 'T':
-                assert(calculationStatusFlags & CalculationFlags::TotalEnergyDistribution && "TED not calculated yet");
-                *length = totalEnergyDistributions[i].second.size();
-                return totalEnergyDistributions[i].second.data();
-            case 'N':
-                assert(calculationStatusFlags & CalculationFlags::NormalEnergyDistribution && "NED not calculated yet");
-                *length = normalEnergyDistributions[i].second.size();
-                return normalEnergyDistributions[i].second.data();
-            case 'P':
-                assert(calculationStatusFlags & CalculationFlags::ParallelEnergyDistribution && "NED not calculated yet");
-                *length = parallelEnergyDistributions[i].second.size();
-                return parallelEnergyDistributions[i].second.data();
-            case 'D':
-                assert(calculationStatusFlags & CalculationFlags::TotalEnergyDistributionDerivatives && "TED derivatives not calculated yet");
-                *length = totalEnergyDistributionsDerivatives[i].size();
-                return totalEnergyDistributionsDerivatives[i].data();
-        } 
-    }
+    const double* getSpectraValues(size_t i, size_t* length, char spectraType = 'T') const;
 
     /** @TODO: Consider exposing the barrier object rather than writing endless wrapper functions here */
     vector<double> getBarrierValues(const vector<double>& x, size_t paramsIndex = 0);
@@ -483,6 +447,8 @@ public:
     }
 
     pair<double, double> getBarrierIntegrationLimits(size_t paramIndex = 0);
+
+    const CalculationFlags& getCalculationStatusFlags() const { return calculationStatusFlags; }
 
 private:
 

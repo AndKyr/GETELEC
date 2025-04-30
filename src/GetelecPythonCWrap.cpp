@@ -78,13 +78,13 @@ const double* Getelec_getSpectraDerivatives(getelec::Getelec* obj, size_t i, siz
 }
 
 // Wrapper to calculate transmission coefficient for a single energy
-double Getelec_calculateTransmissionCoefficientForEnergy(getelec::Getelec* obj, double energy, size_t paramsIndex) {
-    return obj->calculateTransmissionCoefficientForEnergy(energy, paramsIndex);
+double Getelec_calculateTransmissionProbability(getelec::Getelec* obj, double energy, double waveVector, size_t paramsIndex) {
+    return obj->calculateTransmissionProbability(energy, waveVector, paramsIndex);
 }
 
 // Wrapper to calculate transmission coefficient for multiple energies
-const double* Getelec_calculateTransmissionCoefficientForEnergies(getelec::Getelec* obj, const double* energies, size_t size, size_t paramsIndex) {
-    return obj->calculateTransmissionCoefficientForEnergies(vector<double>(energies, energies + size), paramsIndex).data();
+const double* Getelec_calculateTransmissionProbabilities(getelec::Getelec* obj, const double* energies, const double* waveVectors, size_t size, size_t paramsIndex) {
+    return obj->calculateTransmissionProbabilities(vector<double>(energies, energies + size), vector<double>(waveVectors, waveVectors + size), paramsIndex).data();
 }
 
 void Getelec_getBarrierValues(getelec::Getelec* obj, const double* x, double* potential, size_t size, size_t paramsIndex) {
@@ -92,14 +92,18 @@ void Getelec_getBarrierValues(getelec::Getelec* obj, const double* x, double* po
 }
 
 // Wrapper to calculate transmission coefficient for many energies
-const double* Getelec_calculateTransmissionCoefficientForManyEnergies(getelec::Getelec* obj, const double* energies, size_t size, size_t paramsIndex) {
-    return obj->calculateTransmissionCoefficientForManyEnergies(vector<double>(energies, energies + size), paramsIndex).data();
+const double* Getelec_interpolateTransmissionProbabilities(getelec::Getelec* obj, const double* energies, const double* waveVectors, size_t size, size_t paramsIndex) {
+    return obj->interpolateTransmissionProbabilities(vector<double>(energies, energies + size), vector<double>(waveVectors, waveVectors + size), paramsIndex).data();
 }
 
 void Getelec_getBarrierIntegrationLimits(getelec::Getelec* obj, double* xInitial, double* xFinal, size_t paramsIndex) {  
     auto [xI, xF] = obj->getBarrierIntegrationLimits(paramsIndex);
     *xInitial = xI;
     *xFinal = xF;
+}
+
+unsigned Getelec_getCalculationStatus(getelec::Getelec* obj) {
+    return static_cast<unsigned>(obj->getCalculationStatusFlags());
 }
 
 
