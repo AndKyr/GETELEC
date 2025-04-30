@@ -1,6 +1,21 @@
 #include "Getelec.h"
 
 namespace getelec{
+void Getelec::setRandomParameters(unsigned numberOfParameters){
+    if (!generator)
+        throw runtime_error("Random number generator is empty");
+    
+    fieldsVector = Utilities::getUniformRandomDoubles(1.e-5, 20., numberOfParameters, *generator);
+    gammasVector = Utilities::getUniformRandomDoubles(1., 20., numberOfParameters, *generator);
+
+    radiiVector = Utilities::getUniformRandomDoubles(0., 1., numberOfParameters, *generator); //first create curvatures
+    transform(radiiVector.begin(), radiiVector.end(), radiiVector.begin(), [](double x) {return 1./x;}); //inverts
+    
+    bandDepthVector = Utilities::getUniformRandomDoubles(0., 10., numberOfParameters, *generator);
+    effectiveMassVector = Utilities::getUniformRandomDoubles(0.5, 2., numberOfParameters, *generator);
+    workFunctionVector = Utilities::getUniformRandomDoubles(2., 6., numberOfParameters, *generator);
+    kTVector = Utilities::getUniformRandomDoubles(1.e-3, 1., numberOfParameters, *generator);
+}
 
 void Getelec::runIteration(size_t i, CalculationFlags flags) {
     setParamsForIteration(i);
@@ -75,20 +90,23 @@ void Getelec::runIterationEffectiveMassNonUnity(size_t i, CalculationFlags flags
         return;
     }
 
+    vector<double> allCurrentDensities;
+    allCurrentDensities.reserve(4);
+
     if (flags & CalculationFlags::NormalEnergyDistribution){ // the normal energy distribution is requested
-        currentDensityVector[i] = emitter.currentDensityIntegrateNormal(true);
+        allCurrentDensities.push_back(emitter.currentDensityIntegrateNormal(true)); //calculate the current density and save it.
         normalEnergyDistributions[i] = emitter.getNormalEnergyDistribution();
         calculationStatusFlags = CalculationFlags::NormalEnergyDistribution | CalculationFlags::CurrentDensity;
     }
 
     if (flags & CalculationFlags::ParallelEnergyDistribution){ // if the parallel energy distribution is asked
-        currentDensityVector[i] = emitter.currentDensityIntegrateParallelTotal(true);
+        allCurrentDensities.push_back(emitter.currentDensityIntegrateParallelTotal(true));
         parallelEnergyDistributions[i] = emitter.getParallelEnergyDistribution();
         calculationStatusFlags |= CalculationFlags::ParallelEnergyDistribution | CalculationFlags::CurrentDensity;
     }
 
     if (flags & CalculationFlags::TotalEnergyDistribution){ // the TED has been requested
-        currentDensityVector[i] = emitter.currentDensityIntegrateTotalParallel(true);
+        allCurrentDensities.push_back(emitter.currentDensityIntegrateTotalParallel(true));
         totalEnergyDistributions[i] = emitter.getTotalEnergyDistribution();
         calculationStatusFlags |= CalculationFlags::TotalEnergyDistribution | CalculationFlags::CurrentDensity;
     }
@@ -99,9 +117,17 @@ void Getelec::runIterationEffectiveMassNonUnity(size_t i, CalculationFlags flags
     }
     
     if (flags & CalculationFlags::CurrentDensity && !(calculationStatusFlags & CalculationFlags::CurrentDensity)){ //Current density has been asked and not already calculated
-        currentDensityVector[i] = emitter.currentDensityIntegrateTotalParallel(false);
+        allCurrentDensities.push_back(emitter.calculateTransmissionProbability(false));
         calculationStatusFlags |= CalculationFlags::CurrentDensity;
     }
+
+    double meanCurrentDensity = accumulate(allCurrentDensities.begin(), allCurrentDensities.end(), 0.) / allCurrentDensities.size();
+
+    assert(all_of(allCurrentDensities.begin(), allCurrentDensities.end(), [&, meanCurrentDensity, emitter ](double x) {
+            return abs(x - meanCurrentDensity) < emitter.getToleranceForValue(meanCurrentDensity);
+        }) && "current densities calculated with various methods do not agree to each other.");
+
+    assert(!(flags & CalculationFlags::TotalEnergyDistributionDerivatives) && "TED derivatives not available if effecetiveMass not unity");
 }
 
 const double* Getelec::getSpectraEnergies(size_t i, size_t *length, char spectraType) const{
@@ -187,8 +213,10 @@ size_t Getelec::run(CalculationFlags flags) {
     if (flags & CalculationFlags::NottinghamHeat)
         nottinghamHeatVector.resize(maxIterations);
 
-    if (flags & CalculationFlags::TotalEnergyDistribution)
+    if (flags & CalculationFlags::TotalEnergyDistribution){
         totalEnergyDistributions.resize(maxIterations);
+        totalEnergyDistributionsDerivatives.resize(maxIterations);
+    }
     
     if (flags & CalculationFlags::NormalEnergyDistribution)
         normalEnergyDistributions.resize(maxIterations);

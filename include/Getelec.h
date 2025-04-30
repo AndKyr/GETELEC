@@ -7,6 +7,9 @@
 #include "BandEmitter.h"
 #include "TunnelingFunction.h"
 #include "ConfigGetelec.h"
+#include <tbb/global_control.h>
+#include <numeric>
+
 
 namespace getelec{
 
@@ -20,7 +23,8 @@ enum class CalculationFlags : unsigned int {
     TotalEnergyDistribution         = 1 << 2, // 4
     NormalEnergyDistribution        = 1 << 3, // 8
     ParallelEnergyDistribution      = 1 << 4, // 16
-    TotalEnergyDistributionDerivatives = 1 << 5 //32
+    TotalEnergyDistributionDerivatives = 1 << 5, //32
+    All = CurrentDensity | NottinghamHeat | TotalEnergyDistribution | NormalEnergyDistribution | ParallelEnergyDistribution | TotalEnergyDistributionDerivatives
 };
 
 inline bool operator&(CalculationFlags a, CalculationFlags b) {
@@ -44,7 +48,7 @@ public:
     /**
      * @brief Construct a new Getelec object
      */
-    Getelec(string configFileName = "GetelecConfig.txt", string barrierType = "modifiedSN") :
+    Getelec(string configFileName = "GetelecConfig.txt", string barrierType = "modifiedSN", int numberOfThreads = 0, mt19937* generator_ = NULL) :
         config(Config(configFileName)),
         threadLocalBarrier([this, barrierType]() -> unique_ptr<ModifiedSNBarrier> {
             if (!barrierType.starts_with("dftXC")) {
@@ -63,10 +67,27 @@ public:
         }), 
         threadLocalSolver([this] { return TransmissionSolver(threadLocalBarrier.local().get(), config.transmissionSolverParams, 10., 1); }),
         threadLocalEmitter([this] { return BandEmitter(threadLocalSolver.local(), config.bandEmitterParams); })
-    {}
+    {
+        //if numberOfThreads is set to a non-zero value, then set it. Otherwise let it take its default value
+        if (numberOfThreads > 0)
+            tbb::global_control gc(tbb::global_control::max_allowed_parallelism, numberOfThreads);
+        
+        if (generator_){
+            generator = generator_;
+        } else {
+            generator = new mt19937(chrono::system_clock::now().time_since_epoch().count());
+        }
+    }
 
 
-    ~Getelec(){}
+    ~Getelec(){
+        delete generator;
+    }
+
+    void setGenerator(mt19937* generator_){
+        if (generator) delete generator;
+        generator = generator_;
+    }
 
     /**
      * @brief Set the field parameters of the calculation at a single value
@@ -270,6 +291,13 @@ public:
      */
     void setEffectiveMass(const double* effectiveMassArray_, size_t size) { effectiveMassVector = std::vector<double>(effectiveMassArray_, effectiveMassArray_ + size); }
 
+
+    /**
+     * @brief Sets (within range) random parameters to all inputut variables. This is usable for testing purposes
+     * @param numberOfParameters The number of different parameter sets to be set (length of vectors)
+     */
+    void setRandomParameters(unsigned numberOfParameters = 1);
+
     /**
      * @brief Calculate for the i-th element of the array of inputs
      * @param i The index of the element to calculate
@@ -309,6 +337,17 @@ public:
      * @note This method is relevant for multiple calculations of the transmission coefficient. It is faster than calculateTransmissionCoefficientForEnergy for multiple calculations on the same barrier. However, if you are iterating over many many energies, it might be better to use calculateTransmissionCoefficientForManyEnergies, which prepares the interpolator and then just interpolates.
      */
     vector<double> interpolateTransmissionProbabilities(const vector<double>& energies, const vector<double>& waveVectors = {}, size_t paramsIndex = 0);
+
+    /**
+     * Raw C-style getters for all input data arrays
+     */
+    const double* getFields(size_t* size) const { *size = fieldsVector.size(); return fieldsVector.data(); }
+    const double* getRadii(size_t* size) const { *size = radiiVector.size(); return radiiVector.data(); }
+    const double* getGammas(size_t* size) const { *size = gammasVector.size(); return gammasVector.data(); }
+    const double* getkT(size_t* size) const { *size = kTVector.size(); return kTVector.data(); }
+    const double* getWorkFunction(size_t* size) const { *size = workFunctionVector.size(); return workFunctionVector.data(); }
+    const double* getBandDepth(size_t* size) const { *size = bandDepthVector.size(); return bandDepthVector.data(); }
+    const double* getEffectiveMass(size_t* size) const { *size = effectiveMassVector.size(); return effectiveMassVector.data(); }
 
     /**
      * @brief Get the current density at the i-th element of the array of inputs
@@ -490,6 +529,8 @@ private:
     tbb::enumerable_thread_specific<BandEmitter> threadLocalEmitter; ///< Thread-local instances of BandEmitter
     tbb::enumerable_thread_specific<ParamsForIteration> threadLocalParams; ///< Thread-local instances of ParamsForIteration
     CalculationFlags calculationStatusFlags; ///< Flag that shows which output data is available
+    mt19937* generator = NULL; ///< Random number generator for setting random parameters for testing.
+
 
 
     /**
