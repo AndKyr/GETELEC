@@ -283,9 +283,12 @@ double BandEmitter::parallelEnergyDistributionForEnergy(double parallelEnergy){
     };
 
     double(*integrationFunctionPointer)(double, void*) = integrationLambda; // convert the lambda into raw function pointer
-    gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
+    gsl_function gslIntegrationFunction = {integrationFunctionPointer, this}; //convert to gsl_function and pass this pointer
 
     double minTotalEnergy = -bandDepth + parallelEnergy / effectiveMass;
+
+    if (minTotalEnergy > xFinal)
+        return 0.;
 
     double result, error;
     gsl_integration_qag(&gslIntegrationFunction, minTotalEnergy, xFinal, absoluteTolerance, relativeTolerance, maxAllowedSteps, 

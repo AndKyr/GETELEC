@@ -33,7 +33,7 @@ private:
     /** @brief Effective mass of electrons in the material, relative to the free electron mass. */
     double effectiveMass = 1.;
 
-    /** @brief Depth of the electronic band from the Fermi level in eV. */
+    /** @brief The depth of the electronic band, i.e. E_F - E(k=0) [eV]. */
     double bandDepth = 10.;
 
     /**
@@ -99,7 +99,7 @@ public:
      * @param workFun The work function in eV.
      * @param kT_ Thermal energy in eV.
      * @param effMass Effective mass of the electron.
-     * @param bandDepth_ The depth of the electronic band in eV.
+     * @param bandDepth_ The depth of the electronic band, i.e. E_F - E(k=0) [eV].
      * @param rtol Relative tolerance for ODE solving.
      * @param atol Absolute tolerance for ODE solving.
      * @param maxSteps Maximum allowed steps for ODE solving.
@@ -143,7 +143,7 @@ public:
      * @param workFunction_ The work function in eV.
      * @param kT_ Thermal energy in eV.
      * @param effectiveMass_ The effective mass of the electron (fraction of the electron rest mass, i.e. m_n/m_e).
-     * @param bandDepth_ The depth of the electronic band in eV.
+     * @param bandDepth_ The depth of the electronic band, i.e. E_F - E(k=0) [eV].
      * @param doQuadrature Whether quadrature integration is to be used. If false, the integration workspace is not allocated.
      * @note Quadrature is not needed if only the ODE will be used, which is valid for effectiveMass~1 and only current density, Nottingham heat, and TED spectra are to be evaluated
      */

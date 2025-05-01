@@ -122,8 +122,8 @@ void Getelec::runIterationEffectiveMassNonUnity(size_t i, CalculationFlags flags
     }
 
     double meanCurrentDensity = accumulate(allCurrentDensities.begin(), allCurrentDensities.end(), 0.) / allCurrentDensities.size();
-
-    assert(all_of(allCurrentDensities.begin(), allCurrentDensities.end(), [&, meanCurrentDensity, emitter ](double x) {
+    
+    assert(all_of(allCurrentDensities.begin(), allCurrentDensities.end(), [meanCurrentDensity, &emitter ](double x) {
             return abs(x - meanCurrentDensity) < emitter.getToleranceForValue(meanCurrentDensity);
         }) && "current densities calculated with various methods do not agree to each other.");
 
