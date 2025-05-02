@@ -341,8 +341,10 @@ double BandEmitter::normalEnergyDistributionIntegratePrallel(double normalEnergy
     double(*integrationFunctionPointer)(double, void*) = integrationLambda; // convert the lambda into raw function pointer
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
 
+    double maxParalleEnergy = min(xFinal - normalEnergy, (normalEnergy + bandDepth) * effectiveMass / (1. - effectiveMass));
+
     double result, error;
-    gsl_integration_qag(&gslIntegrationFunction, 0., xFinal - normalEnergy, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
+    gsl_integration_qag(&gslIntegrationFunction, 0., maxParalleEnergy, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
                         GSL_INTEG_GAUSS41, integrationWorkspace, &result, &error);
     return result * CONSTANTS.SommerfeldConstant;
 }
