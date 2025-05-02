@@ -42,21 +42,24 @@ void Getelec::runIterationEffectiveMassUnity(size_t i, CalculationFlags flags){
         calculationStatusFlags = CalculationFlags::None;
         return;
     }
+
+    vector<double> allCurrentDensities;
+    allCurrentDensities.reserve(4);
     
     if (flags == CalculationFlags::CurrentDensity){ // if we ask only for the current density
-        currentDensityVector[i] = emitter.currentDensityIntegrateNormal(false);
+        allCurrentDensities.push_back(emitter.currentDensityIntegrateNormal(false));
         calculationStatusFlags = CalculationFlags::CurrentDensity;
         return;
     }
 
     if (flags & CalculationFlags::NormalEnergyDistribution){ // the normal energy distribution is requested
-        currentDensityVector[i] = emitter.currentDensityIntegrateNormal(true);
+        allCurrentDensities.push_back(emitter.currentDensityIntegrateNormal(true));
         normalEnergyDistributions[i] = emitter.getNormalEnergyDistribution();
         calculationStatusFlags = CalculationFlags::NormalEnergyDistribution | CalculationFlags::CurrentDensity;
     }
 
     if (flags & CalculationFlags::ParallelEnergyDistribution){ // if the parallel energy distribution is asked
-        currentDensityVector[i] = emitter.currentDensityIntegrateParallelTotal(true);
+        allCurrentDensities.push_back(emitter.currentDensityIntegrateParallelTotal(true));
         parallelEnergyDistributions[i] = emitter.getParallelEnergyDistribution();
         calculationStatusFlags |= CalculationFlags::ParallelEnergyDistribution | CalculationFlags::CurrentDensity;
     }
@@ -77,9 +80,17 @@ void Getelec::runIterationEffectiveMassUnity(size_t i, CalculationFlags flags){
     }
     
     if (flags & CalculationFlags::CurrentDensity){
-        currentDensityVector[i] = emitter.getCurrentDensityODE();
+        allCurrentDensities.push_back(emitter.getCurrentDensityODE());
         calculationStatusFlags |= CalculationFlags::CurrentDensity;
     }
+
+    double meanCurrentDensity = accumulate(allCurrentDensities.begin(), allCurrentDensities.end(), 0.) / allCurrentDensities.size();
+    currentDensityVector[i] = meanCurrentDensity;
+
+    assert(all_of(allCurrentDensities.begin(), allCurrentDensities.end(), [meanCurrentDensity, &emitter ](double x) {
+            return abs(x - meanCurrentDensity) < 10 * emitter.getToleranceForValue(meanCurrentDensity);
+        }) && "current densities calculated with various methods do not agree to each other.");
+
 }
 
 void Getelec::runIterationEffectiveMassNonUnity(size_t i, CalculationFlags flags){
@@ -94,7 +105,7 @@ void Getelec::runIterationEffectiveMassNonUnity(size_t i, CalculationFlags flags
     allCurrentDensities.reserve(4);
 
     if (flags & CalculationFlags::NormalEnergyDistribution){ // the normal energy distribution is requested
-        allCurrentDensities.push_back(emitter.currentDensityIntegrateNormal(true)); //calculate the current density and save it.
+        allCurrentDensities.push_back(emitter.currentDensityIntegrateNormalParallel(true)); //calculate the current density and save it.
         normalEnergyDistributions[i] = emitter.getNormalEnergyDistribution();
         calculationStatusFlags = CalculationFlags::NormalEnergyDistribution | CalculationFlags::CurrentDensity;
     }
@@ -122,12 +133,11 @@ void Getelec::runIterationEffectiveMassNonUnity(size_t i, CalculationFlags flags
     }
 
     double meanCurrentDensity = accumulate(allCurrentDensities.begin(), allCurrentDensities.end(), 0.) / allCurrentDensities.size();
-    
+    currentDensityVector[i] = meanCurrentDensity;
+
     assert(all_of(allCurrentDensities.begin(), allCurrentDensities.end(), [meanCurrentDensity, &emitter ](double x) {
             return abs(x - meanCurrentDensity) < emitter.getToleranceForValue(meanCurrentDensity);
         }) && "current densities calculated with various methods do not agree to each other.");
-
-    assert(!(flags & CalculationFlags::TotalEnergyDistributionDerivatives) && "TED derivatives not available if effecetiveMass not unity");
 }
 
 const double* Getelec::getSpectraEnergies(size_t i, size_t *length, char spectraType) const{
