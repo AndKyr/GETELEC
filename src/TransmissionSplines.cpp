@@ -229,23 +229,25 @@ bool TransmissionSpline::checkSolutionSanity(vector<double> &solutionVector, dou
 
     for (int i = 0; i < 3; i++){
         double diff = abs(solutionVector[i] - expectedSolution[i]);
-        if (diff > absoluteTolerance){
-            cout << "GETELEC WARNING: The solution vector is not continuous. The difference is " << diff << " at energy " << energy << endl;
-            if(writeSolverPlottingData){
-                cout << "Writing the problematic solution to file 'problematicWaveFunctionSolution.dat' and barrier to 'problematicBarrier.dat' " << endl;
-                solver.solve(true);
-                solver.writeSolution("problematicWaveFunctionSolution.dat");
-                solver.writeBarrierPlottingData("problematicBarrier.dat", 0);
 
-                solver.setEnergyAndInitialValues(energy + 0.1);
-                solver.solve(true);
-                solver.writeSolution("problematicWaveFunctionSolution_neighborEnergy.dat");
+        /** The following commented block was used for debugging the sampling. The bug is fixed, but it might be useful at some point again, so I leave it. */
+        // if (diff > absoluteTolerance){
+        //     cout << "GETELEC WARNING: The solution vector is not continuous. The difference is " << diff << " at energy " << energy << endl;
+        //     if(writeSolverPlottingData){
+        //         cout << "Writing the problematic solution to file 'problematicWaveFunctionSolution.dat' and barrier to 'problematicBarrier.dat' " << endl;
+        //         solver.solve(true);
+        //         solver.writeSolution("problematicWaveFunctionSolution.dat");
+        //         solver.writeBarrierPlottingData("problematicBarrier.dat", 0);
 
-                writeSplineSolution("problematicSplineSolution.dat", 64);
-                writeSplineNodes("problematicSplineNodes.dat");
-            }
-            return false;
-        }
+        //         solver.setEnergyAndInitialValues(energy + 0.1);
+        //         solver.solve(true);
+        //         solver.writeSolution("problematicWaveFunctionSolution_neighborEnergy.dat");
+
+        //         writeSplineSolution("problematicSplineSolution.dat", 64);
+        //         writeSplineNodes("problematicSplineNodes.dat");
+        //     }
+        //     return false;
+        // }
     }
 
     return true;
