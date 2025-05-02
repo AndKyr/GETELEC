@@ -11,7 +11,8 @@
 #include <gsl/gsl_interp.h>
 #include <gsl/gsl_spline.h>
 #include <random>
-
+#include <cassert>
+#include <algorithm>
 
 namespace getelec{
 
@@ -112,6 +113,37 @@ struct Utilities {
         
         return move(result);
     }
+
+    /**
+     * @brief Calcualtes and returns the vector of indices that sort the input vector x
+     * @param x The input vector
+     * @return The sorting indices vector
+     */
+    static vector<size_t> sortingIndices(const vector<double>& x){
+        vector<size_t> sortIndices(x.size()); // Fill indices with 0, 1, ..., n-1
+        iota(sortIndices.begin(), sortIndices.end(), 0);
+        auto comparisonLambda = [&x](size_t i1, size_t i2) { return x[i1] < x[i2]; };
+        sort(sortIndices.begin(), sortIndices.end(), comparisonLambda);
+        return move(sortIndices);
+    }
+
+    /**
+     * @brief Sort two vectors of data based on the first.
+     * @param x The first vector (absiccae) to be sorted
+     * @param y The second vector to be sorted based on x
+     */
+    static void sortCoordinates(vector<double>& x, vector<double>& y){
+        assert(x.size() == y.size() && "x and y must have the same size");
+        
+        vector<size_t> sortIndices = sortingIndices(x); //get the indices that sort x
+
+        //copy the vectors to avoid overwriting
+        auto xCopy = x;
+        auto yCopy = y;
+
+        //transform x and y by replacing with saved copies of the indices.
+        transform(sortIndices.begin(), sortIndices.end(), x.begin(), [&xCopy](size_t sortedIndex) { return xCopy[sortedIndex]; });
+        transform(sortIndices.begin(), sortIndices.end(), y.begin(), [&yCopy](size_t sortedIndex) { return yCopy[sortedIndex]; });
 };
 
 
