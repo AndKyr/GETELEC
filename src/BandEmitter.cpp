@@ -356,8 +356,8 @@ double BandEmitter::normalEnergyDistributionIntegratePrallel(double normalEnergy
     double(*integrationFunctionPointer)(double, void*) = integrationLambda; // convert the lambda into raw function pointer
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
 
-    double maxParalleEnergy = min(xFinal - normalEnergy, (normalEnergy + bandDepth) * effectiveMass / (1. - effectiveMass));
-    double minParallelEnergy = max(xInitial - normalEnergy, 0.);
+    double maxParalleEnergy = effectiveMass == 1. ? xFinal - normalEnergy : min(xFinal - normalEnergy, (normalEnergy + bandDepth) * effectiveMass / abs(1. - effectiveMass));
+    double minParallelEnergy =  max(xInitial - normalEnergy, 0.);
 
     if (minParallelEnergy > maxParalleEnergy)
         return 0.;
@@ -394,9 +394,12 @@ double BandEmitter::currentDensityIntegrateNormalParallel(bool saveNormalEnergyD
 
     double(*integrationFunctionPointer)(double, void*) = integrationLambda; // convert the lambda into raw function pointer
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
+
+    double minNormalEnergy = min(xInitial, (1. - effectiveMass) * (xFinal + bandDepth)); // capture the case that effectiveMass > 0
+    minNormalEnergy = max(minNormalEnergy, interpolator.getMinimumSampleEnergy() + workFunction);
     
     double result, error;
-    gsl_integration_qag(&gslIntegrationFunction, xInitial, xFinal, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
+    gsl_integration_qag(&gslIntegrationFunction, minNormalEnergy, xFinal, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
                         GSL_INTEG_GAUSS31, externalIntegrationWorkSpace, &result, &error);
     
     if (saveNormalEnergyDistribution) 

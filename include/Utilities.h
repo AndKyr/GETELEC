@@ -144,6 +144,7 @@ struct Utilities {
         //transform x and y by replacing with saved copies of the indices.
         transform(sortIndices.begin(), sortIndices.end(), x.begin(), [&xCopy](size_t sortedIndex) { return xCopy[sortedIndex]; });
         transform(sortIndices.begin(), sortIndices.end(), y.begin(), [&yCopy](size_t sortedIndex) { return yCopy[sortedIndex]; });
+    }
 };
 
 

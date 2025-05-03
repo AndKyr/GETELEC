@@ -103,7 +103,9 @@ void TransmissionSpline::calculateAndSetSampleValues(size_t index){
         solutionSamples[i][index] = solutionVector[i];
         solutionDerivativeSamples[i][index] = solutionVector[i + 3] * CONSTANTS.kConstant;
     }
-    assert((checkSolutionSanity(solutionVector, energy, 0.5, true), true)); //check if solution is continuous and write the solution if not
+
+    //check if solution is continuous and write the solution if not. Call it with plotSolutionData=true if you want data written and warning given.
+    assert((checkSolutionSanity(solutionVector, energy, 0.5, false), true)); 
 }
 
 void TransmissionSpline::smartInitialSampling(){
@@ -231,23 +233,21 @@ bool TransmissionSpline::checkSolutionSanity(vector<double> &solutionVector, dou
         double diff = abs(solutionVector[i] - expectedSolution[i]);
 
         /** The following commented block was used for debugging the sampling. The bug is fixed, but it might be useful at some point again, so I leave it. */
-        // if (diff > absoluteTolerance){
-        //     cout << "GETELEC WARNING: The solution vector is not continuous. The difference is " << diff << " at energy " << energy << endl;
-        //     if(writeSolverPlottingData){
-        //         cout << "Writing the problematic solution to file 'problematicWaveFunctionSolution.dat' and barrier to 'problematicBarrier.dat' " << endl;
-        //         solver.solve(true);
-        //         solver.writeSolution("problematicWaveFunctionSolution.dat");
-        //         solver.writeBarrierPlottingData("problematicBarrier.dat", 0);
+        if (diff > absoluteTolerance && writeSolverPlottingData){
+            cout << "GETELEC WARNING: The solution vector is not continuous. The difference is " << diff << " at energy " << energy << endl;
+            cout << "Writing the problematic solution to file 'problematicWaveFunctionSolution.dat' and barrier to 'problematicBarrier.dat' " << endl;
+            solver.solve(true);
+            solver.writeSolution("problematicWaveFunctionSolution.dat");
+            solver.writeBarrierPlottingData("problematicBarrier.dat", 0);
 
-        //         solver.setEnergyAndInitialValues(energy + 0.1);
-        //         solver.solve(true);
-        //         solver.writeSolution("problematicWaveFunctionSolution_neighborEnergy.dat");
+            solver.setEnergyAndInitialValues(energy + 0.1);
+            solver.solve(true);
+            solver.writeSolution("problematicWaveFunctionSolution_neighborEnergy.dat");
 
-        //         writeSplineSolution("problematicSplineSolution.dat", 64);
-        //         writeSplineNodes("problematicSplineNodes.dat");
-        //     }
-        //     return false;
-        // }
+            writeSplineSolution("problematicSplineSolution.dat", 64);
+            writeSplineNodes("problematicSplineNodes.dat");
+            return false;
+        }
     }
 
     return true;
