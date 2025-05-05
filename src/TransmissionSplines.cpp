@@ -108,47 +108,48 @@ void TransmissionSpline::calculateAndSetSampleValues(size_t index){
     assert((checkSolutionSanity(solutionVector, energy, 0.5, false), true)); 
 }
 
-void TransmissionSpline::smartInitialSampling(){
+void TransmissionSpline::smartInitialSampling(double bandDepth, double effectiveMass){
 
     reset();
 
     assert((solver.getEnergyDerivativeLevel() > 0) && "The solver should be set with energyDerivatigveLevel>0 to get Hermite spline interpolation");
 
+    //choose initial sampling point To be the Fermi, except if m*<0, (valence band), choose top of band
+    double initialSampleEnergy = effectiveMass > 0. ? -workFunction : -workFunction - bandDepth;
+
     // make sure that the solver has energy derivatives
-    solver.setXlimits(workFunction + 5.); // set the limits for the transmission solver. 
+    solver.setXlimits(-initialSampleEnergy + 5.); // set the limits for the transmission solver. 
 
     solver.getBarrier()->setBarrierTopFinder(true); // set barrier top finder
-    sampleEnergyPoint(-workFunction); //sample the fermi level
+    sampleEnergyPoint(initialSampleEnergy); //sample the fermi level
     double topOfBarrier = solver.getBarrier()->getBarrierTop(); //get the barrier top
     solver.getBarrier()->setBarrierTopFinder(false); // reset the barrier top finder to off. No need any more
 
-
     //the extent by which the transmission coefficient decays below Fermi level
-    double dLogD_dE_atFermi = -2. * solutionDerivativeSamples[2].back();
-    double logD_atFermi = -solutionSamples[2].back();
-    double lowDecayLength = 1. / dLogD_dE_atFermi;
+    double dLogD_dE_atInitialSample = -2. * solutionDerivativeSamples[2].back();
+    double logD_atInitialSample = -solutionSamples[2].back();
+    double lowDecayLength = 1. / dLogD_dE_atInitialSample;
     
     //TODO: take into account the absolute tolerance in determining the numberOfDecayLengths
     double numberOfDecayLengths = -log(relativeTolerance);
 
-
-
-    double pointToSample = -workFunction - numberOfDecayLengths * lowDecayLength; // - min(numberOfDecayLengths * lowDecayLength, -(log(absoluteTolerance) - logD_atFermi)/dLogD_dE_atFermi);
+    double pointToSample = initialSampleEnergy - numberOfDecayLengths * lowDecayLength; // - min(numberOfDecayLengths * lowDecayLength, -(log(absoluteTolerance) - logD_atInitialSample)/dLogD_dE_atInitialSample);
     sampleEnergyPoint(pointToSample);
 
-    double highDecayRate = 1./ kT - dLogD_dE_atFermi;
-    double fermiToBarrier = topOfBarrier + workFunction;
-
-    
-    //If the spectra don't decay fast enough to have decayed before the barrier top (or don't decay at all), sample the top of barrier and a point beyond
-    if (highDecayRate < numberOfDecayLengths / fermiToBarrier){ 
-        sampleEnergyPoint(topOfBarrier);
-        sampleEnergyPoint(topOfBarrier + numberOfDecayLengths* kT);
-    }
-    //If the spectra decay slow enough to be worth it, sample a above Ef. Force sample it we have only one sample point
-    else if (highDecayRate < 100. ||  sampleEnergies.size() < 2){
-        double pointToSample = -workFunction + numberOfDecayLengths / highDecayRate;
-        sampleEnergyPoint(pointToSample);
+    if (effectiveMass > 0.){ //if effective mass < 0., there is no need to sample above the top of the band
+        double highDecayRate = 1./ kT - dLogD_dE_atInitialSample;
+        double fermiToBarrier = topOfBarrier + workFunction;
+        
+        //If the spectra don't decay fast enough to have decayed before the barrier top (or don't decay at all), sample the top of barrier and a point beyond
+        if (highDecayRate < numberOfDecayLengths / fermiToBarrier){ 
+            sampleEnergyPoint(topOfBarrier);
+            sampleEnergyPoint(topOfBarrier + numberOfDecayLengths* kT);
+        }
+        //If the spectra decay slow enough to be worth it, sample a above Ef. Force sample it we have only one sample point
+        else if (highDecayRate < 100. ||  sampleEnergies.size() < 2){
+            double pointToSample = -workFunction + numberOfDecayLengths / highDecayRate;
+            sampleEnergyPoint(pointToSample);
+        }
     }
 
     sortAndInitialize();

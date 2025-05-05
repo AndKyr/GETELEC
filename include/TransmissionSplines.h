@@ -128,7 +128,7 @@ public:
      * @brief Samples the transmission coefficient with an initial very coarse sampling that is smartly chosen for electron emission.
      * @details Samples are taken at the Fermi level and at the top of the barrier. Additional samples are added if the transmission coefficient decays slowly.
      */
-    void smartInitialSampling();
+    void smartInitialSampling(double bandDepth = 10, double effectiveMass = 1.);
 
     /**
      * @brief Refines the sampling by bisecting until the required tolerance is met.

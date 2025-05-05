@@ -24,8 +24,9 @@ using namespace std;
  */
 class BandEmitter : public ODESolver {
 private:
-    /** @brief The work function of the material in eV. */
-    double workFunction = 4.5;
+    
+
+    double workFunction = 4.5; ///< The work function of the material in eV. */
 
     /** @brief Thermal energy in eV, proportional to temperature (kT). */
     double kT = 0.025;
@@ -61,13 +62,23 @@ private:
     Config::BandEmitterParams configParams; /**< Configuration parameters for the BandEmitter class. */
   
     gsl_integration_workspace* integrationWorkspace = NULL;  /**< GSL Workspace for numerical integration using GSL. */
-    gsl_integration_workspace* externalIntegrationWorkSpace = nullptr; /**< Second GSL Workspace for numerical integration using GSL. 
-                                                                                This space is used for double integral,
-                                                                                 when the internal and external integrals need to use independent workspaces */
+    gsl_integration_workspace* externalIntegrationWorkSpace = nullptr; /**< Second GSL Workspace for numerical integration using GSL. This space is used for double integral, when the internal and external integrals need to use independent workspaces */
+
 
     double helperEnergy; /**< Helper variable storing the totalEnergy variable for evaluating the double integral. */
-
     bool saveSpectra; /**< Helper flag that determines whether the parallel energy distribution will be saved upon double integration */
+
+    /**
+     * @name Integration limits for all types of spectra
+     * @{
+     */
+    double minTotalEnergy; /**< Minimum total energy for TED */
+    double maxTotalEnergy; /**< Max total energy for TED */
+    double minParallelEnergy; /**< Min parallel energy for PED */
+    double maxParallelEnergy; /**< Max parallel energy for PED */
+    double minNormalEnergy; /**< Min normal energy for NED */
+    double maxNormalEnergy; /**< Max normal energy for NED */
+    /** @} */
 
     /**
      * @brief Calculates the g'(E) (see Andreas' notes) for a given (normal) energy.
@@ -91,6 +102,11 @@ private:
 
     /** @brief Defines the Jacobian matrix for the differential system (optional, currently unused). */
     static int differentialSystemJacobian(double x, const double y[], double *dfdy, double dfdt[], void *params);
+
+    /**
+     * @brief Calculates and sets all the integration limits covering all cases of effective mass and bandDepth
+     */
+    void setIntegrationLimits();
 
 public:
     /**

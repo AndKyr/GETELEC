@@ -16,6 +16,34 @@ int BandEmitter::differentialSystem(double energy, const double y[], double f[],
     return GSL_SUCCESS;
 }
 
+void BandEmitter::setIntegrationLimits(){
+    if (effectiveMass > 0.){ // conduction band curving upwards
+        //pick the max of the band bottom and the min energy that the transmission coefficient is non-negligible
+        minTotalEnergy = max(interpolator.getMinimumSampleEnergy() + workFunction, -bandDepth + 0.001); 
+        maxTotalEnergy = interpolator.getMaximumSampleEnergy() + workFunction; //set the max to the maximum sample
+    } else { //valence band (curving downwards)
+        minTotalEnergy = interpolator.getMinimumSampleEnergy() + workFunction; //go to the minimum that has non-negligible transmission probability
+        maxTotalEnergy = -bandDepth; //set the maximum to the band top
+    }
+    //set the inhereted parameters to follow for clarity
+    xInitial = minTotalEnergy; 
+    xFinal = maxTotalEnergy;
+
+
+    minParallelEnergy = 0.; //min parallel energy is always 0
+    if (effectiveMass > 0.)
+        maxParallelEnergy = effectiveMass * (maxTotalEnergy + bandDepth);
+    else
+        maxParallelEnergy = effectiveMass * (minTotalEnergy + bandDepth);
+    
+    
+    if (effectiveMass <= 1.)
+        minNormalEnergy = minTotalEnergy;// -bandDepth + (1. - effectiveMass) * (minTotalEnergy + bandDepth);
+    else
+        minNormalEnergy = max(-bandDepth + (1. - effectiveMass) * (maxTotalEnergy + bandDepth), interpolator.getMinimumSampleEnergy() + workFunction);
+    maxNormalEnergy = maxTotalEnergy;
+}
+
 double BandEmitter::gPrimeFunction(double energy) {
     //TODO: be careful with the effective mass. abarX might get below the bandDepth causing problems. The interpolation range must be fixed.
     double waveVector = sqrt(energy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
@@ -45,14 +73,14 @@ void BandEmitter::setParameters(double workFunction_, double kT_, double effecti
     bandDepth = bandDepth_;
     effectiveMass = effectiveMass_;
     kT = kT_;
+    assert(bandDepth > 0. && kT > 0. && workFunction > 0. && abs(effectiveMass) > 1.e-5 && "Invalid BandEmitter input parameters");
 
     interpolator.setParameters(kT, workFunction);
     interpolator.smartInitialSampling();
     interpolator.refineSamplingToTolerance();
 
-    //set ODE integration limits and affected parameters
-    xInitial = max(interpolator.getMinimumSampleEnergy() + workFunction, -bandDepth + 0.001);
-    xFinal = interpolator.getMaximumSampleEnergy() + workFunction;
+    setIntegrationLimits();
+
     maxStepSize = (xFinal - xInitial) / minAllowedSteps;
     initialStep = (xFinal - xInitial) / stepsExpectedForInitialStep;
 
@@ -63,8 +91,8 @@ void BandEmitter::setParameters(double workFunction_, double kT_, double effecti
 }
 
 int BandEmitter::integrateTotalEnergyDistributionODEAndSaveSpectra(double convergenceTolerance, bool makeSpectralSpline) {
-    double x = xInitial;
-    double dx = initialStep;
+    double energy = minTotalEnergy;
+    double energyStep = initialStep;
     int status;
     reinitialize();
 
@@ -80,20 +108,20 @@ int BandEmitter::integrateTotalEnergyDistributionODEAndSaveSpectra(double conver
     if(convergenceTolerance <= 0.) convergenceTolerance = relativeTolerance;
 
     totalEnergyDistribution.second.push_back(solutionVector[0] * CONSTANTS.SommerfeldConstant);
-    totalEnergyDistributionDerivatives.push_back(getSolutionDerivative(x)[0] * CONSTANTS.SommerfeldConstant);
-    totalEnergyDistribution.first.push_back(x);
+    totalEnergyDistributionDerivatives.push_back(getSolutionDerivative(energy)[0] * CONSTANTS.SommerfeldConstant);
+    totalEnergyDistribution.first.push_back(energy);
 
     for (size_t i = 0; i < maxAllowedSteps; i++) { // Loop over blocks
         previousCurrentDensity = solutionVector[1];
-        dx = GSL_SIGN(dx) * min(abs(maxStepSize), abs(dx));
-        status = gsl_odeiv2_evolve_apply(evolver, controller, step, &sys, &x, xFinal, &dx, solutionVector.data());
+        energyStep = GSL_SIGN(energyStep) * min(abs(maxStepSize), abs(energyStep));
+        status = gsl_odeiv2_evolve_apply(evolver, controller, step, &sys, &energy, maxTotalEnergy, &energyStep, solutionVector.data());
 
         totalEnergyDistribution.second.push_back(solutionVector[0] * CONSTANTS.SommerfeldConstant);
-        totalEnergyDistributionDerivatives.push_back(getSolutionDerivative(x)[0] * CONSTANTS.SommerfeldConstant);
-        totalEnergyDistribution.first.push_back(x);
+        totalEnergyDistributionDerivatives.push_back(getSolutionDerivative(energy)[0] * CONSTANTS.SommerfeldConstant);
+        totalEnergyDistribution.first.push_back(energy);
 
         bool hasConverged = abs(previousCurrentDensity - solutionVector[1]) / previousCurrentDensity < convergenceTolerance;
-        if (x >= xFinal || status != GSL_SUCCESS || hasConverged){
+        if (energy >= maxTotalEnergy || status != GSL_SUCCESS || hasConverged){
             if (makeSpectralSpline) totalEnergyDistributionSpline.initialize(totalEnergyDistribution.first, totalEnergyDistribution.second, totalEnergyDistributionDerivatives);   
             return status;         
         }
@@ -105,18 +133,18 @@ int BandEmitter::integrateTotalEnergyDistributionODEAndSaveSpectra(double conver
 
 int BandEmitter::integrateTotalEnergyDistributionODE(double convergenceTolerance) {
     if (convergenceTolerance <= 0.) convergenceTolerance = relativeTolerance;
-    double x = xInitial;
-    double dx = initialStep;
+    double energy = minTotalEnergy;
+    double energyStep = initialStep;
     int status;
     reinitialize();
     double previousCurrentDensity;
 
     for (size_t i = 0; i < maxAllowedSteps; i++) { // Loop over blocks
         previousCurrentDensity = solutionVector[1];
-        dx = GSL_SIGN(dx) * min(abs(maxStepSize), abs(dx));
-        status = gsl_odeiv2_evolve_apply(evolver, controller, step, &sys, &x, xFinal, &dx, solutionVector.data());
+        energyStep = GSL_SIGN(energyStep) * min(abs(maxStepSize), abs(energyStep));
+        status = gsl_odeiv2_evolve_apply(evolver, controller, step, &sys, &energy, maxTotalEnergy, &energyStep, solutionVector.data());
         bool hasConverged = abs(previousCurrentDensity - solutionVector[1]) / previousCurrentDensity < convergenceTolerance;
-        if (x >= xFinal || status != GSL_SUCCESS || hasConverged)    
+        if (energy >= maxTotalEnergy || status != GSL_SUCCESS || hasConverged)    
             return status;         
     }
     return GSL_CONTINUE; 
@@ -150,7 +178,7 @@ double BandEmitter::currentDensityIntegrateNormal(bool saveNormalEnergyDistribut
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
     
     double result, error;
-    gsl_integration_qag(&gslIntegrationFunction, xInitial, xFinal, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
+    gsl_integration_qag(&gslIntegrationFunction, minNormalEnergy, maxNormalEnergy, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
                         GSL_INTEG_GAUSS31, externalIntegrationWorkSpace, &result, &error);
     
     if (saveNormalEnergyDistribution)
@@ -162,7 +190,7 @@ double BandEmitter::currentDensityIntegrateNormal(bool saveNormalEnergyDistribut
 void BandEmitter::writePlottingData(string filename) {
     ofstream outFile(filename, ios::out);        
     outFile << "#E D_calc(En=E) D_interp(En=E) NED(En=E) TED(Et=E)" << endl;
-    for (double energy = xInitial; energy < xFinal; energy += 0.001) {
+    for (double energy = minTotalEnergy; energy < maxTotalEnergy; energy += 0.001) {
         double waveVector = sqrt(energy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
         double D_calculated = transmissionSolver.calculateTransmissionProbability(energy - workFunction, waveVector);
         double D_interpolated = interpolator.getTransmissionProbability(energy - workFunction, waveVector);
@@ -255,7 +283,7 @@ double BandEmitter::currentDensityIntegrateTotalParallel(bool saveTotalEnergyDis
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
     
     double result, error;
-    gsl_integration_qag(&gslIntegrationFunction, xInitial, xFinal, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
+    gsl_integration_qag(&gslIntegrationFunction, minTotalEnergy, maxTotalEnergy, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
                         GSL_INTEG_GAUSS31, externalIntegrationWorkSpace, &result, &error);
     if (saveSpectra)
         Utilities::sortCoordinates(totalEnergyDistribution.first, totalEnergyDistribution.second);
@@ -278,7 +306,7 @@ double BandEmitter::nottinghamIntegrateTotalPrallel(){
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
     
     double result, error;
-    gsl_integration_qag(&gslIntegrationFunction, xInitial, xFinal, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
+    gsl_integration_qag(&gslIntegrationFunction, minTotalEnergy, maxTotalEnergy, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
                         GSL_INTEG_GAUSS31, externalIntegrationWorkSpace, &result, &error);
     return result;
 }
@@ -296,13 +324,13 @@ double BandEmitter::parallelEnergyDistributionForEnergy(double parallelEnergy){
     double(*integrationFunctionPointer)(double, void*) = integrationLambda; // convert the lambda into raw function pointer
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this}; //convert to gsl_function and pass this pointer
 
-    double minTotalEnergy = -bandDepth + parallelEnergy / effectiveMass;
+    double minTotalEnergyLocal = -bandDepth + parallelEnergy / effectiveMass;
 
-    if (minTotalEnergy > xFinal)
+    if (minTotalEnergyLocal > maxTotalEnergy) //if the minimum total energy is beyond the limits of non-negligible contribution
         return 0.;
 
     double result, error;
-    gsl_integration_qag(&gslIntegrationFunction, minTotalEnergy, xFinal, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
+    gsl_integration_qag(&gslIntegrationFunction, minTotalEnergyLocal, maxTotalEnergy, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
                         GSL_INTEG_GAUSS41, integrationWorkspace, &result, &error);
     return result * CONSTANTS.SommerfeldConstant;
 }
@@ -335,7 +363,7 @@ double BandEmitter::currentDensityIntegrateParallelTotal(bool saveParallelEnergy
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
     
     double result, error;
-    gsl_integration_qag(&gslIntegrationFunction, 0., xFinal - xInitial, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
+    gsl_integration_qag(&gslIntegrationFunction, minParallelEnergy, maxParallelEnergy, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
                         GSL_INTEG_GAUSS31, externalIntegrationWorkSpace, &result, &error);
     
     if (saveParallelEnergyDistribution) 
@@ -356,14 +384,14 @@ double BandEmitter::normalEnergyDistributionIntegratePrallel(double normalEnergy
     double(*integrationFunctionPointer)(double, void*) = integrationLambda; // convert the lambda into raw function pointer
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
 
-    double maxParalleEnergy = effectiveMass == 1. ? xFinal - normalEnergy : min(xFinal - normalEnergy, (normalEnergy + bandDepth) * effectiveMass / abs(1. - effectiveMass));
-    double minParallelEnergy =  max(xInitial - normalEnergy, 0.);
+    double maxParallelEnergyLocal = effectiveMass == 1. ? maxTotalEnergy - normalEnergy : min(maxTotalEnergy - normalEnergy, (normalEnergy + bandDepth) * effectiveMass / abs(1. - effectiveMass));
+    double minParallelEnergyLocal =  max(minTotalEnergy - normalEnergy, 0.);
 
-    if (minParallelEnergy > maxParalleEnergy)
+    if (minParallelEnergyLocal > maxParallelEnergyLocal)
         return 0.;
 
     double result, error;
-    gsl_integration_qag(&gslIntegrationFunction, minParallelEnergy, maxParalleEnergy, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
+    gsl_integration_qag(&gslIntegrationFunction, minParallelEnergyLocal, maxParallelEnergyLocal, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
                         GSL_INTEG_GAUSS41, integrationWorkspace, &result, &error);
     return result * CONSTANTS.SommerfeldConstant;
 }
@@ -395,11 +423,11 @@ double BandEmitter::currentDensityIntegrateNormalParallel(bool saveNormalEnergyD
     double(*integrationFunctionPointer)(double, void*) = integrationLambda; // convert the lambda into raw function pointer
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
 
-    double minNormalEnergy = min(xInitial, (1. - effectiveMass) * (xFinal + bandDepth)); // capture the case that effectiveMass > 0
-    minNormalEnergy = max(minNormalEnergy, interpolator.getMinimumSampleEnergy() + workFunction);
+    // double minNormalEnergy = min(xInitial, (1. - effectiveMass) * (maxTotalEnergy + bandDepth)); // capture the case that effectiveMass > 0
+    // minNormalEnergy = max(minNormalEnergy, interpolator.getMinimumSampleEnergy() + workFunction);
     
     double result, error;
-    gsl_integration_qag(&gslIntegrationFunction, minNormalEnergy, xFinal, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
+    gsl_integration_qag(&gslIntegrationFunction, minNormalEnergy, maxNormalEnergy, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
                         GSL_INTEG_GAUSS31, externalIntegrationWorkSpace, &result, &error);
     
     if (saveNormalEnergyDistribution) 
