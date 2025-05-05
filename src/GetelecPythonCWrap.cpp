@@ -1,4 +1,6 @@
 #include "Getelec.h"
+#include <tbb/global_control.h>
+
 using namespace std;
 
 extern "C" {
@@ -8,8 +10,11 @@ getelec::Getelec* Getelec_new() {
     return new getelec::Getelec();
 }
 
-getelec::Getelec* Getelec_new_with_config(const char* configFileName, const char* barrierType, int numberOfThreads) {
-    return new getelec::Getelec(configFileName, barrierType, numberOfThreads);
+getelec::Getelec* Getelec_new_with_config(const char* configFileName, const char* barrierType, int numberOfThreads, int seed) {
+    if (numberOfThreads > 0)
+        static tbb::global_control tbbGlobalControl(tbb::global_control::max_allowed_parallelism, numberOfThreads);
+
+    return new getelec::Getelec(configFileName, barrierType, NULL, seed);
 }
 
 // Wrapper to delete a Getelec object
@@ -46,20 +51,24 @@ void Getelec_setBandDepth(getelec::Getelec* obj, const double* bandDepth, size_t
     obj->setBandDepth(bandDepth, size);
 }
 
+void Getelec_setRandomParameters(getelec::Getelec* obj, size_t numberOfParameters){
+    obj->setRandomParameters(numberOfParameters);
+}
+
 // Wrapper to run the calculation
 size_t Getelec_run(getelec::Getelec* obj, unsigned flags) {
     return obj->run(static_cast<getelec::CalculationFlags>(flags));
 }
 
-const double* Getelec_getFields(getelec::Getelec* obj, size_t* size) {
+const double* Getelec_getField(getelec::Getelec* obj, size_t* size) {
     return obj->getFields(size);
 }
 
-const double* Getelec_getRadii(getelec::Getelec* obj, size_t* size) {
+const double* Getelec_getRadius(getelec::Getelec* obj, size_t* size) {
     return obj->getRadii(size);
 }
 
-const double* Getelec_getGammas(getelec::Getelec* obj, size_t* size) {
+const double* Getelec_getGamma(getelec::Getelec* obj, size_t* size) {
     return obj->getGammas(size);
 }
 

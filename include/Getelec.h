@@ -7,7 +7,6 @@
 #include "BandEmitter.h"
 #include "TunnelingFunction.h"
 #include "ConfigGetelec.h"
-#include <tbb/global_control.h>
 #include <numeric>
 
 
@@ -42,13 +41,13 @@ inline CalculationFlags& operator|=(CalculationFlags& a, CalculationFlags b) {
     return a;
 }
 
-
 class Getelec {
 public:
     /**
      * @brief Construct a new Getelec object
+     * @param configFileName The name of the configuration input file
      */
-    Getelec(string configFileName = "GetelecConfig.txt", string barrierType = "modifiedSN", int numberOfThreads = 0, mt19937* generator_ = NULL) :
+    Getelec(string configFileName = "GetelecConfig.txt", string barrierType = "modifiedSN", mt19937* generator_ = NULL, int seed = -1) :
         config(Config(configFileName)),
         threadLocalBarrier([this, barrierType]() -> unique_ptr<ModifiedSNBarrier> {
             if (!barrierType.starts_with("dftXC")) {
@@ -68,14 +67,13 @@ public:
         threadLocalSolver([this] { return TransmissionSolver(threadLocalBarrier.local().get(), config.transmissionSolverParams, 10., 1); }),
         threadLocalEmitter([this] { return BandEmitter(threadLocalSolver.local(), config.bandEmitterParams); })
     {
-        //if numberOfThreads is set to a non-zero value, then set it. Otherwise let it take its default value
-        if (numberOfThreads > 0)
-            tbb::global_control gc(tbb::global_control::max_allowed_parallelism, numberOfThreads);
-        
         if (generator_){
             generator = generator_;
         } else {
-            generator = new mt19937(chrono::system_clock::now().time_since_epoch().count());
+            if (seed < 0)
+                generator = new mt19937(chrono::system_clock::now().time_since_epoch().count());
+            else
+                generator = new mt19937(seed);
         }
     }
 

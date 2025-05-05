@@ -279,6 +279,22 @@ TEST(ConfigTest, ConfigFileReadTest){
     remove("tempConfig.txt");
 }
 
+
+/**
+ * @brief Test for Getelec:: check that the Getelec class can be constructed and run without errors
+ */
+TEST(GetelecTest, runRandomCasesTest){
+    tbb::global_control tbbGlobalControl(tbb::global_control::max_allowed_parallelism, 1);
+
+    mt19937 generator(1987);
+
+    Getelec getelec = Getelec("GetelecConfig.txt", "modifiedSN", &generator);
+    // getelec.setGenerator(&generator);
+    getelec.setRandomParameters(64);
+    EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
+}
+
+
 /**
  * @brief Test for Getelec:: check that the Getelec class can be constructed and run without errors
  */
@@ -289,17 +305,7 @@ TEST(GetelecObjectTest, RunParalleltest){
     EXPECT_NO_THROW(getelec.run());
 }
 
-/**
- * @brief Test for Getelec:: check that the Getelec class can be constructed and run without errors
- */
-TEST(GetelecTest, runRandomCasesTest){
-    mt19937 generator(1987);
 
-    Getelec getelec;
-    getelec.setGenerator(&generator);
-    getelec.setRandomParameters(64);
-    EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
-}
 
 /**
  * @brief Test for ModifiedSNBarrierWithDftXC:: check that the potential function and its derivative are calculated correctly

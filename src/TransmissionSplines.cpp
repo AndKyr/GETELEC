@@ -44,33 +44,38 @@ void TransmissionSpline::sampleUniform(double Emin, double Emax, int nPoints){
     initializeMultiple(sampleEnergies, solutionSamples, solutionDerivativeSamples);    
 }
 
-void TransmissionSpline::writeSplineSolution(string filename, int nPoints){
+int TransmissionSpline::writeSplineSolution(string filename, int nPoints){
     ofstream file(filename);
 
     vector<double> energyPoints = Utilities::linspace(getMinimumSampleEnergy(), getMaximumSampleEnergy(), nPoints);
     
+    file << "# energy, sol[0], sol[1], sol[2], interp[0], interp[1], interp[2], transmissionProbability, estimated NED" << endl;
     for (size_t i = 0; i < energyPoints.size(); i++){
         solver.setEnergyAndInitialValues(energyPoints[i]);
         solver.solveNoSave();
         const auto& solutionVector = solver.getSolution();
         auto interpolatedValues = evaluateMultiple(energyPoints[i]);
         file << energyPoints[i] << " " << solutionVector[0] << " " << solutionVector[1] << " " << solutionVector[2] << " ";
-        file << interpolatedValues[0] << " " << interpolatedValues[1] << " " << interpolatedValues[2] << endl;
+        file << interpolatedValues[0] << " " << interpolatedValues[1] << " " << interpolatedValues[2] << " ";
+        file << solver.calculateTransmissionProbability(energyPoints[i]) << " " << solver.getEmissionEstimate(12., workFunction, kT) << endl;
     }
     file.close();
+    return 1;
 }
 
 
-void TransmissionSpline::writeSplineNodes(string filename){
+int TransmissionSpline::writeSplineNodes(string filename){
     ofstream file(filename);
+    file << "# energy, solutions[0], solutions[1], solutions[2], derivatives[0], derivatives[1], derivatives[2]" << endl;
     for (size_t i = 0; i < sampleEnergies.size(); i++){
         file << sampleEnergies[i] << " ";
         for (int j = 0; j < 3; j++){
             file << solutionSamples[j][i] << " " << solutionDerivativeSamples[j][i] << " ";
         }
-        file << endl; 
+        file << normalEnergyDistributionEstimate(sampleEnergies[i]) << endl; 
     }
     file.close();
+    return 1;
 }
 
 void TransmissionSpline::sampleEnergyPoint(double energy, size_t index, bool bisect){
@@ -169,30 +174,40 @@ int TransmissionSpline::findMaximumCurrentEstimate(int maxIterations, double rTo
 
     if (status == GSL_EINVAL){
         if (checkAllBelowTolerance())
-            return -1; // all values are below the tolerance. No need to minimize
-        else
-            throw std::runtime_error("GSL minimizer failed to set up. Something is wrong with the initial values.");
+            return 0; // all values are below the tolerance. No need to minimize
+        else{
+            return -1;
+            // double Emid = 0.5 * (getMinimumSampleEnergy() + getMaximumSampleEnergy());
+
+            // cout << "Emin, Emax, Emid, Jest(Emin), Jest(Emax), Jest(Emid) " << getMinimumSampleEnergy() << " " << getMaximumSampleEnergy() << " " << Emid << " " << normalEnergyDistributionEstimate(getMinimumSampleEnergy()) << " " << normalEnergyDistributionEstimate(getMaximumSampleEnergy()) << " " << normalEnergyDistributionEstimate(Emid) << endl;
+            // assert(false && "GSL minimizer failed to set up");
+            // throw std::runtime_error("GSL minimizer of estimated current density for energy sampling failed to set up. Something is wrong with the initial values.");
+        }
     }
 
     //do minimization iterations
     for (int i = 0; i < maxIterations; i++){
         int status = gsl_min_fminimizer_iterate(minimizer); //perform minimization iteration
         
-        if (status == GSL_EBADFUNC || status == GSL_FAILURE) // something is messed up. Throw exception
-            throw std::runtime_error("GSL minimizer failed to iterate. Something is wrong with the ");
-
+        if (status == GSL_EBADFUNC || status == GSL_FAILURE){ // something is messed up. Throw exception
+            assert(false && "Step for finding max estimated current energy failed to iterate");
+            throw std::runtime_error("Step for finding max estimated current energy failed to iterate");
+        }
         //check if we have converged
         double minValue = gsl_min_fminimizer_f_minimum(minimizer);
         double maxValueInInterval = max(gsl_min_fminimizer_f_lower(minimizer), gsl_min_fminimizer_f_upper(minimizer));
         if (abs(minValue / maxValueInInterval - 1.) < rTol){ //if we have reached tolerance
             mamximumCurrentEstimate = - minValue;
             maximumCurrentPosition = gsl_min_fminimizer_minimum(minimizer);
-            return i;
+            return i + 1;
         }
     }
 
     //case when tolerance never met within the maxIterations
-    throw std::runtime_error("GSL minimizer failed to converge with relative tolerance " + std::to_string(rTol) + " and maxIterations " + std::to_string(maxIterations) + ".");
+    writeSplineSolution("problematicSolution.dat", 256);
+    writeSplineNodes("problematicNodes.dat");
+    // assert(false && "Current density estimation sequence failed to locate maximum. Minimizer did not converge");
+    // throw std::runtime_error("GSL minimizer failed to converge with relative tolerance " + std::to_string(rTol) + " and maxIterations " + std::to_string(maxIterations) + ".");
     return maxIterations;
 
 }
@@ -255,8 +270,28 @@ bool TransmissionSpline::checkSolutionSanity(vector<double> &solutionVector, dou
 }
 
 void TransmissionSpline::refineSamplingToTolerance(int maxRefineSteps){
-    if (findMaximumCurrentEstimate() < 0) 
+    int maxFoundStatus = findMaximumCurrentEstimate();
+
+    if (maxFoundStatus == 0) 
         return; // all values are below the tolerance. No need to refine
+        
+    // unsigned attemptCounter = 0;
+    // while(maxFoundStatus < 0){
+    //     sampleEnergyPoint(getMaximumSampleEnergy() + kT);
+    //     sortAndInitialize();
+    //     maxFoundStatus = findMaximumCurrentEstimate();
+    //     if (attemptCounter++ > 5){
+    //         writeSplineSolution("problematicSplineSolution.dat", 64);
+    //         writeSplineNodes("problematicSplineNodes.dat");
+    //         assert(false && "Current density estimation sequence failed to locate maximum even after adding 5 points");
+    //         throw std::runtime_error("Current density estimation sequence failed to locate maximum even after adding 5 points");
+    //     }
+    // }
+
+    if(maxFoundStatus < 0){
+        sampleEnergyPoint(getMaximumSampleEnergy() + kT);
+        sortAndInitialize();
+    }
 
     for (int i = 0; i < maxRefineSteps; i++){
         int insertedSamples = refineSampling();

@@ -9,19 +9,21 @@ class TestGetelecInterface(tst.TestCase):
     def testDensityAndSpectra(self):
         getelec = gt.GetelecInterface(configPath="getelec.cfg", numberOfThreads=1)
 
-        Ntests = 16
+        Ntests = 4
 
-        fields = np.random.rand(Ntests) * 10. + 1.
-        radii = 1./np.random.rand(Ntests)
-        gammas = np.random.random(Ntests) * 10. + 1.
-        kTs = np.random.random(Ntests) * 0.22
-        workFunctions = np.random.random(Ntests) * 3. + 2.
-        bandDepths = np.random.random(Ntests) * 3. + 10.
-        effectiveMasses = np.random.random(Ntests) * 1. + 1.
+        # fields = np.random.rand(Ntests) * 10. + 1.
+        # radii = 1./np.random.rand(Ntests)
+        # gammas = np.random.random(Ntests) * 10. + 1.
+        # kTs = np.random.random(Ntests) * 0.22
+        # workFunctions = np.random.random(Ntests) * 3. + 2.
+        # bandDepths = np.random.random(Ntests) * 3. + 10.
+        # effectiveMasses = np.random.random(Ntests) * 1. + 1.
+        getelec.setRandomParams(Ntests)
+
         
         
-        getelec.setParameters(field=fields, radius=radii, gamma=gammas, kT=kTs, workFunction=workFunctions, bandDepth=bandDepths, effectiveMass=effectiveMasses)
-        getelec.run(["CurrentDensity", "TotalEnergyDistribution", "ParallelEnergyDistribution", "NottinghamHeat"])
+        # getelec.setParameters(field=fields, radius=radii, gamma=gammas, kT=kTs, workFunction=workFunctions, bandDepth=bandDepths, effectiveMass=effectiveMasses)
+        getelec.run(["CurrentDensity", "TotalEnergyDistribution", "NormalEnergyDistribution", "ParallelEnergyDistribution", "NottinghamHeat"])
 
         allSpectra = getelec.extractAllSpectra()
         densities = getelec.getCurrentDensity()

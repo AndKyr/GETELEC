@@ -61,7 +61,7 @@ class GetelecInterface:
         "TotalEnergyDistributionDerivatives": 32,
     }
 
-    def __init__(self, libPath=None, configPath:str="", barrierType="modifiedSN", fields = 5., radii = 1.e5, gammas = 10., kTs = 0.025, workFunctions = 4.5, bandDepths = 10., effectiveMasses = 1., numberOfThreads = 0):
+    def __init__(self, libPath=None, configPath:str="", barrierType="modifiedSN", fields = 5., radii = 1.e5, gammas = 10., kTs = 0.025, workFunctions = 4.5, bandDepths = 10., effectiveMasses = 1., numberOfThreads = 0, seed = 1987):
         if libPath is None:
             libPath = os.path.join(os.path.dirname(__file__), "../build/libgetelec.so")
         
@@ -69,32 +69,53 @@ class GetelecInterface:
         self.lib = ctypes.CDLL(libPath)
 
         # Initialize the Getelec instance
-        self.obj = self.lib.Getelec_new_with_config(ctypes.c_char_p(configPath.encode('utf-8')), ctypes.c_char_p(barrierType.encode('utf-8')), ctypes.c_int(numberOfThreads))
+        self.obj = self.lib.Getelec_new_with_config(ctypes.c_char_p(configPath.encode('utf-8')), ctypes.c_char_p(barrierType.encode('utf-8')), ctypes.c_int(numberOfThreads), ctypes.c_void_p(), ctypes.c_int(seed))
 
         # Define argument and return types for methods
         self.lib.Getelec_setField.restype = None
         self.lib.Getelec_setField.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.c_size_t]
 
+        self.lib.Getelec_getField.restype = ctypes.POINTER(ctypes.c_double)
+        self.lib.Getelec_getField.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_size_t)]
+
         self.lib.Getelec_setRadius.restype = None
         self.lib.Getelec_setRadius.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.c_size_t]
+
+        self.lib.Getelec_getRadius.restype = ctypes.POINTER(ctypes.c_double)
+        self.lib.Getelec_getRadius.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_size_t)]
 
         self.lib.Getelec_setGamma.restype = None
         self.lib.Getelec_setGamma.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
 
-        self.lib.Getelec_setGamma.restype = None
-        self.lib.Getelec_setGamma.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.c_size_t]
+        self.lib.Getelec_getGamma.restype = ctypes.POINTER(ctypes.c_double)
+        self.lib.Getelec_getGamma.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_size_t)]
 
         self.lib.Getelec_setkT.restype = None
         self.lib.Getelec_setkT.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.c_size_t]
 
+        self.lib.Getelec_getkT.restype = ctypes.POINTER(ctypes.c_double)
+        self.lib.Getelec_getkT.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_size_t)]
+
         self.lib.Getelec_setWorkFunction.restype = None
         self.lib.Getelec_setWorkFunction.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.c_size_t]
+
+        self.lib.Getelec_getWorkFunction.restype = ctypes.POINTER(ctypes.c_double)
+        self.lib.Getelec_getWorkFunction.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_size_t)]
 
         self.lib.Getelec_setBandDepth.restype = None
         self.lib.Getelec_setBandDepth.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.c_size_t]
 
+        self.lib.Getelec_getBandDepth.restype = ctypes.POINTER(ctypes.c_double)
+        self.lib.Getelec_getBandDepth.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_size_t)]
+
         self.lib.Getelec_setEffectiveMass.restype = None
         self.lib.Getelec_setEffectiveMass.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.c_size_t]
+
+        self.lib.Getelec_getEffectiveMass.restype = ctypes.POINTER(ctypes.c_double)
+        self.lib.Getelec_getEffectiveMass.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_size_t)]
+
+        self.lib.Getelec_setRandomParameters.restype = None
+        self.lib.Getelec_setRandomParameters.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
 
         self.lib.Getelec_run.restype = ctypes.c_size_t
         self.lib.Getelec_run.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
@@ -209,6 +230,29 @@ class GetelecInterface:
                 raise ValueError(f"Invalid flag: {flagStr}")
 
         self.numberOfIterations = self.lib.Getelec_run(self.obj, combinedFlagsInt)
+
+    def _syncInputParameters(self):
+        size = ctypes.c_size_t()
+        fields_ptr = self.lib.Getelec_getField(self.obj, ctypes.byref(size))
+        self.fields = np.ctypeslib.as_array(fields_ptr, shape=(size.value,))
+
+        radii_ptr = self.lib.Getelec_getRadius(self.obj, ctypes.byref(size))
+        self.radii = np.ctypeslib.as_array(radii_ptr, shape=(size.value,))
+
+        gammas_ptr = self.lib.Getelec_getGamma(self.obj, ctypes.byref(size))
+        self.gammas = np.ctypeslib.as_array(gammas_ptr, shape=(size.value,))
+
+        kTs_ptr = self.lib.Getelec_getkT(self.obj, ctypes.byref(size))
+        self.kTs = np.ctypeslib.as_array(kTs_ptr, shape=(size.value,))
+
+        workFunctions_ptr = self.lib.Getelec_getWorkFunction(self.obj, ctypes.byref(size))
+        self.workFunctions = np.ctypeslib.as_array(workFunctions_ptr, shape=(size.value,))
+
+        bandDepths_ptr = self.lib.Getelec_getBandDepth(self.obj, ctypes.byref(size))
+        self.bandDepths = np.ctypeslib.as_array(bandDepths_ptr, shape=(size.value,))
+
+        effectiveMass_ptr = self.lib.Getelec_getEffectiveMass(self.obj, ctypes.byref(size))
+        self.effectiveMasses = np.ctypeslib.as_array(effectiveMass_ptr, shape=(size.value,))
 
 
     def getCalculationStatus(self):
@@ -330,20 +374,9 @@ class GetelecInterface:
         
     
     def setRandomParams(self, numberOfInputs):
-        fields = np.random.uniform(1., 12., numberOfInputs)
-        radii = 1./np.random.uniform(0., 1., numberOfInputs)
-        gammas = np.random.uniform(1., 100., numberOfInputs)
-        kTs = np.random.uniform(0., 1., numberOfInputs)
-        workFunctions = np.random.uniform(1., 6., numberOfInputs)
-        bandDepths = np.random.uniform(1., 15., numberOfInputs)
-        effectiveMasses = np.random.uniform(0.01, 2., numberOfInputs)
-        self.setField(fields)
-        self.setRadius(radii)
-        self.setGamma(gammas)
-        self.set_kT(kTs)
-        self.setWorkFunction(workFunctions)
-        self.setBandDepth(bandDepths)
-        self.setEffectiveMass(effectiveMasses)
+        self.lib.Getelec_setRandomParameters(self.obj, ctypes.c_size_t(numberOfInputs))
+        self._syncInputParameters()
+
 
     def setParameters(self, **params) -> None:
         for key, value in params.items():

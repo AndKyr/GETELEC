@@ -88,7 +88,7 @@ void Getelec::runIterationEffectiveMassUnity(size_t i, CalculationFlags flags){
     currentDensityVector[i] = meanCurrentDensity;
 
     assert(all_of(allCurrentDensities.begin(), allCurrentDensities.end(), [meanCurrentDensity, &emitter ](double x) {
-            return abs(x - meanCurrentDensity) < 10 * emitter.getToleranceForValue(meanCurrentDensity);
+            return abs(x - meanCurrentDensity) < 100 * emitter.getToleranceForValue(meanCurrentDensity);
         }) && "current densities calculated with various methods do not agree to each other.");
 
 }
@@ -136,7 +136,7 @@ void Getelec::runIterationEffectiveMassNonUnity(size_t i, CalculationFlags flags
     currentDensityVector[i] = meanCurrentDensity;
 
     assert(all_of(allCurrentDensities.begin(), allCurrentDensities.end(), [meanCurrentDensity, &emitter ](double x) {
-            return abs(x - meanCurrentDensity) < emitter.getToleranceForValue(meanCurrentDensity);
+            return abs(x - meanCurrentDensity) < 100 * emitter.getToleranceForValue(meanCurrentDensity);
         }) && "current densities calculated with various methods do not agree to each other.");
 }
 

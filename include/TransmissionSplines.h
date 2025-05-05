@@ -113,7 +113,7 @@ public:
      * @param nPoints Number of points to sample for the spline solution.
      * @note The default filename is "splineSolution.dat" and the default number of points is 256.
      */
-    void writeSplineSolution(string filename = "splineSolution.dat", int nPoints = 256);
+    int writeSplineSolution(string filename = "splineSolution.dat", int nPoints = 256);
 
     /**
      * @brief Writes the spline nodes to a file for plotting.
@@ -122,7 +122,7 @@ public:
      * @note The file contains the sampled energies, solution values, and derivative values.
      * @note The file is formatted as: energy, solution[0], derivative[0], solution[1], derivative[1], solution[2], derivative[2].
      */
-    void writeSplineNodes(string filename = "splineNodes.dat");
+    int writeSplineNodes(string filename = "splineNodes.dat");
     
     /**
      * @brief Samples the transmission coefficient with an initial very coarse sampling that is smartly chosen for electron emission.
@@ -154,7 +154,7 @@ public:
      * @param maxIterations The maximum number of minimization iterations allowed
      * @param rTol The relative tolerance of the minimum estimate
      */
-    int findMaximumCurrentEstimate(int maxIterations = 10, double rTol = 0.1);
+    int findMaximumCurrentEstimate(int maxIterations = 15, double rTol = 0.1);
 
     double getmaximumCurrentEstimate(){ return mamximumCurrentEstimate; }
 
