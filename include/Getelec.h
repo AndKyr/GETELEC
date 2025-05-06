@@ -56,7 +56,7 @@ public:
                 config.xcFunctionParams.name = barrierType;
                 int nReadParams = config.readParamGroup(&config.xcFunctionParams);
                 if (nReadParams < config.xcFunctionParams.keyMap.size()) {
-                    cerr << "WARNING: No parameters found for the DFT XC function named " << barrierType 
+                    cout << "WARNING: No parameters found for the DFT XC function named " << barrierType 
                             << " ; Using default values, which are for W(110)." << std::endl;
                     return make_unique<ModifiedSNBarrierWithDftXC>();
                 } else {
@@ -69,23 +69,29 @@ public:
     {
         if (generator_){
             generator = generator_;
+            generatorIsInternallyConstructed = false;
         } else {
             if (seed < 0)
                 generator = new mt19937(chrono::system_clock::now().time_since_epoch().count());
             else
                 generator = new mt19937(seed);
+            
+            generatorIsInternallyConstructed = true;
         }
     }
 
 
     ~Getelec(){
-        if (generator) delete generator;
-        generator = nullptr;
+        if (generator && generatorIsInternallyConstructed) {
+            delete generator;
+            generator = nullptr;
+        }
     }
 
     void setGenerator(mt19937* generator_){
-        if (generator) delete generator;
+        if (generator && generatorIsInternallyConstructed) delete generator;
         generator = generator_;
+        generatorIsInternallyConstructed = false;
     }
 
     /**
@@ -535,6 +541,7 @@ private:
     tbb::enumerable_thread_specific<ParamsForIteration> threadLocalParams; ///< Thread-local instances of ParamsForIteration
     CalculationFlags calculationStatusFlags; ///< Flag that shows which output data is available
     mt19937* generator = NULL; ///< Random number generator for setting random parameters for testing.
+    bool generatorIsInternallyConstructed; ///< Keeps track of whether getelec is responsible of freeing the RNG
 
 
 
