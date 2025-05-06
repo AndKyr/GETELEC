@@ -161,9 +161,10 @@ void TransmissionSpline::smartInitialSampling(double bandDepth, double effective
         double highDecayRate = 1./ kT - dLogD_dE_atInitialSample; //the estimated upwards decay rate at initialSample (if negative it means it goes upwards)
         double fermiToBarrier = topOfBarrier + workFunction;
         
-        //If the spectra don't decay fast enough to have decayed before the barrier top (or don't decay at all), sample the top of barrier and a point beyond
+        //If the spectra don't decay fast enough to have decayed before the barrier top (or don't decay at all), or Fermi is above barrier, sample the top of barrier and a point beyond
         if (highDecayRate < numberOfDecayLengthsForRtol / fermiToBarrier || fermiToBarrier < 1.e-3 ){ 
-            sampleEnergyPoint(topOfBarrier); //sample the barrier top
+
+            if (fermiToBarrier > 0.2) sampleEnergyPoint(topOfBarrier); //sample the barrier top
 
             double logFDatBarrierTop = Utilities::logFermiDiracFunction(topOfBarrier + workFunction, kT); //estimate the current density at the barrier top
             if (logFDatBarrierTop < absoluteTolerance || noTunnelingRegime){ //if it is not worth going far or nasty noTunnelingRegime, sample nearby
@@ -172,7 +173,7 @@ void TransmissionSpline::smartInitialSampling(double bandDepth, double effective
 
             if (logFDatBarrierTop >= absoluteTolerance){ //if sampling far beyond top barrier is worthit
                 double lengthToDecay = min(numberOfDecayLengthsForRtol * kT,  (logFDatBarrierTop - log(absoluteTolerance)) * kT);
-                sampleEnergyPoint(topOfBarrier + lengthToDecay);
+                sampleEnergyPoint(max(topOfBarrier, -workFunction) + lengthToDecay);
             }
             maximumCurrentPosition = topOfBarrier;
         }
@@ -203,11 +204,6 @@ int TransmissionSpline::findMaximumCurrentEstimate(int maxIterations, double rTo
             return 0; // all values are below the tolerance. No need to minimize
         else{
             return -1;
-            // double Emid = 0.5 * (getMinimumSampleEnergy() + getMaximumSampleEnergy());
-
-            // cout << "Emin, Emax, Emid, Jest(Emin), Jest(Emax), Jest(Emid) " << getMinimumSampleEnergy() << " " << getMaximumSampleEnergy() << " " << Emid << " " << normalEnergyDistributionEstimate(getMinimumSampleEnergy()) << " " << normalEnergyDistributionEstimate(getMaximumSampleEnergy()) << " " << normalEnergyDistributionEstimate(Emid) << endl;
-            // assert(false && "GSL minimizer failed to set up");
-            // throw std::runtime_error("GSL minimizer of estimated current density for energy sampling failed to set up. Something is wrong with the initial values.");
         }
     }
 
@@ -229,11 +225,7 @@ int TransmissionSpline::findMaximumCurrentEstimate(int maxIterations, double rTo
         }
     }
 
-    //case when tolerance never met within the maxIterations
-    writeSplineSolution("problematicSolution.dat", 256);
-    writeSplineNodes("problematicNodes.dat");
-    // assert(false && "Current density estimation sequence failed to locate maximum. Minimizer did not converge");
-    // throw std::runtime_error("GSL minimizer failed to converge with relative tolerance " + std::to_string(rTol) + " and maxIterations " + std::to_string(maxIterations) + ".");
+    assert((writeSplineSolution(), writeSplineNodes(), false));
     return maxIterations;
 
 }

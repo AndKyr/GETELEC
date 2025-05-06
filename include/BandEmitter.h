@@ -379,7 +379,7 @@ public:
      * @param parallelEnergy The parallel energy for which it is calculated (eV)
      * @return parallel energy
      */
-    double parallelEnergyDistributionForEnergy(double parallelEnergy);
+    double parallelEnergyDistributionIntegrateTotal(double parallelEnergy);
 
     /**
      * @brief Calculates the total current density by integrating the double integral first over toal(inner) and then over parallel energies

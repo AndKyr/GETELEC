@@ -32,7 +32,7 @@ void BandEmitter::setIntegrationLimits(){
 
     minParallelEnergy = 0.; //min parallel energy is always 0
     if (effectiveMass > 0.)
-        maxParallelEnergy = effectiveMass * (maxTotalEnergy + bandDepth);
+        maxParallelEnergy = min(effectiveMass * (maxTotalEnergy + bandDepth), maxTotalEnergy - minTotalEnergy);
     else
         maxParallelEnergy = effectiveMass * (minTotalEnergy + bandDepth);
     
@@ -169,7 +169,7 @@ double BandEmitter::currentDensityIntegrateNormal(bool saveNormalEnergyDistribut
         double result = thisObj->normalEnergyDistributionForEnergy(normalEnergy);
         if (thisObj->saveSpectra){
             thisObj->normalEnergyDistribution.first.push_back(normalEnergy);
-            thisObj->normalEnergyDistribution.second.push_back(result);
+            thisObj->normalEnergyDistribution.second.push_back(result * CONSTANTS.SommerfeldConstant) ;
         }
         return result;
     };
@@ -244,7 +244,7 @@ double BandEmitter::totalEnergyDistributionIntegrateParallel(double totalEnergy)
     double(*integrationFunctionPointer)(double, void*) = integrationLambda; // convert the lambda into raw function pointer
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
 
-    double maxParallelEnergy = effectiveMass * (totalEnergy + bandDepth);
+    double maxParallelEnergy = min(effectiveMass * (totalEnergy + bandDepth), totalEnergy - workFunction - interpolator.getMinimumSampleEnergy());
     assert(maxParallelEnergy >= 0 && "maxParallelEnergy is not positive");
 
     double result, error;
@@ -311,9 +311,8 @@ double BandEmitter::nottinghamIntegrateTotalPrallel(){
     return result;
 }
 
-double BandEmitter::parallelEnergyDistributionForEnergy(double parallelEnergy){
+double BandEmitter::parallelEnergyDistributionIntegrateTotal(double parallelEnergy){
     assert(integrationWorkspace && "integrationWorkspace is not initialized");
-
 
     helperEnergy = parallelEnergy; // store the totalEnergy in the class variable to be used in the lambda function
     auto integrationLambda = [](double totalEnergy, void* params) {
@@ -324,7 +323,8 @@ double BandEmitter::parallelEnergyDistributionForEnergy(double parallelEnergy){
     double(*integrationFunctionPointer)(double, void*) = integrationLambda; // convert the lambda into raw function pointer
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this}; //convert to gsl_function and pass this pointer
 
-    double minTotalEnergyLocal = -bandDepth + parallelEnergy / effectiveMass;
+
+    double minTotalEnergyLocal = max(-bandDepth + parallelEnergy / effectiveMass, workFunction + interpolator.getMinimumSampleEnergy() + parallelEnergy);
 
     if (minTotalEnergyLocal > maxTotalEnergy) //if the minimum total energy is beyond the limits of non-negligible contribution
         return 0.;
@@ -351,7 +351,7 @@ double BandEmitter::currentDensityIntegrateParallelTotal(bool saveParallelEnergy
 
     auto integrationLambda = [](double parallelEnergy, void* params) {
         BandEmitter* thisObj =  static_cast<BandEmitter*>(params);
-        double result = thisObj->parallelEnergyDistributionForEnergy(parallelEnergy);
+        double result = thisObj->parallelEnergyDistributionIntegrateTotal(parallelEnergy);
         if (thisObj->saveSpectra){
             thisObj->parallelEnergyDistribution.first.push_back(parallelEnergy);
             thisObj->parallelEnergyDistribution.second.push_back(result);
