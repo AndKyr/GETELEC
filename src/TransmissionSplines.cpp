@@ -1,4 +1,5 @@
 #include "TransmissionSplines.h"
+#include <iomanip>
 
 namespace getelec{
 
@@ -49,15 +50,23 @@ int TransmissionSpline::writeSplineSolution(string filename, int nPoints){
 
     vector<double> energyPoints = Utilities::linspace(getMinimumSampleEnergy(), getMaximumSampleEnergy(), nPoints);
     
-    file << "# energy, sol[0], sol[1], sol[2], interp[0], interp[1], interp[2], transmissionProbability, estimated NED" << endl;
+    const int columnWidth = 16;
+    vector<string> header = {"#energy", "sol[0]", "sol[1]", "sol[2]", "sol[3]", "sol[4]", "sol[5]", "interp[0]", "interp[1]", "interp[2]", "D[calc]", "D[interp]", "est. NED[calc]", "est.NED[interp]"};
+    for(auto& s : header) file << setw(columnWidth) << s;
+    file << endl;
+
     for (size_t i = 0; i < energyPoints.size(); i++){
         solver.setEnergyAndInitialValues(energyPoints[i]);
         solver.solveNoSave();
-        const auto& solutionVector = solver.getSolution();
+        const auto solutionVector = solver.getSolution();
         auto interpolatedValues = evaluateMultiple(energyPoints[i]);
-        file << energyPoints[i] << " " << solutionVector[0] << " " << solutionVector[1] << " " << solutionVector[2] << " ";
-        file << interpolatedValues[0] << " " << interpolatedValues[1] << " " << interpolatedValues[2] << " ";
-        file << solver.calculateTransmissionProbability(energyPoints[i]) << " " << solver.getEmissionEstimate(12., workFunction, kT) << endl;
+
+        file << setw(columnWidth) << energyPoints[i];
+        for(const auto& s : solutionVector) file << setw(columnWidth) << s;
+        for(const auto& s : interpolatedValues) file << setw(columnWidth) << s;
+
+        file << setw(columnWidth) << solver.getTransmissionProbabilityforWaveVector(12.) << setw(columnWidth) << getTransmissionProbability(energyPoints[i], 12.);
+        file << setw(columnWidth) << solver.getEmissionEstimate(12., workFunction, kT) << setw(columnWidth) << normalEnergyDistributionEstimate(energyPoints[i]) << endl;
     }
     file.close();
     return 1;
@@ -133,26 +142,43 @@ void TransmissionSpline::smartInitialSampling(double bandDepth, double effective
     //the extent by which the transmission coefficient decays below Fermi level
     double dLogD_dE_atInitialSample = -2. * solutionDerivativeSamples[2].back();
     double logD_atInitialSample = -solutionSamples[2].back();
-    double lowDecayLength = 1. / dLogD_dE_atInitialSample;
-    
-    //TODO: take into account the absolute tolerance in determining the numberOfDecayLengths
-    double numberOfDecayLengths = -log(relativeTolerance);
+    double numberOfDecayLengthsForRtol = -log(relativeTolerance);
 
-    double pointToSample = initialSampleEnergy - numberOfDecayLengths * lowDecayLength; // - min(numberOfDecayLengths * lowDecayLength, -(log(absoluteTolerance) - logD_atInitialSample)/dLogD_dE_atInitialSample);
-    sampleEnergyPoint(pointToSample);
+    bool noTunnelingRegime = false; // it is true if  D(E < barrier top) ~= 0, i.e. no tunneling
+
+    if (logD_atInitialSample > log(absoluteTolerance)){ //if D large enough to be worth the extra sample
+        double lowDecayLength = 1. / dLogD_dE_atInitialSample;
+        double lengthToDecay = min(numberOfDecayLengthsForRtol * lowDecayLength,  (logD_atInitialSample - log(absoluteTolerance)) * lowDecayLength);
+        sampleEnergyPoint( initialSampleEnergy - lengthToDecay);
+    } else {
+        noTunnelingRegime = true;
+    }
+
+    maximumCurrentPosition = initialSampleEnergy;
+
 
     if (effectiveMass > 0.){ //if effective mass < 0., there is no need to sample above the top of the band
-        double highDecayRate = 1./ kT - dLogD_dE_atInitialSample;
+        double highDecayRate = 1./ kT - dLogD_dE_atInitialSample; //the estimated upwards decay rate at initialSample (if negative it means it goes upwards)
         double fermiToBarrier = topOfBarrier + workFunction;
         
         //If the spectra don't decay fast enough to have decayed before the barrier top (or don't decay at all), sample the top of barrier and a point beyond
-        if (highDecayRate < numberOfDecayLengths / fermiToBarrier){ 
-            sampleEnergyPoint(topOfBarrier);
-            sampleEnergyPoint(topOfBarrier + numberOfDecayLengths* kT);
+        if (highDecayRate < numberOfDecayLengthsForRtol / fermiToBarrier || fermiToBarrier < 1.e-3 ){ 
+            sampleEnergyPoint(topOfBarrier); //sample the barrier top
+
+            double logFDatBarrierTop = Utilities::logFermiDiracFunction(topOfBarrier + workFunction, kT); //estimate the current density at the barrier top
+            if (logFDatBarrierTop < absoluteTolerance || noTunnelingRegime){ //if it is not worth going far or nasty noTunnelingRegime, sample nearby
+                sampleEnergyPoint(topOfBarrier + 0.2);
+            }
+
+            if (logFDatBarrierTop >= absoluteTolerance){ //if sampling far beyond top barrier is worthit
+                double lengthToDecay = min(numberOfDecayLengthsForRtol * kT,  (logFDatBarrierTop - log(absoluteTolerance)) * kT);
+                sampleEnergyPoint(topOfBarrier + lengthToDecay);
+            }
+            maximumCurrentPosition = topOfBarrier;
         }
         //If the spectra decay slow enough to be worth it, sample a above Ef. Force sample it we have only one sample point
         else if (highDecayRate < 100. ||  sampleEnergies.size() < 2){
-            double pointToSample = -workFunction + numberOfDecayLengths / highDecayRate;
+            double pointToSample = -workFunction + numberOfDecayLengthsForRtol / highDecayRate;
             sampleEnergyPoint(pointToSample);
         }
     }
@@ -170,7 +196,7 @@ int TransmissionSpline::findMaximumCurrentEstimate(int maxIterations, double rTo
     
 
     gsl_set_error_handler_off(); // turn off GSL error handler
-    int status = gsl_min_fminimizer_set(minimizer, &F, 0.5 * (getMinimumSampleEnergy() + getMaximumSampleEnergy()), getMinimumSampleEnergy(), getMaximumSampleEnergy());
+    int status = gsl_min_fminimizer_set(minimizer, &F, maximumCurrentPosition, getMinimumSampleEnergy(), getMaximumSampleEnergy());
 
     if (status == GSL_EINVAL){
         if (checkAllBelowTolerance())
@@ -291,6 +317,7 @@ void TransmissionSpline::refineSamplingToTolerance(int maxRefineSteps){
     if(maxFoundStatus < 0){
         sampleEnergyPoint(getMaximumSampleEnergy() + kT);
         sortAndInitialize();
+        assert((writeSplineSolution(), writeSplineNodes(), false)); //if in debug mode, then write the splines to check them.
     }
 
     for (int i = 0; i < maxRefineSteps; i++){

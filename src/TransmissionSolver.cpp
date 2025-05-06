@@ -47,9 +47,11 @@ int TransmissionSolver::ensureBarrierDeepEnough(double energy, double depthLimit
     for (double newBarrierDepth = -energy + 5.; energy < minimumValidEnergy(); newBarrierDepth += 5.){
         setXlimits(newBarrierDepth);
         numberOfBarrierDepthAdjustments++;
-        if (newBarrierDepth > depthLimit)
+        if (newBarrierDepth > depthLimit){
+            assert((writeBarrierPlottingData(), false));
             throw std::runtime_error("The solver's barrier depth was reduced below " + 
                 std::to_string(depthLimit) + " eV without satisfying WKB validity conditions. Something is wrong with the barrier shape");
+        }
     }
     return numberOfBarrierDepthAdjustments;
 }

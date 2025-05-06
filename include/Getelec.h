@@ -79,7 +79,8 @@ public:
 
 
     ~Getelec(){
-        delete generator;
+        if (generator) delete generator;
+        generator = nullptr;
     }
 
     void setGenerator(mt19937* generator_){
@@ -486,6 +487,12 @@ public:
     pair<double, double> getBarrierIntegrationLimits(size_t paramIndex = 0);
 
     const CalculationFlags& getCalculationStatusFlags() const { return calculationStatusFlags; }
+
+    /**
+     * @brief writes all the calculates spectra for the calculation paramIndex into corresponding files
+     * @param paramIndex The index of the data to be written
+     */
+    void writeSpectraToFiles(size_t paramIndex) const;
 
 private:
 

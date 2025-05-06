@@ -384,8 +384,16 @@ double BandEmitter::normalEnergyDistributionIntegratePrallel(double normalEnergy
     double(*integrationFunctionPointer)(double, void*) = integrationLambda; // convert the lambda into raw function pointer
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
 
-    double maxParallelEnergyLocal = effectiveMass == 1. ? maxTotalEnergy - normalEnergy : min(maxTotalEnergy - normalEnergy, (normalEnergy + bandDepth) * effectiveMass / abs(1. - effectiveMass));
-    double minParallelEnergyLocal =  max(minTotalEnergy - normalEnergy, 0.);
+    double maxParallelEnergyLocal;// = effectiveMass == 1. ? maxTotalEnergy - normalEnergy : min(maxTotalEnergy - normalEnergy, (normalEnergy + bandDepth) * effectiveMass / abs(1. - effectiveMass));
+    double minParallelEnergyLocal = 0.;//  max(minTotalEnergy - normalEnergy, 0.);
+
+
+    if (effectiveMass >= 1.){
+        if (normalEnergy < -bandDepth && effectiveMass != 1.) minParallelEnergyLocal = -(normalEnergy + bandDepth) * effectiveMass / (effectiveMass - 1.);
+        maxParallelEnergyLocal = maxTotalEnergy - normalEnergy;
+    } else{
+        maxParallelEnergyLocal = (normalEnergy + bandDepth) * effectiveMass / (1. - effectiveMass);
+    }
 
     if (minParallelEnergyLocal > maxParallelEnergyLocal)
         return 0.;
