@@ -2,7 +2,7 @@
 #include <cassert>
 #include <sstream>
 #include <gsl/gsl_complex_math.h>
-
+#include <gsl/gsl_min.h>
 namespace getelec{
 
 int TransmissionSolver::tunnelingDifferentialSystem(double x, const double y[], double f[], void *params){
@@ -140,10 +140,42 @@ const double TransmissionSolver::getMaxBArrierDepth() const{
     return max(initialPotential, finalPotential);
 }
 
-void TransmissionSolver::writeBarrierPlottingData(string filename, int nPoints){
+double TransmissionSolver::findBarrierTop(double tolerance) const{
+    auto lambdaMinimizer = [](double x, void* params) -> double {
+        TunnelingFunction* thisObject = (TunnelingFunction*) params;
+        return -thisObject->potentialFunction(x);
+    }; // a lambda that gives the - of the NED
+    double (* functionPointer)(double, void*) = lambdaMinimizer;//convert the lambda into raw function pointer
+    gsl_function F = {functionPointer, (void*) this}; //define gsl function to be minimized
+    
+    const gsl_min_fminimizer_type* type = gsl_min_fminimizer_brent; /* GSL object (minimizer type) for finding the max of the barrier */
+    gsl_min_fminimizer* minimizer = gsl_min_fminimizer_alloc(type); 
+
+    // gsl_set_error_handler_off(); // turn off GSL error handler
+    gsl_min_fminimizer_set(minimizer, &F, (xInitial + xFinal) * 0.5 , xFinal, xInitial);
+
+    for (int i = 0; i < maxAllowedSteps; i++){
+        int status = gsl_min_fminimizer_iterate(minimizer); //perform minimization iteration
+        
+        if (status == GSL_EBADFUNC || status == GSL_FAILURE){ // something is messed up. Throw exception
+            assert(false && "Step for finding max estimated current energy failed to iterate");
+            throw std::runtime_error("Step for finding max estimated current energy failed to iterate");
+        }
+        //check if we have converged
+        double minValue = gsl_min_fminimizer_f_minimum(minimizer);
+        double maxValueInInterval = max(gsl_min_fminimizer_f_lower(minimizer), gsl_min_fminimizer_f_upper(minimizer));
+        if (abs(minValue - maxValueInInterval) < tolerance){ //if we have reached tolerance
+            return - minValue;
+        }
+    }
+    assert((writeBarrierPlottingData(), false) && "Finding barrier maximum failed to converge");
+    return 0.0;
+}
+
+void TransmissionSolver::writeBarrierPlottingData(string filename, int nPoints) const{
     ofstream file(filename);
 
-    vector<double>& xPoints = xSaved;
+    vector<double> xPoints = xSaved;
 
     if (nPoints > 2)
         xPoints = Utilities::linspace(xFinal, xInitial, nPoints);

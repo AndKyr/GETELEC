@@ -123,19 +123,17 @@ void TransmissionSpline::calculateAndSetSampleValues(size_t index){
 void TransmissionSpline::smartInitialSampling(double bandDepth, double effectiveMass){
 
     reset();
-
+    // make sure that the solver has energy derivatives
     assert((solver.getEnergyDerivativeLevel() > 0) && "The solver should be set with energyDerivatigveLevel>0 to get Hermite spline interpolation");
-
+    
     //choose initial sampling point To be the Fermi, except if m*<0, (valence band), choose top of band
     double initialSampleEnergy = effectiveMass > 0. ? -workFunction : -workFunction - bandDepth;
 
-    // make sure that the solver has energy derivatives
     solver.setXlimits(-initialSampleEnergy + 5.); // set the limits for the transmission solver. 
+    double numberOfDecayLengthsForRtol = -log(relativeTolerance);
 
-    if (solver.getXInitial() > 10.){
-        writeSplineSolution();
-        writeSplineNodes();
-    }
+    if (solver.getXInitial() > 100.) // the barrier is very long. A different approach is necessary
+        return smartSamplingForLongBarrier();
 
     solver.getBarrier()->setBarrierTopFinder(true); // set barrier top finder
     sampleEnergyPoint(initialSampleEnergy); //sample the fermi level
@@ -144,10 +142,6 @@ void TransmissionSpline::smartInitialSampling(double bandDepth, double effective
 
     double dLogD_dE_atInitialSample = -2. * solutionDerivativeSamples[2].back(); //Estimation for the transmission coefficient decay rate down from initial soample
     double logD_atInitialSample =  log(solver.getTransmissionProbabilityforWaveVector(12.)) ; //Estimation of log(D) at the initial sample 
-    double numberOfDecayLengthsForRtol = -log(relativeTolerance);
-
-    assert(logD_atInitialSample < 0. && "Transmission probability > 1. Something is off with the solver");
-    solver.writeBarrierPlottingData();
 
     bool noTunnelingRegime = false; // it is true if  D(E < barrier top) ~= 0, i.e. no tunneling
 
@@ -158,37 +152,38 @@ void TransmissionSpline::smartInitialSampling(double bandDepth, double effective
     } else {
         noTunnelingRegime = true;
     }
+    maximumCurrentPosition = initialSampleEnergy; //set the initial guess for the maximum current estimate location to the initial sample
 
-    maximumCurrentPosition = initialSampleEnergy;
-
-
-    if (effectiveMass > 0.){ //if effective mass < 0., there is no need to sample above the top of the band
-        double highDecayRate = 1./ kT - dLogD_dE_atInitialSample; //the estimated upwards decay rate at initialSample (if negative it means it goes upwards)
-        double fermiToBarrier = topOfBarrier + workFunction;
-        
-        //If the spectra don't decay fast enough to have decayed before the barrier top (or don't decay at all), or Fermi is above barrier, sample the top of barrier and a point beyond
-        if (highDecayRate < numberOfDecayLengthsForRtol / fermiToBarrier || fermiToBarrier < 1.e-3 ){ 
-
-            if (fermiToBarrier > 0.2) sampleEnergyPoint(topOfBarrier); //sample the barrier top
-
-            double logFDatBarrierTop = Utilities::logFermiDiracFunction(topOfBarrier + workFunction, kT); //estimate the current density at the barrier top
-            if (logFDatBarrierTop < absoluteTolerance || noTunnelingRegime){ //if it is not worth going far or nasty noTunnelingRegime, sample nearby
-                sampleEnergyPoint(topOfBarrier + 0.2);
-            }
-
-            if (logFDatBarrierTop >= absoluteTolerance){ //if sampling far beyond top barrier is worthit
-                double lengthToDecay = min(numberOfDecayLengthsForRtol * kT,  (logFDatBarrierTop - log(absoluteTolerance)) * kT);
-                sampleEnergyPoint(max(topOfBarrier, -workFunction) + lengthToDecay);
-            }
-            maximumCurrentPosition = topOfBarrier;
-        }
-        //If the spectra decay slow enough to be worth it, sample a above Ef. Force sample it we have only one sample point
-        else if (highDecayRate < 100. ||  sampleEnergies.size() < 2){
-            double pointToSample = -workFunction + numberOfDecayLengthsForRtol / highDecayRate;
-            sampleEnergyPoint(pointToSample);
-        }
+    if (effectiveMass < 0.){//if effective mass < 0., there is no need to sample above the top of the band
+        sortAndInitialize();
+        return;
     }
 
+    double highDecayRate = 1./ kT - dLogD_dE_atInitialSample; //the estimated upwards decay rate at initialSample (if negative it means it goes upwards)
+    double fermiToBarrier = topOfBarrier + workFunction;
+    
+    //If the spectra don't decay fast enough to have decayed before the barrier top (or don't decay at all), or Fermi is above barrier, sample the top of barrier and a point beyond
+    if (highDecayRate < numberOfDecayLengthsForRtol / fermiToBarrier || fermiToBarrier < 1.e-3 ){ 
+
+        if (fermiToBarrier > 0.2) sampleEnergyPoint(topOfBarrier); //sample the barrier top
+
+        double logFDatBarrierTop = Utilities::logFermiDiracFunction(topOfBarrier + workFunction, kT); //estimate the current density at the barrier top
+        if (logFDatBarrierTop < absoluteTolerance || noTunnelingRegime){ //if it is not worth going far or nasty noTunnelingRegime, sample nearby
+            sampleEnergyPoint(topOfBarrier + 0.2);
+        }
+
+        if (logFDatBarrierTop >= absoluteTolerance){ //if sampling far beyond top barrier is worth it
+            double lengthToDecay = min(numberOfDecayLengthsForRtol * kT,  (logFDatBarrierTop - log(absoluteTolerance)) * kT);
+            sampleEnergyPoint(max(topOfBarrier, -workFunction) + lengthToDecay);
+        }
+        maximumCurrentPosition = topOfBarrier; //set the initial guess to the top of the barrier
+    }
+    //If the spectra decay slow enough to be worth it, sample a above Ef. Force sample it we have only one sample point
+    else if (highDecayRate < 100. ||  sampleEnergies.size() < 2){
+        double pointToSample = -workFunction + numberOfDecayLengthsForRtol / highDecayRate;
+        sampleEnergyPoint(pointToSample);
+    }
+    
     sortAndInitialize();
 }
 
@@ -292,7 +287,33 @@ bool TransmissionSpline::checkSolutionSanity(const vector<double> &solutionVecto
     return true;
 }
 
-void TransmissionSpline::refineSamplingToTolerance(int maxRefineSteps){
+void TransmissionSpline::smartSamplingForLongBarrier(){
+    double topOfBarrier = solver.findBarrierTop(); //find the barrier top with gsl minimizer. ODE is unreliable
+    double energy = topOfBarrier;
+    for(int i = 0; i < 100; i++){
+        sampleEnergyPoint(energy);
+        double transmissionProbability = solver.getTransmissionProbabilityforWaveVector(12.);
+        if (transmissionProbability < absoluteTolerance)
+            break;
+        energy -= 0.1;
+    }
+
+    double logFDatBarrierTop = Utilities::logFermiDiracFunction(topOfBarrier + workFunction, kT); //estimate the current density at the barrier top
+    sampleEnergyPoint(topOfBarrier + 0.2);
+    
+    double numberOfDecayLengthsForRtol = -log(relativeTolerance);
+
+    if (logFDatBarrierTop >= absoluteTolerance){ //if sampling far beyond top barrier is worth it
+        double lengthToDecay = min(numberOfDecayLengthsForRtol * kT,  (logFDatBarrierTop - log(absoluteTolerance)) * kT);
+        sampleEnergyPoint(max(topOfBarrier, -workFunction) + lengthToDecay);
+    }
+    maximumCurrentPosition = topOfBarrier; //set the initial guess to the top of the barrier
+    sortAndInitialize();
+    return;
+}
+
+void TransmissionSpline::refineSamplingToTolerance(int maxRefineSteps)
+{
     int maxFoundStatus = findMaximumCurrentEstimate();
 
     if (maxFoundStatus == 0) 

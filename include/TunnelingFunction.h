@@ -115,6 +115,10 @@ public:
             minKappaSquared = numeric_limits<double>::infinity();
     }
     
+    /**
+     * @brief gets the top of the barrier (needs to have been calculated first)
+     * @return the top of the barrier (energy in eV)
+     */
     double getBarrierTop() const { 
         assert(isfinite(minKappaSquared) && "Attempt to get the barrier top without finding it first");
         return energy - minKappaSquared / CONSTANTS.kConstant;

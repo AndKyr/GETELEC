@@ -189,6 +189,13 @@ private:
     int refineSampling(); 
 
     /**
+     * @brief Runs the initial sampling for the extreme case of super long barriers (effectively only thermionic emission allowed)
+     * 
+     */
+    void smartSamplingForLongBarrier();
+    
+
+    /**
      * @brief Samples the transmission coefficient at a given energy level.
      * @param energy Energy level (eV).
      * @param index Index where to emplace the sample point (default is -1, which means append to the end).

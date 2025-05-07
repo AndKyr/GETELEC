@@ -164,6 +164,11 @@ public:
      */
     double calculateKappaFinal() const;
 
+    /**
+     * @brief finds the top of the barrier and returns it
+     * @return the top of the barrier (energ in)
+     */
+    double findBarrierTop(double tolerance = 1.e-5) const;
 
     /**
      * @brief Sets the splines for the solution of the tunneling problem.
@@ -245,7 +250,7 @@ public:
 
     TunnelingFunction* getBarrier() { return barrier; }
 
-    void writeBarrierPlottingData(string filename = "barrier.dat", int nPoints = 256);
+    void writeBarrierPlottingData(string filename = "barrier.dat", int nPoints = 256) const;
 
 };
 
