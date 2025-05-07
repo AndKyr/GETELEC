@@ -43,9 +43,10 @@ int TransmissionSolver::tunnelingSystemJacobian(double x, const double y[], doub
 
 int TransmissionSolver::ensureBarrierDeepEnough(double energy, double depthLimit){
     int numberOfBarrierDepthAdjustments = 0;
-    // setEnergyAndInitialValues(energy);
-    for (double newBarrierDepth = -energy + 5.; energy < minimumValidEnergy(); newBarrierDepth += 5.){
+    bool xInitialInForbiddenRegion = updateKappaInitial();
+    for(double newBarrierDepth = -energy + 5.; xInitialInForbiddenRegion || energy < minimumValidEnergy(); newBarrierDepth += 5.){
         setXlimits(newBarrierDepth);
+        xInitialInForbiddenRegion = updateKappaInitial();
         numberOfBarrierDepthAdjustments++;
         if (newBarrierDepth > depthLimit){
             assert((writeBarrierPlottingData(), false));
@@ -56,13 +57,15 @@ int TransmissionSolver::ensureBarrierDeepEnough(double energy, double depthLimit
     return numberOfBarrierDepthAdjustments;
 }
 
-void TransmissionSolver::updateKappaInitial(){
+int TransmissionSolver::updateKappaInitial(){
     double kappaSquaredInitial = barrier->kappaSquared(xInitial);
 
     if (kappaSquaredInitial <= 0.) 
-        throw std::runtime_error("The tunneling energy is lower than the edge potential values. The integration interval must extend beyond the classically forbidden region.");
-    
-    kappaInitial = sqrt(kappaSquaredInitial);
+        return 1;
+    else{
+        kappaInitial = sqrt(kappaSquaredInitial);
+        return 0;
+    }    
 }
 
 double TransmissionSolver::calculateKappaFinal() const{
@@ -112,6 +115,12 @@ double TransmissionSolver::calculateTransmissionProbability(double energy, doubl
     return max(out, 1.e-50);
 }
 
+const vector<double>& TransmissionSolver::calculateSolution(double energy){
+    setEnergyAndInitialValues(energy);
+    solveNoSave();
+    return getSolution();
+}
+
 gsl_complex TransmissionSolver::transmissionCoefficient(double waveVector, const vector<double>& leftSolution){
     gsl_complex incidentWaveCoeffTimes2;
     GSL_SET_COMPLEX(&incidentWaveCoeffTimes2, waveVector + leftSolution[1], -leftSolution[0]);
@@ -137,7 +146,7 @@ void TransmissionSolver::writeBarrierPlottingData(string filename, int nPoints){
     vector<double>& xPoints = xSaved;
 
     if (nPoints > 2)
-        xPoints = Utilities::linspace(xInitial, xFinal, nPoints);
+        xPoints = Utilities::linspace(xFinal, xInitial, nPoints);
 
     file << "# x [nm] V(x) - E [eV]" << endl;
     for (auto x : xPoints){

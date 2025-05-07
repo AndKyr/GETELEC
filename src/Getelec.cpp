@@ -27,7 +27,7 @@ void Getelec::runIteration(size_t i, CalculationFlags flags) {
     barrier->setBarrierParameters(params.field, params.radius, params.gamma);
     emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth); 
 
-    if (abs(params.effectiveMass - 1.) > config.bandEmitterParams.effectiveMassTolerance){
+    if (abs(params.effectiveMass - 1.) > numeric_limits<double>::epsilon()){
         runIterationEffectiveMassNonUnity(i, flags);
     } else {
         runIterationEffectiveMassUnity(i, flags);
@@ -88,7 +88,7 @@ void Getelec::runIterationEffectiveMassUnity(size_t i, CalculationFlags flags){
     currentDensityVector[i] = meanCurrentDensity;
 
     assert(all_of(allCurrentDensities.begin(), allCurrentDensities.end(), [meanCurrentDensity, &emitter ](double x) {
-            return abs(x - meanCurrentDensity) < 100. * emitter.getToleranceForValue(meanCurrentDensity);
+            return abs(x - meanCurrentDensity) < 50. * emitter.getToleranceForValue(meanCurrentDensity);
         }) || (writeSpectraToFiles(i), "current densities calculated with various methods do not agree to each other.", false));
 
 }
@@ -136,7 +136,7 @@ void Getelec::runIterationEffectiveMassNonUnity(size_t i, CalculationFlags flags
     currentDensityVector[i] = meanCurrentDensity;
 
     assert(all_of(allCurrentDensities.begin(), allCurrentDensities.end(), [meanCurrentDensity, &emitter ](double x) {
-            return abs(x - meanCurrentDensity) < 100 * emitter.getToleranceForValue(meanCurrentDensity);
+            return abs(x - meanCurrentDensity) < 50 * emitter.getToleranceForValue(meanCurrentDensity);
         }) || (writeSpectraToFiles(i), "current densities calculated with various methods do not agree to each other.", false));
 }
 

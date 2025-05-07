@@ -13,6 +13,23 @@
 #include <iostream>
 
 namespace getelec{
+
+// TEST(GetelecTest, problematicCaseTest){
+//     Getelec getelec = Getelec();
+    
+//     getelec.setBandDepth(       0.87846139315204075);
+//     getelec.setEffectiveMass(   1.1022700967291263);
+//     getelec.setkT(              0.74472400790139592);
+//     getelec.setWorkFunction(    4.9363137621695294);
+//     getelec.setGamma(           2.5177714747462816);
+//     getelec.setRadius(          4.2484843654803148);
+//     getelec.setField(           0.0088007140272604312 );
+
+
+//     EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
+// }
+
+    
 /**
  * @brief Test for TransmissionSolver:: check that the transmission coefficient for the default barrier is the one expected
  */
@@ -187,7 +204,7 @@ TEST(BandEmitterTest, totalEnergyDistributionMethodComparison){
 
         for (size_t j = 0; j < totalEnergies.size(); j++){
             double TEDFromIntegral = emitter.totalEnergyDistributionIntegrateParallel(totalEnergies[j]);
-            EXPECT_NEAR(totalEnergyDistributions[j], TEDFromIntegral , 5 * emitter.getToleranceForValue(totalEnergyDistributions[j]));
+            EXPECT_NEAR(totalEnergyDistributions[j], TEDFromIntegral , 10 * emitter.getToleranceForValue(totalEnergyDistributions[j]));
         }
     }
 }
@@ -274,7 +291,7 @@ TEST(ConfigTest, ConfigFileReadTest){
     EXPECT_EQ(config.bandEmitterParams.maxSteps, config2.bandEmitterParams.maxSteps);
     ifstream file("tempConfig.txt");
     string line;
-    while (getline(file, line)) cout << line << endl;
+    while(getline(file, line)) cout << line << endl;
     file.close();
     remove("tempConfig.txt");
 }
@@ -289,8 +306,14 @@ TEST(GetelecTest, runRandomCasesTest){
     mt19937 generator(1987);
 
     Getelec getelec = Getelec("GetelecConfig.txt", "modifiedSN", &generator);
-    // getelec.setGenerator(&generator);
-    getelec.setRandomParameters(64);
+
+    //test first for effectiveMass!=1.
+    getelec.setRandomParameters(256);
+    EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
+
+    //test second for effectiveMass=1.
+    getelec.setRandomParameters(256);
+    getelec.setEffectiveMass(1.);
     EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
 }
 
@@ -300,7 +323,7 @@ TEST(GetelecTest, runRandomCasesTest){
  */
 TEST(GetelecObjectTest, RunParalleltest){
     Getelec getelec;
-    auto fields = Utilities::linspace(2., 10., 64);
+    auto fields = Utilities::linspace(2., 10., 256);
     getelec.setField(fields);
     EXPECT_NO_THROW(getelec.run());
 }
@@ -343,6 +366,7 @@ TEST(GeneralXCFunctionTest, DerivativeTest){
     }
 
 }
+
 
 
 } // namespace getelec

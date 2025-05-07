@@ -170,7 +170,6 @@ public:
         int minSteps = 16;
         int stepExpectedForInitialStep = 256;
         int maxAllowedRefiningSteps = 10;
-        double effectiveMassTolerance = .05;
         
         void initializeKeyMap(){
             name = "bandEmitter";
@@ -182,7 +181,6 @@ public:
                     {"minSteps", &minSteps},
                     {"stepExpectedForInitialStep", &stepExpectedForInitialStep},
                     {"maxAllowedRefiningSteps", &maxAllowedRefiningSteps},
-                    {"effectiveMassTolerance", &effectiveMassTolerance}
                 };
         }
     } bandEmitterParams;

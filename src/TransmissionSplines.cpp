@@ -109,10 +109,8 @@ void TransmissionSpline::sampleEnergyPoint(double energy, size_t index, bool bis
 
 void TransmissionSpline::calculateAndSetSampleValues(size_t index){
     double energy = sampleEnergies[index];
-    solver.ensureBarrierDeepEnough(energy); // make sure the barrier is deep enough for the energy
-    solver.setEnergyAndInitialValues(energy);
-    solver.solveNoSave();
-    auto solutionVector = solver.getSolution();
+
+    const vector<double>& solutionVector = solver.calculateSolution(energy);
     for (int i = 0; i < 3; i++){
         solutionSamples[i][index] = solutionVector[i];
         solutionDerivativeSamples[i][index] = solutionVector[i + 3] * CONSTANTS.kConstant;
@@ -134,15 +132,22 @@ void TransmissionSpline::smartInitialSampling(double bandDepth, double effective
     // make sure that the solver has energy derivatives
     solver.setXlimits(-initialSampleEnergy + 5.); // set the limits for the transmission solver. 
 
+    if (solver.getXInitial() > 10.){
+        writeSplineSolution();
+        writeSplineNodes();
+    }
+
     solver.getBarrier()->setBarrierTopFinder(true); // set barrier top finder
     sampleEnergyPoint(initialSampleEnergy); //sample the fermi level
     double topOfBarrier = solver.getBarrier()->getBarrierTop(); //get the barrier top
     solver.getBarrier()->setBarrierTopFinder(false); // reset the barrier top finder to off. No need any more
 
-    //the extent by which the transmission coefficient decays below Fermi level
-    double dLogD_dE_atInitialSample = -2. * solutionDerivativeSamples[2].back();
-    double logD_atInitialSample = -solutionSamples[2].back();
+    double dLogD_dE_atInitialSample = -2. * solutionDerivativeSamples[2].back(); //Estimation for the transmission coefficient decay rate down from initial soample
+    double logD_atInitialSample =  log(solver.getTransmissionProbabilityforWaveVector(12.)) ; //Estimation of log(D) at the initial sample 
     double numberOfDecayLengthsForRtol = -log(relativeTolerance);
+
+    assert(logD_atInitialSample < 0. && "Transmission probability > 1. Something is off with the solver");
+    solver.writeBarrierPlottingData();
 
     bool noTunnelingRegime = false; // it is true if  D(E < barrier top) ~= 0, i.e. no tunneling
 
@@ -252,7 +257,7 @@ int TransmissionSpline::refineSampling(){
     return noInsertedSamples;
 }
 
-bool TransmissionSpline::checkSolutionSanity(vector<double> &solutionVector, double energy, double absoluteTolerance, bool writeSolverPlottingData){
+bool TransmissionSpline::checkSolutionSanity(const vector<double> &solutionVector, double energy, double absoluteTolerance, bool writeSolverPlottingData){
     // Check if the solution vector is finite
     if (!all_of(solutionVector.begin(), solutionVector.end(), [](double x) { return isfinite(x); })) {
         return false;
@@ -309,7 +314,7 @@ void TransmissionSpline::refineSamplingToTolerance(int maxRefineSteps){
     if(maxFoundStatus < 0){
         sampleEnergyPoint(getMaximumSampleEnergy() + kT);
         sortAndInitialize();
-        assert((writeSplineSolution(), writeSplineNodes(), false)); //if in debug mode, then write the splines to check them.
+        assert((writeSplineSolution(), writeSplineNodes(), solver.writeBarrierPlottingData(), false) && "Failed to locate estimated current density maximum"); //if in debug mode, then write the splines to check them.
     }
 
     for (int i = 0; i < maxRefineSteps; i++){

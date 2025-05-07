@@ -243,7 +243,7 @@ private:
      * @return True if the solution is sane, false otherwise.
      * @note This method is used mostly in debug mode to ensure that a solution calculated by the solver is continuous as a function of energy. In other words it checks if the solution curve solution(energy) is smooth.
      */
-    bool checkSolutionSanity(vector<double>& solutionVector, double energy, double absoluteTolerance = 0.01, bool writeSolverPlottingData = false);
+    bool checkSolutionSanity(const vector<double>& solutionVector, double energy, double absoluteTolerance = 0.01, bool writeSolverPlottingData = false);
 };
 
 } // namespace getelec

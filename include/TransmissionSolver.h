@@ -81,7 +81,7 @@ public:
         Config::TransmissionSolverParams config = Config().transmissionSolverParams,
         double maxPotentialDepth = 10.,
         int energyDerivativeLvl_ = 0
-        ) : ODESolver(vector<double>(3 * (energyDerivativeLvl_+1), 0.0), 
+        ) : ODESolver(vector<double>(3 * (energyDerivativeLvl_ + 1), 0.0), 
                 energyDerivativeLvl_ == 0 ? tunnelingDifferentialSystem : tunnelingDifferentialSystemWithEnergyDerivative,
                 3 * (energyDerivativeLvl_+1), {2.00400712, 0.03599847}, config.relativeTolerance, config.absoluteTolerance, 
                 config.stepType, config.maxSteps, config.minSteps, 
@@ -154,8 +154,9 @@ public:
 
     /**
      * @brief Updates the wavevector (kappa) values at the integration limits.
+     * @return Returns 0 if everything is ok and 1 if xInitial is in the forbidden region
      */
-    void updateKappaInitial();
+    int updateKappaInitial();
 
     /**
      * @brief Calculates the final wavevector (kappa) value at x=xFinal.
@@ -188,6 +189,13 @@ public:
      * @return The transmission coefficient.
      */
     double calculateTransmissionProbability(double energy, double waveVector=-1.);
+
+    /**
+     * @brief calcualtes the differential system solution and returns it
+     * @param energy the energy at which to calculate the solution
+     * @return The solution in vector format.
+     */
+    const vector<double>& calculateSolution(double energy);
 
     /**
      * @brief calculates the complex transmission coefficient for a given wavevector

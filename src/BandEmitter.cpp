@@ -392,11 +392,10 @@ double BandEmitter::normalEnergyDistributionIntegratePrallel(double normalEnergy
         if (normalEnergy < -bandDepth && effectiveMass != 1.) minParallelEnergyLocal = -(normalEnergy + bandDepth) * effectiveMass / (effectiveMass - 1.);
         maxParallelEnergyLocal = maxTotalEnergy - normalEnergy;
     } else{
-        maxParallelEnergyLocal = (normalEnergy + bandDepth) * effectiveMass / (1. - effectiveMass);
+        maxParallelEnergyLocal = min((normalEnergy + bandDepth) * effectiveMass / (1. - effectiveMass), maxTotalEnergy - normalEnergy);
     }
 
-    if (minParallelEnergyLocal > maxParallelEnergyLocal)
-        return 0.;
+    assert(minParallelEnergyLocal <= maxParallelEnergyLocal && "Parallel energy integration limits are wrong");
 
     double result, error;
     gsl_integration_qag(&gslIntegrationFunction, minParallelEnergyLocal, maxParallelEnergyLocal, absoluteTolerance, relativeTolerance, maxAllowedSteps, 
