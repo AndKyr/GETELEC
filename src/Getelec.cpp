@@ -89,7 +89,7 @@ void Getelec::runIterationEffectiveMassUnity(size_t i, CalculationFlags flags){
 
     assert(all_of(allCurrentDensities.begin(), allCurrentDensities.end(), [meanCurrentDensity, &emitter ](double x) {
             return abs(x - meanCurrentDensity) < 50. * emitter.getToleranceForValue(meanCurrentDensity);
-        }) || (writeSpectraToFiles(i), "current densities calculated with various methods do not agree to each other.", false));
+        }) || (writeSpectraToFiles(i), emitter.writePlottingData(), "current densities calculated with various methods do not agree to each other.", false));
 
 }
 
@@ -137,7 +137,7 @@ void Getelec::runIterationEffectiveMassNonUnity(size_t i, CalculationFlags flags
 
     assert(all_of(allCurrentDensities.begin(), allCurrentDensities.end(), [meanCurrentDensity, &emitter ](double x) {
             return abs(x - meanCurrentDensity) < 50 * emitter.getToleranceForValue(meanCurrentDensity);
-        }) || (writeSpectraToFiles(i), "current densities calculated with various methods do not agree to each other.", false));
+        }) || (writeSpectraToFiles(i), emitter.writePlottingData(), "current densities calculated with various methods do not agree to each other.", false));
 }
 
 const double* Getelec::getSpectraEnergies(size_t i, size_t *length, char spectraType) const{

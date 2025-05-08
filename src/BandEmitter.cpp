@@ -186,17 +186,18 @@ double BandEmitter::currentDensityIntegrateNormal(bool saveNormalEnergyDistribut
 }
 
 void BandEmitter::writePlottingData(string filename) {
-    ofstream outFile(filename, ios::out);        
-    outFile << "#E D_calc(En=E) D_interp(En=E) NED(En=E) TED(Et=E)" << endl;
-    for (double energy = minTotalEnergy; energy < maxTotalEnergy; energy += 0.001) {
-        double waveVector = sqrt(energy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
-        double D_calculated = transmissionSolver.calculateTransmissionProbability(energy - workFunction, waveVector);
-        double D_interpolated = interpolator.getTransmissionProbability(energy - workFunction, waveVector);
-        double NED = interpolator.normalEnergyDistributionEstimate(energy - workFunction, waveVector);
-        double TED = getTotalEnergyDistributionForEnergy(energy);
+    // ofstream outFile(filename, ios::out);        
+    // outFile << "#E D_calc(En=E) D_interp(En=E) NED(En=E) TED(Et=E)" << endl;
+    // for (double energy = minTotalEnergy; energy < maxTotalEnergy; energy += 0.001) {
+    //     double waveVector = sqrt(energy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
+    //     double D_calculated = transmissionSolver.calculateTransmissionProbability(energy - workFunction, waveVector);
+    //     double D_interpolated = interpolator.getTransmissionProbability(energy - workFunction, waveVector);
+    //     double NED = interpolator.normalEnergyDistributionEstimate(energy - workFunction, waveVector);
+    //     double TED = getTotalEnergyDistributionForEnergy(energy);
 
-        outFile << energy << " " << D_calculated << " " << D_interpolated << " " << NED << " " << TED << " " << endl;
-    }
+    //     outFile << energy << " " << D_calculated << " " << D_interpolated << " " << NED << " " << TED << " " << endl;
+    // }
+    interpolator.writeSplineSolution();
     interpolator.writeSplineNodes();
 }
 

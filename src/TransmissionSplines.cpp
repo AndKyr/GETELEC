@@ -121,9 +121,8 @@ void TransmissionSpline::calculateAndSetSampleValues(size_t index){
         solutionDerivativeSamples[i][index] = solutionVector[i + 3] * CONSTANTS.kConstant;
     }
 
-    //check if solution is continuous and write the solution if not. Call it with plotSolutionData=true if you want data written and warning given.
-    // assert(checkSolutionSanity(solutionVector, energy, 0.5) || 
-    //     (solver.solve(true), solver.writeSolution(), solver.writeBarrierPlottingData("barrier.dat", 0), writeSplineSolution(), writeSplineNodes(), false)); 
+    //check if solution is continuous and write the solution if not. (use it for debugging)
+    // assert(checkSolutionSanity(solutionVector, energy, 0.5) || (solver.solve(true), solver.writeSolution(), solver.writeBarrierPlottingData("barrier.dat", 0), writeSplineSolution(), writeSplineNodes(), false)); 
 }
 
 void TransmissionSpline::smartInitialSampling(double bandDepth, double effectiveMass){

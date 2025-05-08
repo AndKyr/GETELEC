@@ -19,13 +19,14 @@ namespace getelec{
  */
 TEST(GetelecTest, problematicCaseTest){
     Getelec getelec = Getelec();
-    getelec.setField(           0.51812034156646747);
-    getelec.setRadius(          9.8363789883240766 );
-    getelec.setGamma(           14.322706200245223 );
-    getelec.setWorkFunction(    5.5188288383324622 );
-    getelec.setkT(              0.4926982361965539 );
-    getelec.setEffectiveMass(   1.1345733374571061 );
-    getelec.setBandDepth(       4.2668170129267587 );
+    getelec.setField(           17.1731178377976167);
+    getelec.setRadius(          1.2312683984013784 );
+    getelec.setGamma(           6.723404041251726 );
+    getelec.setWorkFunction(    4.1228648835720669 );
+    getelec.setkT(              0.53783585503655718 );
+    getelec.setEffectiveMass(   0.43684186625005128 );
+    getelec.setBandDepth(       3.7052635356492463 );
+
     EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
 }
     
