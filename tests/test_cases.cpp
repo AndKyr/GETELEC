@@ -14,6 +14,9 @@
 
 namespace getelec{
 
+/**
+ * @brief Test for debugging of a specific problematic case
+ */
 TEST(GetelecTest, problematicCaseTest){
     Getelec getelec = Getelec();
     getelec.setField(           0.51812034156646747);
@@ -25,7 +28,6 @@ TEST(GetelecTest, problematicCaseTest){
     getelec.setBandDepth(       4.2668170129267587 );
     EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
 }
-
     
 /**
  * @brief Test for TransmissionSolver:: check that the transmission coefficient for the default barrier is the one expected
@@ -293,7 +295,6 @@ TEST(ConfigTest, ConfigFileReadTest){
     remove("tempConfig.txt");
 }
 
-
 /**
  * @brief Test for Getelec:: check that the Getelec class can be constructed and run without errors
  */
@@ -314,7 +315,6 @@ TEST(GetelecTest, runRandomCasesTest){
     EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
 }
 
-
 /**
  * @brief Test for Getelec:: check that the Getelec class can be constructed and run without errors
  */
@@ -324,8 +324,6 @@ TEST(GetelecObjectTest, RunParalleltest){
     getelec.setField(fields);
     EXPECT_NO_THROW(getelec.run());
 }
-
-
 
 /**
  * @brief Test for ModifiedSNBarrierWithDftXC:: check that the potential function and its derivative are calculated correctly
@@ -363,7 +361,6 @@ TEST(GeneralXCFunctionTest, DerivativeTest){
     }
 
 }
-
 
 
 } // namespace getelec

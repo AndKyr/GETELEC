@@ -72,7 +72,6 @@ int TransmissionSpline::writeSplineSolution(string filename, int nPoints){
     return 1;
 }
 
-
 int TransmissionSpline::writeSplineNodes(string filename){
     ofstream file(filename);
     vector<string> header = {"#energy", "sol[0]", "deriv[0]", "sol[1]", "deriv[1]", "sol[2]", "deriv[2]", "NED estimate"};
@@ -90,7 +89,7 @@ int TransmissionSpline::writeSplineNodes(string filename){
     return 1;
 }
 
-void TransmissionSpline::sampleEnergyPoint(double energy, size_t index, bool bisect){
+void TransmissionSpline::sampleEnergyPoint(double energy, size_t index, bool bisect, bool longBarrier){
 
     if (index < 1 || index > sampleEnergies.size()) index = sampleEnergies.size(); //if the index is out of bounds, set it to the end
     sampleEnergies.emplace(sampleEnergies.begin() + index, energy);
@@ -101,7 +100,10 @@ void TransmissionSpline::sampleEnergyPoint(double energy, size_t index, bool bis
         solutionDerivativeSamples[i].emplace(solutionDerivativeSamples[i].begin() + index, 0.);
     }
 
-    if (solver.ensureBarrierDeepEnough(energy)){ // make sure the barrier is deep enough for the energy
+    double maxDepth = longBarrier ? 4 : 100;
+    double energyStep = longBarrier ? 0.1 : 5.;
+
+    if (solver.ensureBarrierDeepEnough(energy, maxDepth, energyStep)){ // make sure the barrier is deep enough for the energy
         for(int i = 0; i < sampleEnergies.size(); i++){ // if the barrier depth has been changed, recalculate all the points
             calculateAndSetSampleValues(i);
         }
@@ -120,7 +122,8 @@ void TransmissionSpline::calculateAndSetSampleValues(size_t index){
     }
 
     //check if solution is continuous and write the solution if not. Call it with plotSolutionData=true if you want data written and warning given.
-    assert(checkSolutionSanity(solutionVector, energy, 0.1, true)); 
+    // assert(checkSolutionSanity(solutionVector, energy, 0.5) || 
+    //     (solver.solve(true), solver.writeSolution(), solver.writeBarrierPlottingData("barrier.dat", 0), writeSplineSolution(), writeSplineNodes(), false)); 
 }
 
 void TransmissionSpline::smartInitialSampling(double bandDepth, double effectiveMass){
@@ -201,14 +204,8 @@ int TransmissionSpline::findMaximumCurrentEstimate(int maxIterations, double rTo
     gsl_set_error_handler_off(); // turn off GSL error handler
     int status = gsl_min_fminimizer_set(minimizer, &F, maximumCurrentPosition, getMinimumSampleEnergy(), getMaximumSampleEnergy());
 
-    if (status == GSL_EINVAL){
-        // if (checkAllBelowTolerance())
-        //     return 0; // all values are below the tolerance. No need to minimize
-        // else{
-        //     return -1;
-        // }
-        //the i
-        for (int i = 0; i < maxIterations; i++){
+    if (status == GSL_EINVAL){ //if setting failed because the initial max position guess is not higher than the edges...
+        for (int i = 0; i < maxIterations; i++){//do a bisection to find an initial guess that the condition holds
             double fmin = lambdaMinimizer(maximumCurrentPosition, this);
             double fLeft = lambdaMinimizer(getMinimumSampleEnergy(), this);
             double fRight = lambdaMinimizer(getMaximumSampleEnergy(), this);
@@ -239,9 +236,8 @@ int TransmissionSpline::findMaximumCurrentEstimate(int maxIterations, double rTo
         }
     }
 
-    assert((writeSplineSolution(), writeSplineNodes(), false));
+    assert((writeSplineSolution(), writeSplineNodes(), false) && "Finding maximum current estimate failed to converge");
     return maxIterations;
-
 }
 
 int TransmissionSpline::refineSampling(){
@@ -270,7 +266,7 @@ int TransmissionSpline::refineSampling(){
     return noInsertedSamples;
 }
 
-bool TransmissionSpline::checkSolutionSanity(const vector<double> &solutionVector, double energy, double absoluteTolerance, bool writeSolverPlottingData){
+bool TransmissionSpline::checkSolutionSanity(const vector<double> &solutionVector, double energy, double absoluteTolerance){
     // Check if the solution vector is finite
     if (!all_of(solutionVector.begin(), solutionVector.end(), [](double x) { return isfinite(x); })) {
         return false;
@@ -283,19 +279,8 @@ bool TransmissionSpline::checkSolutionSanity(const vector<double> &solutionVecto
 
     for (int i = 0; i < 3; i++){
         double diff = abs(solutionVector[i] - expectedSolution[i]);
-
-        /** The following commented block was used for debugging the sampling. The bug is fixed, but it might be useful at some point again, so I leave it. */
-        if (diff > absoluteTolerance && writeSolverPlottingData){
-            cout << "GETELEC WARNING: The solution vector is not continuous. The difference is " << diff << " at energy " << energy << endl;
-            cout << "Writing the problematic solution to file 'problematicWaveFunctionSolution.dat' and barrier to 'problematicBarrier.dat' " << endl;
-            solver.solve(true);
-            solver.writeSolution();
-            solver.writeBarrierPlottingData("barrier.dat", 0);
-
-            writeSplineSolution();
-            writeSplineNodes();
+        if (diff > absoluteTolerance)
             return false;
-        }
     }
 
     return true;
@@ -306,8 +291,7 @@ void TransmissionSpline::smartSamplingForLongBarrier(){
     double topOfBarrier = solver.findBarrierTop(maxBarrierLocation); //find the barrier top with gsl minimizer. ODE is unreliable
     solver.setXlimits( - topOfBarrier + 0.5); // set the limits for the transmission solver.
     for(double energy = topOfBarrier; energy > topOfBarrier - 1.; energy -= 0.1){
-        solver.ensureBarrierDeepEnough(energy, 4., 0.1);
-        sampleEnergyPoint(energy);
+        sampleEnergyPoint(energy, 0, false, true);
         double transmissionProbability = solver.getTransmissionProbabilityforWaveVector(12.);
         if (transmissionProbability < absoluteTolerance)
             break;

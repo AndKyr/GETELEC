@@ -202,7 +202,7 @@ private:
      * @param index Index where to emplace the sample point (default is -1, which means append to the end).
      * @param bisect Whether the new point is to be bisected in the next round
      */
-    void sampleEnergyPoint(double energy, size_t index = 0, bool bisect = true);
+    void sampleEnergyPoint(double energy, size_t index = 0, bool bisect = true, bool longBarrier = false);
 
     /**
      * @brief Calculates and sets the sample values and derivatives for the spline at a given index.
@@ -251,7 +251,7 @@ private:
      * @return True if the solution is sane, false otherwise.
      * @note This method is used mostly in debug mode to ensure that a solution calculated by the solver is continuous as a function of energy. In other words it checks if the solution curve solution(energy) is smooth.
      */
-    bool checkSolutionSanity(const vector<double>& solutionVector, double energy, double absoluteTolerance = 0.01, bool writeSolverPlottingData = false);
+    bool checkSolutionSanity(const vector<double>& solutionVector, double energy, double absoluteTolerance = 0.01);
 };
 
 } // namespace getelec
