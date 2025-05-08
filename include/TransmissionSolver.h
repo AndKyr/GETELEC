@@ -114,6 +114,12 @@ public:
     }
 
     /**
+     * @brief simple setters if xInitial and xFinal are to be externally set
+     */
+    void setXInitial(double xInitial_) { xInitial = xInitial_;}
+    void setXFinal(double xFinal_) { xFinal = xFinal_;}
+
+    /**
      * @brief Calculates the minimum valid energy for the tunneling calculation.
      * @param tolerance Tolerance for the energy calculation.
      * @return The minimum valid energy.
@@ -131,7 +137,7 @@ public:
      * @param depthLimit Upper limit for adjusting the barrier depth.
      * @return The number of times the barrier depth was adjusted.
      */
-    int ensureBarrierDeepEnough(double energy, double depthLimit = 100.);
+    int ensureBarrierDeepEnough(double energy, double depthLimit = 100., double energyStep = 5.);
 
     /**
      * @brief Getter for the xInitial value.
@@ -166,9 +172,11 @@ public:
 
     /**
      * @brief finds the top of the barrier and returns it
-     * @return the top of the barrier (energ in)
+     * @param tolerance The maximum location tolerance (nm)
+     * @param maxLocation (output) the location where the maximum was found (nm)
+     * @return the top of the barrier (energ in eV)
      */
-    double findBarrierTop(double tolerance = 1.e-5) const;
+    double findBarrierTop(double &maxLocation, double tolerance = 1.e-5) const;
 
     /**
      * @brief Sets the splines for the solution of the tunneling problem.

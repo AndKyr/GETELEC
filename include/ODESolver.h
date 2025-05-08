@@ -98,14 +98,9 @@ public:
 
     /**
      * @brief Reinitializes the solver, resetting the solution and GSL objects.
+     * @note necessary to be called if any solution parameter has changed
      */
-    void reinitialize() {
-        solutionVector = initialValues;
-        gsl_odeiv2_step_reset(step);
-        gsl_odeiv2_evolve_reset(evolver);
-        savedSolution.clear();
-        xSaved.clear();
-    }
+    void reinitialize();
 
     /**
      * @brief Solves the ODE system while optionally saving the solution.

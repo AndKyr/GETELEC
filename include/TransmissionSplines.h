@@ -133,7 +133,7 @@ public:
     /**
      * @brief Refines the sampling by bisecting until the required tolerance is met.
      */
-    void refineSamplingToTolerance(int maxRefineSteps = 10);
+    void refineSamplingToTolerance(int maxRefineSteps = 11);
 
     /**
      * @brief Estimates the emission normal Energy distribution at a given energy level.
@@ -172,6 +172,7 @@ private:
     double mamximumCurrentEstimate = 0; /**< Estimation of the maximum current emitted (integrand of the NED) */
     double maximumCurrentPosition = 0; /**< Estimation of the position (in normal energy) of the maximum emission */
     bool isInitialized = false; /**< Flag indicating if the interpolator is initialized */
+    double maximumSamplingError = 0.; /**< Stores the maximum error in the estimated current density during the last refining round. */
 
     const gsl_min_fminimizer_type* type = gsl_min_fminimizer_brent; /**< GSL object (minimizer type) for finding the max of the expected emission current */
     gsl_min_fminimizer* minimizer = nullptr; /**< GSL object (minimizer) for finding the max of the expected emission current */

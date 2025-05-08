@@ -27,21 +27,19 @@ void BandEmitter::setIntegrationLimits(){
     }
     //set the inhereted parameters to follow for clarity
     xInitial = minTotalEnergy; 
-    xFinal = maxTotalEnergy;
-
-
-    minParallelEnergy = 0.; //min parallel energy is always 0
-    if (effectiveMass > 0.)
-        maxParallelEnergy = min(effectiveMass * (maxTotalEnergy + bandDepth), maxTotalEnergy - minTotalEnergy);
-    else
-        maxParallelEnergy = effectiveMass * (minTotalEnergy + bandDepth);
-    
+    xFinal = maxTotalEnergy;    
     
     if (effectiveMass <= 1.)
         minNormalEnergy = minTotalEnergy;// -bandDepth + (1. - effectiveMass) * (minTotalEnergy + bandDepth);
     else
         minNormalEnergy = max(-bandDepth + (1. - effectiveMass) * (maxTotalEnergy + bandDepth), interpolator.getMinimumSampleEnergy() + workFunction);
     maxNormalEnergy = maxTotalEnergy;
+
+    minParallelEnergy = 0.; //min parallel energy is always 0
+    if (effectiveMass > 0.)
+        maxParallelEnergy = min(effectiveMass * (maxTotalEnergy + bandDepth), maxNormalEnergy - minNormalEnergy);
+    else
+        maxParallelEnergy = effectiveMass * (minTotalEnergy + bandDepth);
 }
 
 double BandEmitter::gPrimeFunction(double energy) {

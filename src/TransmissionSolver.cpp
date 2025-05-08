@@ -3,6 +3,7 @@
 #include <sstream>
 #include <gsl/gsl_complex_math.h>
 #include <gsl/gsl_min.h>
+#include <iomanip>
 namespace getelec{
 
 int TransmissionSolver::tunnelingDifferentialSystem(double x, const double y[], double f[], void *params){
@@ -41,12 +42,15 @@ int TransmissionSolver::tunnelingSystemJacobian(double x, const double y[], doub
         return GSL_SUCCESS;
 }
 
-int TransmissionSolver::ensureBarrierDeepEnough(double energy, double depthLimit){
+int TransmissionSolver::ensureBarrierDeepEnough(double energy, double depthLimit, double energyStep){
     int numberOfBarrierDepthAdjustments = 0;
+    barrier->setEnergy(energy);
     bool xInitialInForbiddenRegion = updateKappaInitial();
-    for(double newBarrierDepth = -energy + 5.; xInitialInForbiddenRegion || energy < minimumValidEnergy(); newBarrierDepth += 5.){
+    double minValidEnergy = minimumValidEnergy();
+    for(double newBarrierDepth = -energy + energyStep; xInitialInForbiddenRegion || energy < minValidEnergy; newBarrierDepth += energyStep){
         setXlimits(newBarrierDepth);
         xInitialInForbiddenRegion = updateKappaInitial();
+        minValidEnergy = minimumValidEnergy();
         numberOfBarrierDepthAdjustments++;
         if (newBarrierDepth > depthLimit){
             assert((writeBarrierPlottingData(), false));
@@ -118,6 +122,8 @@ double TransmissionSolver::calculateTransmissionProbability(double energy, doubl
 const vector<double>& TransmissionSolver::calculateSolution(double energy){
     setEnergyAndInitialValues(energy);
     solveNoSave();
+
+    assert(abs(solutionVector.back()) < 1.e3 || (solve(true), writeSolution(), writeBarrierPlottingData("barrier.dat", 0), false));
     return getSolution();
 }
 
@@ -140,13 +146,13 @@ const double TransmissionSolver::getMaxBArrierDepth() const{
     return max(initialPotential, finalPotential);
 }
 
-double TransmissionSolver::findBarrierTop(double tolerance) const{
+double TransmissionSolver::findBarrierTop(double &maxLocation, double tolerance) const{
     auto lambdaMinimizer = [](double x, void* params) -> double {
         TunnelingFunction* thisObject = (TunnelingFunction*) params;
         return -thisObject->potentialFunction(x);
     }; // a lambda that gives the - of the NED
     double (* functionPointer)(double, void*) = lambdaMinimizer;//convert the lambda into raw function pointer
-    gsl_function F = {functionPointer, (void*) this}; //define gsl function to be minimized
+    gsl_function F = {functionPointer, barrier}; //define gsl function to be minimized
     
     const gsl_min_fminimizer_type* type = gsl_min_fminimizer_brent; /* GSL object (minimizer type) for finding the max of the barrier */
     gsl_min_fminimizer* minimizer = gsl_min_fminimizer_alloc(type); 
@@ -165,6 +171,7 @@ double TransmissionSolver::findBarrierTop(double tolerance) const{
         double minValue = gsl_min_fminimizer_f_minimum(minimizer);
         double maxValueInInterval = max(gsl_min_fminimizer_f_lower(minimizer), gsl_min_fminimizer_f_upper(minimizer));
         if (abs(minValue - maxValueInInterval) < tolerance){ //if we have reached tolerance
+            maxLocation = gsl_min_fminimizer_minimum(minimizer);
             return - minValue;
         }
     }
@@ -174,16 +181,16 @@ double TransmissionSolver::findBarrierTop(double tolerance) const{
 
 void TransmissionSolver::writeBarrierPlottingData(string filename, int nPoints) const{
     ofstream file(filename);
+    vector<double> xPoints;
 
-    vector<double> xPoints = xSaved;
-
-    if (nPoints > 2)
+    if (nPoints > 2 || xSaved.size() < 2)
         xPoints = Utilities::linspace(xFinal, xInitial, nPoints);
+    else
+        xPoints = xSaved;
 
-    file << "# x [nm] V(x) - E [eV]" << endl;
-    for (auto x : xPoints){
-        file << x << " " << barrier->potentialFunction(x) - barrier->getEnergy()  << endl;
-    }
+    file << setw(16) << "# x [nm]" << setw(16) << "V(x) - E [eV]" << endl;
+    for (auto x : xPoints)
+        file << setw(16) <<  x << setw(16) << barrier->potentialFunction(x) - barrier->getEnergy()  << endl;
     file.close();
 }
 

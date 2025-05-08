@@ -5,15 +5,15 @@ void Getelec::setRandomParameters(unsigned numberOfParameters){
     if (!generator)
         throw runtime_error("Random number generator is empty");
     
-    fieldsVector = Utilities::getUniformRandomDoubles(1.e-5, 20., numberOfParameters, *generator);
-    gammasVector = Utilities::getUniformRandomDoubles(1., 20., numberOfParameters, *generator);
+    fieldsVector = Utilities::getUniformRandomDoubles(0.1, 20., numberOfParameters, *generator);
+    gammasVector = Utilities::getUniformRandomDoubles(1.1, 20., numberOfParameters, *generator);
 
-    radiiVector = Utilities::getUniformRandomDoubles(0., 1., numberOfParameters, *generator); //first create curvatures
+    radiiVector = Utilities::getUniformRandomDoubles(1.e-5, 1., numberOfParameters, *generator); //first create curvatures
     transform(radiiVector.begin(), radiiVector.end(), radiiVector.begin(), [](double x) {return 1./x;}); //inverts
     
-    bandDepthVector = Utilities::getUniformRandomDoubles(0., 10., numberOfParameters, *generator);
-    effectiveMassVector = Utilities::getUniformRandomDoubles(0.5, 2., numberOfParameters, *generator);
-    workFunctionVector = Utilities::getUniformRandomDoubles(2., 6., numberOfParameters, *generator);
+    bandDepthVector = Utilities::getUniformRandomDoubles(0.5, 10., numberOfParameters, *generator);
+    effectiveMassVector = Utilities::getUniformRandomDoubles(0.1, 2.5, numberOfParameters, *generator);
+    workFunctionVector = Utilities::getUniformRandomDoubles(1., 7., numberOfParameters, *generator);
     kTVector = Utilities::getUniformRandomDoubles(1.e-3, 1., numberOfParameters, *generator);
 }
 

@@ -1,9 +1,20 @@
 #include "ODESolver.h"
 #include <gsl/gsl_math.h>
 #include <iostream>
+#include <iomanip>
 
 
 namespace getelec{
+
+void ODESolver::reinitialize(){
+    solutionVector = initialValues;
+    gsl_odeiv2_step_reset(step);
+    gsl_odeiv2_evolve_reset(evolver);
+    maxStepSize = (xFinal - xInitial) / minAllowedSteps;
+    savedSolution.clear();
+    xSaved.clear();
+
+}
 
 int ODESolver::solve(bool saveSolution){
 
@@ -75,6 +86,7 @@ int ODESolver::solveNoSave(){
     reinitialize();
 
     for (size_t i = 0; i < maxAllowedSteps; i++){ //loop over blocks
+        dx = GSL_SIGN(dx) *  min(abs(maxStepSize), abs(dx));
         status = gsl_odeiv2_evolve_apply(evolver, controller, step, &sys, &x, xFinal, &dx, solutionVector.data());
         if (x == xFinal || status != GSL_SUCCESS)    
             return status;         
@@ -84,12 +96,21 @@ int ODESolver::solveNoSave(){
 }
 
 void ODESolver::writeSolution(string filename){
-    ofstream outFile(filename, ios::out);        
+    assert(xSaved.size() == savedSolution.size() && xSaved.size() > 1 && "asked to write ODE solution without having it saved");
+
+    ofstream file(filename, ios::out);
+    vector<string> header = {"#x"};
+    for (size_t i = 0; i < solutionVector.size(); i++)
+        header.push_back("solution[" + to_string(i) + "]");
+    
+
+    for(auto& s : header) file << setw(16) << s;
+
     for (size_t i = 0; i < xSaved.size(); i++){
-        outFile << xSaved[i] << " ";
+        file << setw(16) << xSaved[i];
         for (auto &y : savedSolution[i]) 
-            outFile << y << " ";
-        outFile << endl; 
+            file << setw(16) << y;
+        file << endl; 
     }
 }
 
