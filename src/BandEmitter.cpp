@@ -186,30 +186,16 @@ double BandEmitter::currentDensityIntegrateNormal(bool saveNormalEnergyDistribut
 }
 
 void BandEmitter::writePlottingData(string filename) {
-    // ofstream outFile(filename, ios::out);        
-    // outFile << "#E D_calc(En=E) D_interp(En=E) NED(En=E) TED(Et=E)" << endl;
-    // for (double energy = minTotalEnergy; energy < maxTotalEnergy; energy += 0.001) {
-    //     double waveVector = sqrt(energy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
-    //     double D_calculated = transmissionSolver.calculateTransmissionProbability(energy - workFunction, waveVector);
-    //     double D_interpolated = interpolator.getTransmissionProbability(energy - workFunction, waveVector);
-    //     double NED = interpolator.normalEnergyDistributionEstimate(energy - workFunction, waveVector);
-    //     double TED = getTotalEnergyDistributionForEnergy(energy);
-
-    //     outFile << energy << " " << D_calculated << " " << D_interpolated << " " << NED << " " << TED << " " << endl;
-    // }
     interpolator.writeSplineSolution();
     interpolator.writeSplineNodes();
 }
 
 double BandEmitter::doubleIntegrandTotalParallel(double totalEnergy, double parallelEnergy) const{
-    double waveVectorZ = sqrt((totalEnergy+bandDepth) * effectiveMass - parallelEnergy) * CONSTANTS.sqrt2mOverHbar;
-    assert(waveVectorZ > 0 && "waveVectorZ is not positive");
-
-    double normalEnergy = totalEnergy - parallelEnergy - workFunction;
+    double waveVectorZ = getWaveVectorZ(totalEnergy, parallelEnergy);
     
+    double normalEnergy = totalEnergy - parallelEnergy - workFunction;
     // Check if normalEnergy is within the valid range. The interpolator should have informed and valid energy ranges (even for effectiveMass!=1)
-    if (normalEnergy < interpolator.getMinimumSampleEnergy() || normalEnergy > interpolator.getMaximumSampleEnergy())
-        return 0.;
+    assert(normalEnergy >= interpolator.getMinimumSampleEnergy() && normalEnergy <= interpolator.getMaximumSampleEnergy() && "integration limits out of bounds");
     
     double transmissionProbability = interpolator.getTransmissionProbability(normalEnergy, waveVectorZ);
     return Utilities::fermiDiracFunction(totalEnergy, kT) * transmissionProbability;
@@ -217,14 +203,11 @@ double BandEmitter::doubleIntegrandTotalParallel(double totalEnergy, double para
 
 double BandEmitter::doubleIntegrandParallelNormal(double parallelEnergy, double normalEnergy) const {
     double totalEnergy = normalEnergy + parallelEnergy;
-    double waveVectorZ = sqrt((totalEnergy+bandDepth) * effectiveMass - parallelEnergy) * CONSTANTS.sqrt2mOverHbar;
-    assert(waveVectorZ > 0 && "waveVectorZ is not positive");
-
-    double normalEnegyForInterpolator = normalEnergy - workFunction;
+    double waveVectorZ = getWaveVectorZ(totalEnergy, parallelEnergy);
     
+    double normalEnegyForInterpolator = normalEnergy - workFunction;
     // Check if normalEnergy is within the valid range. The interpolator should have informed and valid energy ranges (even for effectiveMass!=1)
-    if (normalEnegyForInterpolator < interpolator.getMinimumSampleEnergy() || normalEnegyForInterpolator > interpolator.getMaximumSampleEnergy())
-        return 0.;
+    assert(normalEnegyForInterpolator > interpolator.getMinimumSampleEnergy() && normalEnegyForInterpolator < interpolator.getMaximumSampleEnergy() && "integration limits out of bounds");
     
     double transmissionProbability = interpolator.getTransmissionProbability(normalEnegyForInterpolator, waveVectorZ);
     return Utilities::fermiDiracFunction(totalEnergy, kT) * transmissionProbability;
@@ -232,7 +215,6 @@ double BandEmitter::doubleIntegrandParallelNormal(double parallelEnergy, double 
 
 double BandEmitter::totalEnergyDistributionIntegrateParallel(double totalEnergy){
     assert(integrationWorkspace && "integrationWorkspace is not initialized");
-
 
     helperEnergy = totalEnergy; // store the totalEnergy in the class variable to be used in the lambda function
     auto integrationLambda = [](double parallelEnergy, void* params) {
@@ -325,8 +307,7 @@ double BandEmitter::parallelEnergyDistributionIntegrateTotal(double parallelEner
 
     double minTotalEnergyLocal = max(-bandDepth + parallelEnergy / effectiveMass, workFunction + interpolator.getMinimumSampleEnergy() + parallelEnergy);
 
-    if (minTotalEnergyLocal > maxTotalEnergy) //if the minimum total energy is beyond the limits of non-negligible contribution
-        return 0.;
+    assert(minTotalEnergyLocal <= maxTotalEnergy && "Total energy integration limits are wrong");
 
     double result, error;
     gsl_integration_qag(&gslIntegrationFunction, minTotalEnergyLocal, maxTotalEnergy, absoluteTolerance, relativeTolerance, maxAllowedSteps, 

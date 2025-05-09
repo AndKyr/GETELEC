@@ -250,6 +250,12 @@ public:
         return solutionVector[2] * CONSTANTS.SommerfeldConstant;
     }
 
+    double getWaveVectorZ(double totalEnergy, double parallelEnergy, double cutoff = 1.e-2) const{
+        double waveVectorZ = sqrt((totalEnergy+bandDepth) - parallelEnergy / effectiveMass) * CONSTANTS.sqrt2mOverHbar;
+        assert(waveVectorZ > 0 && "waveVectorZ is not positive");
+        return max(waveVectorZ, cutoff);
+    }
+
     /**
      * @brief Gets the calculated spectra from the solution vector.
      * @return The energy spectra.
