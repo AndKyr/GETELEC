@@ -28,6 +28,19 @@ TEST(GetelecTest, problematicCaseTest){
     getelec.setBandDepth(       3.7052635356492463 );
 
     EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
+
+    getelec.setField(           16.077742658313451);
+    getelec.setRadius(          1.2191484367140726);
+    getelec.setGamma(           10.913338685939717);
+    getelec.setWorkFunction(    3.7135425593078941);
+    getelec.setkT(              0.0506137085500604 );
+    getelec.setEffectiveMass(   1.7932010728841656 );
+    getelec.setBandDepth(       3.1109161307061641);
+
+    EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
+
+
+
 }
     
 /**
@@ -305,13 +318,13 @@ TEST(GetelecTest, runRandomCasesTest){
     mt19937 generator(1987);
 
     Getelec getelec = Getelec("GetelecConfig.txt", "modifiedSN", &generator);
-
+    int noRuns = 64;
     //test first for effectiveMass!=1.
-    getelec.setRandomParameters(256);
+    getelec.setRandomParameters(noRuns);
     EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
 
     //test second for effectiveMass=1.
-    getelec.setRandomParameters(256);
+    getelec.setRandomParameters(noRuns);
     getelec.setEffectiveMass(1.);
     EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
 }

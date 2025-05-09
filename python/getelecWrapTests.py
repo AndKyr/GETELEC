@@ -25,9 +25,7 @@ class TestGetelecInterface(tst.TestCase):
         # getelec.setParameters(field=fields, radius=radii, gamma=gammas, kT=kTs, workFunction=workFunctions, bandDepth=bandDepths, effectiveMass=effectiveMasses)
         getelec.run(["CurrentDensity", "TotalEnergyDistribution", "NormalEnergyDistribution", "ParallelEnergyDistribution", "NottinghamHeat"])
 
-        allSpectra = getelec.extractAllSpectra()
-        densities = getelec.getCurrentDensity()
-        nottinghams = getelec.getNottinghamHeat()
+        results = getelec.getResultDictionary()
 
         
 
@@ -39,16 +37,17 @@ class TestGetelecInterface(tst.TestCase):
         for i in range(Nfigures):
             fig, axes = plt.subplots(plotRows, plotColumns, squeeze=True)
 
-            for ax in axes:
-                for spectraTypeKey in allSpectra:
-                    if (spectraTypeKey == "TotalEnergyDistributionSplines"):
-                        spline = allSpectra[spectraTypeKey][counter]
-                        xPlot = np.linspace(min(spline.x), max(spline.x), 512)
-                        yPlot = spline(xPlot)
-                        ax.plot(xPlot, yPlot, label=spectraTypeKey)
+            for ax in axes.flatten():
+                title = ""
+                for key in results:
+                    if ("Distribution" in key):
+                        ax.semilogy(results[key][counter][0], results[key][counter][1], label=key)
                     else:
-                        ax.plot(allSpectra[spectraTypeKey][counter][0], allSpectra[spectraTypeKey][counter][1], label=spectraTypeKey)
-                        
+                        title += "%s=%.3e, " % (key, results[key][counter])
+
+                ax.set_title(title)
+                ax.legend()
+                counter += 1      
                 ax.set_xlabel("Energy [eV]")
                 ax.set_ylabel("Spectra [A/nm^2/eV]")
             plt.show()
