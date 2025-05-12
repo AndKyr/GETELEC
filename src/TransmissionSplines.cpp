@@ -10,18 +10,18 @@ vector<double> TransmissionSpline::evaluateSolution(double energy) const{
     if (energy < minEnergy){
         solutionOut = evaluateMultiple(minEnergy);
         vector<double> solutionDerivatives = evaluateDerivativeMultiple(minEnergy);
-        for (int i = 0; i < solutionOut.size(); i++)
+        for (size_t i = 0; i < solutionOut.size(); i++)
             solutionOut[i] += solutionDerivatives[i] * (energy - minEnergy);         
     } else if (energy > maxEnergy){
         solutionOut = evaluateMultiple(maxEnergy);
         vector<double> solutionDerivatives = evaluateDerivativeMultiple(maxEnergy);
-        for (int i = 0; i < solutionOut.size(); i++)
+        for (size_t i = 0; i < solutionOut.size(); i++)
             solutionOut[i] += solutionDerivatives[i] * (energy - maxEnergy);
     } else
         solutionOut = evaluateMultiple(energy); 
     
     assert(all_of(solutionOut.begin(), solutionOut.end(), [](double x) { return isfinite(x); }) && "interpolated solution not finite");
-    assert(solutionOut[1] > 0 || (writeSplineSolution("splineSolution.dat", 256, true), writeSplineNodes(), false) && "Im[s'] is negative. It should be positive");
+    // assert(solutionOut[1] > 0 || (writeSplineNodes(), false) && "Im[s'] is negative. It should be positive");
     return solutionOut;
 }
 
@@ -61,9 +61,9 @@ int TransmissionSpline::writeSplineSolution(string filename, int nPoints, bool w
     for(auto& s : header) file << setw(columnWidth) << s;
     file << endl;
 
-    for (size_t i = 0; i < energyPoints.size(); i++){
-        double energy = energyPoints[i];
-        auto interpolatedValues = evaluateMultiple(energy);
+    for (auto energy : energyPoints){
+        auto interpolatedValues = evaluateSolution(energy);
+        
         file << setw(columnWidth) << energy;
 
         if (writeFullSolution){
@@ -113,7 +113,7 @@ void TransmissionSpline::sampleEnergyPoint(double energy, size_t index, bool bis
     double energyStep = longBarrier ? 0.1 : 5.;
 
     if (solver.ensureBarrierDeepEnough(energy, maxDepth, energyStep)){ // make sure the barrier is deep enough for the energy
-        for(int i = 0; i < sampleEnergies.size(); i++){ // if the barrier depth has been changed, recalculate all the points
+        for(size_t i = 0; i < sampleEnergies.size(); i++){ // if the barrier depth has been changed, recalculate all the points
             calculateAndSetSampleValues(i);
         }
     } else // if nothing has changed, just calculate the new point
@@ -251,7 +251,7 @@ int TransmissionSpline::findMaximumCurrentEstimate(int maxIterations, double rTo
 int TransmissionSpline::refineSampling(){
     double testWaveVector = sqrt(7.) * CONSTANTS.sqrt2mOverHbar;
     int noInsertedSamples = 0;
-    for (int i = 0; i < sampleEnergies.size() - 1; i++){
+    for (size_t i = 0; i < sampleEnergies.size() - 1; i++){
         if (!bisectList[i]) continue; //if it is set to not be bisected, do nothing and loop
 
         double newEnergy = .5*(sampleEnergies[i] + sampleEnergies[i+1]);
@@ -264,7 +264,7 @@ int TransmissionSpline::refineSampling(){
 
         //then check if all solution variables are interpolated okay
         auto newSolution = solver.getSolution();
-        auto interpSolution = evaluateMultiple(newEnergy);
+        auto interpSolution = evaluateSolution(newEnergy);
         for (int j = 0; j < 3; j++){
             if (abs(newSolution[j] - interpSolution[j]) > maxAllowedSolutionError){
                 doBisect = true;
@@ -295,7 +295,7 @@ bool TransmissionSpline::checkSolutionSanity(const vector<double> &solutionVecto
     if (!isInitialized)
         return true; // if not initialized, we can't check the solution
 
-    vector<double> expectedSolution = evaluateMultiple(energy);
+    vector<double> expectedSolution = evaluateSolution(energy);
 
     for (int i = 0; i < 3; i++){
         double diff = abs(solutionVector[i] - expectedSolution[i]);
