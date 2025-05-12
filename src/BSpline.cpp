@@ -130,7 +130,7 @@ void CubicHermiteSpline::initializeMultiple(const vector<double>& x, const vecto
     derivs = gsl_vector_alloc(nPoints);
     reallocate();
 
-    for (int i = 0; i < ySets.size(); i++){
+    for (size_t i = 0; i < ySets.size(); i++){
         assert(ySets[i].size() == nPoints && dy_dxSets[i].size() == nPoints && "The number of points in the sets must be the same");
         for (size_t j = 0; j < nPoints; j++){
             gsl_vector_set(values, j, ySets[i][j]);

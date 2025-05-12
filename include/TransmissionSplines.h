@@ -88,7 +88,6 @@ public:
      */
     double getTransmissionProbability(double energy, double waveVector) const{
         vector<double> solutionVector = evaluateSolution(energy);
-        assert(all_of(solutionVector.begin(), solutionVector.end(), [](double x) { return isfinite(x); }));
         return TransmissionSolver::transmissionProbability(waveVector, solutionVector);
     }
 
@@ -113,7 +112,7 @@ public:
      * @param nPoints Number of points to sample for the spline solution.
      * @note The default filename is "splineSolution.dat" and the default number of points is 256.
      */
-    int writeSplineSolution(string filename = "splineSolution.dat", int nPoints = 256);
+    int writeSplineSolution(string filename = "splineSolution.dat", int nPoints = 256, bool writeFullSolution = false) const;
 
     /**
      * @brief Writes the spline nodes to a file for plotting.
@@ -122,7 +121,7 @@ public:
      * @note The file contains the sampled energies, solution values, and derivative values.
      * @note The file is formatted as: energy, solution[0], derivative[0], solution[1], derivative[1], solution[2], derivative[2].
      */
-    int writeSplineNodes(string filename = "splineNodes.dat");
+    int writeSplineNodes(string filename = "splineNodes.dat") const;
     
     /**
      * @brief Samples the transmission coefficient with an initial very coarse sampling that is smartly chosen for electron emission.
@@ -142,7 +141,7 @@ public:
      * @return The normal energy distribution estimate (A/nm^2 /eV).
      * @note this function is coincides exactly with the normal energy distribution for effectiveMass = 1
      */
-    double normalEnergyDistributionEstimate(double energy, double waveVector = 12.){
+    double normalEnergyDistributionEstimate(double energy, double waveVector = 12.) const{
         return Utilities::logFermiDiracFunction(energy + workFunction, kT) * getTransmissionProbability(energy, waveVector) * CONSTANTS.SommerfeldConstant * kT;
     }
 
@@ -172,7 +171,9 @@ private:
     double mamximumCurrentEstimate = 0; /**< Estimation of the maximum current emitted (integrand of the NED) */
     double maximumCurrentPosition = 0; /**< Estimation of the position (in normal energy) of the maximum emission */
     bool isInitialized = false; /**< Flag indicating if the interpolator is initialized */
-    double maximumSamplingError = 0.; /**< Stores the maximum error in the estimated current density during the last refining round. */
+
+    const double maxAllowedSamplingDistance = 2.; ///< The maximum allowed distance between energy sampling nodes (eV)
+    const double maxAllowedSolutionError = 0.1; ///< The maximum allowed error that all solution components are allowed to have (pure number)
 
     const gsl_min_fminimizer_type* type = gsl_min_fminimizer_brent; /**< GSL object (minimizer type) for finding the max of the expected emission current */
     gsl_min_fminimizer* minimizer = nullptr; /**< GSL object (minimizer) for finding the max of the expected emission current */

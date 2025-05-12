@@ -24,8 +24,13 @@ void Getelec::runIteration(size_t i, CalculationFlags flags) {
     auto& barrier = threadLocalBarrier.local();
     auto& emitter = threadLocalEmitter.local();
 
+    if (doWritePlotFiles) 
+        emitter.setWriteFlag(i); 
+    else
+        emitter.setWriteFlag(-1);
+
     barrier->setBarrierParameters(params.field, params.radius, params.gamma);
-    emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth); 
+    emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth);
 
     if (abs(params.effectiveMass - 1.) > numeric_limits<double>::epsilon()){
         runIterationEffectiveMassNonUnity(i, flags);
@@ -33,6 +38,9 @@ void Getelec::runIteration(size_t i, CalculationFlags flags) {
         runIterationEffectiveMassUnity(i, flags);
     }
 
+    if (doWritePlotFiles){
+        writeSpectraToFiles(i);
+    }
 }
 
 void Getelec::runIterationEffectiveMassUnity(size_t i, CalculationFlags flags){
@@ -138,6 +146,7 @@ void Getelec::runIterationEffectiveMassNonUnity(size_t i, CalculationFlags flags
     assert(all_of(allCurrentDensities.begin(), allCurrentDensities.end(), [meanCurrentDensity, &emitter ](double x) {
             return abs(x - meanCurrentDensity) < 50 * emitter.getToleranceForValue(meanCurrentDensity);
         }) || (writeSpectraToFiles(i), emitter.writePlottingData(), "current densities calculated with various methods do not agree to each other.", false));
+    
 }
 
 const double* Getelec::getSpectraEnergies(size_t i, size_t *length, char spectraType) const{
@@ -211,7 +220,7 @@ pair<double, double> Getelec::getBarrierIntegrationLimits(size_t paramIndex){
 
 void Getelec::writeSpectraToFiles(size_t paramIndex) const{
     if (calculationStatusFlags & CalculationFlags::TotalEnergyDistribution){
-        ofstream file("totalEnergyDistribution_" + to_string(paramIndex) + ".dat");
+        ofstream file("totalEnergyDistribution_i_" + to_string(paramIndex) + ".dat");
         file << setw(16) << "#Energy" << setw(16) << "#Value" << endl;
         const auto& spectra = totalEnergyDistributions[paramIndex];
         const auto& energies = spectra.first;
@@ -222,7 +231,7 @@ void Getelec::writeSpectraToFiles(size_t paramIndex) const{
     }
 
     if (calculationStatusFlags & CalculationFlags::NormalEnergyDistribution){
-        ofstream file("normalEnergyDistribution_" + to_string(paramIndex) + ".dat");
+        ofstream file("normalEnergyDistribution_i_" + to_string(paramIndex) + ".dat");
         file << setw(16) << "#Energy" << setw(16) << "#Value" << endl;
         const auto& spectra = normalEnergyDistributions[paramIndex];
         const auto& energies = spectra.first;
@@ -233,7 +242,7 @@ void Getelec::writeSpectraToFiles(size_t paramIndex) const{
     }
 
     if (calculationStatusFlags & CalculationFlags::ParallelEnergyDistribution){
-        ofstream file("parallelEnergyDistribution_" + to_string(paramIndex) + ".dat");
+        ofstream file("parallelEnergyDistribution_i_" + to_string(paramIndex) + ".dat");
         file << setw(16) << "#Energy" << setw(16) << "#Value" << endl;
         const auto& spectra = parallelEnergyDistributions[paramIndex];
         const auto& energies = spectra.first;

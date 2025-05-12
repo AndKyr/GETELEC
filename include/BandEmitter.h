@@ -202,9 +202,8 @@ public:
 
     /**
      * @brief Writes data for plotting the band emitter's behavior.
-     * @param filename The name of the output file.
      */
-    void writePlottingData(string filename = "bandEmitterPlotting.dat");
+    void writePlottingData();
 
     /**
      * @brief Function for calculating the normal energy distribution (strictly correct only for effectiveMass = 1.).

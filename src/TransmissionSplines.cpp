@@ -6,20 +6,23 @@ namespace getelec{
 vector<double> TransmissionSpline::evaluateSolution(double energy) const{
     double minEnergy = getMinimumSampleEnergy();
     double maxEnergy = getMaximumSampleEnergy();
+    vector<double> solutionOut;
     if (energy < minEnergy){
-        vector<double> solutionOut = evaluateMultiple(minEnergy);
+        solutionOut = evaluateMultiple(minEnergy);
         vector<double> solutionDerivatives = evaluateDerivativeMultiple(minEnergy);
         for (int i = 0; i < solutionOut.size(); i++)
             solutionOut[i] += solutionDerivatives[i] * (energy - minEnergy);         
-        return solutionOut;          
     } else if (energy > maxEnergy){
-        vector<double> solutionOut = evaluateMultiple(maxEnergy);
+        solutionOut = evaluateMultiple(maxEnergy);
         vector<double> solutionDerivatives = evaluateDerivativeMultiple(maxEnergy);
         for (int i = 0; i < solutionOut.size(); i++)
             solutionOut[i] += solutionDerivatives[i] * (energy - maxEnergy);
-        return solutionOut;
     } else
-        return evaluateMultiple(energy); 
+        solutionOut = evaluateMultiple(energy); 
+    
+    assert(all_of(solutionOut.begin(), solutionOut.end(), [](double x) { return isfinite(x); }) && "interpolated solution not finite");
+    assert(solutionOut[1] > 0 || (writeSplineSolution("splineSolution.dat", 256, true), writeSplineNodes(), false) && "Im[s'] is negative. It should be positive");
+    return solutionOut;
 }
 
 void TransmissionSpline::sampleUniform(double Emin, double Emax, int nPoints){
@@ -33,9 +36,7 @@ void TransmissionSpline::sampleUniform(double Emin, double Emax, int nPoints){
 
 
     for (size_t i = 0; i < sampleEnergies.size(); i++){
-        solver.setEnergyAndInitialValues(sampleEnergies[i]);
-        solver.solveNoSave();
-        const auto& solutionVector = solver.getSolution();
+        const vector<double>& solutionVector = solver.calculateSolution(sampleEnergies[i]);
         for (int j = 0; j < 3; j++){
             solutionSamples[j][i] = solutionVector[j];
             solutionDerivativeSamples[j][i] = solutionVector[j + 3] * CONSTANTS.kConstant;
@@ -45,34 +46,42 @@ void TransmissionSpline::sampleUniform(double Emin, double Emax, int nPoints){
     initializeMultiple(sampleEnergies, solutionSamples, solutionDerivativeSamples);    
 }
 
-int TransmissionSpline::writeSplineSolution(string filename, int nPoints){
-    ofstream file(filename);
+int TransmissionSpline::writeSplineSolution(string filename, int nPoints, bool writeFullSolution) const {
+    ofstream file(filename, ios::out);
+    assert(file.is_open() && "failed to open file");
 
     vector<double> energyPoints = Utilities::linspace(getMinimumSampleEnergy(), getMaximumSampleEnergy(), nPoints);
     
     const int columnWidth = 16;
-    vector<string> header = {"#energy", "sol[0]", "sol[1]", "sol[2]", "sol[3]", "sol[4]", "sol[5]", "interp[0]", "interp[1]", "interp[2]", "D[calc]", "D[interp]", "est. NED[calc]", "est.NED[interp]"};
+    vector<string> header;
+    if(writeFullSolution) 
+        header = {"#energy", "sol[0]", "sol[1]", "sol[2]", "sol[3]", "sol[4]", "sol[5]", "interp[0]", "interp[1]", "interp[2]", "D[calc]", "est. NED[calc]", "D[interp]", "est.NED[interp]"};
+    else 
+        header = {"#energy", "interp_sol[0]", "interp_sol[1]", "interp_sol[2]", "interp_D", "est. NED(intrp)"};
     for(auto& s : header) file << setw(columnWidth) << s;
     file << endl;
 
     for (size_t i = 0; i < energyPoints.size(); i++){
-        solver.setEnergyAndInitialValues(energyPoints[i]);
-        solver.solveNoSave();
-        const auto solutionVector = solver.getSolution();
-        auto interpolatedValues = evaluateMultiple(energyPoints[i]);
+        double energy = energyPoints[i];
+        auto interpolatedValues = evaluateMultiple(energy);
+        file << setw(columnWidth) << energy;
 
-        file << setw(columnWidth) << energyPoints[i];
-        for(const auto& s : solutionVector) file << setw(columnWidth) << s;
+        if (writeFullSolution){
+            auto solutionVector = solver.calculateSolution(energy);
+            for(const auto& s : solutionVector) file << setw(columnWidth) << s;
+        }
+
         for(const auto& s : interpolatedValues) file << setw(columnWidth) << s;
 
-        file << setw(columnWidth) << solver.getTransmissionProbabilityforWaveVector(12.) << setw(columnWidth) << getTransmissionProbability(energyPoints[i], 12.);
-        file << setw(columnWidth) << solver.getEmissionEstimate(12., workFunction, kT) << setw(columnWidth) << normalEnergyDistributionEstimate(energyPoints[i]) << endl;
+        if (writeFullSolution) 
+            file << setw(columnWidth) << solver.getTransmissionProbabilityforWaveVector(12.) << setw(columnWidth) << solver.getEmissionEstimate(12., workFunction, kT);
+        file << setw(columnWidth) << getTransmissionProbability(energy, 12.) << setw(columnWidth) << normalEnergyDistributionEstimate(energy) << endl;
     }
     file.close();
     return 1;
 }
 
-int TransmissionSpline::writeSplineNodes(string filename){
+int TransmissionSpline::writeSplineNodes(string filename) const{
     ofstream file(filename);
     vector<string> header = {"#energy", "sol[0]", "deriv[0]", "sol[1]", "deriv[1]", "sol[2]", "deriv[2]", "NED estimate"};
     for(auto& s : header) file << setw(16) << s;
@@ -242,25 +251,37 @@ int TransmissionSpline::findMaximumCurrentEstimate(int maxIterations, double rTo
 int TransmissionSpline::refineSampling(){
     double testWaveVector = sqrt(7.) * CONSTANTS.sqrt2mOverHbar;
     int noInsertedSamples = 0;
-    maximumSamplingError = 0.;
     for (int i = 0; i < sampleEnergies.size() - 1; i++){
-        if (bisectList[i]){
-            double newEnergy = .5*(sampleEnergies[i] + sampleEnergies[i+1]);
-            noInsertedSamples++;
-            sampleEnergyPoint(newEnergy, ++i, true);
+        if (!bisectList[i]) continue; //if it is set to not be bisected, do nothing and loop
 
-            double calculatedCurrentEstimate = solver.getEmissionEstimate(testWaveVector, workFunction, kT);
-            double interpolatedCurrentEstimate = normalEnergyDistributionEstimate(newEnergy, testWaveVector);
-            double error = abs(calculatedCurrentEstimate - interpolatedCurrentEstimate);
-            double tolerance = absoluteTolerance + relativeTolerance * mamximumCurrentEstimate;
+        double newEnergy = .5*(sampleEnergies[i] + sampleEnergies[i+1]);
+        noInsertedSamples++;
+        sampleEnergyPoint(newEnergy, ++i, true);
 
-            if (error > maximumSamplingError) maximumSamplingError = error;
+        //first test for bisection: check if the sample distance is higher than the set limit and bisect if it is
+        bool doBisect = abs(sampleEnergies[i+1] - sampleEnergies[i]) > maxAllowedSamplingDistance;
+        if (doBisect) continue; //if do bisect, loop and leave it as it is
 
-            if (error < tolerance){
-                bisectList[i] = false;
-                bisectList[i-1] = false;
+        //then check if all solution variables are interpolated okay
+        auto newSolution = solver.getSolution();
+        auto interpSolution = evaluateMultiple(newEnergy);
+        for (int j = 0; j < 3; j++){
+            if (abs(newSolution[j] - interpSolution[j]) > maxAllowedSolutionError){
+                doBisect = true;
+                break;
             }
         }
+        if (doBisect) continue; //if do bisect, loop and leave it as it is
+
+        // Now check if the new estimation of the current density is close enough to the old one
+        double calculatedCurrentEstimate = solver.getEmissionEstimate(testWaveVector, workFunction, kT);
+        double interpolatedCurrentEstimate = Utilities::logFermiDiracFunction(newEnergy + workFunction, kT) * TransmissionSolver::transmissionProbability(testWaveVector, interpSolution) * CONSTANTS.SommerfeldConstant * kT;
+        double error = abs(calculatedCurrentEstimate - interpolatedCurrentEstimate);
+        double tolerance = absoluteTolerance + relativeTolerance * mamximumCurrentEstimate;
+        if (error > tolerance) continue;
+
+        bisectList[i] = false;
+        bisectList[i-1] = false;
     }
     return noInsertedSamples;
 }
@@ -332,9 +353,8 @@ void TransmissionSpline::refineSamplingToTolerance(int maxRefineSteps){
             sortAndInitialize();
     }
     cout << "GETELEC WARNING: Max allowed refine steps " << maxRefineSteps << " reached in spline interpolation without satisfying tolerance." << endl;
-    cout << "rTol: " << relativeTolerance << ", atol: " << absoluteTolerance << ", abserr: " << maximumSamplingError << ", relErr: " << maximumSamplingError / mamximumCurrentEstimate << endl;
     
-    assert((writeSplineSolution(), writeSplineNodes(), false)); //if in debug mode, then write the splines to check them.
+    assert((writeSplineSolution("incompleteSplineSolution.dat", 256, true), writeSplineNodes("incompleteSplineNodes.dat"), false)); //if in debug mode, then write the splines to check them.
 }
 
 void TransmissionSpline::sortAndInitialize(){

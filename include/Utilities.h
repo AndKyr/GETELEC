@@ -111,7 +111,7 @@ struct Utilities {
         for (int i = 0; i < size; ++i) 
             result[i] = dis(generator);
         
-        return move(result);
+        return result;
     }
 
     /**
@@ -124,7 +124,7 @@ struct Utilities {
         iota(sortIndices.begin(), sortIndices.end(), 0);
         auto comparisonLambda = [&x](size_t i1, size_t i2) { return x[i1] < x[i2]; };
         sort(sortIndices.begin(), sortIndices.end(), comparisonLambda);
-        return move(sortIndices);
+        return sortIndices;
     }
 
     /**

@@ -248,7 +248,7 @@ public:
      * @return The maximum barrier depth.
      * @note This is the maximum potential value at the initial and final x limits.
      */
-    const double getMaxBArrierDepth() const;
+    double getMaxBArrierDepth() const;
 
 
     /**

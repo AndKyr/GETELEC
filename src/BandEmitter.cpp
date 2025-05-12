@@ -42,26 +42,18 @@ void BandEmitter::setIntegrationLimits(){
         maxParallelEnergy = effectiveMass * (minTotalEnergy + bandDepth);
 }
 
-double BandEmitter::gPrimeFunction(double energy) {
-    //TODO: be careful with the effective mass. abarX might get below the bandDepth causing problems. The interpolation range must be fixed.
-    double waveVector = sqrt(energy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
-    double result = interpolator.getTransmissionProbability(energy - workFunction, waveVector);
+double BandEmitter::gPrimeFunction(double normalEnergy) {
+    assert(abs(effectiveMass - 1.) < numeric_limits<double>::epsilon() && "the g'(E) function is valid only for m* = 1");
+    double waveVector = sqrt(normalEnergy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
+    double result = interpolator.getTransmissionProbability(normalEnergy - workFunction, waveVector);
     assert(isfinite(result) && "Transmission coefficient is not finite");
 
-    if (effectiveMass != 1.) {
-        double reducedEnergy = -bandDepth + (1. - effectiveMass) * (energy + bandDepth);
-        double reducedTransmission = interpolator.getTransmissionProbability(reducedEnergy - workFunction, waveVector);
-        result -= (1. - effectiveMass) * reducedTransmission;
-
-        // Debug code
-        if (! isfinite(result))
-            interpolator.getTransmissionProbability(reducedEnergy - workFunction, waveVector);
-        
-        // end of debug code
-
-
-        assert(isfinite(result) && "Transmission coefficient is not finite");
-    }
+    // if (effectiveMass != 1.) {
+    //     double reducedEnergy = -bandDepth + (1. - effectiveMass) * (normalEnergy + bandDepth);
+    //     double reducedTransmission = interpolator.getTransmissionProbability(reducedEnergy - workFunction, waveVector);
+    //     result -= (1. - effectiveMass) * reducedTransmission;
+    //     assert(isfinite(result) && "Transmission coefficient is not finite");
+    // }
     return result;
 }
 
@@ -73,9 +65,15 @@ void BandEmitter::setParameters(double workFunction_, double kT_, double effecti
     kT = kT_;
     assert(bandDepth > 0. && kT > 0. && workFunction > 0. && abs(effectiveMass) > 1.e-5 && "Invalid BandEmitter input parameters");
 
+    transmissionSolver.setWriteFlag(writePlottingFiles);
     interpolator.setParameters(kT, workFunction);
     interpolator.smartInitialSampling();
     interpolator.refineSamplingToTolerance();
+
+    if (writePlottingFiles >= 0){
+        interpolator.writeSplineNodes("splineNodes_i_" + to_string(writePlottingFiles) + ".dat");
+        interpolator.writeSplineSolution("splineSolution_i_" + to_string(writePlottingFiles) + ".dat");
+    }
 
     setIntegrationLimits();
 
@@ -185,9 +183,9 @@ double BandEmitter::currentDensityIntegrateNormal(bool saveNormalEnergyDistribut
     return result * kT * CONSTANTS.SommerfeldConstant;
 }
 
-void BandEmitter::writePlottingData(string filename) {
-    interpolator.writeSplineSolution();
-    interpolator.writeSplineNodes();
+void BandEmitter::writePlottingData() {
+    interpolator.writeSplineSolution("splineSolution_i_" + to_string(writePlottingFiles) + ".dat", 256, true);
+    interpolator.writeSplineNodes("splineNodes_" + to_string(writePlottingFiles) + ".dat");
 }
 
 double BandEmitter::doubleIntegrandTotalParallel(double totalEnergy, double parallelEnergy) const{

@@ -161,6 +161,8 @@ public:
      */
     double getXInitial() const { return xInitial; }
 
+    void setWriteFlag(int flag) { writePlottingFiles = flag;}
+
 protected:
     int systemDimension; /**< Dimension of the ODE system. */
     double xInitial; /**< Initial value of the independent variable. */
@@ -168,13 +170,14 @@ protected:
     double maxStepSize; /**< Maximum allowed step size for the ODE solver. */
     double relativeTolerance = 1.e-4; /**< Relative tolerance for numerical integration. */
     double absoluteTolerance = 1.e-12; /**< Absolute tolerance for numerical integration. */
-    int maxAllowedSteps = 4096; /**< Maximum number of steps allowed for integration. */
-    int minAllowedSteps = 32; /**< Minimum number of steps required for integration. */
+    int maxAllowedSteps; /**< Maximum number of steps allowed for integration. */
+    int minAllowedSteps; /**< Minimum number of steps required for integration. */
     int stepsExpectedForInitialStep = 64; /**< Expected number of steps for the initial interval. */
     double initialStep; /**< Initial step size for the solver. */
     bool needsJacobian = false; /**< Flag indicating whether the ODE system requires a Jacobian function. */
+    int writePlottingFiles = -1; /**< Flag indicating whether to write the solution to a file. If <0, nothing is written. If >=0, a file with filename suufix _n is written. */
 
-    const gsl_odeiv2_step_type* stepType = gsl_odeiv2_step_rk4; /**< Type of GSL stepper used. */
+    const gsl_odeiv2_step_type* stepType; /**< Type of GSL stepper used. */
     gsl_odeiv2_step* step; /**< GSL stepper object. */
     gsl_odeiv2_control* controller; /**< GSL control object for managing tolerances. */
     gsl_odeiv2_evolve* evolver; /**< GSL evolve object for managing the integration process. */

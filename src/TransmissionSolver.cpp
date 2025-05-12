@@ -97,11 +97,14 @@ double TransmissionSolver::calculateTransmissionProbability(double energy, doubl
 
     setEnergyAndInitialValues(energy);
 
-    //the tunneling region is really big, there is no point to calculate
-    if (xInitial > 11.)
-        return 1.e-50;
+    // //the tunneling region is really big, there is no point to calculate
+    // if (xInitial > 11.)
+    //     return 1.e-50;
 
-    solveNoSave();
+    if(writePlottingFiles < 0)
+        solveNoSave();
+    else
+        solve(true);
 
     double k = waveVector;
     if (k <= 0.)
@@ -121,7 +124,14 @@ double TransmissionSolver::calculateTransmissionProbability(double energy, doubl
 
 const vector<double>& TransmissionSolver::calculateSolution(double energy){
     setEnergyAndInitialValues(energy);
-    solveNoSave();
+    
+    if(writePlottingFiles < 0)
+        solveNoSave();
+    else{
+        solve(true);
+        writeSolution("odeSolution_i_" + to_string(writePlottingFiles) + "_E_" + to_string(energy) + ".dat");
+        writeBarrierPlottingData("barrier_i_" + to_string(writePlottingFiles) + "_E_" + to_string(energy) + ".dat");
+    }
 
     assert(abs(solutionVector.back()) < 1.e3 || (solve(true), writeSolution(), writeBarrierPlottingData("barrier.dat", 0), false));
     return getSolution();
@@ -135,12 +145,12 @@ gsl_complex TransmissionSolver::transmissionCoefficient(double waveVector, const
 
 double TransmissionSolver::transmissionProbability(double waveVector, const vector<double>& leftSolution){
     gsl_complex transmissionCoeff = transmissionCoefficient(waveVector, leftSolution);
-    assert(gsl_complex_abs2(transmissionCoeff) >= 0. && "transmission coefficient appears to not be finite");
+    assert(gsl_complex_abs2(transmissionCoeff) >= 0. && "transmission coefficient not finite");
     assert(waveVector > 0. && "wave vector must be positive");
     return gsl_complex_abs2(transmissionCoeff) / waveVector;
 }
 
-const double TransmissionSolver::getMaxBArrierDepth() const{ 
+double TransmissionSolver::getMaxBArrierDepth() const{ 
     double initialPotential = barrier->potentialFunction(xInitial);
     double finalPotential = barrier->potentialFunction(xFinal);
     return max(initialPotential, finalPotential);

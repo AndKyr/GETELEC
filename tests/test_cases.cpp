@@ -19,6 +19,8 @@ namespace getelec{
  */
 TEST(GetelecTest, problematicCaseTest){
     Getelec getelec = Getelec();
+    getelec.setFileWriteFlag(true);
+
     getelec.setField(           17.1731178377976167);
     getelec.setRadius(          1.2312683984013784 );
     getelec.setGamma(           6.723404041251726 );
@@ -38,9 +40,6 @@ TEST(GetelecTest, problematicCaseTest){
     getelec.setBandDepth(       3.1109161307061641);
 
     EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
-
-
-
 }
     
 /**
@@ -212,7 +211,7 @@ TEST(BandEmitterTest, totalEnergyDistributionMethodComparison){
         barrier.setRandomParameters();
         emitter.setParameters();
         emitter.integrateTotalEnergyDistributionODEAndSaveSpectra();
-        emitter.writePlottingData("bandEmitterPlotting.dat");
+        emitter.writePlottingData();
         auto [totalEnergies, totalEnergyDistributions, dummyDerivatives] = emitter.getSpectra();
 
         for (size_t j = 0; j < totalEnergies.size(); j++){

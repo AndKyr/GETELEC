@@ -500,6 +500,8 @@ public:
      */
     void writeSpectraToFiles(size_t paramIndex) const;
 
+    void setFileWriteFlag(bool flag) { doWritePlotFiles = flag; }
+
 private:
 
     Config config; ///< Configuration object for the calculation
@@ -542,6 +544,7 @@ private:
     CalculationFlags calculationStatusFlags; ///< Flag that shows which output data is available
     mt19937* generator = NULL; ///< Random number generator for setting random parameters for testing.
     bool generatorIsInternallyConstructed; ///< Keeps track of whether getelec is responsible of freeing the RNG
+    bool doWritePlotFiles = false; ///< Determines whether all output is written.
 
 
 
