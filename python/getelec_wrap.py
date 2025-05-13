@@ -346,11 +346,11 @@ class GetelecInterface:
         return np.ctypeslib.as_array(potential_ctypes, shape=(size,))
     
     def calculateCurrentDensity(self):
-        self.run()
+        self.run(["CurrentDensity"])
         return self.getCurrentDensity()
     
     def calculateNottinghamHeat(self):
-        self.run()
+        self.run(["CurrentDensity", "NottinghamHeat"])
         return self.getNottinghamHeat()
     
     def getBarrierIntegrationLimits(self, params_index = 0):
@@ -369,7 +369,6 @@ class GetelecInterface:
     def setRandomParams(self, numberOfInputs):
         self.lib.Getelec_setRandomParameters(self.obj, ctypes.c_size_t(numberOfInputs))
         self._syncInputParameters()
-
 
     def setParameters(self, **params) -> None:
         for key, value in params.items():
