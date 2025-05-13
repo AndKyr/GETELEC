@@ -50,16 +50,15 @@ void Getelec::runIterationEffectiveMassUnity(size_t i, CalculationFlags flags){
         calculationStatusFlags = CalculationFlags::None;
         return;
     }
-
-    vector<double> allCurrentDensities;
-    allCurrentDensities.reserve(4);
     
     if (flags == CalculationFlags::CurrentDensity){ // if we ask only for the current density
-        allCurrentDensities.push_back(emitter.currentDensityIntegrateNormal(false));
+        currentDensityVector[i] = emitter.currentDensityIntegrateNormal(false);
         calculationStatusFlags = CalculationFlags::CurrentDensity;
         return;
     }
 
+    vector<double> allCurrentDensities;
+    allCurrentDensities.reserve(4);
     if (flags & CalculationFlags::NormalEnergyDistribution){ // the normal energy distribution is requested
         allCurrentDensities.push_back(emitter.currentDensityIntegrateNormal(true));
         normalEnergyDistributions[i] = emitter.getNormalEnergyDistribution();

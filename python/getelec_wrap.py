@@ -221,16 +221,6 @@ class GetelecInterface:
     def getInputsDict(self):
         return {"fields": self.fields, "radii": self.radii, "gammas": self.gammas, "kTs": self.kTs, "workFunctions": self.workFunctions, "bandDepths": self.bandDepths, "effectiveMasses": self.effectiveMasses}
 
-    def run(self, calculationFlags):
-        combinedFlagsInt = 0
-        for flagStr in calculationFlags:
-            if flagStr in self.flagMap:
-                combinedFlagsInt |= self.flagMap[flagStr]
-            else:
-                raise ValueError(f"Invalid flag: {flagStr}")
-
-        self.numberOfIterations = self.lib.Getelec_run(self.obj, combinedFlagsInt)
-
     def _syncInputParameters(self):
         size = ctypes.c_size_t()
         fields_ptr = self.lib.Getelec_getField(self.obj, ctypes.byref(size))
@@ -254,7 +244,6 @@ class GetelecInterface:
         effectiveMass_ptr = self.lib.Getelec_getEffectiveMass(self.obj, ctypes.byref(size))
         self.effectiveMasses = np.ctypeslib.as_array(effectiveMass_ptr, shape=(size.value,))
 
-
     def getCalculationStatus(self):
         combinedFlagsInt = self.lib.Getelec_getCalculationStatus(self.obj)
 
@@ -276,6 +265,8 @@ class GetelecInterface:
         self.numberOfIterations = self.lib.Getelec_run(self.obj, combinedFlagsInt)
 
     def getCurrentDensity(self):
+        if ("CurrentDensity" not in self.getCalculationStatus()):
+            return 0
         size = ctypes.c_size_t()
         densities_ptr = self.lib.Getelec_getCurrentDensities(self.obj, ctypes.byref(size))
         result = np.ctypeslib.as_array(densities_ptr, shape=(size.value,))
@@ -283,6 +274,8 @@ class GetelecInterface:
         return result
         
     def getNottinghamHeat(self):
+        if ("NottinghamHeat" not in self.getCalculationStatus()):
+            return 0
         size = ctypes.c_size_t()
         densities_ptr = self.lib.Getelec_getNottinghamHeats(self.obj, ctypes.byref(size))
         result = np.ctypeslib.as_array(densities_ptr, shape=(size.value,)) 

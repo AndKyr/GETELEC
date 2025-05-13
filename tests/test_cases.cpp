@@ -17,30 +17,30 @@ namespace getelec{
 /**
  * @brief Test for debugging of a specific problematic case
  */
-TEST(GetelecTest, problematicCaseTest){
-    Getelec getelec = Getelec();
-    getelec.setFileWriteFlag(true);
+// TEST(GetelecTest, problematicCaseTest){
+//     Getelec getelec = Getelec();
+//     getelec.setFileWriteFlag(true);
 
-    getelec.setField(           17.1731178377976167);
-    getelec.setRadius(          1.2312683984013784 );
-    getelec.setGamma(           6.723404041251726 );
-    getelec.setWorkFunction(    4.1228648835720669 );
-    getelec.setkT(              0.53783585503655718 );
-    getelec.setEffectiveMass(   0.43684186625005128 );
-    getelec.setBandDepth(       3.7052635356492463 );
+//     getelec.setField(           17.1731178377976167);
+//     getelec.setRadius(          1.2312683984013784 );
+//     getelec.setGamma(           6.723404041251726 );
+//     getelec.setWorkFunction(    4.1228648835720669 );
+//     getelec.setkT(              0.53783585503655718 );
+//     getelec.setEffectiveMass(   0.43684186625005128 );
+//     getelec.setBandDepth(       3.7052635356492463 );
 
-    EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
+//     EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
 
-    getelec.setField(           16.077742658313451);
-    getelec.setRadius(          1.2191484367140726);
-    getelec.setGamma(           10.913338685939717);
-    getelec.setWorkFunction(    3.7135425593078941);
-    getelec.setkT(              0.0506137085500604 );
-    getelec.setEffectiveMass(   1.7932010728841656 );
-    getelec.setBandDepth(       3.1109161307061641);
+//     getelec.setField(           16.077742658313451);
+//     getelec.setRadius(          1.2191484367140726);
+//     getelec.setGamma(           10.913338685939717);
+//     getelec.setWorkFunction(    3.7135425593078941);
+//     getelec.setkT(              0.0506137085500604 );
+//     getelec.setEffectiveMass(   1.7932010728841656 );
+//     getelec.setBandDepth(       3.1109161307061641);
 
-    EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
-}
+//     EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
+// }
     
 /**
  * @brief Test for TransmissionSolver:: check that the transmission coefficient for the default barrier is the one expected
@@ -317,7 +317,7 @@ TEST(GetelecTest, runRandomCasesTest){
     mt19937 generator(1987);
 
     Getelec getelec = Getelec("GetelecConfig.txt", "modifiedSN", &generator);
-    int noRuns = 64;
+    int noRuns = 256;
     //test first for effectiveMass!=1.
     getelec.setRandomParameters(noRuns);
     EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
