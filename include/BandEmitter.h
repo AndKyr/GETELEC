@@ -250,18 +250,9 @@ public:
     }
 
     double getWaveVectorZ(double totalEnergy, double parallelEnergy, double cutoff = 1.e-2) const{
-        double waveVectorZ = sqrt((totalEnergy+bandDepth) - parallelEnergy / effectiveMass) * CONSTANTS.sqrt2mOverHbar;
+        double waveVectorZ = sqrt((totalEnergy+bandDepth) * effectiveMass - parallelEnergy) * CONSTANTS.sqrt2mOverHbar / effectiveMass;
         assert(waveVectorZ > 0 && "waveVectorZ is not positive");
         return max(waveVectorZ, cutoff);
-    }
-
-    /**
-     * @brief Gets the calculated spectra from the solution vector.
-     * @return The energy spectra.
-     * @note This functions uses move semantics to avoid copying the data. This means that the data inside the emitter class is no longer available in the object after calling this function.
-     */
-    tuple<vector<double>, vector<double>, vector<double>> getSpectra(){
-        return {move(totalEnergyDistribution.first), move(totalEnergyDistribution.second), move(totalEnergyDistributionDerivatives)};
     }
 
     pair<vector<double>, vector<double>> getParallelEnergyDistribution() const{

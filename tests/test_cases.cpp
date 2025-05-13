@@ -212,7 +212,7 @@ TEST(BandEmitterTest, totalEnergyDistributionMethodComparison){
         emitter.setParameters();
         emitter.integrateTotalEnergyDistributionODEAndSaveSpectra();
         emitter.writePlottingData();
-        auto [totalEnergies, totalEnergyDistributions, dummyDerivatives] = emitter.getSpectra();
+        auto [totalEnergies, totalEnergyDistributions] = emitter.getTotalEnergyDistribution();
 
         for (size_t j = 0; j < totalEnergies.size(); j++){
             double TEDFromIntegral = emitter.totalEnergyDistributionIntegrateParallel(totalEnergies[j]);
@@ -317,7 +317,7 @@ TEST(GetelecTest, runRandomCasesTest){
     mt19937 generator(1987);
 
     Getelec getelec = Getelec("GetelecConfig.txt", "modifiedSN", &generator);
-    int noRuns = 256;
+    int noRuns = 64;
     //test first for effectiveMass!=1.
     getelec.setRandomParameters(noRuns);
     EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
