@@ -130,10 +130,9 @@ const vector<double>& TransmissionSolver::calculateSolution(double energy){
     else{
         solve(true);
         writeSolution("odeSolution_i_" + to_string(writePlottingFiles) + "_E_" + to_string(energy) + ".dat");
-        writeBarrierPlottingData("barrier_i_" + to_string(writePlottingFiles) + "_E_" + to_string(energy) + ".dat");
     }
 
-    assert(abs(solutionVector.back()) < 1.e3 || (solve(true), writeSolution(), writeBarrierPlottingData("barrier.dat", 0), false));
+    assert(abs(solutionVector.back()) < 1.e3 || (solve(true), writeSolution(), false));
     return getSolution();
 }
 
@@ -198,10 +197,31 @@ void TransmissionSolver::writeBarrierPlottingData(string filename, int nPoints) 
     else
         xPoints = xSaved;
 
-    file << setw(16) << "# x [nm]" << setw(16) << "V(x) - E [eV]" << endl;
+    file << setw(16) << "# x [nm]" << setw(16) << "V(x) [eV], E = " << barrier->getEnergy() << " eV" << endl;
     for (auto x : xPoints)
-        file << setw(16) <<  x << setw(16) << barrier->potentialFunction(x) - barrier->getEnergy()  << endl;
+        file << setw(16) <<  x << setw(16) << barrier->potentialFunction(x) << endl;
     file.close();
+}
+
+
+void TransmissionSolver::writeSolution(string filename){
+    assert(xSaved.size() == savedSolution.size() && xSaved.size() > 1 && "asked to write ODE solution without having it saved");
+
+    ofstream file(filename, ios::out);
+    vector<string> header = {"#x"};
+    for (size_t i = 0; i < solutionVector.size(); i++)
+        header.push_back("solution[" + to_string(i) + "]");
+    header.push_back("V(x) - E [eV]");
+
+    for(auto& s : header) file << setw(16) << s;
+    file << endl;
+
+    for (size_t i = 0; i < xSaved.size(); i++){
+        file << setw(16) << xSaved[i];
+        for (auto &y : savedSolution[i]) 
+            file << setw(16) << y;
+        file << setw(16) << barrier->potentialFunction(xSaved[i]) - barrier->getEnergy()  << endl;
+    }
 }
 
 } // namespace getelec

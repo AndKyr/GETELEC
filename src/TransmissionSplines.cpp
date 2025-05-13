@@ -83,16 +83,15 @@ int TransmissionSpline::writeSplineSolution(string filename, int nPoints, bool w
 
 int TransmissionSpline::writeSplineNodes(string filename) const{
     ofstream file(filename);
-    vector<string> header = {"#energy", "sol[0]", "deriv[0]", "sol[1]", "deriv[1]", "sol[2]", "deriv[2]", "NED estimate"};
+    vector<string> header = {"#energy", "sol[0]", "deriv[0]", "sol[1]", "deriv[1]", "sol[2]", "deriv[2]", "NED estimate", "bisect"};
     for(auto& s : header) file << setw(16) << s;
     file << endl;
 
     for (size_t i = 0; i < sampleEnergies.size(); i++){
         file << setw(16) << sampleEnergies[i];
-        for (int j = 0; j < 3; j++){
+        for (int j = 0; j < 3; j++)
             file << setw(16) << solutionSamples[j][i] << setw(16) << solutionDerivativeSamples[j][i];
-        }
-        file << setw(16) << normalEnergyDistributionEstimate(sampleEnergies[i]) << endl; 
+        file << setw(16) << normalEnergyDistributionEstimate(sampleEnergies[i]) << setw(16) << bisectList[i] << endl; 
     }
     file.close();
     return 1;
@@ -146,7 +145,7 @@ void TransmissionSpline::smartInitialSampling(double bandDepth, double effective
     solver.setXlimits(-initialSampleEnergy + 5.); // set the limits for the transmission solver. 
     double numberOfDecayLengthsForRtol = -log(relativeTolerance);
 
-    if (solver.getXInitial() > 100.) // the barrier is very long. A different approach is necessary
+    if (solver.getXInitial() > 50.) // the barrier is very long. A different approach is necessary
         return smartSamplingForLongBarrier();
 
     solver.getBarrier()->setBarrierTopFinder(true); // set barrier top finder
@@ -154,18 +153,11 @@ void TransmissionSpline::smartInitialSampling(double bandDepth, double effective
     double topOfBarrier = solver.getBarrier()->getBarrierTop(); //get the barrier top
     solver.getBarrier()->setBarrierTopFinder(false); // reset the barrier top finder to off. No need any more
 
+
     double dLogD_dE_atInitialSample = -2. * solutionDerivativeSamples[2].back(); //Estimation for the transmission coefficient decay rate down from initial soample
-    double logD_atInitialSample =  log(solver.getTransmissionProbabilityforWaveVector(12.)) ; //Estimation of log(D) at the initial sample 
+    
+    bool noTunnelingRegime = initialSamplingLowEnergies(initialSampleEnergy);
 
-    bool noTunnelingRegime = false; // it is true if  D(E < barrier top) ~= 0, i.e. no tunneling
-
-    if (logD_atInitialSample > log(absoluteTolerance)){ //if D large enough to be worth the extra sample
-        double lowDecayLength = 1. / dLogD_dE_atInitialSample;
-        double lengthToDecay = min(numberOfDecayLengthsForRtol * lowDecayLength,  (logD_atInitialSample - log(absoluteTolerance)) * lowDecayLength);
-        sampleEnergyPoint( initialSampleEnergy - lengthToDecay);
-    } else {
-        noTunnelingRegime = true;
-    }
     maximumCurrentPosition = initialSampleEnergy; //set the initial guess for the maximum current estimate location to the initial sample
 
     if (effectiveMass < 0.){//if effective mass < 0., there is no need to sample above the top of the band
@@ -310,7 +302,7 @@ void TransmissionSpline::smartSamplingForLongBarrier(){
     double maxBarrierLocation;
     double topOfBarrier = solver.findBarrierTop(maxBarrierLocation); //find the barrier top with gsl minimizer. ODE is unreliable
     solver.setXlimits( - topOfBarrier + 0.5); // set the limits for the transmission solver.
-    for(double energy = topOfBarrier; energy > topOfBarrier - 1.; energy -= 0.1){
+    for(double energy = topOfBarrier; energy > topOfBarrier - 2.; energy -= 0.1){
         sampleEnergyPoint(energy, 0, false, true);
         double transmissionProbability = solver.getTransmissionProbabilityforWaveVector(12.);
         if (transmissionProbability < absoluteTolerance)
@@ -330,6 +322,29 @@ void TransmissionSpline::smartSamplingForLongBarrier(){
     }
     maximumCurrentPosition = topOfBarrier; //set the initial guess to the top of the barrier
     sortAndInitialize();
+}
+
+bool TransmissionSpline::initialSamplingLowEnergies(double initialSampleEnergy){
+
+    double numberOfDecayLengthsForRtol = -log(relativeTolerance);
+
+    for(double energy = initialSampleEnergy; energy > -50.; energy -= 5.){ //loop a few times to find appopriate sample decay rate
+        double lowDecayLength = -0.5 / solutionDerivativeSamples[2].back(); //Estimation for the transmission coefficient decay rate down from initial soample
+        double logD_atInitialSample =  log(solver.getTransmissionProbabilityforWaveVector(12.)) ; //Estimation of log(D) at the initial sample 
+        
+        if (logD_atInitialSample < log(absoluteTolerance)) //if D very low
+            return true;
+        
+        double lengthToDecay = min(numberOfDecayLengthsForRtol * lowDecayLength,  (logD_atInitialSample - log(absoluteTolerance)) * lowDecayLength);
+        if (lengthToDecay < 5.){
+            sampleEnergyPoint( energy - lengthToDecay);
+            return false;
+        } 
+        
+        sampleEnergyPoint( energy - 5.);
+    }
+    assert((writeSplineNodes(), false) && "Sampling at low energies failed with energy dropping below -50 eV.");
+    return false;
 }
 
 void TransmissionSpline::refineSamplingToTolerance(int maxRefineSteps){
@@ -354,7 +369,7 @@ void TransmissionSpline::refineSamplingToTolerance(int maxRefineSteps){
     }
     cout << "GETELEC WARNING: Max allowed refine steps " << maxRefineSteps << " reached in spline interpolation without satisfying tolerance." << endl;
     
-    assert((writeSplineSolution("incompleteSplineSolution.dat", 256, true), writeSplineNodes("incompleteSplineNodes.dat"), false)); //if in debug mode, then write the splines to check them.
+    assert((solver.setWriteFlag(126875987), writeSplineSolution("incompleteSplineSolution.dat", 256, true), writeSplineNodes("incompleteSplineNodes.dat"), false)); //if in debug mode, then write the splines to check them.
 }
 
 void TransmissionSpline::sortAndInitialize(){

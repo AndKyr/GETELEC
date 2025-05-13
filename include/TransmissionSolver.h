@@ -256,9 +256,24 @@ public:
      */
     void printXLimits() { cout << "xInitial = " << xInitial << " xFinal = " << xFinal << endl; }
 
+    /**
+     * @brief getter for the barrier pointer
+     */
     TunnelingFunction* getBarrier() { return barrier; }
 
+    /**
+     * @brief writes plotting data for the barrier
+     * @param filename the name of the file to write
+     * @param nPoints the number of points to be used for plotting
+     */
     void writeBarrierPlottingData(string filename = "barrier.dat", int nPoints = 256) const;
+
+    /**
+     * @brief writes the solution of the solver (it has to have been saved first)
+     * @param filename The name of the file to be written
+     * @note This overloads the ODESolution file written and it differs only in the sense that it writes the barrier in additional column
+     */
+    void writeSolution(string filename = "transmissionSolver.dat");
 
 };
 

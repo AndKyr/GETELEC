@@ -224,7 +224,8 @@ double BandEmitter::totalEnergyDistributionIntegrateParallel(double totalEnergy)
     gsl_function gslIntegrationFunction = {integrationFunctionPointer, this};
 
     double maxParallelEnergy = min(effectiveMass * (totalEnergy + bandDepth), totalEnergy - workFunction - interpolator.getMinimumSampleEnergy());
-    assert(maxParallelEnergy >= 0 && "maxParallelEnergy is not positive");
+    assert(maxParallelEnergy >= -numeric_limits<double>::epsilon() && "maxParallelEnergy is not positive");
+    if (maxParallelEnergy < absoluteTolerance) return 0.;
 
     double result, error;
     gsl_integration_qag(&gslIntegrationFunction, 0., maxParallelEnergy, absoluteTolerance, relativeTolerance, maxAllowedSteps, 

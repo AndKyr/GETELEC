@@ -192,9 +192,16 @@ private:
 
     /**
      * @brief Runs the initial sampling for the extreme case of super long barriers (effectively only thermionic emission allowed)
-     * 
      */
     void smartSamplingForLongBarrier();
+
+    /**
+     * @brief Performs the part of the initial sampling related to energies below the Fermi energy
+     * @param initialSampleEnergy The energy point where the initial sample was taken
+     * @return noTunnelingRegime (Whether the barrier is very long and the transmission probability decades extremely fast below the barrier top)
+     */
+    bool initialSamplingLowEnergies(double initialSampleEnergy);
+
     
 
     /**
