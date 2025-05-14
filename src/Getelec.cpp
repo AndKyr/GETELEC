@@ -325,7 +325,7 @@ std::vector<double> Getelec::interpolateTransmissionProbabilities(const std::vec
     tbb::concurrent_vector<double> transmissionCoefficients(energies.size());
     auto iterationLambda = [&transmissionCoefficients, &energies, &waveVectors, &emitter, this](size_t i) { 
         double waveVector = waveVectors.size() == 0 ? -1. : waveVectors[i];
-        transmissionCoefficients[i] = emitter.interpolateTransmissionProbability(energies[i]);
+        transmissionCoefficients[i] = emitter.interpolateTransmissionProbability(energies[i], waveVector);
     };
     
     tbb::parallel_for(size_t(0), energies.size(), iterationLambda);
@@ -334,7 +334,7 @@ std::vector<double> Getelec::interpolateTransmissionProbabilities(const std::vec
 
 size_t Getelec::getMaxIterations() {
     const std::vector<const std::vector<double>*> allInputVectors = {&fieldsVector, &radiiVector, &gammasVector, &kTVector, &workFunctionVector, &bandDepthVector, &effectiveMassVector};
-    int maxSize = 0;
+    size_t maxSize = 0;
     for (auto* inputVector : allInputVectors)
         if (inputVector->size() > maxSize)
             maxSize = inputVector->size();

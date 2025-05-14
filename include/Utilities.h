@@ -207,9 +207,7 @@ protected:
      * @param yValue The y-value.
      * @return The calculated tolerance.
      */
-    virtual double calculateTolerance(double x, double yValue){
-        return absoluteTolerance + relativeTolerance * abs(yValue);
-    }
+    virtual double calculateTolerance(double x, double yValue){ return absoluteTolerance + relativeTolerance * abs(yValue) + x * 0.;}
 
     int updateSpline(); /**< Updates the spline object based on the current sampling list. */
     int refineSampling(); /**< Refines the sampling list to meet the specified tolerance. */

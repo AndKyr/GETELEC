@@ -56,9 +56,6 @@ class TestGetelecInterface(tst.TestCase):
     def testFitter(self):
         import dataFitterIV as fitter
 
-        ivFitter = fitter.IVDataFitter()
-
-
         voltageData = np.array([6666.66666667, 6528.49740933, 6395.93908629, 6268.65671642, \
         6146.34146341, 6028.70813397, 5915.49295775, 5806.4516129, 5701.35746606, 5600., 5502.18340611, 5407.72532189,\
         5316.4556962 , 5228.21576763, 5142.85714286, 5060.24096386,\
@@ -101,6 +98,14 @@ class TestGetelecInterface(tst.TestCase):
 
         plt.show()
 
+    def testTransmissionProbability(self):
+        getelec = gt.GetelecInterface(configPath="getelec.cfg")
+        getelec.run(["CurrentDensity"])
+        energies = np.linspace(-2., 2., 64)
+        waveVectors = 12. * np.ones(64)
+        calculatedTransmissionProbability = getelec.calculateTransmissionProbabilities(energies, waveVectors)
+        plt.semilogy(energies, calculatedTransmissionProbability)
+        plt.show()
 
 
     

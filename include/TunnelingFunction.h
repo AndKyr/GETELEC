@@ -77,8 +77,9 @@ public:
      * @return The left boundary of the potential well.
      */
     virtual double findLeftXLimit(double maxPotentialDepth) { 
-        cout << "This is a base class function (virtual). It should not be used directly. Just returns 0" << endl;
-        return 0.; 
+        cout << "WARNING: This is the base class potential function (virtual). It should not be used directly. Just returns the input" << endl;
+        assert(false && "calling a base class virtual function that shouldn't get called");
+        return maxPotentialDepth; 
     }
 
     /**
@@ -87,9 +88,9 @@ public:
      * @return The right boundary of the potential well.
      */
     virtual double findRightXLimit(double maxPotentialDepth) { 
-        cout << "This is the base class potential function (virtual). It should not be used directly. Just returns 0" << endl;
-
-        return 0.;
+        cout << "WARNING: This is the base class potential function (virtual). It should not be used directly. Just returns the input" << endl;
+        assert(false && "calling a base class virtual function that shouldn't get called");
+        return maxPotentialDepth;
     }
 
     /**

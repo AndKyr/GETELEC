@@ -42,7 +42,13 @@ void BandEmitter::setIntegrationLimits(){
         maxParallelEnergy = effectiveMass * (minTotalEnergy + bandDepth);
 }
 
-double BandEmitter::gPrimeFunction(double normalEnergy) {
+double BandEmitter::getWaveVectorZ(double totalEnergy, double parallelEnergy, double cutoff) const{
+    double waveVectorZ = sqrt((totalEnergy+bandDepth) * effectiveMass - parallelEnergy) * CONSTANTS.sqrt2mOverHbar / effectiveMass;
+    assert(waveVectorZ > 0 && "waveVectorZ is not positive");
+    return max(waveVectorZ, cutoff);
+}
+
+double BandEmitter::gPrimeFunction(double normalEnergy) const{
     assert(abs(effectiveMass - 1.) < numeric_limits<double>::epsilon() && "the g'(E) function is valid only for m* = 1");
     double waveVector = sqrt(normalEnergy + bandDepth) * CONSTANTS.sqrt2mOverHbar;
     double result = interpolator.getTransmissionProbability(normalEnergy - workFunction, waveVector);

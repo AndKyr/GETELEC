@@ -170,8 +170,8 @@ protected:
     double maxStepSize; /**< Maximum allowed step size for the ODE solver. */
     double relativeTolerance = 1.e-4; /**< Relative tolerance for numerical integration. */
     double absoluteTolerance = 1.e-12; /**< Absolute tolerance for numerical integration. */
-    int maxAllowedSteps; /**< Maximum number of steps allowed for integration. */
-    int minAllowedSteps; /**< Minimum number of steps required for integration. */
+    size_t maxAllowedSteps; /**< Maximum number of steps allowed for integration. */
+    size_t minAllowedSteps; /**< Minimum number of steps required for integration. */
     int stepsExpectedForInitialStep = 64; /**< Expected number of steps for the initial interval. */
     double initialStep; /**< Initial step size for the solver. */
     bool needsJacobian = false; /**< Flag indicating whether the ODE system requires a Jacobian function. */

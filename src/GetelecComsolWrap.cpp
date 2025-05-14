@@ -124,7 +124,7 @@ int eval(const char *func,
                     int nArgs,
                     const double **inReal,
                     const double **inImag,
-                    int blockSize,
+                    int blockSizeIn,
                     double *outReal,
                     double *outImag) 
 {
@@ -134,6 +134,7 @@ int eval(const char *func,
     }
     string functionStr = func;
 
+    size_t blockSize = (size_t) blockSizeIn;
 
     if (verbose){
         logTimeStamp();
@@ -165,7 +166,7 @@ int eval(const char *func,
             if (inImag) logFile << "\t inImag[" << i << "] @ " << inImag[i] <<" \t";
         }
         logFile << endl;
-        for (int j = 0; j < blockSize; j++){
+        for (size_t j = 0; j < blockSize; j++){
             for (int i = 0; i < nArgs; i++){
                 logFile << inReal[i][j];
                 if (inImag && inImag[i]) logFile << " \t " << inImag[i][j] << " \t";

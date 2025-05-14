@@ -168,7 +168,7 @@ class GetelecInterface:
     def calculateTransmissionProbability(self, energy, waveVector = -1., params_index = 0):
         return self.lib.Getelec_calculateTransmissionProbability(self.obj, energy, waveVector, params_index)
 
-    def calculateTransmissionProbabilities(self, energies, waveVectors, params_index):
+    def calculateTransmissionProbabilities(self, energies, waveVectors, params_index = 0):
         energies_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(energies, dtype=np.float64)))
         waveVectors_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(waveVectors, dtype=np.float64)))
         result_ptr = self.lib.Getelec_calculateTransmissionProbabilities(self.obj, energies_ctypes, waveVectors_ctypes, size, params_index)
@@ -324,7 +324,6 @@ class GetelecInterface:
         inputDict.update(resultDict)
         return inputDict
 
-        
     def _extractSpectra(self, i:int, spectraType:str) -> tuple[np.ndarray, np.ndarray]:
         size = ctypes.c_size_t()
         energies_ptr = self.lib.Getelec_getSpectraEnergies(self.obj, ctypes.c_size_t(i), ctypes.byref(size), ctypes.c_char(spectraType.encode("utf-8")))

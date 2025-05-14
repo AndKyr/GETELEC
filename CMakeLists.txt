@@ -145,7 +145,7 @@ endif()
 # Add debug flags if building in Debug mode
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(getelec_lib PRIVATE DEBUG_MODE)
-    target_compile_options(getelec_lib PRIVATE -g -Wall -Wextra -O0 -DDEBUG)
+    target_compile_options(getelec_lib PRIVATE -g -Wall -Wextra -Wno-reorder -Wno-unused-value -O0 -DDEBUG)
     target_compile_definitions(getelec PRIVATE DEBUG_MODE)
     target_compile_options(getelec PRIVATE -g -O0 -DDEBUG)
 endif()

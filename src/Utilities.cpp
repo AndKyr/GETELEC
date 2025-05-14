@@ -60,7 +60,7 @@ void FunctionInterpolator::initialize(double xInit, double xFinal, int numberOfI
 
     vector<double> xPoints = Utilities::linspace(xInit, xFinal, numberOfInitialElements);
     vector<double> yPoints(xPoints);
-    for (int i = 0; i < xPoints.size(); i++){
+    for (size_t i = 0; i < xPoints.size(); i++){
         yPoints[i] = this->calculateYforX(xPoints[i]);
         samplingList.push_back(SplineElement(xPoints[i], yPoints[i], true));
     }

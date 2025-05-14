@@ -54,7 +54,7 @@ public:
                 return make_unique<ModifiedSNBarrier>();
             } else {
                 config.xcFunctionParams.name = barrierType;
-                int nReadParams = config.readParamGroup(&config.xcFunctionParams);
+                size_t nReadParams = config.readParamGroup(&config.xcFunctionParams);
                 if (nReadParams < config.xcFunctionParams.keyMap.size()) {
                     cout << "WARNING: No parameters found for the DFT XC function named " << barrierType 
                             << " ; Using default values, which are for W(110)." << std::endl;
@@ -79,7 +79,6 @@ public:
             generatorIsInternallyConstructed = true;
         }
     }
-
 
     ~Getelec(){
         if (generator && generatorIsInternallyConstructed) {
@@ -260,6 +259,7 @@ public:
      * @note This method uses move semantics and is more efficient than the other setBandDepth method, but it invalidates the input vector.
      */
     void setBandDepthMove(std::vector<double>&& bandDepthVector_) { bandDepthVector = std::move(bandDepthVector_); }
+    
     /**
      * @brief Set the band depth at multiple values with a pointer and size input (C-style)
      * @param bandDepthArray_ Depth of the electronic band in eV, multiple values to iterate over.
@@ -316,7 +316,6 @@ public:
      * @return The number of iterations
      */
     size_t run(CalculationFlags flags = CalculationFlags::CurrentDensity);
-
 
     /**
      * @brief Calculate the transmission coefficient for a specific energy
