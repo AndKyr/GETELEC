@@ -324,15 +324,24 @@ public:
      * @return The transmission coefficient
      * @note This method is relevant for a single or a few calculations of the transmission coefficient. Don't use it for multiple calculations on the same barrier as it resets the barrier which might be slow. Use calculateTransmissionCoefficientForEnergies instead
      */
-    double calculateTransmissionProbability(double energy, double waveVector = -1., size_t paramsIndex = 0);
+    // double calculateTransmissionProbability(double energy, double waveVector = -1., size_t paramsIndex = 0);
 
     /**
-     * @brief Calculate the transmission coefficient for multiple energies
-     * @param energies The energy levels (eV)
-     * @return The transmission coefficients
-     * @note This method is relevant for multiple calculations of the transmission coefficient. It is faster than calculateTransmissionCoefficientForEnergy for multiple calculations on the same barrier. However, if you are iterating over many many energies, it might be better to use calculateTransmissionCoefficientForManyEnergies, which prepares the interpolator and then just interpolates.
+     * @brief Calculate the transmission probabilities for multiple energies and waveVectors
+     * @param waveVectors The list of the waveVectors to calculate for (if empty, it defaults to 12. / nm)
+     * @return The transmission probabilities
+     * @note This method requires the calculateTransmissionForEnergies() to have been called in prior
      */
-    vector<double> calculateTransmissionProbabilities(const vector<double>& energies, const vector<double>& waveVectors = {}, size_t paramsIndex = 0);
+    vector<double> getTransmissionProbabilities(const vector<double>& waveVectors = {}) const;
+
+    /**
+     * @brief Calculate the transmission coefficients for multiple energies and waveVectors
+     * @param waveVectors The list of the waveVectors to calculate for (if empty, it defaults to 12. / nm)
+     * @return The transmission coefficients
+     * @note This method requires the calculateTransmissionForEnergies() to have been called in prior
+     */
+    vector<gsl_complex> getTransmissionCoefficients(const vector<double>& waveVectors = {}) const;
+
 
     /**
      * @brief Calculate the transmission coefficient for multiple energies
@@ -499,7 +508,21 @@ public:
      */
     void writeSpectraToFiles(size_t paramIndex) const;
 
+    /**
+     * @brief set the writing flag (if true it forces all plotting data to be written to files)
+     * @param flag The flag to set
+     * @note Set this flag to true for debugging only
+     */
     void setFileWriteFlag(bool flag) { doWritePlotFiles = flag; }
+
+    /**
+     * @brief calculates the transmission solution for a list of energies
+     * @param energies The list of (normal) energies to calculate transmission for (eV, counting from fermi level)
+     * @param paramsIndex The index of the parameter list to be used
+     * @param forceCalculate Flag to force full calculation for every energy rather than inteprolation (default is fause)
+     * @note If the number of requested energie sis > 32 , an interpolator is prepared and interpolated
+     */
+    void calculateTransmissionForEnergies(const vector<double>& energies, size_t paramsIndex = 0, bool forceCalculate = false);
 
 private:
 
@@ -535,6 +558,7 @@ private:
     vector<pair<vector<double>, vector<double>>> normalEnergyDistributions; ///< The normal energy distributions (output) in A/nm^2/eV.
     vector<pair<vector<double>, vector<double>>> parallelEnergyDistributions; ///< The parallel energy distributions (output) in A/nm^2/eV.
     vector<vector<double>> totalEnergyDistributionsDerivatives; ///< The total energy distributions derivatives (A / nm^2 / eV / eV)
+    vector<vector<double>> transmissionSolutions; ///< Stores the solutions to be used for transmission calculations of a single paramsIndex
 
     tbb::enumerable_thread_specific<unique_ptr<ModifiedSNBarrier>> threadLocalBarrier; ///< Thread-local instances of ModifiedSNBarrier
     tbb::enumerable_thread_specific<TransmissionSolver> threadLocalSolver; ///< Thread-local instances of TransmissionSolver

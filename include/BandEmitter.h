@@ -163,31 +163,45 @@ public:
      * @return The Nottingham heat  (eV A / nm^2).
      * @note This value needs to be divided by the electron charge to be converted to W/nm^2
      */
-    double getNottinghamHeatODE() {
-        return solutionVector[2] * CONSTANTS.SommerfeldConstant;
-    }
+    double getNottinghamHeatODE() { return solutionVector[2] * CONSTANTS.SommerfeldConstant; }
 
     /**
-     * @brief getter for the PED
+     * @brief gets the interpolator for the transmission problem ()
+     */
+    TransmissionSpline& getInterpolator(){ return interpolator; }
+
+    /**
+     * @brief getter for the parallel energy distribution
+     * @return  a pair of vectors containing energy (eV) and emitted current density (A/nm^2 / eV)
      */
     pair<vector<double>, vector<double>> getParallelEnergyDistribution() const{ return parallelEnergyDistribution; }
-
-
+    
+    /**
+     * @brief getter for the normal energy distribution
+     * @return  a pair of vectors containing energy (eV) and emitted current density (A/nm^2 / eV)
+     */
     pair<vector<double>, vector<double>> getNormalEnergyDistribution() const{ return normalEnergyDistribution; }
 
+    /**
+     * @brief getter for the total energy distribution
+     * @return  a pair of vectors containing energy (eV) and emitted current density (A/nm^2 / eV)
+     */
     pair<vector<double>, vector<double>> getTotalEnergyDistribution() const{ return totalEnergyDistribution;}
 
+    /**
+     * @brief getter for the total energy distribution derivatives (valid only for effectiveMass = 1)
+     * @return  vectors containing TED derivatives (A/nm^2 / eV / eV)
+     */
     vector<double> getTotalEnergyDistributionDerivatives() const{ return totalEnergyDistributionDerivatives;}
     /** @} */
     
     /**
-     * @brief Evaluates the speactra at a given energy.
-     * @param energy The energy at which to evaluate the spectra.
-     * @return The evaluated spectra.
-     */
-    double getTotalEnergyDistributionForEnergy(double energy) const{
-        return totalEnergyDistributionSpline.evaluate(energy);
-    }
+     * @brief Evaluates the speactra at a given energy using the Hermitian spline.
+     * @param energy The energy at which to evaluate the spectra (eV).
+     * @return The evaluated spectra A/nm^ / eV
+     * @note This function has a meaning only if the spline has been set up with derivatives, which occurs only for effective mass = 1
+     */ 
+    double getTotalEnergyDistributionForEnergy(double energy) const{ return totalEnergyDistributionSpline.evaluate(energy); }
 
     /**
      * @brief Sets the random number generator for the band emitter.

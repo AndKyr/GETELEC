@@ -114,22 +114,17 @@ const double* Getelec_getSpectraDerivatives(getelec::Getelec* obj, size_t i, siz
 }
 
 // Wrapper to calculate transmission coefficient for a single energy
-double Getelec_calculateTransmissionProbability(getelec::Getelec* obj, double energy, double waveVector, size_t paramsIndex) {
-    return obj->calculateTransmissionProbability(energy, waveVector, paramsIndex);
-}
-
-// Wrapper to calculate transmission coefficient for multiple energies
-const double* Getelec_calculateTransmissionProbabilities(getelec::Getelec* obj, const double* energies, const double* waveVectors, size_t size, size_t paramsIndex) {
-    return obj->calculateTransmissionProbabilities(vector<double>(energies, energies + size), vector<double>(waveVectors, waveVectors + size), paramsIndex).data();
+void Getelec_calculateTransmissionCoefficients(getelec::Getelec* obj, size_t size, const double* energies, const double* waveVectors, double* outReal, double* outImag, size_t paramsIndex) {
+    obj->calculateTransmissionForEnergies(vector<double>(energies, energies + size), paramsIndex);
+    vector<gsl_complex> transmissionCoefficients = obj->getTransmissionCoefficients(vector<double>(waveVectors, waveVectors + size));
+    for (size_t i = 0; i < size; i++) {
+        outReal[i] = transmissionCoefficients[i].dat[0];
+        outImag[i] = transmissionCoefficients[i].dat[1];
+    }
 }
 
 void Getelec_getBarrierValues(getelec::Getelec* obj, const double* x, double* potential, size_t size, size_t paramsIndex) {
     obj->getBarrierValues(x, potential, size, paramsIndex);
-}
-
-// Wrapper to calculate transmission coefficient for many energies
-const double* Getelec_interpolateTransmissionProbabilities(getelec::Getelec* obj, const double* energies, const double* waveVectors, size_t size, size_t paramsIndex) {
-    return obj->interpolateTransmissionProbabilities(vector<double>(energies, energies + size), vector<double>(waveVectors, waveVectors + size), paramsIndex).data();
 }
 
 void Getelec_getBarrierIntegrationLimits(getelec::Getelec* obj, double* xInitial, double* xFinal, size_t paramsIndex) {  

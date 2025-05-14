@@ -22,48 +22,6 @@ using namespace std;
  * Schrödinger's equation numerically. It leverages the GSL ODE solver for accuracy and performance.
  */
 class TransmissionSolver : public ODESolver {
-private:
-    TunnelingFunction* barrier; /**< Pointer to the tunneling function defining the potential barrier. */
-    double kappaInitial; /**< Initial value of the wavevector (kappa) for the tunneling region. */
-    //double kappaFinal; /**< Final value of the wavevector (kappa) for the tunneling region. */
-    int numberOfCalls = 0; /**< Counter for the number of times the transmission coefficient is calculated. */
-    //bool recalculateXlimitsAtEachEnergy = false; /**< Flag to recalculate the integration limits for each energy level. */
-    array<double,4> fundamentalMatrix; /**< The fundamental matrix of the general solution of the real problem (\boldsymbol{\Phi} in paper) */
-    int energyDerivativeLvl; /**< The level of energy derivative to calculate. */
-        
-    /**
-     * @brief Defines the system of differential equations for tunneling.
-     * @param x Independent variable (position or distance).
-     * @param y Array of dependent variables.
-     * @param f Array of derivatives of the dependent variables.
-     * @param params Additional system parameters. In our case it takes a pointer to the tunneling function.
-     * @return GSL_SUCCESS on success.
-     */
-    static int tunnelingDifferentialSystem(double x, const double y[], double f[], void* params);
-
-
-    /**
-     * @brief Defines the system of differential equations for tunneling, including the first derivative with respect to energy.
-     * @param x Independent variable (position or distance).
-     * @param y Array of dependent variables.
-     * @param f Array of derivatives of the dependent variables.
-     * @param params Additional system parameters. Here it takes a pointer to the tunneling function.
-     * @return GSL_SUCCESS on success.
-     */
-    static int tunnelingDifferentialSystemWithEnergyDerivative(double x, const double y[], double f[], void* params);
-
-    /**
-     * @brief Computes the Jacobian matrix for the tunneling system (currently unused).
-     * @param x Independent variable (position or distance).
-     * @param y Array of dependent variables.
-     * @param dfdy Jacobian matrix.
-     * @param dfdt Time derivative of the system.
-     * @param params Additional system parameters.
-     * @return GSL_SUCCESS on success.
-     */
-    static int tunnelingSystemJacobian(double x, const double y[], double* dfdy, double dfdt[], void* params);
-
-
 public:
     /**
      * @brief Constructs a TransmissionSolver object.
@@ -274,6 +232,48 @@ public:
      * @note This overloads the ODESolution file written and it differs only in the sense that it writes the barrier in additional column
      */
     void writeSolution(string filename = "transmissionSolver.dat");
+
+private:
+    TunnelingFunction* barrier; /**< Pointer to the tunneling function defining the potential barrier. */
+    double kappaInitial; /**< Initial value of the wavevector (kappa) for the tunneling region. */
+    //double kappaFinal; /**< Final value of the wavevector (kappa) for the tunneling region. */
+    int numberOfCalls = 0; /**< Counter for the number of times the transmission coefficient is calculated. */
+    //bool recalculateXlimitsAtEachEnergy = false; /**< Flag to recalculate the integration limits for each energy level. */
+    array<double,4> fundamentalMatrix; /**< The fundamental matrix of the general solution of the real problem (\boldsymbol{\Phi} in paper) */
+    int energyDerivativeLvl; /**< The level of energy derivative to calculate. */
+        
+    /**
+     * @brief Defines the system of differential equations for tunneling.
+     * @param x Independent variable (position or distance).
+     * @param y Array of dependent variables.
+     * @param f Array of derivatives of the dependent variables.
+     * @param params Additional system parameters. In our case it takes a pointer to the tunneling function.
+     * @return GSL_SUCCESS on success.
+     */
+    static int tunnelingDifferentialSystem(double x, const double y[], double f[], void* params);
+
+
+    /**
+     * @brief Defines the system of differential equations for tunneling, including the first derivative with respect to energy.
+     * @param x Independent variable (position or distance).
+     * @param y Array of dependent variables.
+     * @param f Array of derivatives of the dependent variables.
+     * @param params Additional system parameters. Here it takes a pointer to the tunneling function.
+     * @return GSL_SUCCESS on success.
+     */
+    static int tunnelingDifferentialSystemWithEnergyDerivative(double x, const double y[], double f[], void* params);
+
+    /**
+     * @brief Computes the Jacobian matrix for the tunneling system (currently unused).
+     * @param x Independent variable (position or distance).
+     * @param y Array of dependent variables.
+     * @param dfdy Jacobian matrix.
+     * @param dfdt Time derivative of the system.
+     * @param params Additional system parameters.
+     * @return GSL_SUCCESS on success.
+     */
+    static int tunnelingSystemJacobian(double x, const double y[], double* dfdy, double dfdt[], void* params);
+
 
 };
 

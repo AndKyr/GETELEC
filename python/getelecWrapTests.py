@@ -100,11 +100,11 @@ class TestGetelecInterface(tst.TestCase):
 
     def testTransmissionProbability(self):
         getelec = gt.GetelecInterface(configPath="getelec.cfg")
-        getelec.run(["CurrentDensity"])
         energies = np.linspace(-2., 2., 64)
         waveVectors = 12. * np.ones(64)
-        calculatedTransmissionProbability = getelec.calculateTransmissionProbabilities(energies, waveVectors)
-        plt.semilogy(energies, calculatedTransmissionProbability)
+        coeffs = getelec.calculateTransmissionCoefficients(energies, waveVectors)
+
+        plt.semilogy(energies, np.abs(coeffs)**2)
         plt.show()
 
 

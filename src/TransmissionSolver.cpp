@@ -169,7 +169,7 @@ double TransmissionSolver::findBarrierTop(double &maxLocation, double tolerance)
     // gsl_set_error_handler_off(); // turn off GSL error handler
     gsl_min_fminimizer_set(minimizer, &F, (xInitial + xFinal) * 0.5 , xFinal, xInitial);
 
-    for (int i = 0; i < maxAllowedSteps; i++){
+    for (size_t i = 0; i < maxAllowedSteps; i++){
         int status = gsl_min_fminimizer_iterate(minimizer); //perform minimization iteration
         
         if (status == GSL_EBADFUNC || status == GSL_FAILURE){ // something is messed up. Throw exception

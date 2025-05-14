@@ -135,14 +135,8 @@ class GetelecInterface:
         self.lib.Getelec_getSpectraDerivatives.restype = ctypes.POINTER(ctypes.c_double)
         self.lib.Getelec_getSpectraDerivatives.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_size_t)]
 
-        self.lib.Getelec_calculateTransmissionProbability.restype = ctypes.c_double
-        self.lib.Getelec_calculateTransmissionProbability.argtypes = [ctypes.c_void_p, ctypes.c_double, ctypes.c_double, ctypes.c_size_t]
-
-        self.lib.Getelec_calculateTransmissionProbabilities.restype = ctypes.POINTER(ctypes.c_double)
-        self.lib.Getelec_calculateTransmissionProbabilities.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double), ctypes.c_size_t, ctypes.c_size_t]
-
-        self.lib.Getelec_interpolateTransmissionProbabilities.restype = ctypes.POINTER(ctypes.c_double)
-        self.lib.Getelec_interpolateTransmissionProbabilities.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double), ctypes.c_size_t, ctypes.c_size_t]
+        self.lib.Getelec_calculateTransmissionCoefficients.restype = None
+        self.lib.Getelec_calculateTransmissionCoefficients.argtypes = [ctypes.c_void_p, ctypes.c_size_t ] + [ctypes.POINTER(ctypes.c_double)] * 4 + [ctypes.c_size_t]
 
         self.lib.Getelec_getCalculationStatus.restype = ctypes.c_uint
         self.lib.Getelec_getCalculationStatus.argtypes = [ctypes.c_void_p]
@@ -165,20 +159,14 @@ class GetelecInterface:
         self.setEffectiveMass(effectiveMasses)
         self.resultDictionary = {}
 
-    def calculateTransmissionProbability(self, energy, waveVector = -1., params_index = 0):
-        return self.lib.Getelec_calculateTransmissionProbability(self.obj, energy, waveVector, params_index)
-
-    def calculateTransmissionProbabilities(self, energies, waveVectors, params_index = 0):
+    def calculateTransmissionCoefficients(self, energies, waveVectors, params_index = 0):
         energies_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(energies, dtype=np.float64)))
         waveVectors_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(waveVectors, dtype=np.float64)))
-        result_ptr = self.lib.Getelec_calculateTransmissionProbabilities(self.obj, energies_ctypes, waveVectors_ctypes, size, params_index)
-        return np.ctypeslib.as_array(result_ptr, shape=(size,))
+        transCoeffReal, size = self._toCtypesArray(np.ones(len(energies), dtype=np.float64))
+        transCoeffImag, size = self._toCtypesArray(np.zeros(len(energies), dtype=np.float64))
+        self.lib.Getelec_calculateTransmissionCoefficients(self.obj, size, energies_ctypes, waveVectors_ctypes, transCoeffReal, transCoeffImag, params_index)
 
-    def calculateTransmissionForManyEnergies(self, energies, waveVectors, params_index=0):
-        energies_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(energies, dtype=np.float64)))
-        waveVectors_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(waveVectors, dtype=np.float64)))
-        result_ptr = self.lib.Getelec_interpolateTransmissionProbabilities(self.obj, energies_ctypes, waveVectors_ctypes, size, params_index)
-        return np.ctypeslib.as_array(result_ptr, shape=(size,))
+        return np.ctypeslib.as_array(transCoeffReal, shape=(size,)) + 1j * np.ctypeslib.as_array(transCoeffImag, shape=(size,))
 
     def _toCtypesArray(self, numpy_array):
         return numpy_array.ctypes.data_as(ctypes.POINTER(ctypes.c_double)), len(numpy_array)

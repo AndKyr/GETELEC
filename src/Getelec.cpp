@@ -252,6 +252,39 @@ void Getelec::writeSpectraToFiles(size_t paramIndex) const{
     }
 }
 
+void Getelec::calculateTransmissionForEnergies(const vector<double> &energies, size_t paramsIndex, bool forceCalculate){
+    setParamsForIteration(paramsIndex);   
+    auto& params = threadLocalParams.local();
+    auto& barrier = threadLocalBarrier.local();
+    barrier->setBarrierParameters(params.field, params.radius, params.gamma);
+    
+    double minEnergy = *min_element(energies.begin(), energies.end()) - params.workFunction;
+    
+    transmissionSolutions.resize(energies.size());
+    for(auto& sol : transmissionSolutions) sol.resize(3);
+
+    if (energies.size() > 32 && !forceCalculate){
+        double maxEnergy  = *max_element(energies.begin(), energies.end()) - params.workFunction;
+        TransmissionSpline& interpolator = threadLocalEmitter.local().getInterpolator();
+        interpolator.sampleUniform(minEnergy, maxEnergy, 2);
+        interpolator.refineSamplingToTolerance();
+
+        auto iterationLambda = [&energies, &interpolator, this](size_t i) { 
+            transmissionSolutions[i] = interpolator.evaluateSolution(energies[i]);
+        };
+        tbb::parallel_for(size_t(0), energies.size(), iterationLambda);
+    } else{
+        TransmissionSolver solver = TransmissionSolver(barrier.get(), config.transmissionSolverParams, 10., 0); 
+        solver.ensureBarrierDeepEnough(minEnergy);
+
+        auto iterationLambda = [&energies, &solver, this](size_t i) { 
+            transmissionSolutions[i] = solver.calculateSolution(energies[i]);
+        };
+    
+        tbb::parallel_for(size_t(0), energies.size(), iterationLambda);
+    }
+}
+
 size_t Getelec::run(CalculationFlags flags) {
     // Get how many iterations to run
     size_t maxIterations = getMaxIterations();
@@ -282,54 +315,30 @@ size_t Getelec::run(CalculationFlags flags) {
     return maxIterations;
 }
 
-double Getelec::calculateTransmissionProbability(double energy, double waveVector, size_t paramsIndex) {
-    setParamsForIteration(paramsIndex);   
-    auto& params = threadLocalParams.local();
-    auto& barrier = threadLocalBarrier.local();
-    auto& emitter = threadLocalEmitter.local();
+vector<double> Getelec::getTransmissionProbabilities(const vector<double>& waveVectors) const{
+    assert(transmissionSolutions.size() > 0 && "Calling getTransmissionProbabilities without having calculated the solutions first");
+    assert(transmissionSolutions.size() == waveVectors.size() || (waveVectors.size() == 0 && "waveVectors and solutions should have the same length or waveVectors should be empty"));
 
-    barrier->setBarrierParameters(params.field, params.radius, params.gamma);
-    emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth); 
-    return emitter.calculateTransmissionProbability(energy, waveVector);
+    vector<double> transmissionProbabilities(transmissionSolutions.size());
+
+    for (size_t i = 0; i < transmissionSolutions.size(); ++i){
+        double waveVector = waveVectors.size() == 0 ? 12. : waveVectors[i];
+        transmissionProbabilities[i] = TransmissionSolver::transmissionProbability(waveVector, transmissionSolutions[i]);
+    }
+    return transmissionProbabilities;
 }
 
-std::vector<double> Getelec::calculateTransmissionProbabilities(const std::vector<double>& energies, const vector<double>& waveVectors, size_t paramsIndex) {
-    setParamsForIteration(paramsIndex);   
-    auto& params = threadLocalParams.local();
-    auto& barrier = threadLocalBarrier.local();
-    auto& emitter = threadLocalEmitter.local();
+vector<gsl_complex> Getelec::getTransmissionCoefficients(const vector<double>& waveVectors) const{
+    assert(transmissionSolutions.size() > 0 && "Calling getTransmissionCoefficients without having calculated the solutions first");
+    assert(transmissionSolutions.size() == waveVectors.size() || (waveVectors.size() == 0 && "waveVectors and solutions should have the same length or waveVectors should be empty"));
 
-    barrier->setBarrierParameters(params.field, params.radius, params.gamma);
-    emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth); 
+    vector<gsl_complex> transmissionCoefficients(transmissionSolutions.size());
 
-    tbb::concurrent_vector<double> transmissionCoefficients(energies.size());
-
-    auto iterationLambda = [&transmissionCoefficients, &energies, &waveVectors, &emitter, this](size_t i) { 
-        double waveVector = waveVectors.size() == 0 ? -1. : waveVectors[i];
-        transmissionCoefficients[i] = emitter.calculateTransmissionProbability(energies[i], waveVector);
-    };
-    
-    tbb::parallel_for(size_t(0), energies.size(), iterationLambda);
-    return std::vector<double>(transmissionCoefficients.begin(), transmissionCoefficients.end());
-}
-
-std::vector<double> Getelec::interpolateTransmissionProbabilities(const std::vector<double>& energies, const vector<double>& waveVectors, size_t paramsIndex) {
-    setParamsForIteration(paramsIndex);   
-    auto& params = threadLocalParams.local();
-    auto& barrier = threadLocalBarrier.local();
-    auto& emitter = threadLocalEmitter.local();
-
-    barrier->setBarrierParameters(params.field, params.radius, params.gamma);
-    emitter.setParameters(params.workFunction, params.kT, params.effectiveMass, params.bandDepth); 
-
-    tbb::concurrent_vector<double> transmissionCoefficients(energies.size());
-    auto iterationLambda = [&transmissionCoefficients, &energies, &waveVectors, &emitter, this](size_t i) { 
-        double waveVector = waveVectors.size() == 0 ? -1. : waveVectors[i];
-        transmissionCoefficients[i] = emitter.interpolateTransmissionProbability(energies[i], waveVector);
-    };
-    
-    tbb::parallel_for(size_t(0), energies.size(), iterationLambda);
-    return std::vector<double>(transmissionCoefficients.begin(), transmissionCoefficients.end());
+    for (size_t i = 0; i < transmissionSolutions.size(); ++i){
+        double waveVector = waveVectors.size() == 0 ? 12. : waveVectors[i];
+        transmissionCoefficients[i] = TransmissionSolver::transmissionCoefficient(waveVector, transmissionSolutions[i]);
+    }
+    return transmissionCoefficients;
 }
 
 size_t Getelec::getMaxIterations() {
