@@ -4,6 +4,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import unittest as tst
+from itertools import cycle
+
+font = 15
+import matplotlib as mb
+mb.rcParams["font.size"] = font
+mb.rcParams["axes.labelsize"] = font
+mb.rcParams["xtick.labelsize"] = font
+mb.rcParams["ytick.labelsize"] = font
+mb.rcParams["legend.fontsize"] = font
+mb.rcParams["lines.linewidth"] = 1.5
+mb.rcParams["text.usetex"] = True
+mb.rcParams["lines.markersize"] = 10
+figureSize = [16,10]
+colors = cycle(plt.rcParams['axes.prop_cycle'].by_key()['color'])
 
 class TestGetelecInterface(tst.TestCase):
     def testDensityAndSpectra(self):
@@ -25,15 +39,15 @@ class TestGetelecInterface(tst.TestCase):
                 title = ""
                 for key in results:
                     if ("Distribution" in key):
-                        ax.plot(results[key][counter][0], results[key][counter][1], label=key)
+                        ax.semilogy(results[key][counter][0], results[key][counter][1], label=key)
                     else:
                         title += "%s=%.3e, " % (key, results[key][counter])
 
                 ax.set_title(title)
                 ax.legend()
                 counter += 1      
-                ax.set_xlabel("Energy [eV]")
-                ax.set_ylabel("Spectra [A/nm^2/eV]")
+                ax.set_xlabel(r"Energy [eV]")
+                ax.set_ylabel(r"Spectra [A/nm$^2$/eV]")
                 ax.grid()
             plt.show()
     

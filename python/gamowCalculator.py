@@ -21,6 +21,7 @@ mb.rcParams["text.usetex"] = True
 figureSize = [16,10]
 colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
+"""this code is intended to do the compare various methods of solving the 1D Schrodinger equation for the tunneling problem"""
 
 class Schrodinger1DSolver:
     def __init__(self, potentialVector:np.ndarray = None, energy:float = 0., potentialFunction:Callable = None, xLimits:np.ndarray = np.array([0,1])):
@@ -66,32 +67,32 @@ class Schrodinger1DSolver:
     
     def plotWaveFunction(self, figureFileName = "barrierAndWaveFunctions.png"):
         self.getSolutionVector()
-        plt.figure()
-        fig, (ax1,ax2) = plt.subplots(2,1, sharex=True)
-        ax1.plot(self.xVector, self.potentialFunction(self.xVector), label=r"U(z)")
-        ax1.plot([self.xVector[0], self.xVector[-1]], [self.energy, self.energy], label=r"E")
+        fig, (ax1,ax2, ax3) = plt.subplots(3,1, sharex=True)
+        ax1.plot(self.xVector, self.potentialFunction(self.xVector), label=r"$U(z)$", color = colors[4])
+        ax1.plot([self.xVector[0], self.xVector[-1]], [self.energy, self.energy], label=r"$E$", color = colors[5])
         ax1.grid()
         ax1.legend()
-        ax1.set_ylabel(r"barrier [eV]")
+        ax1.set_ylabel(r"$\textrm{Energy [eV]}$")
 
-        ax2.plot(self.xVector, np.abs(self.solutionVector), ".-", label=r"$|\Psi|$", color = colors[2])
-        ax3 = ax2.twinx()
-        ax3.plot(self.xVector, np.unwrap(np.angle(self.solutionVector)), ".-", label=r"$\angle(\Psi)$", color = colors[3])
-        # ax2r = ax2.twinx()
-        # ax2r.plot(z, np.angle(self.solution[1:-1]), label=r"Phase", color=colors[1])
+        ax2.plot(self.xVector, np.real(self.solutionVector), ".-", label=r"$\Re(\Psi)$", color = colors[1])
+        ax2.plot(self.xVector, np.imag(self.solutionVector), ".-", label=r"$\Im(\Psi)$", color = colors[0])
+        ax3.plot(self.xVector, np.log(np.abs(self.solutionVector)), "-", label=r"$\log(|\Psi|)$", color = colors[2])
+        ax3.plot(self.xVector, np.unwrap(np.angle(self.solutionVector)), "-", label=r"$\angle(\Psi)$", color = colors[3])
+
+
         ax2.legend()
         ax2.grid()
-        ax2.set_ylabel(r"$|\Psi|$")
-        ax3.set_ylabel(r"$\angle(\Psi)$")
-        # ax2r.set_ylabel("Angle ($\Psi$)")
-        # ax2r.legend()
-        ax2.set_xlabel(r"z [$\textrm{\AA}$]")
+        ax2.set_ylabel(r"$\Psi$")
+        ax2.set_xlabel(r"$z \textrm{[\AA]}$]")
+        ax2.set_ylim(-2.5, 10)
+        ax3.legend()
+        ax3.grid()
+        ax3.set_ylabel(r"$\Psi$")
+
         plt.savefig(figureFileName)
         plt.show()
         plt.close()
-
-            
-
+        return ax1, ax2
 
 class Schrodinger1DSolverFDM(Schrodinger1DSolver):
     def __init__(self, potentialVector:np.ndarray = None, energy:float = 0., potentialFunction:Callable = None, xLimits:np.ndarray = None, dx = 0.1, Npoints:int = 254):
@@ -203,10 +204,10 @@ class Schrodinger1DSolverIVP(Schrodinger1DSolver):
         return [y[1], y[0] *  self.kConstant * (self.potentialFunction(x) - self.energy)]
     
     def solveSystem(self) -> None:
-        self.solution = ig.solve_ivp(self.differentialSystem, [self.xLimits[1], self.xLimits[0]], [1., 1j * self.kRight], rtol=1.e-8)#, jac=self.jacobian)
+        self.solution = ig.solve_ivp(self.differentialSystem, [self.xLimits[1], self.xLimits[0]], [1., 1j * self.kRight], rtol=1.e-5, atol = 1.e-5)#, jac=self.jacobian)
     
     def solveForInitialConditions(self, initialConditions:np.ndarray) -> None:
-        self.solution = ig.solve_ivp(self.differentialSystem, [self.xLimits[1], self.xLimits[0]], initialConditions, rtol=1.e-8)
+        self.solution = ig.solve_ivp(self.differentialSystem, [self.xLimits[1], self.xLimits[0]], initialConditions, rtol=1.e-5)
         return self.solution.y[:,-1]
 
     def jacobian(self, x, y):
@@ -223,7 +224,7 @@ class Schrodinger1DSolverIVP(Schrodinger1DSolver):
 
     def constructPropagator(self):
         self.propagator = np.zeros((2,2))
-        solution = ig.solve_ivp(self.differentialSystem, [self.xLimits[1], self.xLimits[0]], [1., 1j], rtol=1.e-8)#, jac=self.jacobian)
+        solution = ig.solve_ivp(self.differentialSystem, [self.xLimits[1], self.xLimits[0]], [1., 1j], rtol=1.e-5)#, jac=self.jacobian)
         self.propagator[0,0] = np.real(solution.y[0,-1])
         self.propagator[0,1] = np.imag(solution.y[0,-1])
         self.propagator[1,0] = np.real(solution.y[1,-1])
@@ -418,7 +419,7 @@ class GamowCalculator:
 
     def calculateGamow(self, barrierDepth):
         self.findBarrierMax()
-        self.maxLength = self.lengthEstimation(barrierDepth)
+        self.maxLength = max(self.maxLength, self.lengthEstimation(barrierDepth))
 
         if self.solver is not None:
             self.solver.xLimits = np.append(self.minLength, self.maxLength)

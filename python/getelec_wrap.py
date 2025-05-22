@@ -383,66 +383,20 @@ class GetelecInterface:
 
 
 if (__name__ == "__main__"):
-    # Example usage:
-    # Assuming the shared library is compiled as "getelec.so"
-    getelec = GetelecInterface(configPath="getelec.cfg")
-    getelec.setRadius([5., 6., 7. , 8., 9.])
-
-    workFunction = 4.5
-    bandDepth = 10.
-    getelec.setBandDepth([bandDepth])
-    getelec.setWorkFunction([workFunction])
-    # getelec.setRandomInputs(5)
-    # getelec.set_radius(5.)
-
-    getelec.run(calculate_spectra=True)
-    densities = getelec.getCurrentDensity()
-
-    spectra = getelec.getSpectra()
-
     import matplotlib.pyplot as plt
-    fig, [ax1, ax2] = plt.subplots(1, 2, sharey=True)
-    i = 0
-    for spline in spectra:
-        energiesPlot = np.linspace(min(spline.x), max(spline.x), 512)
-        spectraPlot = spline(energiesPlot)
 
-        barrierX, potentialEnergy = getelec.getBarrierPlotData(params_index=i)
-        potentialEnergy += workFunction
+    getelec = GetelecInterface()
+    print(getelec)
+    getelec.run(["CurrentDensity", "TotalEnergyDistribution", "NormalEnergyDistribution", "ParallelEnergyDistribution"])
+    outDict = getelec.getAllDataDictionary()
 
-        ax1.plot(barrierX, potentialEnergy)
-
-        ax2.plot(spectraPlot, energiesPlot)        
-        i += 1
+    for key, value in outDict.items():
+        if "Distribu" in key and "Splines" not in key:
+            energy, spectra = value[0]
+            plt.plot(energy, spectra)
     
-    ax1.plot([-1, barrierX[-1]], [workFunction, workFunction], "k")
-    ax1.text(barrierX[-1], workFunction, "Vacuum Level", ha="right")
-
-    ax1.plot([-1., barrierX[-1]], [-bandDepth, -bandDepth], "k")
-    ax1.text(barrierX[-1], -bandDepth, "Band bottom", ha="right")
-
-    ax1.plot([-1., barrierX[-1]], [0., 0.], "k")
-    ax1.text(barrierX[-1], 0., "Fermi level", ha="right")
-    ax2.plot([min(spectraPlot), max(spectraPlot)],[0., 0.], "k")
-    ax1.plot([0., 0.], [-bandDepth, workFunction], "k")
-    
-    ax2.set_xlabel("TED")
-    ax2.set_ylabel("Energy (eV)")
-
-
-    ax1.set_xlabel("Barrier position (nm)")
-    ax1.set_ylabel("Potential energy (eV)")
-    ax1.set_ylim(-bandDepth - .5, workFunction + .5)
-
-
-
-    getelec.setRadius(1.e5)
-    xFN = np.linspace(.1, 1., 512)
-    getelec.setField(1./xFN)
-    getelec.run()
-    currentDensities = getelec.getCurrentDensity()
-    plt.figure()
-    plt.semilogy(xFN, currentDensities)
+    plt.xlabel("E - E_F [eV]")
+    plt.ylabel("Spectra [A nm^-2 eV^-1]")
     plt.show()
 
 

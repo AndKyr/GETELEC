@@ -11,6 +11,8 @@
 
 #include <random>
 #include <iostream>
+#include <chrono>
+
 
 namespace getelec{
 
@@ -373,6 +375,23 @@ TEST(GeneralXCFunctionTest, DerivativeTest){
         EXPECT_NEAR(derivative, derivativeApprox, 1.e-5);
     }
 
+}
+
+TEST(PerformanceTest, RegularPerformanceTest){
+    tbb::global_control tbbGlobalControl(tbb::global_control::max_allowed_parallelism, 4);
+
+    mt19937 generator(1987);
+
+    Getelec getelec = Getelec("GetelecConfig.txt", "modifiedSN", &generator);
+    int noRuns = 1024;
+    //test first for effectiveMass!=1.
+    auto start = std::chrono::high_resolution_clock::now();
+
+    getelec.setRandomParameters(noRuns);
+    EXPECT_NO_THROW(getelec.run(CalculationFlags::CurrentDensity | CalculationFlags::NottinghamHeat));
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    std::cout << "Time for current density: " << duration.count() / noRuns << " us." << std::endl;
 }
 
 
