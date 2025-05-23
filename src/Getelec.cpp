@@ -256,6 +256,7 @@ void Getelec::calculateTransmissionForEnergies(const vector<double> &energies, s
     setParamsForIteration(paramsIndex);   
     auto& params = threadLocalParams.local();
     auto& barrier = threadLocalBarrier.local();
+    auto& emitter = threadLocalEmitter.local();
     barrier->setBarrierParameters(params.field, params.radius, params.gamma);
     
     double minEnergy = *min_element(energies.begin(), energies.end()) - params.workFunction;
@@ -265,7 +266,13 @@ void Getelec::calculateTransmissionForEnergies(const vector<double> &energies, s
 
     if (energies.size() > 32 && !forceCalculate){
         double maxEnergy  = *max_element(energies.begin(), energies.end()) - params.workFunction;
-        TransmissionSpline& interpolator = threadLocalEmitter.local().getInterpolator();
+        TransmissionSpline& interpolator = emitter.getInterpolator();
+        
+        if (doWritePlotFiles) 
+            emitter.setWriteFlag(paramsIndex);
+        else
+            emitter.setWriteFlag(-1);
+
         interpolator.sampleUniform(minEnergy, maxEnergy, 2);
         interpolator.refineSamplingToTolerance();
 
@@ -274,8 +281,11 @@ void Getelec::calculateTransmissionForEnergies(const vector<double> &energies, s
         };
         tbb::parallel_for(size_t(0), energies.size(), iterationLambda);
     } else{
-        TransmissionSolver solver = TransmissionSolver(barrier.get(), config.transmissionSolverParams, 10., 0); 
+        TransmissionSolver solver = TransmissionSolver(barrier.get(), config.transmissionSolverParams, 15., 0); 
         solver.ensureBarrierDeepEnough(minEnergy);
+
+        if (doWritePlotFiles)
+            solver.setWriteFlag(paramsIndex);
 
         auto iterationLambda = [&energies, &solver, this](size_t i) { 
             transmissionSolutions[i] = solver.calculateSolution(energies[i]);

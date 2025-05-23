@@ -517,7 +517,7 @@ public:
 
     /**
      * @brief calculates the transmission solution for a list of energies
-     * @param energies The list of (normal) energies to calculate transmission for (eV, counting from fermi level)
+     * @param energies The list of (normal) energies to calculate transmission for (eV, counting from Vacuum level)
      * @param paramsIndex The index of the parameter list to be used
      * @param forceCalculate Flag to force full calculation for every energy rather than inteprolation (default is fause)
      * @note If the number of requested energie sis > 32 , an interpolator is prepared and interpolated

@@ -12,6 +12,7 @@
 #include <random>
 #include <iostream>
 #include <chrono>
+#include <fstream>
 
 
 namespace getelec{
@@ -223,7 +224,6 @@ TEST(BandEmitterTest, totalEnergyDistributionMethodComparison){
     }
 }
 
-
 /**
  * @brief Test for BandEmitter:: check that the current density and Nottingham heat are calculated correctly
  * @details This test checks the accuracy of the current density and Nottingham heat calculated by the BandEmitter class.
@@ -330,6 +330,13 @@ TEST(GetelecTest, runRandomCasesTest){
     EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
 }
 
+TEST(GetelecTest, fileWritingTest){
+    auto getelec = Getelec();
+    getelec.setFileWriteFlag(true);
+    getelec.calculateTransmissionForEnergies({-4.5});
+    ifstream f("odeSolution_i_0_E_-4.500000.dat");
+    EXPECT_TRUE(f.good());
+}
 /**
  * @brief Test for Getelec:: check that the Getelec class can be constructed and run without errors
  */
@@ -388,6 +395,8 @@ TEST(PerformanceTest, RegularPerformanceTest){
     auto start = std::chrono::high_resolution_clock::now();
 
     getelec.setRandomParameters(noRuns);
+    getelec.setEffectiveMass(1.);
+
     EXPECT_NO_THROW(getelec.run(CalculationFlags::CurrentDensity | CalculationFlags::NottinghamHeat));
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);

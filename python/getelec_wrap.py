@@ -117,6 +117,9 @@ class GetelecInterface:
         self.lib.Getelec_setRandomParameters.restype = None
         self.lib.Getelec_setRandomParameters.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
 
+        self.lib.Getelec_setFileWriteFlag.restype = None
+        self.lib.Getelec_setFileWriteFlag.argtypes = [ctypes.c_void_p, ctypes.c_bool]
+
         self.lib.Getelec_run.restype = ctypes.c_size_t
         self.lib.Getelec_run.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
 
@@ -159,7 +162,8 @@ class GetelecInterface:
         self.setEffectiveMass(effectiveMasses)
         self.resultDictionary = {}
 
-    def calculateTransmissionCoefficients(self, energies, waveVectors, params_index = 0):
+    def calculateTransmissionCoefficients(self, energies, waveVectors, params_index = 0, writeFiles:bool = False):
+        self.lib.Getelec_setFileWriteFlag(self.obj, ctypes.c_bool(writeFiles))
         energies_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(energies, dtype=np.float64)))
         waveVectors_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(waveVectors, dtype=np.float64)))
         transCoeffReal, size = self._toCtypesArray(np.ones(len(energies), dtype=np.float64))
@@ -242,14 +246,14 @@ class GetelecInterface:
 
         return flags
 
-    def run(self, calculationFlags):
+    def run(self, calculationFlags, writeFlag:bool = False):
         combinedFlagsInt:int = 0
         for flagStr in calculationFlags:
             if flagStr in self.flagMap:
                 combinedFlagsInt |= self.flagMap[flagStr]
             else:
                 raise ValueError(f"Invalid flag: {flagStr}")
-
+        self.lib.Getelec_setFileWriteFlag(self.obj, ctypes.c_bool(writeFlag))
         self.numberOfIterations = self.lib.Getelec_run(self.obj, combinedFlagsInt)
 
     def getCurrentDensity(self):
@@ -350,8 +354,7 @@ class GetelecInterface:
         lowerLimit, upperLimit = self.getBarrierIntegrationLimits(params_index=params_index)
         energies = np.linspace(lowerLimit, upperLimit, Npoints)
         values = self.calculateBarrierValues(energies, params_index=params_index)
-        return energies, values
-        
+        return energies, values       
     
     def setRandomParams(self, numberOfInputs):
         self.lib.Getelec_setRandomParameters(self.obj, ctypes.c_size_t(numberOfInputs))
