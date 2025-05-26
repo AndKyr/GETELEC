@@ -147,11 +147,7 @@ int eval(const char *func,
         return terminateGetelec();
     }
 
-    if (functionStr != "getelec") {
-        error = "Unknown function name string: " + functionStr  + "\n";
-        logFile << "error message = " << error << endl;
-        return 0;
-    }
+    if (functionStr != "getelec" || functionStr != "currentDensity" || functionStr != "nottinghamHeat")
 
     if (nArgs > 7 || nArgs < 0) {
         error = "Invalid number of arguments. Expected is between 0 and 7";
@@ -196,7 +192,20 @@ int eval(const char *func,
     if (verbose)
         logFile << "running GETELEC and extracting current density and Nottingham heat" << endl;
 
-    globalGetelecObj->run(getelec::CalculationFlags::CurrentDensity | getelec::CalculationFlags::NottinghamHeat);
+    getelec::CalculationFlags flags;
+    if (functionStr == "currentDensity")
+        flags = getelec::CalculationFlags::CurrentDensity;
+    else if (functionStr == "nottinghamHeat")
+        flags = getelec::CalculationFlags::NottinghamHeat;
+    else if (functionStr == "getelec")
+        flags = getelec::CalculationFlags::CurrentDensity | getelec::CalculationFlags::NottinghamHeat;
+    else {
+        error = "Unknown function name string: " + functionStr  + "\n";
+        logFile << "error message = " << error << endl;
+        return 0;
+    }
+    
+    globalGetelecObj->run(flags);
     
     size_t outSize;
     const double* currentDensity = globalGetelecObj->getCurrentDensities(&outSize);
@@ -208,14 +217,24 @@ int eval(const char *func,
         return 0;
     }
 
-    if (verbose) logFile << "copying current density data into real output" << endl;
 
-    for (size_t i = 0; i < blockSize; i++)
-        outReal[i] = currentDensity[i];
-
-    if (verbose) logFile << "copying Nottingham heat data into imaginary output" << endl;
-    for (size_t i = 0; i < blockSize; i++)
-        outImag[i] = nottinghamHeat[i];
+    if (functionStr == "currentDensity"){
+        if (verbose) logFile << "copying current density data into real output" << endl;
+        for (size_t i = 0; i < blockSize; i++) outReal[i] = currentDensity[i];
+    } else if (functionStr == "nottinghamHeat"){
+        if (verbose) logFile << "copying Nottingham heat data into real output" << endl;
+        for (size_t i = 0; i < blockSize; i++) outReal[i] = nottinghamHeat[i];
+    } else if (functionStr == "getelec"){
+        if (verbose) logFile << "copying current density data into real output and Nottingham heat data into imaginary output" << endl;
+        for (size_t i = 0; i < blockSize; i++){
+            outReal[i] = currentDensity[i];
+            outImag[i] = nottinghamHeat[i];
+        }
+    } else {
+        error = "Unknown function name string: " + functionStr  + "\n";
+        logFile << "error message = " << error << endl;
+        return 0;
+    }
 
     if (verbose){
         logFile << "outReal " << "outImag" << endl;

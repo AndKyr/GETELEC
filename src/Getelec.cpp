@@ -1,6 +1,21 @@
 #include "Getelec.h"
 
 namespace getelec{
+void Getelec::setParameter(const vector<double> &paramIn, vector<double> &paramOut){
+    //if sizes don't match resize and set calcualtion to be redone
+    if (paramIn.size() != paramOut.size()){
+        paramOut.resize(paramIn.size());
+        calculationStatusFlags = CalculationFlags::None;
+    }
+
+    for (size_t i = 0; i < paramIn.size(); i++){ //span the input vector
+        if (paramOut[i] != paramIn[i]){ //check if elements don't match
+            paramOut[i] = paramIn[i]; //set value
+            calculationStatusFlags = CalculationFlags::None; //reset the flag
+        }
+    }
+}
+
 void Getelec::setRandomParameters(unsigned numberOfParameters){
     if (!generator)
         throw runtime_error("Random number generator is empty");
@@ -299,8 +314,7 @@ size_t Getelec::run(CalculationFlags flags) {
     // Get how many iterations to run
     size_t maxIterations = getMaxIterations();
 
-    // Reset the flags to nothing calculated
-    calculationStatusFlags = CalculationFlags::None;
+    if (flags == calculationStatusFlags) return maxIterations;
 
     //Do the necessary array resizings
     if (flags & CalculationFlags::CurrentDensity)
