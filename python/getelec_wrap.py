@@ -48,6 +48,16 @@ Methods:
     setParameters(self, **params): Sets multiple parameters for the simulation.
     __del__(self): Cleans up the object and deletes the Getelec instance.
 """
+class Globals:
+    hbarSqrOver2m = 3.80998212e-2; # Reduced Planck's constant squared over 2m (eV·nm²). */
+    kConstant = 1. / hbarSqrOver2m; # Constant connecting wavevector and energy */
+    sqrt2mOverHbar = kConstant**0.5 #  sqrt(2m)/hbar. */
+    imageChargeConstant = 0.359991137; # Constant for image charge effects (eV·nm). */
+    BoltzmannConstant = 8.617333262e-5; # Boltzmann constant in eV/K. */
+    SommerfeldConstant = 1.618311e-4; # Sommerfeld constant for current density [A / nm^2 / (eV)^2 ]. */
+    electronCharge = 1.602176634e-19; # Electron charge in Cb. */
+    
+
 
 class GetelecInterface:
 
