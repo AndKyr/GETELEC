@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import getelec_wrap as gt
-font = 35
+font = 45
 import matplotlib as mb
 mb.rcParams["font.size"] = font
 mb.rcParams["axes.labelsize"] = font
@@ -14,28 +14,40 @@ mb.rcParams["text.usetex"] = True
 figureSize = [15,10]
 colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
-waveVectors = np.linspace(1.e-5, 40., 128)
-energies = np.linspace(-4.5, -4.5 + 1.e-5, 128)
-kineticEnergies = waveVectors**2 * gt.Globals.hbarSqrOver2m
-print(kineticEnergies)
+from gamowCalculator import GamowCalculator
 
-emitter = gt.GetelecInterface(configPath="getelec.cfg")
+
+
+
+gamowCalculator = GamowCalculator(solverType="WKB", XCdataFile="", minimumPotential=10.)
+gamowCalculator.findBarrierMax()
+gamowWKB = gamowCalculator.calculateGamowWKB(4.5)
+print(gamowWKB)
+
+
+
+waveVectors = np.linspace(1.e-5, 40., 256)
+energies = np.linspace(-4.5, -4.5 + 1.e-5, 256)
+kineticEnergies = waveVectors**2 * gt.Globals.hbarSqrOver2m
+
+emitter = gt.GetelecInterface()
 coefficients = emitter.calculateTransmissionCoefficients(energies, waveVectors, writeFiles=False)
 fig, ax1 = plt.subplots(figsize = figureSize, tight_layout=True)
 ax2 = ax1.twinx()
 
-ax1.plot(waveVectors, np.abs(coefficients), label=r"$|d|$", color = colors[0])
+ax1.plot(waveVectors, np.abs(coefficients)**2 / waveVectors, label=r"$D$", color = colors[0])
+ax1.plot([min(waveVectors), max(waveVectors)], [np.exp(-gamowWKB), np.exp(-gamowWKB)], label = r"$D - \textrm{JWKB}$", color = colors[3])
 ax3 = ax2.twiny()
 
 ax3.plot( kineticEnergies, np.angle(coefficients) / np.pi, label=r"$\arg(d)$", color = colors[1])
 
 
 
-ax1.set_xlabel(r"$k_z \textrm{[nm}^{-1}\textrm{]}$")
-ax1.set_ylabel(r"$|d|$")
+ax1.set_xlabel(r"$k \textrm{[nm}^{-1}\textrm{]}$")
+ax1.set_ylabel(r"$D$")
 ax2.set_ylabel(r"$\arg(d) / \pi$")
 ax3.set_xlabel(r"$\frac{\hbar^2 k_z^2}{2m} \textrm{ [eV]}$")
-ax1.set_ylim([0., 0.05])
+# ax1.set_ylim([0., 0.05])
 ax3.set_ylim([-0.5, 0])
 
 ax1.yaxis.label.set_color(colors[0])

@@ -65,7 +65,6 @@ TEST(TransmissionSolverTest, DefaultValueTest) {
     solver.setXlimits(8.0);
     double transmission = solver.calculateTransmissionProbability(-4.5);
     EXPECT_NEAR(transmission, 0.00066697796753639933, 1.e-9);
-    EXPECT_NEAR(transmission, 0.00066697796753639933, 1.e-9);
 }
 
 /**

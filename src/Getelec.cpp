@@ -274,13 +274,13 @@ void Getelec::calculateTransmissionForEnergies(const vector<double> &energies, s
     auto& emitter = threadLocalEmitter.local();
     barrier->setBarrierParameters(params.field, params.radius, params.gamma);
     
-    double minEnergy = *min_element(energies.begin(), energies.end()) - params.workFunction;
+    double minEnergy = *min_element(energies.begin(), energies.end());
     
     transmissionSolutions.resize(energies.size());
     for(auto& sol : transmissionSolutions) sol.resize(3);
 
     if (energies.size() > 32 && !forceCalculate){
-        double maxEnergy  = *max_element(energies.begin(), energies.end()) - params.workFunction;
+        double maxEnergy  = *max_element(energies.begin(), energies.end());
         TransmissionSpline& interpolator = emitter.getInterpolator();
         
         if (doWritePlotFiles) 
