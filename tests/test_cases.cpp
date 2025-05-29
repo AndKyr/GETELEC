@@ -14,6 +14,17 @@
 #include <chrono>
 #include <fstream>
 
+extern "C" int init(const char *);
+extern "C" int eval (const char *func,
+                int nArgs,
+                const double **inReal,
+                const double **inImag,
+                int blockSizeIn,
+                double *outReal,
+                double *outImag);
+
+extern "C" const char* getLastError();
+
 
 namespace getelec{
 
@@ -387,10 +398,10 @@ TEST(GeneralXCFunctionTest, DerivativeTest){
 TEST(PerformanceTest, RegularPerformanceTest){
     tbb::global_control tbbGlobalControl(tbb::global_control::max_allowed_parallelism, 4);
 
-    mt19937 generator(1987);
+    mt19937 generator(85468);
 
     Getelec getelec = Getelec("GetelecConfig.txt", "modifiedSN", &generator);
-    int noRuns = 1024;
+    int noRuns = 256;
     //test first for effectiveMass!=1.
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -405,6 +416,29 @@ TEST(PerformanceTest, RegularPerformanceTest){
 
 
 } // namespace getelec
+
+
+TEST(ComsolWrapperTest, RunTest){
+
+    init("ComsolTest.verbose.log");
+    double* row = new double[1]{42.0};
+    const double** ptr = new const double*[1]{row};   
+    double* currentDensity = new double[1]; 
+    double* outImage = new double[1];
+    eval("currentDensity", 1, ptr, nullptr, 1, currentDensity, outImage);
+    string error(getLastError());
+    EXPECT_TRUE(error.empty());
+    cout << error << endl;
+
+
+    // Cleanup
+    delete[] row;
+    delete[] ptr;
+    delete[] currentDensity;
+    delete[] outImage;
+
+}
+
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

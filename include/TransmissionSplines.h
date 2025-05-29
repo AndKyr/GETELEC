@@ -131,6 +131,8 @@ public:
 
     /**
      * @brief Refines the sampling by bisecting until the required tolerance is met.
+     * TODO:  Cases where maxRefineSteps is reached should be handled separately. Consider designating a region where the interpolator fails and reverting to solver rather than the interpolator
+     * when that energy is asked.
      */
     void refineSamplingToTolerance(int maxRefineSteps = 11);
 

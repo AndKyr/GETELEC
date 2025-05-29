@@ -208,11 +208,17 @@ int eval(const char *func,
     globalGetelecObj->run(flags);
     
     size_t outSize;
-    const double* currentDensity = globalGetelecObj->getCurrentDensities(&outSize);
-    const double* nottinghamHeat = globalGetelecObj->getNottinghamHeats(&outSize);
+    const double* currentDensity;
+    const double* nottinghamHeat;
+
+    if (functionStr == "getelec" || functionStr == "currentDensity")
+        currentDensity = globalGetelecObj->getCurrentDensities(&outSize);
+    
+    if (functionStr == "getelec" || functionStr == "nottinghamHeat")
+        nottinghamHeat = globalGetelecObj->getNottinghamHeats(&outSize);
 
     if (outSize != blockSize) {
-        error = "Output size does not match input size";
+        error = "Output size " + to_string(outSize) + " does not match input size " + to_string(blockSize);
         logFile << "error message = " << error << endl;
         return 0;
     }

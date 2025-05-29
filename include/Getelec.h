@@ -482,7 +482,7 @@ private:
     tbb::enumerable_thread_specific<TransmissionSolver> threadLocalSolver; ///< Thread-local instances of TransmissionSolver
     tbb::enumerable_thread_specific<BandEmitter> threadLocalEmitter; ///< Thread-local instances of BandEmitter
     tbb::enumerable_thread_specific<ParamsForIteration> threadLocalParams; ///< Thread-local instances of ParamsForIteration
-    CalculationFlags calculationStatusFlags; ///< Flag that shows which output data is available
+    CalculationFlags calculationStatusFlags = CalculationFlags::None; ///< Flag that shows which output data is available
     mt19937* generator = NULL; ///< Random number generator for setting random parameters for testing.
     bool generatorIsInternallyConstructed; ///< Keeps track of whether getelec is responsible of freeing the RNG
     bool doWritePlotFiles = false; ///< Determines whether all output is written.
