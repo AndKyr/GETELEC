@@ -383,14 +383,15 @@ TEST(PerformanceTest, RegularPerformanceTest){
     mt19937 generator(1987);
 
     Getelec getelec = Getelec("GetelecConfig.txt", "modifiedSN", &generator);
-    int noRuns = 1024;
-    //test first for effectiveMass!=1.
-    auto start = std::chrono::high_resolution_clock::now();
-
+    int noRuns = 4096;
     getelec.setRandomParameters(noRuns);
+    getelec.setEffectiveMass(1.);
+
+    auto start = std::chrono::high_resolution_clock::now();
     EXPECT_NO_THROW(getelec.run(CalculationFlags::CurrentDensity | CalculationFlags::NottinghamHeat));
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+
     std::cout << "Time for current density: " << duration.count() / noRuns << " us." << std::endl;
 }
 
