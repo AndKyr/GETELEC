@@ -97,205 +97,134 @@ public:
      * @brief Set the field parameters of the calculation at a single value
      * @param field_ The electric field in V/nm.
      */
-    void setField(double field_ = 5.) { 
-        fieldsVector.resize(1);
-        fieldsVector[0] = field_;
-     }
+    void setField(double field_ = 5.) { setParameter({field_}, fieldsVector); }
 
     /**
      * @brief Set the field parameters of the calculation at multiple values
      * @param fieldsVector_ The electric field in V/nm, multiple values to iterate over.
      */
-    void setField(std::vector<double>& fieldsVector_) { fieldsVector = vector<double>(fieldsVector_.begin(), fieldsVector_.end()); }
-
-    /**
-     * @brief Set the field parameters of the calculation at multiple values
-     * @param fieldsVector_ The electric field in V/nm, multiple values to iterate over.
-     * @note This method uses move semantics and is more efficient than the other setField method, but it invalidates the input vector.
-     */
-    void setFieldMove(std::vector<double>&& fieldsVector_) { fieldsVector = std::move(fieldsVector_); }
+    void setField(const vector<double>& fieldsVector_) { setParameter(fieldsVector_, fieldsVector); }
 
     /**
      * @brief Set the field parameters of the calculation at multiple values with a pointer and size input (C-style)
      * @param fieldsArray_ The electric field in V/nm, multiple values to iterate over.
      * @param size The size of the array
      */
-    void setField(const double* fieldsArray_, size_t size) { fieldsVector = std::vector<double>(fieldsArray_, fieldsArray_ + size); }
+    void setField(const double* fieldsArray_, size_t size) { setField(std::vector<double>(fieldsArray_, fieldsArray_ + size)); }
 
     /**
      * @brief Set the radius of the emitter at a single value
      * @param radius_ The radius of the emitter in nm.
      */
-    void setRadius(double radius_ = 1.e4) {
-        radiiVector.resize(1);
-        radiiVector[0] = radius_;
-    }
+    void setRadius(double radius_ = 1.e4) { setParameter({radius_}, radiiVector); }
 
     /**
      * @brief Set the radius of the emitter at multiple values
      * @param radiiVector_ The radius of the emitter in nm, multiple values to iterate over.
      */
-    void setRadius(std::vector<double>& radiiVector_) { radiiVector = vector<double>(radiiVector_.begin(), radiiVector_.end()); }
-
-    /**
-     * @brief Set the radius of the emitter at multiple values
-     * @param radiiVector_ The radius of the emitter in nm, multiple values to iterate over.
-     * @note This method uses move semantics and is more efficient than the other setRadius method, but it invalidates the input vector.
-     */
-    void setRadiusMove(std::vector<double>&& radiiVector_) { radiiVector = std::move(radiiVector_); }
+    void setRadius(const vector<double>& radiiVector_) { setParameter(radiiVector_, radiiVector); }
 
     /**
      * @brief Set the radius of the emitter at multiple values with a pointer and size input (C-style)
      * @param radiiArray_ The radius of the emitter in nm, multiple values to iterate over.
      * @param size The size of the array
      */
-    void setRadius(const double* radiiArray_, size_t size) { radiiVector = std::vector<double>(radiiArray_, radiiArray_ + size); }
+    void setRadius(const double* radiiArray_, size_t size) { setRadius(vector<double>(radiiArray_, radiiArray_ + size)); }
 
     /**
      * @brief Set the gamma parameter of the general barrier model at a single value
      * @param gamma_ The gamma parameter of the general barrier model.
      */
-    void setGamma(double gamma_ = 10.){
-        gammasVector.resize(1);
-        gammasVector[0] = gamma_;
-    }
+    void setGamma(double gamma_ = 10.){setParameter({gamma_}, gammasVector);}
 
     /**
      * @brief Set the gamma parameter of the general barrier model at multiple values
      * @param gammasVector_ The gamma parameter of the general barrier model, multiple values to iterate over.
      */
-    void setGamma(std::vector<double>& gammasVector_) { gammasVector = vector<double>(gammasVector_.begin(), gammasVector_.end()); }
-
-    /**
-     * @brief Set the gamma parameter of the general barrier model at multiple values
-     * @param gammasVector_ The gamma parameter of the general barrier model, multiple values to iterate over.
-     * @note This method uses move semantics and is more efficient than the other setGamma method, but it invalidates the input vector.
-     */
-    void setGammaMove(std::vector<double>&& gammasVector_) { gammasVector = std::move(gammasVector_); }
+    void setGamma(const vector<double>& gammasVector_) { setParameter(gammasVector_, gammasVector); }
 
     /**
      * @brief Set the gamma parameter of the general barrier model at multiple values with a pointer and size input (C-style)
      * @param gammasArray_ The gamma parameter of the general barrier model, multiple values to iterate over.
      * @param size The size of the array
      */
-    void setGamma(const double* gammasArray_, size_t size) { gammasVector = std::vector<double>(gammasArray_, gammasArray_ + size); }
+    void setGamma(const double* gammasArray_, size_t size) { setGamma(vector<double>(gammasArray_, gammasArray_ + size)); }
 
     /**
      * @brief Set the temperature at a single value
      * @param kT_ Temperature in eV.
      */
-    void setkT(double kT_ = .025){
-        kTVector.resize(1);
-        kTVector[0] = kT_;
-    }
+    void setkT(double kT_ = .025){setParameter({kT_}, kTVector);}
 
     /**
      * @brief Set the temperature at multiple values
      * @param kTVector_ Temperature in eV, multiple values to iterate over.
      */
-    void setkT(std::vector<double>& kTVector_) { kTVector = vector<double>(kTVector_.begin(), kTVector_.end()); }
-
-    /**
-     * @brief Set the temperature at multiple values
-     * @param kTVector_ Temperature in eV, multiple values to iterate over.
-     * @note This method uses move semantics and is more efficient than the other setkT method, but it invalidates the input vector.
-     */
-    void setkTMove(std::vector<double>&& kTVector_) { kTVector = std::move(kTVector_); }
+    void setkT(const vector<double>& kTVector_) { setParameter(kTVector_, kTVector); }
 
     /**
      * @brief Set the temperature at multiple values with a pointer and size input (C-style)
      * @param kTArray_ Temperature in eV, multiple values to iterate over.
      * @param size The size of the array
      */
-    void setkT(const double* kTArray_, size_t size) { kTVector = std::vector<double>(kTArray_, kTArray_ + size); }
+    void setkT(const double* kTArray_, size_t size) { setkT(vector<double>(kTArray_, kTArray_ + size)); }
 
     /**
      * @brief Set the work function at a single value
      * @param workFunction_ Work function in eV.
      */
-    void setWorkFunction(double workFunction_ = 4.5){
-        workFunctionVector.resize(1);
-        workFunctionVector[0] = workFunction_;
-    }
+    void setWorkFunction(double workFunction_ = 4.5){setParameter({workFunction_}, workFunctionVector);}
     
     /**
      * @brief Set the work function at multiple values
      * @param workFunctionVector_ Work function in eV, multiple values to iterate over.
      */
-    void setWorkFunction(std::vector<double>& workFunctionVector_) { workFunctionVector = vector<double>(workFunctionVector_.begin(), workFunctionVector_.end()); }
-
-    /**
-     * @brief Set the work function at multiple values
-     * @param workFunctionVector_ Work function in eV, multiple values to iterate over.
-     * @note This method uses move semantics and is more efficient than the other setWorkFunction method, but it invalidates the input vector.
-     */
-    void setWorkFunctionMove(std::vector<double>&& workFunctionVector_) { workFunctionVector = std::move(workFunctionVector_); }
+    void setWorkFunction(const vector<double>& workFunctionVector_) { setParameter(workFunctionVector_, workFunctionVector); }
 
     /**
      * @brief Set the work function at multiple values with a pointer and size input (C-style)
      * @param workFunctionArray_ Work function in eV, multiple values to iterate over.
      * @param size The size of the array
      */
-    void setWorkFunction(const double* workFunctionArray_, size_t size) { workFunctionVector = std::vector<double>(workFunctionArray_, workFunctionArray_ + size); }
+    void setWorkFunction(const double* workFunctionArray_, size_t size) {setWorkFunction(vector<double>(workFunctionArray_, workFunctionArray_ + size)); }
 
     /**
      * @brief Set the band depth at a single value
      * @param bandDepth_ Depth of the electronic band in eV.
      */
-    void setBandDepth(double bandDepth_ = 10.) {
-        bandDepthVector.resize(1);
-        bandDepthVector[0] = bandDepth_;
-    }
+    void setBandDepth(double bandDepth_ = 10.) {setParameter({bandDepth_}, bandDepthVector);}
     
     /**
      * @brief Set the band depth at multiple values
      * @param bandDepthVector_ Depth of the electronic band in eV, multiple values to iterate over.
      */
-    void setBandDepth(std::vector<double>& bandDepthVector_) { bandDepthVector = vector<double>(bandDepthVector_.begin(), bandDepthVector_.end()); } 
+    void setBandDepth(const vector<double>& bandDepthVector_) { setParameter(bandDepthVector_, bandDepthVector); } 
 
-    /**
-     * @brief Set the band depth at multiple values
-     * @param bandDepthVector_ Depth of the electronic band in eV, multiple values to iterate over.
-     * @note This method uses move semantics and is more efficient than the other setBandDepth method, but it invalidates the input vector.
-     */
-    void setBandDepthMove(std::vector<double>&& bandDepthVector_) { bandDepthVector = std::move(bandDepthVector_); }
-    
     /**
      * @brief Set the band depth at multiple values with a pointer and size input (C-style)
      * @param bandDepthArray_ Depth of the electronic band in eV, multiple values to iterate over.
      * @param size The size of the array
      */
-    void setBandDepth(const double* bandDepthArray_, size_t size) { bandDepthVector = std::vector<double>(bandDepthArray_, bandDepthArray_ + size); }
-
+    void setBandDepth(const double* bandDepthArray_, size_t size) { setBandDepth(vector<double>(bandDepthArray_, bandDepthArray_ + size)); }
 
     /**
      * @brief Set the effective mass at a single value
      * @param effectiveMass_ Effective mass of the electron.
      */
-    void setEffectiveMass(double effectiveMass_ = 1.){
-        effectiveMassVector.resize(1);
-        effectiveMassVector[0] = effectiveMass_;
-    }
-    /**
-     * @brief Set the effective mass at multiple values
-     * @param effectiveMassVector_ Effective mass of the electron, multiple values to iterate over.
-     */
-    void setEffectiveMass(const vector<double>& effectiveMassVector_) { effectiveMassVector = vector<double>(effectiveMassVector_.begin(), effectiveMassVector_.end()); } 
-    
-    /**
-     * @brief Set the effective mass at multiple values
-     * @param effectiveMassVector_ Effective mass of the electron, multiple values to iterate over.
-     * @note This method uses move semantics and is more efficient than the other setEffectiveMass method, but it invalidates the input vector.
-     */
-    void setEffectiveMassMove(std::vector<double>&& effectiveMassVector_) { effectiveMassVector = std::move(effectiveMassVector_); }
+    void setEffectiveMass(double effectiveMass_ = 1.){setParameter({effectiveMass_}, effectiveMassVector);}
 
+    /**
+     * @brief Set the effective mass at multiple values
+     * @param effectiveMassVector_ Effective mass of the electron, multiple values to iterate over.
+     */
+    void setEffectiveMass(const vector<double>& effectiveMassVector_) { setParameter(effectiveMassVector_, effectiveMassVector); } 
+    
     /**
      * @brief Set the effective mass at multiple values with a pointer and size input (C-style)
      * @param effectiveMassArray_ Effective mass of the electron, multiple values to iterate over.
      * @param size The size of the array
      */
-    void setEffectiveMass(const double* effectiveMassArray_, size_t size) { effectiveMassVector = std::vector<double>(effectiveMassArray_, effectiveMassArray_ + size); }
-
+    void setEffectiveMass(const double* effectiveMassArray_, size_t size) { setEffectiveMass(vector<double>(effectiveMassArray_, effectiveMassArray_ + size)); }
 
     /**
      * @brief Sets (within range) random parameters to all inputut variables. This is usable for testing purposes
@@ -318,15 +247,6 @@ public:
     size_t run(CalculationFlags flags = CalculationFlags::CurrentDensity);
 
     /**
-     * @brief Calculate the transmission coefficient for a specific energy
-     * @param energy The energy level (eV)
-     * @param paramsIndex The index of the parameter vector space to use (optional)
-     * @return The transmission coefficient
-     * @note This method is relevant for a single or a few calculations of the transmission coefficient. Don't use it for multiple calculations on the same barrier as it resets the barrier which might be slow. Use calculateTransmissionCoefficientForEnergies instead
-     */
-    // double calculateTransmissionProbability(double energy, double waveVector = -1., size_t paramsIndex = 0);
-
-    /**
      * @brief Calculate the transmission probabilities for multiple energies and waveVectors
      * @param waveVectors The list of the waveVectors to calculate for (if empty, it defaults to 12. / nm)
      * @return The transmission probabilities
@@ -341,7 +261,6 @@ public:
      * @note This method requires the calculateTransmissionForEnergies() to have been called in prior
      */
     vector<gsl_complex> getTransmissionCoefficients(const vector<double>& waveVectors = {}) const;
-
 
     /**
      * @brief Calculate the transmission coefficient for multiple energies
@@ -427,7 +346,6 @@ public:
         assert(i < totalEnergyDistributionsDerivatives.size() && "Index out of bounds");
         return totalEnergyDistributionsDerivatives[i]; 
     }
-    
     
     /**
      * @brief Get all the resulting current densities as a vector
@@ -517,7 +435,7 @@ public:
 
     /**
      * @brief calculates the transmission solution for a list of energies
-     * @param energies The list of (normal) energies to calculate transmission for (eV, counting from fermi level)
+     * @param energies The list of (normal) energies to calculate transmission for (eV, counting from Vacuum level)
      * @param paramsIndex The index of the parameter list to be used
      * @param forceCalculate Flag to force full calculation for every energy rather than inteprolation (default is fause)
      * @note If the number of requested energie sis > 32 , an interpolator is prepared and interpolated
@@ -564,12 +482,19 @@ private:
     tbb::enumerable_thread_specific<TransmissionSolver> threadLocalSolver; ///< Thread-local instances of TransmissionSolver
     tbb::enumerable_thread_specific<BandEmitter> threadLocalEmitter; ///< Thread-local instances of BandEmitter
     tbb::enumerable_thread_specific<ParamsForIteration> threadLocalParams; ///< Thread-local instances of ParamsForIteration
-    CalculationFlags calculationStatusFlags; ///< Flag that shows which output data is available
+    CalculationFlags calculationStatusFlags = CalculationFlags::None; ///< Flag that shows which output data is available
     mt19937* generator = NULL; ///< Random number generator for setting random parameters for testing.
     bool generatorIsInternallyConstructed; ///< Keeps track of whether getelec is responsible of freeing the RNG
     bool doWritePlotFiles = false; ///< Determines whether all output is written.
 
-
+    /**
+     * @brief general function that sets any parameter (called by each setter separately with references to internal vectors)
+     * @param paramIn The input vector
+     * @param paramOut The vector to write upon
+     * @note This function goes through the elements of paramIn and checks if they match to paramOut. If they do match, then the calculation status remains. 
+     *          If they don't then the calculation status reverts to None (calculation to be ran again fully).
+     */
+    void setParameter(const vector<double>& paramIn, vector<double>& paramOut);
 
     /**
      * @brief Get the maximum number of iterations
@@ -582,7 +507,6 @@ private:
      * @param i The index of the iteration
      */
     void setParamsForIteration(size_t i = 0);
-
 
     /**
      * @brief Runs the calculation iteration in the case when effectiveMass ~= 1. (within a given tolerance determined in config)

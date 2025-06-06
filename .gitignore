@@ -20,6 +20,8 @@
 *.gz
 *.dvi
 *.npy
+*.svg
+*.txt
 build/
 docs/
 .venv

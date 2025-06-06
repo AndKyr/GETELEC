@@ -55,6 +55,10 @@ void Getelec_setRandomParameters(getelec::Getelec* obj, size_t numberOfParameter
     obj->setRandomParameters(numberOfParameters);
 }
 
+void Getelec_setFileWriteFlag(getelec::Getelec* obj, bool flag){
+    obj->setFileWriteFlag(flag);
+}
+
 // Wrapper to run the calculation
 size_t Getelec_run(getelec::Getelec* obj, unsigned flags) {
     return obj->run(static_cast<getelec::CalculationFlags>(flags));

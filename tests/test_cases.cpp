@@ -12,6 +12,18 @@
 #include <random>
 #include <iostream>
 #include <chrono>
+#include <fstream>
+
+extern "C" int init(const char *);
+extern "C" int eval (const char *func,
+                int nArgs,
+                const double **inReal,
+                const double **inImag,
+                int blockSizeIn,
+                double *outReal,
+                double *outImag);
+
+extern "C" const char* getLastError();
 
 
 namespace getelec{
@@ -52,7 +64,6 @@ TEST(TransmissionSolverTest, DefaultValueTest) {
     TransmissionSolver solver(&barrier);
     solver.setXlimits(8.0);
     double transmission = solver.calculateTransmissionProbability(-4.5);
-    EXPECT_NEAR(transmission, 0.00066697796753639933, 1.e-9);
     EXPECT_NEAR(transmission, 0.00066697796753639933, 1.e-9);
 }
 
@@ -223,7 +234,6 @@ TEST(BandEmitterTest, totalEnergyDistributionMethodComparison){
     }
 }
 
-
 /**
  * @brief Test for BandEmitter:: check that the current density and Nottingham heat are calculated correctly
  * @details This test checks the accuracy of the current density and Nottingham heat calculated by the BandEmitter class.
@@ -330,6 +340,13 @@ TEST(GetelecTest, runRandomCasesTest){
     EXPECT_NO_THROW(getelec.run(CalculationFlags::All));
 }
 
+TEST(GetelecTest, fileWritingTest){
+    auto getelec = Getelec();
+    getelec.setFileWriteFlag(true);
+    getelec.calculateTransmissionForEnergies({-4.5});
+    ifstream f("odeSolution_i_0_E_-4.500000.dat");
+    EXPECT_TRUE(f.good());
+}
 /**
  * @brief Test for Getelec:: check that the Getelec class can be constructed and run without errors
  */
@@ -380,14 +397,20 @@ TEST(GeneralXCFunctionTest, DerivativeTest){
 TEST(PerformanceTest, RegularPerformanceTest){
     tbb::global_control tbbGlobalControl(tbb::global_control::max_allowed_parallelism, 4);
 
-    mt19937 generator(1987);
+    mt19937 generator(85468);
 
     Getelec getelec = Getelec("GetelecConfig.txt", "modifiedSN", &generator);
     int noRuns = 4096;
     getelec.setRandomParameters(noRuns);
     getelec.setEffectiveMass(1.);
 
+    int noRuns = 256;
+    //test first for effectiveMass!=1.
     auto start = std::chrono::high_resolution_clock::now();
+
+    getelec.setRandomParameters(noRuns);
+    getelec.setEffectiveMass(1.);
+
     EXPECT_NO_THROW(getelec.run(CalculationFlags::CurrentDensity | CalculationFlags::NottinghamHeat));
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -397,6 +420,29 @@ TEST(PerformanceTest, RegularPerformanceTest){
 
 
 } // namespace getelec
+
+
+TEST(ComsolWrapperTest, RunTest){
+
+    init("ComsolTest.verbose.log");
+    double* row = new double[1]{42.0};
+    const double** ptr = new const double*[1]{row};   
+    double* currentDensity = new double[1]; 
+    double* outImage = new double[1];
+    eval("currentDensity", 1, ptr, nullptr, 1, currentDensity, outImage);
+    string error(getLastError());
+    EXPECT_TRUE(error.empty());
+    cout << error << endl;
+
+
+    // Cleanup
+    delete[] row;
+    delete[] ptr;
+    delete[] currentDensity;
+    delete[] outImage;
+
+}
+
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);

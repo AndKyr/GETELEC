@@ -62,7 +62,7 @@ class TestGetelecInterface(tst.TestCase):
         plt.semilogy(xFN, currentDensities, ".")
         plt.semilogy(xFN, np.exp(np.polyval(poly, xFN)))
         plt.xlabel("1/Field (nm/V)")
-        plt.ylabel("Current Density (A/nm^2)")
+        plt.ylabel("Current Density (A/nm2)")
         plt.show()
         expected_poly = [ 7.234612, -73.16,  -5.083]
         np.testing.assert_allclose(poly, expected_poly, rtol=1e-1)  
@@ -113,13 +113,39 @@ class TestGetelecInterface(tst.TestCase):
         plt.show()
 
     def testTransmissionProbability(self):
-        getelec = gt.GetelecInterface(configPath="getelec.cfg")
-        energies = np.linspace(-2., 2., 64)
-        waveVectors = 12. * np.ones(64)
-        coeffs = getelec.calculateTransmissionCoefficients(energies, waveVectors)
+        # getelec = gt.GetelecInterface(configPath="getelec.cfg")
+        # energies = np.linspace(-2., 2., 64)
+        # waveVectors = 12. * np.ones(64)
+        # coeffs = getelec.calculateTransmissionCoefficients(energies, waveVectors)
 
-        plt.semilogy(energies, np.abs(coeffs)**2)
+        # plt.semilogy(energies, np.abs(coeffs)**2)
+        # plt.show()
+
+
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+        waveVectors = np.linspace(1.e-5, 20., 32)
+        energies = np.zeros(len(waveVectors))
+
+        emitter = gt.GetelecInterface(configPath="getelec.cfg")
+        coefficients = emitter.calculateTransmissionCoefficients(energies, waveVectors)
+        fig, ax1 = plt.subplots(figsize = figureSize, tight_layout=True)
+        ax2 = ax1.twinx()
+
+        ax1.plot(waveVectors, np.abs(coefficients), label=r"$|T|$", color = colors[0])
+        ax2.plot(waveVectors, np.angle(coefficients), label=r"$\arg(T)$", color = colors[1])
+
+        ax1.set_xlabel(r"$k_z \textrm{[nm}^{-1}\textrm{]}$")
+        ax1.set_ylabel(r"$|T|$")
+        ax2.set_ylabel(r"$\arg(T)$")
+        ax1.grid()
+        ax1.legend(loc="upper left")
+        ax2.legend(loc="upper right")
+
+
+        plt.savefig("solverComparison.pdf")
         plt.show()
+
 
 
     

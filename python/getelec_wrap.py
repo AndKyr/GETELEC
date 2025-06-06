@@ -48,6 +48,16 @@ Methods:
     setParameters(self, **params): Sets multiple parameters for the simulation.
     __del__(self): Cleans up the object and deletes the Getelec instance.
 """
+class Globals:
+    hbarSqrOver2m = 3.80998212e-2; # Reduced Planck's constant squared over 2m (eV·nm²). */
+    kConstant = 1. / hbarSqrOver2m; # Constant connecting wavevector and energy */
+    sqrt2mOverHbar = kConstant**0.5 #  sqrt(2m)/hbar. */
+    imageChargeConstant = 0.359991137; # Constant for image charge effects (eV·nm). */
+    BoltzmannConstant = 8.617333262e-5; # Boltzmann constant in eV/K. */
+    SommerfeldConstant = 1.618311e-4; # Sommerfeld constant for current density [A / nm^2 / (eV)^2 ]. */
+    electronCharge = 1.602176634e-19; # Electron charge in Cb. */
+    
+
 
 class GetelecInterface:
 
@@ -117,6 +127,9 @@ class GetelecInterface:
         self.lib.Getelec_setRandomParameters.restype = None
         self.lib.Getelec_setRandomParameters.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
 
+        self.lib.Getelec_setFileWriteFlag.restype = None
+        self.lib.Getelec_setFileWriteFlag.argtypes = [ctypes.c_void_p, ctypes.c_bool]
+
         self.lib.Getelec_run.restype = ctypes.c_size_t
         self.lib.Getelec_run.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
 
@@ -159,7 +172,8 @@ class GetelecInterface:
         self.setEffectiveMass(effectiveMasses)
         self.resultDictionary = {}
 
-    def calculateTransmissionCoefficients(self, energies, waveVectors, params_index = 0):
+    def calculateTransmissionCoefficients(self, energies, waveVectors, params_index = 0, writeFiles:bool = False):
+        self.lib.Getelec_setFileWriteFlag(self.obj, ctypes.c_bool(writeFiles))
         energies_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(energies, dtype=np.float64)))
         waveVectors_ctypes, size = self._toCtypesArray(np.atleast_1d(np.asarray(waveVectors, dtype=np.float64)))
         transCoeffReal, size = self._toCtypesArray(np.ones(len(energies), dtype=np.float64))
@@ -242,14 +256,14 @@ class GetelecInterface:
 
         return flags
 
-    def run(self, calculationFlags):
+    def run(self, calculationFlags, writeFlag:bool = False):
         combinedFlagsInt:int = 0
         for flagStr in calculationFlags:
             if flagStr in self.flagMap:
                 combinedFlagsInt |= self.flagMap[flagStr]
             else:
                 raise ValueError(f"Invalid flag: {flagStr}")
-
+        self.lib.Getelec_setFileWriteFlag(self.obj, ctypes.c_bool(writeFlag))
         self.numberOfIterations = self.lib.Getelec_run(self.obj, combinedFlagsInt)
 
     def getCurrentDensity(self):
@@ -350,8 +364,7 @@ class GetelecInterface:
         lowerLimit, upperLimit = self.getBarrierIntegrationLimits(params_index=params_index)
         energies = np.linspace(lowerLimit, upperLimit, Npoints)
         values = self.calculateBarrierValues(energies, params_index=params_index)
-        return energies, values
-        
+        return energies, values       
     
     def setRandomParams(self, numberOfInputs):
         self.lib.Getelec_setRandomParameters(self.obj, ctypes.c_size_t(numberOfInputs))

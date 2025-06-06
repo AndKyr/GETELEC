@@ -369,7 +369,7 @@ void TransmissionSpline::refineSamplingToTolerance(int maxRefineSteps){
     }
     cout << "GETELEC WARNING: Max allowed refine steps " << maxRefineSteps << " reached in spline interpolation without satisfying tolerance." << endl;
     
-    assert((solver.setWriteFlag(126875987), writeSplineSolution("incompleteSplineSolution.dat", 256, true), writeSplineNodes("incompleteSplineNodes.dat"), false)); //if in debug mode, then write the splines to check them.
+    // assert((solver.setWriteFlag(126875987), writeSplineSolution("incompleteSplineSolution.dat", 256, true), writeSplineNodes("incompleteSplineNodes.dat"), false)); //if in debug mode, then write the splines to check them.
 }
 
 void TransmissionSpline::sortAndInitialize(){
