@@ -1,0 +1,130 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/getelec",
+            "args": [""],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+                
+            ],
+            "preLaunchTask": "buildDebug"
+        },
+
+        {
+            "name": "DebugTests",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/tests/tests",
+            "args": ["--gtest_break_on_failure"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set breakpoint at gtest failure",
+                    "text": "--gtest_break_on_failure",
+                    "ignoreFailures": true
+                }
+                
+            ],
+            "preLaunchTask": "buildDebug"
+        },
+        {
+            "name": "PythonCppDebug",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/home/kyritsak/GETELEC/.venv/bin/python",  // Path to your Python interpreter
+            "args": ["python/getelec_wrap.py"],    // Your Python script
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",   // Current working directory
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb", // Path to gdb
+            "setupCommands": [
+              {
+                "description": "Enable pretty-printing for gdb",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+              },
+              {
+                "description": "Load shared library symbols",
+                "text": "sharedlibrary getelec", // Load symbols for your shared library
+                "ignoreFailures": true
+              }
+            ],
+            "preLaunchTask": "buildDebug",
+            "logging": {
+              "moduleLoad": false,
+              "trace": true,
+              "engineLogging": false
+            }
+          },
+          {
+            "name": "GetelecWrapTestDebug",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/home/kyritsak/GETELEC/.venv/bin/python",  // Path to your Python interpreter
+            "args": ["python/getelecWrapTests.py"],    // Your Python script
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",   // Current working directory
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb", // Path to gdb
+            "setupCommands": [
+              {
+                "description": "Enable pretty-printing for gdb",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+              },
+              {
+                "description": "Load shared library symbols",
+                "text": "sharedlibrary getelec", // Load symbols for your shared library
+                "ignoreFailures": true
+              }
+            ],
+            "preLaunchTask": "buildDebug",
+            "logging": {
+              "moduleLoad": false,
+              "trace": true,
+              "engineLogging": false
+            }
+          }
+    ]
+}
+
+

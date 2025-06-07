@@ -6,7 +6,6 @@
 *.dat
 *.mat
 *.out
-*.txt
 *.xyz
 *.png
 *.pyc
@@ -20,9 +19,10 @@
 *.pdf
 *.gz
 *.dvi
-web/
-*.vscode
 *.npy
+*.svg
+*.txt
+build/
+docs/
+.venv
 
-#Removed *.svg
-# webgui -> web/
