@@ -43,7 +43,7 @@ endif()
 # Find GSL library
 message(STATUS "Searching for GSL version>=2.8 at ${GSL_ROOT_DIR}")
 
-# find_package(GSL 2.8 MODULE)
+find_package(GSL 2.8 MODULE)
 
 if (NOT GSL_FOUND)
     message(STATUS "GSL version>=2.8 not found (${GSL_ROOT_DIR}). Downloading and building GSL")
