@@ -66,7 +66,7 @@
             "name": "PythonCppDebug",
             "type": "cppdbg",
             "request": "launch",
-            "program": "/home/kyritsak/GETELEC/.venv/bin/python",  // Path to your Python interpreter
+            "program": "${workspaceFolder}/.venv/bin/python",  // Path to your Python interpreter
             "args": ["python/getelec_wrap.py"],    // Your Python script
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",   // Current working directory
@@ -97,8 +97,8 @@
             "name": "GetelecWrapTestDebug",
             "type": "cppdbg",
             "request": "launch",
-            "program": "/home/kyritsak/GETELEC/.venv/bin/python",  // Path to your Python interpreter
-            "args": ["python/getelecWrapTests.py"],    // Your Python script
+            "program": "${workspaceFolder}/.venv/bin/python",  // Path to your Python interpreter
+            "args": ["-m", "tests.getelecWrapTests"],    // Your Python script
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",   // Current working directory
             "environment": [],

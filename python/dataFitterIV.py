@@ -1,4 +1,4 @@
-import getelec_wrap as gt
+from . import getelec_wrap as gt
 import numpy as np
 import scipy.optimize as opt
 import matplotlib.pyplot as plt

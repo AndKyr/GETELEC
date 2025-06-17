@@ -401,9 +401,11 @@ TEST(PerformanceTest, RegularPerformanceTest){
     int noRuns = 256;
 
     Getelec getelec = Getelec("GetelecConfig.txt", "modifiedSN", &generator);
+    int noRuns = 4096;
     getelec.setRandomParameters(noRuns);
     getelec.setEffectiveMass(1.);
 
+    int noRuns = 256;
     //test first for effectiveMass!=1.
     auto start = std::chrono::high_resolution_clock::now();
 

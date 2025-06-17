@@ -1,4 +1,8 @@
-import getelec_wrap as gt
+
+#! 
+from python import getelec_wrap as gt
+from python import dataFitterIV as fitter
+
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -68,7 +72,6 @@ class TestGetelecInterface(tst.TestCase):
         np.testing.assert_allclose(poly, expected_poly, rtol=1e-1)  
     
     def testFitter(self):
-        import dataFitterIV as fitter
 
         voltageData = np.array([6666.66666667, 6528.49740933, 6395.93908629, 6268.65671642, \
         6146.34146341, 6028.70813397, 5915.49295775, 5806.4516129, 5701.35746606, 5600., 5502.18340611, 5407.72532189,\
