@@ -1,3 +1,7 @@
+> **This repository is archived.** It holds GETELEC 1.0 and 2.0, first published
+> at github.com/AndKyr/GETELEC, and is kept read-only for reference.
+> GETELEC is developed at **https://github.com/sbcarceles13/GETELEC** from version 3 on.
+
 # GETELEC
 General Tool for Electron Emission Calculations - A computational tool for calculating thermal-field electron emission current density and Nottingham effect heat for metallic and semiconducting emitters.
 
